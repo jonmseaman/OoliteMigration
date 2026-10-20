@@ -1,6 +1,6 @@
 /*	test_objc_assert.mm
 	Unit tests for OOAssert.h, the Foundation-free assertions (bead oo-diow). Linked against
-	libobjc2 alone, like test_objc_exception.mm. The expected reasons are gnustep-base 1.31.1's
+	libobjc2 alone, like test_objc_exception.mm, until bead oo-dbz. The expected reasons are gnustep-base 1.31.1's
 	text for NSAssert / NSCAssert / NSParameterAssert, pinned with a throwaway harness when the
 	seam was written:
 
@@ -10,15 +10,13 @@
 	    probe.m:20  Assertion failed in void CFail(int).  y is 4
 
 	all raised as NSInternalInconsistencyException. This test builds without NDEBUG, so the macros
-	are live.
+	are live. The method forms (OOAssert, OOParameterAssert) and their cases (the first three probe
+	lines) went with libobjc2, bead oo-dbz.4: no game code called them; the function forms stay.
 */
 
 #include "oofnd/objc/OOAssert.h"
-#include "OOFloorTestRoot.h"	// the root its probe stands on (src/oofnd/objc/OOObject went with bead oo-4aq6a.8)
 
 #include "oo_test.hpp"
-
-#include <objc/objc-arc.h>
 
 #include <string>
 
@@ -41,7 +39,6 @@ template <class F>
 Outcome Run(F body)
 {
 	Outcome outcome;
-	void *pool = objc_autoreleasePoolPush();
 	try
 	{
 		body();
@@ -52,8 +49,7 @@ Outcome Run(F body)
 		outcome.name = e.name();
 		outcome.reason = e.reason();
 	}
-	objc_autoreleasePoolPop(pool);
-	return outcome;
+	return outcome;	// (an Objective-C autorelease pool was pushed and popped around the body until bead oo-dbz.4; it held nothing)
 }
 
 std::string At(long line)
@@ -65,46 +61,6 @@ void CFail(int y) { sLine = __LINE__; OOCAssert(y == 0, "y is %d", y); }
 void CParam(void *p) { sLine = __LINE__; OOCParameterAssert(p != NULL); }
 
 } // namespace
-
-@interface OOAssertProbe : OOObject
-- (void) fail:(int)x;
-- (void) param:(void *)p;
-+ (void) classFail;
-@end
-
-@implementation OOAssertProbe
-- (void) fail:(int)x { sLine = __LINE__; OOAssert(x == 0, "x is %d here", x); }
-- (void) param:(void *)p { sLine = __LINE__; OOParameterAssert(p != NULL); }
-+ (void) classFail { sLine = __LINE__; OOAssert(false, "class side"); }
-@end
-
-
-OO_TEST(methodAssertionReasonIsFoundations)
-{
-	OOAssertProbe *probe = [[OOAssertProbe alloc] init];
-	Outcome o = Run([&] { [probe fail:3]; });
-	OO_CHECK(o.raised);
-	OO_CHECK_EQ(o.name, std::string("NSInternalInconsistencyException"));
-	OO_CHECK_EQ(o.reason, At(sLine) + "OOAssertProbe(instance), method fail:.  x is 3 here");
-	[probe release];
-}
-
-OO_TEST(parameterAssertionNamesTheCondition)
-{
-	OOAssertProbe *probe = [[OOAssertProbe alloc] init];
-	Outcome o = Run([&] { [probe param:nullptr]; });
-	OO_CHECK(o.raised);
-	OO_CHECK_EQ(o.name, std::string("NSInternalInconsistencyException"));
-	OO_CHECK_EQ(o.reason, At(sLine) + "OOAssertProbe(instance), method param:.  Invalid parameter not satisfying: p != NULL");
-	[probe release];
-}
-
-OO_TEST(classMethodSaysInstanceAsFoundationDid)
-{
-	Outcome o = Run([] { [OOAssertProbe classFail]; });
-	OO_CHECK(o.raised);
-	OO_CHECK_EQ(o.reason, At(sLine) + "OOAssertProbe(instance), method classFail.  class side");
-}
 
 OO_TEST(functionAssertionUsesPrettyFunction)
 {
@@ -120,13 +76,9 @@ OO_TEST(functionAssertionUsesPrettyFunction)
 
 OO_TEST(trueConditionsDoNotRaise)
 {
-	OOAssertProbe *probe = [[OOAssertProbe alloc] init];
 	int dummy = 0;
-	OO_CHECK(!Run([&] { [probe fail:0]; }).raised);
-	OO_CHECK(!Run([&] { [probe param:&dummy]; }).raised);
 	OO_CHECK(!Run([] { CFail(0); }).raised);
 	OO_CHECK(!Run([&] { CParam(&dummy); }).raised);
-	[probe release];
 }
 
 OO_TEST_MAIN()

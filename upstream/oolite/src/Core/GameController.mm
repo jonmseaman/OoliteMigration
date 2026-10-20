@@ -23,7 +23,6 @@ MA 02110-1301, USA.
 */
 
 #include "GameController.h"
-#include <objc/objc-arc.h>
 #include "Universe.h"
 #include "ResourceManager.h"
 #include "MyOpenGLView.h"
@@ -419,7 +418,7 @@ bool GameController::suppressClangStuff()
 
 #if !OOLITE_MAC_OS_X	// the Mac -performGameTick: is in GameController (MacOSX) at the end of the file
 
-void GameController::performGameTick(id /*sender*/)
+void GameController::performGameTick()
 {
 	oo::AutoreleaseScope pool;	// was an Objective-C autorelease pool (oo-31u.8)
 	
@@ -501,7 +500,7 @@ void GameController::performGameTickIfDue()
 	while (next <= now)  next += sGameTickInterval;
 	sNextGameTick = next;
 	
-	performGameTick(nil);	// the sender (the controller's object until bead oo-9ht.164) is unused
+	performGameTick();	// the sender it took (the controller's object until bead oo-9ht.164, nil until oo-dbz.2) was unused
 }
 
 

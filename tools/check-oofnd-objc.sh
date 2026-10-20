@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # tools/check-oofnd-objc.sh — the standalone acceptance for oofnd's Foundation-free Objective-C
 # floor (bead oo-3rb.1, proposed ADR-0029) on libobjc2 ALONE. (Its OOObject root class and the
-# OOConstantString class behind @"..." literals went with bead oo-4aq6a.8; the tests that remain stand
-# their objects on their own copy of the root, tests/unit/oofnd/OOFloorTestRoot.h.) tools/check-oofnd.sh runs it; it also runs by itself:
+# OOConstantString class behind @"..." literals went with bead oo-4aq6a.8; the floor tests that stood
+# on their own copy of the root, and the copy, tests/unit/oofnd/OOFloorTestRoot.h, retired with
+# OOObjCRef.h and OORuntime.h, bead oo-dbz.4: test_objc_assert, the function forms, is left.) tools/check-oofnd.sh runs it; it also runs by itself:
 #
 #     bash tools/check-oofnd-objc.sh
 #

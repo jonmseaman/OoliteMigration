@@ -25,7 +25,6 @@
 */
 
 #import "OOCocoa.h"
-#include <objc/runtime.h>
 #include "OOMaths.h"
 #include "OOTypes.h"
 #include "OOEntityEnums.h"
@@ -478,12 +477,6 @@ void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, oo::PList (*)(oos
 }
 
 
-// What the engine makes of a native object: an entity's own JS object, null for nil.
-ooscript::Value OOJSValueFromNativeObject(ooscript::Context, id object)
-{
-	if (object == nil)  return ooscript::nullValue();
-	return ooscript::undefinedValue();	// (an entity's object was its own JS object; it is C++ since bead oo-4aq6a.12, never an id here)
-}
 
 
 bool OOJSUnconstructableConstruct(ooscript::Context context, ooscript::CallArgs &)

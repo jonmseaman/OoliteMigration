@@ -28,7 +28,6 @@ SOFTWARE.
 
 #include "OOShaderMaterial.h"
 #include "OOShaderUniformMethodType.h"	// the binding target's hooks (bead oo-9ht.39.6)
-#include "oofnd/objc/OORuntime.h"
 #include "OOObjCPList.h"
 
 #if OO_SHADERS

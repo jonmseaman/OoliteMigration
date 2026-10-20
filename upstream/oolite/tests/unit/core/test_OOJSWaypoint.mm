@@ -20,7 +20,6 @@
 */
 
 #import "OOCocoa.h"
-#include <objc/runtime.h>
 #include "OOMaths.h"
 #include "OOTypes.h"
 #include "ooscript/JSEngine.hpp"
@@ -303,10 +302,6 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &ar
 }
 
 
-ooscript::Value OOJSValueFromNativeObject(ooscript::Context, id)
-{
-	return ooscript::undefinedValue();
-}
 
 
 bool OOJSUnconstructableConstruct(ooscript::Context context, ooscript::CallArgs &)

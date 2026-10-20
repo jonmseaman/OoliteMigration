@@ -36,10 +36,8 @@
 #import "OOWaypointEntity.h"
 
 #include "oo_test.hpp"
-#include "oofnd/objc/OORuntime.h"
 #include "oofnd/Log.hpp"
 
-#include <objc/runtime.h>
 #include <cstdlib>
 #include <cstring>
 #include <string_view>

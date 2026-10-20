@@ -80,9 +80,6 @@ MA 02110-1301, USA.
 	#define OOLITE_GNUSTEP			1
 	
 	// gnustep-base's macro; the Mac OS X path below defines the same one.
-	#ifndef DESTROY
-		#define DESTROY(x) do { id x_ = x; x = nil; [x_ release]; } while (0)
-	#endif
 	
 #else
 	#import <AppKit/AppKit.h>
@@ -96,9 +93,6 @@ MA 02110-1301, USA.
 	
 	/*	Useful macro copied from GNUstep.
 	*/
-	#ifndef DESTROY
-		#define DESTROY(x) do { id x_ = x; x = nil; [x_ release]; } while (0)
-	#endif
 	
 	#if defined MAC_OS_X_VERSION_10_7 && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_7
 		#define OOLITE_MAC_OS_X_10_7	1
@@ -325,9 +319,6 @@ extern "C++" {
 	(Such factory methods should be implemented in terms of [[self alloc]
 	init...].)
 */
-#if __OBJC__ && !__has_feature(objc_instancetype)
-typedef id instancetype;
-#endif
 
 
 // OO_DEBUG is defined at the top of this file, where the enumeration macros can test it.

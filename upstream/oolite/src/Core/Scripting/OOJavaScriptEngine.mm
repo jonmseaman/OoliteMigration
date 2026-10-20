@@ -105,7 +105,6 @@ MA 02110-1301, USA.
 #include "OOProfilingStopwatch.h"
 #include "OOLoggingExtended.h"
 #include "oofnd/objc/OOException.h"
-#include "oofnd/objc/OORuntime.h"
 
 #include "oofnd/objc/OOAssert.h"
 

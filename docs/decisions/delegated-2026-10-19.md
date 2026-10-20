@@ -41,3 +41,9 @@ bead, as usual.
   keep upstream's semantics: released at the drain of the nearest enclosing `oo::AutoreleaseScope`, which
   oo-31u.8 already opened where upstream's pools were; no new owner, no new scope (ADR-0056 amendment
   oo-31u.9). Jon: "I approve you working through human decisions whenever it makes sense to unblock you."
+- oo-dbz (batch BH, BG's open question (b)): the by-name "has no signature a by-name call can use (type encoding ...)"
+  log line stays byte-identical, so each `@encode()` becomes the literal clang's `@encode()` measured on main
+  eae8c876d, generated, never hand-pasted: `tools/type-encodings.tsv` (the measurement) renders
+  `upstream/oolite/src/Core/OOTypeEncodings.h` (`kOOTypeEncoding<T>`) through `tools/gen-type-encodings.py`, whose
+  `--check` keeps them in step (bead oo-dbz.3, ADR-0056 amendment oo-dbz.2/.3/.4). Jon: "I approve you working
+  through human decisions whenever it makes sense to unblock you."

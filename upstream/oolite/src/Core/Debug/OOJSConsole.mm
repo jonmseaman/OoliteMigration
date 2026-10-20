@@ -50,6 +50,7 @@ SOFTWARE.
 #include "EntityOOJavaScriptExtensions.h"	// callObjC()'s class name of an entity (bead oo-9ht.39.5.1)
 #if OO_DEBUG
 #include "OOShaderUniformMethodType.h"	// callObjC()'s scalar results on the console (bead oo-9ht.74)
+#include "OOTypeEncodings.h"	// the monitor rows' measured encodings (bead oo-dbz.3)
 #endif
 
 #include "oofnd/String.hpp"
@@ -854,11 +855,11 @@ const MonitorMethod kMonitorMethods[] =
 #if OOLITE_GNUSTEP
 	{ "applicationWillTerminate",	MonitorMethodForm::VoidVoid,	[](OODebugMonitor *m) { m->applicationWillTerminate(); }, nullptr, nullptr, nullptr, nullptr },
 #endif
-	{ "debuggerConnected",			MonitorMethodForm::Scalar,		nullptr, nullptr, nullptr, [](OODebugMonitor *m) -> long long { return m->debuggerConnected(); }, @encode(BOOL) },
-	{ "TCPIgnoresDroppedPackets",	MonitorMethodForm::Scalar,		nullptr, nullptr, nullptr, [](OODebugMonitor *m) -> long long { return m->TCPIgnoresDroppedPackets(); }, @encode(BOOL) },
-	{ "usingPlugInController",		MonitorMethodForm::Scalar,		nullptr, nullptr, nullptr, [](OODebugMonitor *m) -> long long { return m->usingPlugInController(); }, @encode(BOOL) },
+	{ "debuggerConnected",			MonitorMethodForm::Scalar,		nullptr, nullptr, nullptr, [](OODebugMonitor *m) -> long long { return m->debuggerConnected(); }, kOOTypeEncoding<BOOL> },
+	{ "TCPIgnoresDroppedPackets",	MonitorMethodForm::Scalar,		nullptr, nullptr, nullptr, [](OODebugMonitor *m) -> long long { return m->TCPIgnoresDroppedPackets(); }, kOOTypeEncoding<BOOL> },
+	{ "usingPlugInController",		MonitorMethodForm::Scalar,		nullptr, nullptr, nullptr, [](OODebugMonitor *m) -> long long { return m->usingPlugInController(); }, kOOTypeEncoding<BOOL> },
 	{ "configurationKeys",			MonitorMethodForm::NotCallable,	nullptr, nullptr, nullptr, nullptr, nullptr },	// a std::vector result
-	{ "dumpJSMemoryStatistics",		MonitorMethodForm::Scalar,		nullptr, nullptr, nullptr, [](OODebugMonitor *m) -> long long { return static_cast<long long>(m->dumpJSMemoryStatistics()); }, @encode(size_t) },
+	{ "dumpJSMemoryStatistics",		MonitorMethodForm::Scalar,		nullptr, nullptr, nullptr, [](OODebugMonitor *m) -> long long { return static_cast<long long>(m->dumpJSMemoryStatistics()); }, kOOTypeEncoding<size_t> },
 };
 
 

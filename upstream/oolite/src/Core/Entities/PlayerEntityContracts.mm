@@ -46,7 +46,6 @@ MA 02110-1301, USA.
 #include "OOJavaScriptEngine.h"
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 
 #include <set>
 

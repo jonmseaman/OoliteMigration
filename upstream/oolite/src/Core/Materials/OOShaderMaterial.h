@@ -39,7 +39,6 @@ SOFTWARE.
 #include "OOBasicMaterial.h"
 #include "OOShaderProgram.h"
 #include "OOMaths.h"
-#include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/PList.hpp"
 
 #include <map>

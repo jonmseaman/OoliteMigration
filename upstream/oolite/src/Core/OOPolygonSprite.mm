@@ -40,8 +40,6 @@ SOFTWARE.
 */
 
 #include "OOPolygonSprite.h"
-#include <objc/runtime.h>
-#include <objc/objc-arc.h>
 #include "OOMacroOpenGL.h"
 #include "OOMaths.h"
 #include "OOPointMaths.h"

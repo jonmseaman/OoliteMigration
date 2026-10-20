@@ -21,7 +21,6 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#include <objc/runtime.h>
 #include "OOTypes.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
@@ -214,10 +213,6 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &ar
 }
 
 
-ooscript::Value OOJSValueFromNativeObject(ooscript::Context, id)
-{
-	return ooscript::undefinedValue();
-}
 
 
 bool OOJSUnconstructableConstruct(ooscript::Context context, ooscript::CallArgs &)

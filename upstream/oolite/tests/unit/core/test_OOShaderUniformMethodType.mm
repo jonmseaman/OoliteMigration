@@ -19,6 +19,7 @@
 #import "OORegExpMatcher.h"
 #import "OOOpenGLExtensionManager.h"
 #include "oofnd/PList.hpp"
+#include "OOTypeEncodings.h"	// @encode()'s measured literals (bead oo-dbz.3)
 
 #include "oo_test.hpp"
 
@@ -59,11 +60,12 @@ OOShaderSetting cxx_OOShaderSettingFromString(const std::string &string)
 namespace {
 
 // The type of a return type, by its encoding: the encodings TestReturns's methods had (bead
-// oo-4aq6a.7 deleted the method path; the member tables' rows give @encode() of their types).
+// oo-4aq6a.7 deleted the method path; the member tables' rows give @encode() of their types, the
+// measured literals kOOTypeEncoding<> since bead oo-dbz.3, id's keyed OOObjCId).
 template <typename T>
 OOShaderUniformType TypeOf()
 {
-	return OOShaderUniformTypeFromEncoding(@encode(T));
+	return OOShaderUniformTypeFromEncoding(kOOTypeEncoding<T>);
 }
 
 }	// namespace
@@ -90,7 +92,7 @@ OO_TEST(typesFromEncodings)
 	OO_CHECK(TypeOf<Quaternion>() == kOOShaderUniformTypeQuaternion);
 	OO_CHECK(TypeOf<OOMatrix>() == kOOShaderUniformTypeMatrix);
 	OO_CHECK(TypeOf<NSPoint>() == kOOShaderUniformTypePoint);
-	OO_CHECK(TypeOf<id>() == kOOShaderUniformTypeObject);
+	OO_CHECK(TypeOf<OOObjCId>() == kOOShaderUniformTypeObject);
 }
 
 

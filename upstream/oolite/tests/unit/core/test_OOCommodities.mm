@@ -173,7 +173,6 @@ ooscript::Value ooscript::int32Value(std::int32_t)						{ std::abort(); }
 ooscript::Value ooscript::nullValue()									{ std::abort(); }	// the station argument's for none (bead oo-w9pi2)
 bool ooscript::isObjectOrNull(ooscript::Value)							{ std::abort(); }
 ooscript::Object ooscript::toObject(ooscript::Value)					{ std::abort(); }
-extern "C" ooscript::Value OOJSValueFromNativeObject(ooscript::Context, id)	{ std::abort(); }
 extern "C" void OOJSInitJSIDCachePRIVATE(const char *, ooscript::PropertyId *)	{ std::abort(); }
 ooscript::Value OOJSValueFromPList(ooscript::Context, const oo::PList &)	{ std::abort(); }
 oo::PList cxx_OOJSPListFromJSObject(ooscript::Context, ooscript::Object)	{ std::abort(); }

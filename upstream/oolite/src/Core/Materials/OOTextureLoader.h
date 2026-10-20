@@ -41,7 +41,6 @@ SOFTWARE.
 #include "oofnd/PList.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 
 class OOTexture;
 

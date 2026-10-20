@@ -36,8 +36,6 @@ MA 02110-1301, USA.
 
 #include "OOMesh.h"
 #include "OOCacheManager.h"
-#include <objc/runtime.h>
-#include <objc/objc-arc.h>
 #include "Universe.h"
 #include "OOMeshToOctreeConverter.h"
 #include "ResourceManager.h"

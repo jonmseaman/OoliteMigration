@@ -92,7 +92,6 @@ MA 02110-1301, USA.
 #include "OOPListGameTypes.h"
 #include "oofnd/objc/OOAssert.h"
 #include "oofnd/objc/OOException.h"	// oo::Finally, oo::CurrentOOException (beads oo-rskgl, oo-rskgl.1)
-#include <objc/runtime.h>
 #include <string_view>
 #include "OOObjCPList.h"
 #include "oofnd/String.hpp"

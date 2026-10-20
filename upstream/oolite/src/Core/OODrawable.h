@@ -42,7 +42,6 @@ SOFTWARE.
 class Entity;	// Entity.h: the shader binding target (bead oo-9ht.39.6)
 
 #include <vector>
-#include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 

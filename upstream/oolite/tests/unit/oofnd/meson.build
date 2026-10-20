@@ -93,9 +93,9 @@ endforeach
 # test_objc_exception retired with the Objective-C OOException class (bead oo-4aq6a.1, Jon approved 2026-10-19).
 oofnd_objc_tests = [
     # test_objc_floor retired with its only subject, the OOObject root class, OOConstantString and OOObjCInstallFloor() (bead oo-4aq6a.8, std-2026-10-19)
-    'test_objc_runtime',
+    # test_objc_runtime retired with its only subject, oofnd/objc/OORuntime.h's libobjc2 class and selector lookups (bead oo-dbz.4, std-2026-10-19)
     'test_objc_assert',
-    'test_objc_ref',
+    # test_objc_ref retired with its only subject, oofnd/objc/OOObjCRef.h's reference to an Objective-C object (bead oo-dbz.4, std-2026-10-19)
     # test_objc_call_by_name retired with its only subject, src/Core/OOCallByName.mm's call on an Objective-C object (bead oo-6e1.2, std-2026-10-19)
     # test_objc_description retired with OODescription.mm's OOObject (OODescription) (bead oo-8sql7, ADR-0049; Jon approved 2026-10-19)
     # test_objc_plist retired with its only subject, src/Core/OOObjCPList.h's Objective-C object node (bead oo-4aq6a.5, std-2026-10-19)

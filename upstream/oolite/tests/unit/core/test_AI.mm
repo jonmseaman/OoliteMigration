@@ -28,7 +28,6 @@
 #import "AI.h"
 #import "GameController.h"	// OOScheduleDeferredCall, stood in below (bead oo-pvhrh)
 #import "OOCallByName.h"	// oo::CallEntityByName, stood in below (bead oo-9ht.39.7.1)
-#include "oofnd/objc/OORuntime.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/objc/OOException.h"	// oo::Exception (bead oo-rskgl.1)

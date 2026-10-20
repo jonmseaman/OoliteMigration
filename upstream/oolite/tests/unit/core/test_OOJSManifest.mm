@@ -20,7 +20,6 @@
 #import "OOCommodities.h"
 #import "OOCommodityMarket.h"
 #import "OOStringExpander.h"
-#include <objc/runtime.h>
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/PList.hpp"
@@ -308,10 +307,6 @@ void OOJSReportBadPropertyValue(ooscript::Context context, ooscript::Object, oos
 }
 
 
-ooscript::Value OOJSValueFromNativeObject(ooscript::Context, id)
-{
-	std::abort();	// link stub: the commodity classes' script path
-}
 
 
 void OOJSInitJSIDCachePRIVATE(const char *, ooscript::PropertyId *)

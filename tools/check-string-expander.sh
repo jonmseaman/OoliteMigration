@@ -67,16 +67,12 @@ w="$(native "$WORK")"
 # gets the game's own Foundation-free headers.
 clang++ "${flags[@]}" "${inc[@]}" -c "$w/OOStringExpander.mm" -o "$w/expander.o" || die "OOStringExpander.mm does not compile against the stubs"
 clang++ "${flags[@]}" "${inc[@]}" -c "$w/test_string_expander.cpp" -o "$w/test.o" || die "the test does not compile"
-# The expander raises oo::Exception and describes values with oo::DescriptionOf, so OODescription
-# (with ICU, as oofnd's meson dependency, for oo::str's normalisation) and the oofnd runtime they
-# stand on are compiled in (build plumbing, bead oo-qqz6). The harness's player answers the by-name
+# The expander raises oo::Exception and describes values with oo::DescriptionOf (the PList's, a
+# header), so the oofnd runtime it stands on is compiled in, with ICU, as oofnd's meson dependency,
+# for oo::str's normalisation (build plumbing, bead oo-qqz6; OODescription.mm, which described an
+# Objective-C object, went with libobjc2, bead oo-dbz.2). The harness's player answers the by-name
 # calls itself since bead oo-6e1.2 (OOCallByName.mm, the call on an Objective-C object, is deleted).
 support=()
-for f in "$SRC/Core/OODescription.mm"; do
-  o="$w/core-$(basename "$f" .mm).o"
-  clang++ "${flags[@]}" "${inc[@]}" -c "$(native "$f")" -o "$o" || die "$f does not compile"
-  support+=("$o")
-done
 for f in "$SRC"/oofnd/objc/*.mm "$SRC"/oofnd/Exception.cpp; do	# Exception.cpp: OORaiseException, from objc/OOException.mm (bead oo-4aq6a.1)
   o="$w/oofnd-$(basename "$f" .mm).o"
   clang++ "${flags[@]}" "${inc[@]}" -c "$(native "$f")" -o "$o" || die "$f does not compile"

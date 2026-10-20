@@ -33,9 +33,4 @@ SOFTWARE.
 #include "oofnd/String.hpp"
 
 
-#ifndef NDEBUG
-id OOConsumeReference(id OO_NS_CONSUMED value)
-{
-	return value;
-}
-#endif
+// OOConsumeReference() went with libobjc2 (bead oo-dbz): it took and gave an Objective-C object.

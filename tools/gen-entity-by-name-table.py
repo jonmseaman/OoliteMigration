@@ -9,7 +9,8 @@ method, exactly the categories' names, each keeping its #if conditions, with
 
   - the applies-to flags: the name sets (IsShipSelectorCalledByName() and its siblings) that
     -[Entity respondsToSelector:] reads to answer the name for an entity's C++ part;
-  - @encode() of the declared result type, which the dispatcher classifies as OOCallByName
+  - the encoding of the declared result type (@encode() of it, measured; kOOTypeEncoding<> since
+    bead oo-dbz.3, OOTypeEncodings.h), which the dispatcher classifies as OOCallByName
     classifies the method's type encoding;
   - the argument kind (none, const std::string &, const oo::PList &);
   - an adaptor taking Entity *: the category method's body, verbatim, with the entity for
@@ -234,7 +235,7 @@ def table_rows():
         elif section == "rows":
             if s == "};":
                 section = "done"
-            m = re.match(r'\{ "([^"]+)",\t([^\t]+),\t@encode\((.*)\),\tOOEntityByNameArgument::(\w+),\t&OOEntityByNameAdapt\w+<&ByName_(\d+)>,', s)
+            m = re.match(r'\{ "([^"]+)",\t([^\t]+),\tkOOTypeEncoding<(.*)>,\tOOEntityByNameArgument::(\w+),\t&OOEntityByNameAdapt\w+<&ByName_(\d+)>,', s)
             if m:
                 rows_.append((list(conds), m.group(1), m.group(2).split(" | "), norm(m.group(3)), m.group(4), int(m.group(5))))
         i += 1
@@ -265,7 +266,8 @@ def table_rows():
 def encoded(ret):
     # A function answering the C++ entity (bead oo-9ht.39.24) keeps its row's object encoding ("@", as
     # @encode(Entity *) gave): the dispatcher classifies the row as it classified the method's object result.
-    return "id" if ret == "Entity *" else ret
+    # The encoding is the measured literal kOOTypeEncoding<> gives (OOTypeEncodings.h; bead oo-dbz.3), id's keyed by OOObjCId.
+    return "OOObjCId" if ret == "Entity *" else ret
 
 
 def rows():
@@ -314,7 +316,8 @@ oo-9ht.39.7.3): this file is the source. Edit a function and its row together, t
 python3 tools/gen-entity-by-name-table.py --check (it renders the rows again and must get this file).
 
 One row per former category method, exactly the categories' names and #if conditions: the name
-sets the root facade's -respondsToSelector: read (the applies-to flags), @encode() of the declared result,
+sets the root facade's -respondsToSelector: read (the applies-to flags), the encoding of the declared result
+(kOOTypeEncoding<>, @encode()'s measured literal: OOTypeEncodings.h, bead oo-dbz.3),
 the argument kind, the adaptor: the method's body, verbatim, with the entity for the facade's own C++
 entity, and for a method with no argument the typed adaptor (its result by type; bead oo-9ht.39.7.2).
 Included by OOEntityCalledByName.mm only, after the parts (ShipPart() ...) the bodies read.
@@ -358,14 +361,14 @@ def render():
     out.append("}\t// namespace")
     out.append("")
     out.append("")
-    out.append("// name, applies-to flags, @encode() of the result, argument kind, adaptor, typed adaptor (no argument)")
+    out.append("// name, applies-to flags, the encoding of the result, argument kind, adaptor, typed adaptor (no argument)")
     out.append("inline const OOEntityByNameRow kOOEntityByNameRows[] =")
     out.append("{")
     for index, (conds, category, ret, name, arg, argname, flags, body) in enumerate(data):
         switch(conds, out)
         kind = ARG_KINDS[arg] if arg is not None else "None"
         typed = f"&OOEntityByNameTyped<&ByName_{index}>" if arg is None else "nullptr"
-        out.append(f"\t{{ \"{name}\",\t{' | '.join(flags)},\t@encode({encoded(ret)}),\tOOEntityByNameArgument::{kind},\t&OOEntityByNameAdapt{kind}<&ByName_{index}>,\t{typed} }},")
+        out.append(f"\t{{ \"{name}\",\t{' | '.join(flags)},\tkOOTypeEncoding<{encoded(ret)}>,\tOOEntityByNameArgument::{kind},\t&OOEntityByNameAdapt{kind}<&ByName_{index}>,\t{typed} }},")
     switch([], out)
     out.append("};")
     out.append("")

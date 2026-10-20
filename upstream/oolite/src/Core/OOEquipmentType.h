@@ -42,7 +42,6 @@ SOFTWARE.
 #include "ooscript/JSEngine.hpp"
 #include "OOTypes.h"
 #include "OOOpenGL.h"
-#include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/Ref.hpp"
 #include "OOColor.h"
 

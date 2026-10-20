@@ -9936,3 +9936,51 @@ no longer called. Rule 8 forbids gnustep-base once libobjc2 goes (oo-dbz).
 **Tests.** test_objc_call_by_name retires with `OOCallByName.mm` (std-2026-10-19 item 2); test_string_expander and
 test_sysdesc_tools are re-based (item 1: `.mm` to `.cpp`, Foundation stand-ins to C++ giving the same answers, every
 input and digest unchanged). Approval lines "oo-6e1.2". No golden changes.
+## Amendment (beads oo-dbz.2, oo-dbz.3, oo-dbz.4): the game stands without libobjc2's headers; @encode() becomes its measured literal; the floor tests retire
+
+**Context.** Batch BH, children (a)-(c) of oo-dbz (drop libobjc2, `.mm` to `.cpp`), from batch BG's measured plan. A
+probe that compiles every translation unit of the build (src and tests) as plain C++ (`-x c++`, no `-fobjc-*`)
+found, after oo-dbz.1, what still needed Objective-C: libobjc2's headers (BOOL, YES/NO, nil), `@encode()` in the
+member tables, a few `id`/`SEL`/`Class` uses, and the libobjc2 floor tests. These children leave every unit
+compiling as plain C++ while the build is still Objective-C++; oo-dbz.5 renames and drops the runtime.
+
+**Decision (behaviour-identical in the game unless noted).**
+
+1. *(oo-dbz.2)* `oofnd/objc/OOFoundationTypes.h` defines `BOOL` (signed char), `YES`/`NO` (`(BOOL)1`/`(BOOL)0`) and
+   `nil`/`Nil` (`nullptr` in C++), what libobjc2's `<objc/runtime.h>` gave the game's Objective-C++ (measured by batch
+   BG); no src file includes an `<objc/*.h>` header. `OOObjCRef.h` and `OORuntime.h` are deleted (their last users:
+   Universe's `AddIfAbsent` over `oo::ObjCRef`, which had no caller, and the OXP verifier's stage lookup); so is
+   `OODescription.mm` (`oo::DescriptionOf` & co. of an Objective-C `id`; the game describes none) with its meson lines,
+   OOAssert's method forms (`OOAssert`, `OOParameterAssert`, `OOAssertFailedInMethod`: no game caller; `OOCAssert`
+   and `OOCParameterAssert` stay), `OOConsumeReference`, `DESTROY` and the `instancetype` fallback. The `__OBJC__`
+   guards become `defined(__cplusplus) && !defined(OO_PLAIN_CPP_UNIT)` and the twelve plain src `.cpp` units define
+   `OO_PLAIN_CPP_UNIT` first, so every unit preprocesses as before (BG's `-E` comparison); `OOIsNumberLiteral.h` and
+   `OOMouseInteractionMode.h` take `BOOL` from `OOFoundationTypes.h` in a plain unit. `GameController::performGameTick`
+   loses its unused `id` sender.
+   *Behaviour note:* `OOOXPVerifier::registerBaseStages` no longer looks a configured stage name up as an
+   Objective-C class: every stage is C++ (since oo-9ht.4) and found first in the C++ table, and the only classes the
+   runtime could still find were libobjc2's own (logged "not a subclass of OOOXPVerifierStage"); such a name now logs
+   "Attempt to register unknown class ...", as any name naming no class did. No shipped `verifyOXP.plist` names one.
+2. *(oo-dbz.3; orchestrator decision under Jon's 2026-10-20 delegation, `docs/decisions/delegated-2026-10-19.md`)*
+   Every `@encode(T)` becomes `kOOTypeEncoding<T>`, the literal clang's `@encode(T)` gave on main eae8c876d, so every
+   encoding the by-name dispatcher classifies or logs ("has no signature a by-name call can use (type encoding ...)"),
+   every OOShaderUniformTypeFromEncoding template and every table row is byte-identical. The literals are generated,
+   not hand-written: `tools/type-encodings.tsv` holds the measurement (51 types; the key type, the spellings measured,
+   the encoding; `id` and `SEL` keyed by the tags `OOObjCId` and `OOObjCSelector`; `ShipEntity *` is 24,980
+   characters, its layout as measured, not derived again when the class changes), `tools/gen-type-encodings.py`
+   renders `src/Core/OOTypeEncodings.h` from it (`--check`; `--probe` writes the Objective-C++ measuring probe,
+   `--compare` checks a measurement against the data: equal on eae8c876d), and the two table generators emit
+   `kOOTypeEncoding<T>` (both `--check` clean; the tables' rows change spelling only).
+3. *(oo-dbz.4)* The libobjc2 floor tests retire with their subjects (std-2026-10-19 item 2): `test_objc_ref`
+   (`OOObjCRef.h`), `test_objc_runtime` (`OORuntime.h`) and their root `tests/unit/oofnd/OOFloorTestRoot.h`;
+   `test_objc_assert` keeps its function-form cases (every expected reason unchanged) and retires its method-form
+   cases with the method forms (ADR-0062 item 2 for `trueConditionsDoNotRaise`'s two method checks); its
+   Objective-C autorelease pool, which held nothing, goes. The tests' remaining Objective-C goes, spelling only
+   (item 1): `<objc/runtime.h>`/`OORuntime.h`/`OOObjCRef.h` includes, the dead `OOJSValueFromNativeObject(id)`
+   stand-ins of the function oo-4aq6a.6.2 deleted, the unreached `id`-describing `OOJSObjectWrapperToString`
+   stand-ins (now aborting link stubs), `@encode` in two tests (now `kOOTypeEncoding<>`, the same strings), and
+   `OODescription.mm` in `tests/unit/core/meson.build`'s link lists. Approval lines "oo-dbz.4".
+
+**Left (oo-dbz.5).** The `.mm` files themselves, the `objc`/`objcpp` languages and libobjc2 in meson, the `-fobjc-*`
+flags, and the tools that name `.mm`. Mac-only Objective-C stays for Phase 5 (`GameController+FullScreen.mm`, the
+`OOLITE_MAC_OS_X` blocks of `GameController.mm`, `OOMusicController.mm`'s `NSAppleScript`).

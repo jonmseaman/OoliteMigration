@@ -43,7 +43,6 @@
 #include "oo_gl_test_context.hpp"
 #include "oo_test.hpp"
 #include "oofnd/String.hpp"
-#include "oofnd/objc/OORuntime.h"
 
 #include <cstdlib>
 #include <map>

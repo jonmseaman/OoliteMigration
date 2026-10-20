@@ -20,7 +20,6 @@
 */
 
 #import "OOCocoa.h"
-#include <objc/runtime.h>
 #import "OOColor.h"
 #include "OOMaths.h"
 #include "OOStellarBody.h"

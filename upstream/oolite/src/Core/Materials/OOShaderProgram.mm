@@ -40,7 +40,6 @@ SOFTWARE.
 #include "MyOpenGLView.h"
 
 #include "oofnd/StdLib.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/String.hpp"
 

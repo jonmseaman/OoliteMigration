@@ -34,7 +34,6 @@ SOFTWARE.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/Ref.hpp"
 
 class OOProbabilitySet;	// C++ since bead oo-489v

@@ -26,9 +26,6 @@ SOFTWARE.
 */
 
 #include "OOPListSchemaVerifier.h"
-#include "oofnd/objc/OORuntime.h"
-#include <objc/runtime.h>
-#include <objc/objc-arc.h>
 #include "OOObjCPList.h"
 
 #if OO_OXP_VERIFIER_ENABLED

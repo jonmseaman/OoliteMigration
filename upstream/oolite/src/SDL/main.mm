@@ -24,7 +24,6 @@ MA 02110-1301, USA.
 
 
 #ifdef GNUSTEP_BASE_LIBRARY
-#include <objc/runtime.h>
 #include "oofnd/Ref.hpp"	// oo::AutoreleaseScope (was objc-arc.h's pool functions, oo-31u.8)
 #include "GameController.h"
 #include "oofnd/Process.hpp"

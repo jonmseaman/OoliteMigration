@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 #include "OOJSScript.h"
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"
-#include "oofnd/objc/OORuntime.h"
 #include "OOObjCPList.h"
 
 

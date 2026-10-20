@@ -37,7 +37,6 @@ MA 02110-1301, USA.
 
 #include "OOScriptTimer.h"
 #include "ooscript/JSEngine.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 #include "OOJSPrivateObject.h"
 
 class OOJSScript;

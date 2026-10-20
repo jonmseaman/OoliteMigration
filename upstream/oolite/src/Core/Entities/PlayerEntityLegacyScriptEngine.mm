@@ -23,7 +23,6 @@ MA 02110-1301, USA.
 */
 
 #include "PlayerEntityLegacyScriptEngine.h"
-#include "oofnd/objc/OORuntime.h"
 #include "PlayerEntityScriptMethods.h"
 #include "PlayerEntitySound.h"
 #include "PlayerEntityContracts.h"

@@ -110,7 +110,7 @@ public:
 
 	// The frame loop (bead oo-hn0fw, slice 2).
 #if !OOLITE_MAC_OS_X
-	void performGameTick(id sender);
+	void performGameTick();	// took the unused sender, an Objective-C id, until bead oo-dbz.2
 #endif
 	void startAnimationTimer();
 	void stopAnimationTimer();

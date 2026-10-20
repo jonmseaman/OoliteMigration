@@ -37,7 +37,6 @@ MA 02110-1301, USA.
 #include "OOMaterial.h"
 
 #include "oofnd/StdLib.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/Ref.hpp"
 
 

@@ -31,7 +31,6 @@ oolite_sources += files(
     'OOCrosshairs.mm',
     'OODataFromOXZFile.mm',
     'OODebugGLDrawing.cpp',
-    'OODescription.mm',
     'OODrawable.mm',
     'OOEncodingConverter.mm',
     'OOEntityFilterPredicate.mm',

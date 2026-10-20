@@ -36,7 +36,8 @@ SOFTWARE.
 
 	The encoding is platform-defined, so to stay implementation-agnostic the
 	template encodings are the compiler's own, @encode() of each type: what the
-	runtime records for a method returning that type. (Bead oo-3rb.15: this used
+	runtime records for a method returning that type; since bead oo-dbz.3 (no
+	Objective-C) its measured literals, kOOTypeEncoding<> (OOTypeEncodings.h). (Bead oo-3rb.15: this used
 	the method signature object's return type, which on this runtime is the same
 	return-type encoding. Bead oo-41vj: they were read, through the same call,
 	from methods of an Objective-C template class that existed only for this;
@@ -49,7 +50,8 @@ SOFTWARE.
 
 
 #include "OOMaths.h"
-#include "OOColor.h"	// @encode(OOColor *) is the complete class's, as the bindings' own
+#include "OOColor.h"
+#include "OOTypeEncodings.h"	// @encode()'s measured literals (bead oo-dbz.3); OOColor * the complete class's, as the bindings' own
 #include "oofnd/String.hpp"
 
 static BOOL				sInited = NO;
@@ -96,7 +98,7 @@ static void InitTemplates(void)
 {
 	// Each was the return type of a template method (-signedCharMethod and so on).
 	#define GET_TEMPLATE(enumValue, type) do { \
-					sTemplates[enumValue] = @encode(type); \
+					sTemplates[enumValue] = kOOTypeEncoding<type>; \
 				} while (0)
 
 	GET_TEMPLATE(kOOShaderUniformTypeChar,			signed char);
@@ -117,7 +119,7 @@ static void InitTemplates(void)
 	// The colour bindings (laserColor, fogUniform) answer the C++ colour since bead oo-9ht.1 deleted
 	// its Objective-C facade; they were the object-valued bindings until then (OOShaderUniform.mm).
 	GET_TEMPLATE(kOOShaderUniformTypeColor,			OOColor *);
-	GET_TEMPLATE(kOOShaderUniformTypeObject,		id);
+	GET_TEMPLATE(kOOShaderUniformTypeObject,		OOObjCId);	// id's
 	
 	sInited = YES;
 }

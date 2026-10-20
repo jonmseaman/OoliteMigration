@@ -26,8 +26,6 @@ SOFTWARE.
 */
 
 #include "OODefaultShaderSynthesizer.h"
-#include "oofnd/objc/OORuntime.h"
-#include <objc/objc-arc.h>
 #include "OOMesh.h"
 #include "OOTexture.h"
 #include "OOColor.h"

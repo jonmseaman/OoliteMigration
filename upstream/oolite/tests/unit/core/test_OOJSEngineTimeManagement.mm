@@ -27,7 +27,6 @@
 #include "oofnd/Log.hpp"
 #include "oofnd/PList.hpp"
 #import "OOObjCPList.h"
-#include "oofnd/objc/OOObjCRef.h"
 
 #include "oo_test.hpp"
 #include "test_OOJSEngineTimeManagement.hpp"

@@ -25,10 +25,8 @@
 
 #include "oo_test.hpp"
 
-#include "oofnd/objc/OOObjCRef.h"
 #include "OOEntityHold.h"	// the cargo list (bead oo-xn1j1)
 
-#include <objc/runtime.h>
 
 #include <cmath>
 #include <cstdio>

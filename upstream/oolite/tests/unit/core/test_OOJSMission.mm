@@ -22,7 +22,6 @@
 */
 
 #import "OOCocoa.h"
-#include <objc/runtime.h>
 #include "OOMaths.h"
 #include "OOTypes.h"
 #include "OOEntityEnums.h"
@@ -721,13 +720,6 @@ bool JSValueToVector(ooscript::Context context, ooscript::Value value, Vector *o
 }
 
 
-// What the engine makes of a native object: the running script's JS object here (a C++ object's
-// since bead oo-9ht.133: OOJSValueFromCxxObject, OOJSPrivateObject.cpp).
-ooscript::Value OOJSValueFromNativeObject(ooscript::Context, id object)
-{
-	(void)object;
-	return ooscript::nullValue();
-}
 
 
 void OOJSReportBadPropertySelector(ooscript::Context context, ooscript::Object, ooscript::PropertyId, ooscript::PropertySpec *)
