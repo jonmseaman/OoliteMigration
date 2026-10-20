@@ -116,11 +116,12 @@ struct OOShaderMemberBinding
 /*	The member tables are registered by their classes (the entities': Entity+ObjCBridge.mm, the table
 	itself in EntityShaderBindings.mm), so the uniform links without them. A lookup answers false
 	where the target's class has no row for the name, the row does not apply to this target, or its
-	type is not bindable: the uniform then binds by selector as before.
+	type is not bindable: the uniform then binds by selector as before. The property is named, where it
+	was the selector (bead oo-xu228.3.2).
 */
-typedef bool (*OOShaderMemberBindingLookup)(id target, SEL selector, OOShaderMemberBinding *outBinding);
+typedef bool (*OOShaderMemberBindingLookup)(id target, const char *property, OOShaderMemberBinding *outBinding);
 void OOSetShaderMemberBindingLookup(OOShaderMemberBindingLookup lookup) noexcept;
-bool OOShaderMemberBindingFor(id target, SEL selector, OOShaderMemberBinding *outBinding);
+bool OOShaderMemberBindingFor(id target, const char *property, OOShaderMemberBinding *outBinding);
 
 /*	A material's binding target is the C++ entity (bead oo-9ht.39.6, ADR-0056 amendment
 	oo-9ht.39.6). What the uniform and the material asked of the entity's Objective-C object they

@@ -65,7 +65,7 @@ public:
 
 	/*	The initialisers, as static factories of the same name (proposed ADR-0056 amendment
 		oo-novu): null where the initialiser answered nil (no program, no uniform of that name in
-		it, a nil colour, no selector).
+		it, a nil colour, no property name).
 	*/
 	static oo::Ref<OOShaderUniform> initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, GLint constValue);	// intValue:
 	static oo::Ref<OOShaderUniform> initWithName(const std::string &uniformName, OOShaderProgram *shaderProgram, GLfloat constValue);	// floatValue:
@@ -82,7 +82,7 @@ public:
 	static oo::Ref<OOShaderUniform> initWithName(const std::string &uniformName,
 												 OOShaderProgram *shaderProgram,
 												 id target,	// boundToObject:
-												 SEL selector,	// property:
+												 const char *property,	// property: the method's name, NULL for none (bead oo-xu228.3.2: was its selector)
 												 OOUniformConvertOptions options);	// convertOptions:
 
 	/*	Bound to a C++ target's member (bead oo-t0e2m): property names the member (for the
@@ -103,11 +103,12 @@ public:
 		row binds it (OOShaderEntityHooks, OOShaderUniformMethodType.h), the entity held weakly;
 		any other name, or an entity whose object is an Objective-C subclass's, binds to the
 		entity's object by selector as the initialiser above does. A null target binds nothing.
+		The property is named (NULL for none), where it was the selector (bead oo-xu228.3.2).
 	*/
 	static oo::Ref<OOShaderUniform> initWithEntityTarget(const std::string &uniformName,
 														 OOShaderProgram *shaderProgram,
 														 Entity *target,
-														 SEL selector,
+														 const char *property,
 														 OOUniformConvertOptions options);
 
 	// The whole of what -cxx_description printed (amendment oo-3lj8 item 4).
@@ -151,7 +152,7 @@ private:
 		struct
 		{
 			id							object;	// a zeroing weak reference (objc_storeWeak), as the deleted weak-reference proxy held it (bead oo-9ht.22)
-			SEL							selector;
+			SEL							selector;	// the property's, looked up once by its factory (bead oo-xu228.3.2)
 			IMP							method;
 			// A C++ target's getter (bead oo-t0e2m), or a member of the Objective-C target found in
 			// its class's member table (bead oo-9ht.158; since bead oo-9ht.39.6.1 the row reads the

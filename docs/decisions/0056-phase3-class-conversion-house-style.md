@@ -9583,3 +9583,23 @@ oo-9ht.22): the stand-ins of test_OOJSShipGroup, test_OOJSStation and test_OOSha
 the `OOWeakReference.h` imports go from seven tests; the `-weakRefUnderlyingObject` stand-ins go from eleven
 test_OOJS* files (two stand-in engine functions read the slot directly); comments in six tests; the
 weak-reference sources leave twelve link lists in `tests/unit/core/meson.build`. No case or expected value changes.
+
+## Amendment (bead oo-xu228.3.2): the shader uniforms bound by selector take names
+
+**Context.** The last oo-xu228.3 slice, split off until OOWeakReference+ObjCBridge went (oo-9ht.22). Jon approved
+the tests' spelling re-bases in chat on 2026-10-19 (approval lines "oo-xu228.3: ...").
+
+**Decision (behaviour-identical).** `OOShaderUniform::initWithName(..., id target, ...)`,
+`OOShaderUniform::initWithEntityTarget`, `OOShaderMaterial::bindUniform` and the member-table lookup
+(`OOShaderMemberBindingLookup`, `OOShaderMemberBindingFor`; none is registered) take the property's name
+(`const char *`; NULL still means none, so a nameless binding is still null/false) instead of a SEL. The two
+factories look the selector up once and store it as before, so the selector path, the member rows, the values
+applied, the "does not respond" handling and every log line (which print the selector's name, i.e. the same
+name) are unchanged. `bindSafeUniform` passes the name it already had where it looked the selector up.
+Kept as they are: the selector path's runtime helpers (`OOShaderUniformBindMethod`, `OOCallIntegerMethod`,
+`OOCallFloatMethod`), which call the method found by selector and go with the Objective-C binding target.
+
+**Tests.** test_OOShaderUniform and test_OOShaderMaterial spell `"floatValue"`/`"someBinding"` where they spelled
+`OOSelectorFromName(...)`, and the material test's stand-in factory takes and prints the name where it printed
+`sel_getName(selector)`; test_EntityShaderBindings and test_OOShaderUniformMethodType need no change. No case or
+expected value changes.

@@ -187,9 +187,9 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 	OO_TEST_MADE_UNIFORM(uniformName, oo::str::format("quaternion %g %g %g %g %s", constValue.w, constValue.x, constValue.y, constValue.z, asMatrix ? "matrix" : "vector"));
 }
 
-oo::Ref<OOShaderUniform> OOShaderUniform::initWithEntityTarget(const std::string &uniformName, OOShaderProgram *, Entity *, SEL selector, OOUniformConvertOptions options)
+oo::Ref<OOShaderUniform> OOShaderUniform::initWithEntityTarget(const std::string &uniformName, OOShaderProgram *, Entity *, const char *property, OOUniformConvertOptions options)
 {
-	OO_TEST_MADE_UNIFORM(uniformName, oo::str::format("binding %s options %u", sel_getName(selector), (unsigned)options));
+	OO_TEST_MADE_UNIFORM(uniformName, oo::str::format("binding %s options %u", property, (unsigned)options));
 }
 
 #undef OO_TEST_MADE_UNIFORM
@@ -501,11 +501,11 @@ OO_TEST(settingUniforms)
 		m->setUniform("o", oo::PList(oo::PList::Array{ oo::PList(5.0), oo::PList(6.0), oo::PList(7.0), oo::PList(8.0) }));
 		m->setUniform("p", oo::PList(oo::PList::Array{ oo::PList(1.0), oo::PList(2.0), oo::PList(3.0) }));	// a vector: w is 1
 		m->setUniform("q", kIdentityQuaternion, true);
-		OO_CHECK(m->bindUniform("b", target, OOSelectorFromName("someBinding"), kOOUniformConvertClamp));
+		OO_CHECK(m->bindUniform("b", target, "someBinding", kOOUniformConvertClamp));
 		OO_CHECK(m->bindSafeUniform("s", target, std::string("someBinding"), 0));
 		OO_CHECK(!m->bindSafeUniform("n", target, std::nullopt, 0));
 		OO_CHECK(!m->bindSafeUniform("x", target, std::string("forbidden"), 0));
-		OO_CHECK(!m->bindUniform("bad", target, OOSelectorFromName("someBinding"), 0));
+		OO_CHECK(!m->bindUniform("bad", target, "someBinding", 0));
 		const std::vector<std::string> expected = {
 			"i int 7", "f float 0.5", "v vector 1 2 3 4", "o vector 5 6 7 8", "p vector 1 2 3 1",
 			"q quaternion 1 0 0 0 matrix",
