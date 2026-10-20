@@ -251,20 +251,14 @@ std::string cxx_OOJSEscapedForJavaScriptLiteral(std::string_view string);
 	-> dictionary (see cxx_OOJSDictionaryFromJSObject()); an object of a class
 	with a registered converter -> oo::PListFrom() of what the converter
 	returns (a private object -> a PList::Object node holding it). The id
-	functions below return the object of a PList::Object node of these (nil
-	for plist data): oo-qps.72 deleted their Foundation form (ADR-0055
-	Amendment 2); every caller asks for a native object.
+	functions that returned the Objective-C object of such a node
+	(OOJSNativeObjectFromJSValue/FromJSObject and their OfClass forms) are
+	deleted (bead oo-4aq6a.6): no slot holds an Objective-C object.
 	
 	These require a request on context.
 */
 oo::PList cxx_OOJSPListFromJSValue(ooscript::Context context, ooscript::Value value);
 oo::PList cxx_OOJSPListFromJSObject(ooscript::Context context, ooscript::Object object);
-
-// These require a request on context.
-OOJS_EXTERN_C id OOJSNativeObjectFromJSValue(ooscript::Context context, ooscript::Value value);
-OOJS_EXTERN_C id OOJSNativeObjectFromJSObject(ooscript::Context context, ooscript::Object object);
-OOJS_EXTERN_C id OOJSNativeObjectOfClassFromJSValue(ooscript::Context context, ooscript::Value value, Class requiredClass);
-OOJS_EXTERN_C id OOJSNativeObjectOfClassFromJSObject(ooscript::Context context, ooscript::Object object, Class requiredClass);
 
 
 OOINLINE ooscript::ClassDef *OOJSGetClass(ooscript::Context cx, ooscript::Object obj)  ALWAYS_INLINE_FUNC;
@@ -369,7 +363,8 @@ OOINLINE BOOL OOJSIsMemberOfSubclass(ooscript::Context context, ooscript::Object
 	
 	OOJSBasicPrivateObjectConverter() is a OOJSClassConverterCallback which
 	returns the JS object's private storage value as an Object node (a null
-	PList for nil). It automatically unpacks OOWeakReferences if relevant.
+	PList for none). The slot holds a C++ object (bead oo-4aq6a.6): a node
+	is made of it when it is a PList::Object's foreign object, else none.
 	
 	OOJSRegisterObjectConverter() registers a callback for a specific JS class.
 	It is not automatically propagated to subclasses.
@@ -488,7 +483,8 @@ OOJS_EXTERN_C bool OOJSUnconstructableConstruct(ooscript::Context context, ooscr
 /*	OOJSObjectWrapperFinalize
 	
 	Finalizer for JS classes whose private storage is a retained object
-	reference (generally a weak reference proxy, but doesn't have to be).
+	reference: OOJSCxxObjectWrapperFinalize() (OOJSPrivateObject.h), since the
+	slot holds only a C++ object (bead oo-4aq6a.6).
 */
 OOJS_EXTERN_C void OOJSObjectWrapperFinalize(ooscript::Context context, ooscript::Object thisObj);
 
@@ -496,9 +492,9 @@ OOJS_EXTERN_C void OOJSObjectWrapperFinalize(ooscript::Context context, ooscript
 /*	OOJSObjectWrapperToString
 	
 	Implementation of toString() for JS classes whose private storage is an
-	Objective-C object reference (generally a weak reference proxy).
-	
-	Calls -cxx_oo_jsDescription and, if that fails, -description.
+	object reference: "[object <JS class name>]" ("[object]" for no class).
+	Only an Objective-C object found through the class's converter described
+	itself; no slot holds one since bead oo-4aq6a.6.
 */
 OOJS_EXTERN_C bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 

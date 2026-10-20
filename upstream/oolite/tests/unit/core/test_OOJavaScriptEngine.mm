@@ -24,7 +24,7 @@
 #import "OOVector.h"
 #import "OOObjCPList.h"
 #include "oofnd/objc/OOException.h"
-#include "oofnd/objc/OOConstantString.h"	// an arbitrary non-wrapper class (was OOException, deleted by bead oo-4aq6a.1)
+#include "OOJSPrivateObject.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Log.hpp"
 #include "oofnd/Notification.hpp"
@@ -47,15 +47,11 @@ uint32_t gDebugFlags = 0;
 #endif
 
 
-// A plain OOObject, as a script's native object: counts its JS wrapper's finalisation and its own.
+// A plain OOObject: its JS value and description through the root's JS glue. (Its -oo_clearJSSelf:
+// and -dealloc counted the Objective-C wrapper's finalisation for objectWrapper, which retired with
+// the slot's Objective-C objects, bead oo-4aq6a.6; cxxObjectWrapper counts TestCxxNative's.)
 @interface TestNative: OOObject
-{
-@public
-	int		_clears;
-}
 @end
-
-static int sNativeDeallocs = 0;
 
 @implementation TestNative
 
@@ -64,20 +60,25 @@ static int sNativeDeallocs = 0;
 	return std::string("x=1");
 }
 
-
-- (void) oo_clearJSSelf:(ooscript::Object)selfVal
-{
-	_clears++;
-}
-
-
-- (void) dealloc
-{
-	sNativeDeallocs++;
-	[super dealloc];
-}
-
 @end
+
+
+// A C++ native object, as a JS object's private slot holds since bead oo-4aq6a.6: counts its JS
+// wrapper's finalisation and its own, and is a plist Object node's foreign object.
+static int sCxxNativeDeallocs = 0;
+
+class TestCxxNative : public oo::PListForeign, public OOJSPrivateObject
+{
+public:
+	~TestCxxNative() override  { sCxxNativeDeallocs++; }
+	std::string className() const override  { return "TestCxxNative"; }
+	std::string description() const override  { return "<TestCxxNative>"; }
+	ooscript::Value jsValueInContext(ooscript::Context) override  { return ooscript::undefinedValue(); }
+	void clearJSSelf(ooscript::Object) override  { _clears++; }
+	std::optional<std::string> jsDescription() override  { return std::string("[TestCxxNative x=1]"); }
+
+	int		_clears = 0;
+};
 
 
 // An entity whose script-visible answers the test chooses (the predicates ask only these). An
@@ -652,45 +653,45 @@ OO_TEST(jsValueHolder)
 }
 
 
-OO_TEST(objectWrapper)
+// (objectWrapper retired with the slot's Objective-C objects, bead oo-4aq6a.6: its Objective-C
+// native object's description, the Objective-C class-checked getters and the finalizer's
+// -oo_clearJSSelf:/release are deleted. cxxObjectWrapper pins what survives.)
+
+
+// The generic wrapper's hooks with the C++ object the slot holds: the finalizer tells it its wrapper
+// is gone, releases it and empties the slot; toString names the JS class (only an Objective-C
+// object described itself through the class's converter).
+OO_TEST(cxxObjectWrapper)
 {
 	SetUp();
 	ooscript::Object wrapper = NULL;
-	TestNative *native = nil;
-	const int deallocs = sNativeDeallocs;
-	@autoreleasepool
+	oo::Ref<TestCxxNative> native = oo::makeRef<TestCxxNative>();
+	const int deallocs = sCxxNativeDeallocs;
 	{
-		native = [[TestNative alloc] init];
 		ooscript::Context context = OOJSAcquireContext();
 		wrapper = ooscript::newObject(context, &sTestWrapperClass, NULL, NULL);
 		OO_CHECK(wrapper != NULL);
-		OO_CHECK(ooscript::setPrivate(context, wrapper, [native retain]));
+		OO_CHECK(OOJSSetCxxPrivate(context, wrapper, native.get()));
 		OO_CHECK(ooscript::defineFunction(context, wrapper, "toString", OOJSObjectWrapperToString, 0, ooscript::PropertyFlag::None) != NULL);
 
-		// Unconverted, the wrapper has no native object: toString names the JS class.
+		// Unconverted, toString names the JS class.
 		ooscript::Value result = ooscript::undefinedValue();
 		OO_CHECK(ooscript::callFunctionName(context, wrapper, "toString", 0, NULL, &result));
 		OO_CHECK_EQ(cxx_OOStringFromJSValue(context, result).value_or("<none>"), "[object TestWrapper]");
 
-		// With the basic private-object converter, toString is the native object's JS description.
+		// With the basic private-object converter the wrapper is an Object node of the C++ object,
+		// and toString still names the JS class.
 		OOJSRegisterObjectConverter(&sTestWrapperClass, OOJSBasicPrivateObjectConverter);
+		const oo::PList node = cxx_OOJSPListFromJSObject(context, wrapper);
+		OO_CHECK(node.getIf<oo::PList::Object>() != nullptr && node.getIf<oo::PList::Object>()->get() == native.get());
 		OO_CHECK(ooscript::callFunctionName(context, wrapper, "toString", 0, NULL, &result));
-		OO_CHECK_EQ(cxx_OOStringFromJSValue(context, result).value_or("<none>"), "[TestNative x=1]");
-
-		// The class-checked getters.
-		OO_CHECK(OOJSNativeObjectFromJSObject(context, wrapper) == native);
-		OO_CHECK(OOJSNativeObjectOfClassFromJSObject(context, wrapper, [TestNative class]) == native);
-		OO_CHECK(OOJSNativeObjectOfClassFromJSObject(context, wrapper, [OOObject class]) == native);
-		OO_CHECK(OOJSNativeObjectOfClassFromJSObject(context, wrapper, [OOConstantString class]) == nil);	// was [OOException class] (bead oo-4aq6a.1)
-		OO_CHECK(OOJSNativeObjectOfClassFromJSValue(context, ooscript::objectValue(wrapper), [TestNative class]) == native);
-		OO_CHECK(OOJSNativeObjectOfClassFromJSValue(context, ooscript::objectValue(wrapper), [OOConstantString class]) == nil);	// was [OOException class] (bead oo-4aq6a.1)
-		OO_CHECK(OOJSNativeObjectOfClassFromJSValue(context, ooscript::int32Value(1), [TestNative class]) == nil);
+		OO_CHECK_EQ(cxx_OOStringFromJSValue(context, result).value_or("<none>"), "[object TestWrapper]");
 
 		// Finalising clears the native object's JS self, releases it and empties the slot.
 		OOJSObjectWrapperFinalize(context, wrapper);
 		OO_CHECK(native->_clears == 1);
 		OO_CHECK(ooscript::getPrivate(context, wrapper) == NULL);
-		OO_CHECK(OOJSNativeObjectFromJSObject(context, wrapper) == nil);
+		OO_CHECK(cxx_OOJSPListFromJSObject(context, wrapper).isNull());
 		OOJSObjectWrapperFinalize(context, wrapper);	// nothing left: does nothing
 		OO_CHECK(native->_clears == 1);
 
@@ -701,9 +702,9 @@ OO_TEST(objectWrapper)
 		OOJSRegisterObjectConverter(&sTestWrapperClass, NULL);
 		OOJSRelinquishContext(context);
 	}
-	OO_CHECK(sNativeDeallocs == deallocs);	// the test's own reference
-	[native release];
-	OO_CHECK(sNativeDeallocs == deallocs + 1);
+	OO_CHECK(sCxxNativeDeallocs == deallocs);	// the test's own reference
+	native = nullptr;
+	OO_CHECK(sCxxNativeDeallocs == deallocs + 1);
 }
 
 

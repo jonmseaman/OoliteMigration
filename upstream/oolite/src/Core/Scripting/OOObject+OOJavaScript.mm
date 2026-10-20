@@ -101,15 +101,3 @@ std::optional<std::string> OOJavaScriptEngineJSDescription(id object)
 	return OOObjectJSDescription(object);
 }
 
-
-void OOJavaScriptEngineClearJSSelf(id object, ooscript::Object selfVal)
-{
-	if (OOJSObjectAnswersGlue(object, @selector(oo_clearJSSelf:)))  [object oo_clearJSSelf:selfVal];
-	else  OOObjectClearJSSelf(selfVal);	// nothing (nil: the message to nil's nothing)
-}
-
-
-bool OOJavaScriptEngineIsKindOfClass(id object, Class requiredClass)
-{
-	return [object isKindOfClass:requiredClass];
-}

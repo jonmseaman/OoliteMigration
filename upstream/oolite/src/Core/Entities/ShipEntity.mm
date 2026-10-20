@@ -15067,30 +15067,8 @@ void ShipEntity::doScriptEvent(ooscript::PropertyId message)
 }
 
 
-void ShipEntity::doScriptEvent(ooscript::PropertyId message, id argument)
-{
-	ooscript::Context context = OOJSAcquireContext();
-	
-	ooscript::Value value = OOJSValueFromNativeObject(context, argument);
-	doScriptEvent(message, context, &value, 1);
-	
-	OOJSRelinquishContext(context);
-}
-
-
-void ShipEntity::doScriptEvent(ooscript::PropertyId message, id argument1, id argument2)
-{
-	ooscript::Context context = OOJSAcquireContext();
-	
-	ooscript::Value argv[2] = { OOJSValueFromNativeObject(context, argument1), OOJSValueFromNativeObject(context, argument2) };
-	doScriptEvent(message, context, argv, 2);
-	
-	OOJSRelinquishContext(context);
-}
-
-
-// The same with entities (bead oo-9ht.39.16): each entity's JS value, what OOJSValueFromNativeObject()
-// gave for its object (null for none).
+// With entities (bead oo-9ht.39.16): each entity's JS value, what OOJSValueFromNativeObject()
+// gave for its object (null for none). The id forms had no caller and are deleted (bead oo-4aq6a.6).
 void ShipEntity::doScriptEvent(ooscript::PropertyId message, Entity *argument)
 {
 	ooscript::Context context = OOJSAcquireContext();
@@ -15182,13 +15160,6 @@ void ShipEntity::sendAIMessage(const std::string &message)
 void ShipEntity::doScriptEvent(ooscript::PropertyId scriptEvent, const std::string &aiMessage)
 {
 	doScriptEvent(scriptEvent);
-	reactToAIMessage(aiMessage, std::nullopt);
-}
-
-
-void ShipEntity::doScriptEvent(ooscript::PropertyId scriptEvent, id argument, const std::string &aiMessage)
-{
-	doScriptEvent(scriptEvent, argument);
 	reactToAIMessage(aiMessage, std::nullopt);
 }
 
