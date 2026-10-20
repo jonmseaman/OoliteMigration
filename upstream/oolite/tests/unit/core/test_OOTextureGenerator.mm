@@ -66,22 +66,12 @@ public:
 
 
 // What an autoreleased Objective-C texture was (bead oo-9ht.99 deleted the facade): the C++
-// texture, kept until the current autorelease pool drains.
-@interface TestTextureKeeper: OOObject
-{
-@public
-	oo::Ref<OOTexture>	_texture;
-}
-@end
-
-@implementation TestTextureKeeper
-@end
-
+// texture, kept until the current autorelease scope drains (oo::autorelease; an Objective-C
+// keeper object until bead oo-4aq6a.2).
 static OOTexture *Autoreleased(const oo::Ref<OOTexture> &texture)
 {
 	if (texture == nullptr)  return nullptr;
-	TestTextureKeeper *keeper = [[[TestTextureKeeper alloc] init] autorelease];
-	keeper->_texture = texture;
+	oo::autorelease(oo::Ref<OOTexture>(texture));
 	return texture.get();
 }
 
@@ -92,8 +82,8 @@ namespace {
 // (and then answers nil, reading nothing).
 void SetUpLoaders()
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		(void)OOTextureLoader::loaderWithPath(std::string("unknown.type"), 0);
 	}
 }
@@ -115,7 +105,6 @@ G *Generator(const char *path, uint32_t options)
 
 void ClearCache()
 {
-	@autoreleasepool
 	{
 		oo::AutoreleaseScope scope;
 		OOTexture::clearCache();
@@ -129,8 +118,8 @@ OO_TEST(defaults)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		BareGenerator *generator = Generator<BareGenerator>("bare generator", kOOTextureMinFilterLinear);
 		OO_CHECK(generator->textureOptions() == kOOTextureDefaultOptions);
 		OO_CHECK(generator->anisotropy() == (GLfloat)kOOTextureDefaultAnisotropy && generator->lodBias() == (GLfloat)kOOTextureDefaultLODBias);
@@ -147,8 +136,8 @@ OO_TEST(enqueueLoadsOnTheWorkManager)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		const int loads = gLoads;
 		BareGenerator *generator = Generator<BareGenerator>("queued generator", kOOTextureMinFilterLinear);
 		OO_CHECK(generator->enqueue());
@@ -168,8 +157,8 @@ OO_TEST(aTextureTakesTheGeneratorsSettings)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		ChoosyGenerator *generator = Generator<ChoosyGenerator>("choosy generator", 0);
 		OO_CHECK(generator->textureOptions() == (kOOTextureMinFilterNearest | kOOTextureMagFilterNearest));
 		OO_CHECK(generator->anisotropy() == 0.25f && generator->lodBias() == 0.5f);
@@ -216,8 +205,8 @@ OO_TEST(cxxApi)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		const oo::Ref<TestCxxGenerator> generator = oo::makeRef<TestCxxGenerator>();
 		OO_CHECK(generator->initWithPath(std::string("cxx generator"), 0));
 		OO_CHECK(generator->anisotropy() == (GLfloat)kOOTextureDefaultAnisotropy && generator->lodBias() == (GLfloat)kOOTextureDefaultLODBias);

@@ -61,22 +61,12 @@ public:
 
 
 // What an autoreleased Objective-C texture was (bead oo-9ht.99 deleted the facade): the C++
-// texture, kept until the current autorelease pool drains.
-@interface TestTextureKeeper: OOObject
-{
-@public
-	oo::Ref<OOTexture>	_texture;
-}
-@end
-
-@implementation TestTextureKeeper
-@end
-
+// texture, kept until the current autorelease scope drains (oo::autorelease; an Objective-C
+// keeper object until bead oo-4aq6a.2).
 static OOTexture *Autoreleased(const oo::Ref<OOTexture> &texture)
 {
 	if (texture == nullptr)  return nullptr;
-	TestTextureKeeper *keeper = [[[TestTextureKeeper alloc] init] autorelease];
-	keeper->_texture = texture;
+	oo::autorelease(oo::Ref<OOTexture>(texture));
 	return texture.get();
 }
 
@@ -101,8 +91,8 @@ GLint BoundTexture()
 // (and then answers nil, reading nothing).
 void SetUpLoaders()
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		(void)OOTextureLoader::loaderWithPath(std::string("unknown.type"), 0);
 	}
 }
@@ -139,7 +129,6 @@ OOTexture *Texture(OOTextureLoader *loader, const std::optional<std::string> &ke
 
 void ClearCache()
 {
-	@autoreleasepool
 	{
 		oo::AutoreleaseScope scope;
 		OOTexture::clearCache();
@@ -153,8 +142,8 @@ OO_TEST(noLoaderNoTexture)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OO_CHECK(Texture(nil, std::string("test:none"), kOOTextureDefaultOptions) == nil);
 		OO_CHECK(OOConcreteTexture::initWithPath("no-such-loader.type", std::string("test:none"), kOOTextureDefaultOptions, 0.5f, 0.0f) == nullptr);
 		OO_CHECK(OOTexture::existingTextureForKey(std::string("test:none")) == nil);
@@ -166,8 +155,8 @@ OO_TEST(beforeLoading)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		const uint32_t options = kOOTextureMinFilterLinear | kOOTextureMagFilterLinear;
 		OOTexture *texture = Texture(QueuedGenerator(options, NO), std::string("test:before"), options);
 		OO_CHECK(texture != nullptr);
@@ -190,8 +179,8 @@ OO_TEST(loadsAndUploads)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		const uint32_t options = kOOTextureMinFilterLinear | kOOTextureMagFilterLinear;
 		OOTexture *texture = Texture(QueuedGenerator(options, NO), std::string("test:linear"), options);
 		texture->ensureFinishedLoading();
@@ -232,8 +221,8 @@ OO_TEST(mipMapped)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		const uint32_t options = kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear;
 		OOTexture *texture = Texture(QueuedGenerator(options, NO), std::string("test:mip"), options);
 		OO_CHECK(texture->isMipMapped());	// waits for loading
@@ -255,8 +244,8 @@ OO_TEST(failedLoad)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OOTexture *texture = Texture(QueuedGenerator(kOOTextureDefaultOptions, YES), std::string("test:empty"), kOOTextureDefaultOptions);
 		OO_CHECK(SameSize(texture->dimensions(), 0, 0));
 		OO_CHECK(texture->glTextureName() == 0 && texture->isFinishedLoading());
@@ -273,8 +262,8 @@ OO_TEST(deallocUncaches)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		const uint32_t options = kOOTextureMinFilterLinear | kOOTextureMagFilterLinear;
 		OOTexture *texture = Texture(QueuedGenerator(options, NO), std::string("test:gone"), options);
 		texture->ensureFinishedLoading();
@@ -285,8 +274,8 @@ OO_TEST(deallocUncaches)
 	ClearCache();
 	OO_CHECK(OOTexture::existingTextureForKey(std::string("test:gone")) == nil);
 #ifndef NDEBUG
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		for (const oo::Ref<OOTexture> &texture : OOTexture::allTextures())
 		{
 			OO_CHECK(texture->cacheKey() != std::optional<std::string>("test:gone"));
@@ -302,8 +291,8 @@ OO_TEST(cxxApi)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OO_CHECK(OOConcreteTexture::initWithLoader(nil, std::string("test:cxx"), kOOTextureDefaultOptions, 0.5f, 0.0f) == nullptr);
 		OO_CHECK(OOConcreteTexture::initWithPath("no-such-loader.type", std::string("test:cxx"), kOOTextureDefaultOptions, 0.5f, 0.0f) == nullptr);
 

@@ -9603,3 +9603,63 @@ Kept as they are: the selector path's runtime helpers (`OOShaderUniformBindMetho
 `OOSelectorFromName(...)`, and the material test's stand-in factory takes and prints the name where it printed
 `sel_getName(selector)`; test_EntityShaderBindings and test_OOShaderUniformMethodType need no change. No case or
 expected value changes.
+
+## Amendment (bead oo-4aq6a.9): oo::ObjCPeers is deleted
+
+**Context.** Batch BA, a slice of oo-4aq6a. `src/oofnd/objc/OOObjCPeer.h` (`oo::ObjCPeers`, one live Objective-C
+facade per C++ object, held by libobjc2's weak references) served the Phase 3 `X+ObjCBridge` facades, all deleted;
+its one includer, OOEntityCalledByName.mm, used nothing from it. Its banner held the literal `@implementation`, so
+it was one of the three files oo-4aq6a's gate grep counts.
+
+**Decision.** The header and its include are deleted, with its README row. No behaviour changes.
+
+**Tests.** `tests/unit/oofnd/test_objc_peer.mm` retires with its only subject (std-2026-10-19 item 2, approval
+lines "oo-4aq6a.9"); its meson entry is a comment line.
+## Amendment (bead oo-4aq6a.4): the deferred call and the full-screen pause take no Objective-C object
+
+**Context.** Batch BA, a slice of oo-4aq6a (the Objective-C root classes go). `OOScheduleDeferredCall(id target,
+const char *selectorName, id argument, delay)` and `GameControllerPerformSelectorWithObject` (which performed it)
+had no caller in the game left: every game deferral is the C++ form since oo-pvhrh and oo-9ht.39.7.3.
+`GameController::pauseFullScreenModeToPerform(name, id target)` is called with a nil target by both game callers
+and stores the target unretained in `pauseTarget` (an `OOObject *`), which the SDL build never performs.
+
+**Decision (behaviour-identical).**
+
+1. The Objective-C form of `OOScheduleDeferredCall` and `GameControllerPerformSelectorWithObject` are deleted;
+   `OODeferredCall` holds only the C++ call. The queue, its order, the 0.0001 s clamp, two firings per pass, the
+   logged line and the leaked call on an OOException are the C++ form's, unchanged. GameController.mm no longer
+   includes `OORuntime.h`.
+2. `pauseFullScreenModeToPerform(const char *, oo::RefCounted *target)` and `pauseTarget` (`oo::RefCounted *`,
+   unretained): the C++ root in place of the Objective-C one. The game callers pass nil as before. The Mac-only
+   `GameController+FullScreen.mm` (not compiled) still performs its own Objective-C selector; Phase 5 owns it.
+
+**Tests.** test_GameController (std-2026-10-19 item 1, approval lines "oo-4aq6a.4"): its `TestTarget` is a C++
+`oo::RefCounted` with the same two members, its argument a C++ object, and its Objective-C-form deferrals are C++
+calls that hold target and argument by `oo::Ref` (as the performer retained them) and call the member; every case,
+input and expected value (call order, retain counts, the leaked +1 on a raise) is unchanged.
+## Amendment (bead oo-4aq6a.2): the tests' Objective-C stand-ins that never reach src become C++
+
+**Context.** Batch BA, the first slice of oo-4aq6a (retire OOObject and OOConstantString so `src/oofnd` has no
+`@implementation`; prerequisite of oo-dbz). After oo-xu228.3.2 no game class is rooted on OOObject; 43 unit tests
+still define stand-ins on it. This slice takes those whose Objective-C object is the test's own business: no src
+function receives it. The rest are filed as siblings oo-4aq6a.3 to oo-4aq6a.8 (priority queue, GameController's
+targets, plist/by-name objects, the JS engine's slot objects, shader binding targets, the root's deletion).
+
+**Decision (tests only; std-2026-10-19 item 1, approval lines "oo-4aq6a.2" in `tools/retire-test-approvals.txt`).**
+
+1. The nine texture tests' `TestTextureKeeper` (an autoreleased Objective-C object holding a C++ texture) is
+   `oo::autorelease` of the texture's `oo::Ref`, and their `@autoreleasepool` blocks are `oo::AutoreleaseScope` at
+   the same places (amendment oo-31u item 3); a pool whose first statement already opened a scope held nothing and
+   keeps that scope alone. Same drain points, LIFO as the runtime's (ADR-0045).
+2. test_AI, test_OOShipGroup, test_OOTrumble and test_OODebugMonitor's `TestEntityObject` (the object holding the
+   test's C++ ship, found by the test's own `oo::ToObjC()`) is a C++ `oo::RefCounted` found by `TestObjectOf()`.
+   `tests/unit/core/EntityHelpersStandIn.h` gains a C++ mode (`OO_ENTITY_HELPERS_STAND_IN_CXX`) answering exactly
+   as its Objective-C mode: the hold retains and releases the object, and both descriptions are what the
+   Objective-C object printed, `<ClassName 0x...>` (`className()` answers the runtime name, `Entity`, or
+   `TestShip`). test_AI's ship actions, which its `oo::CallEntityByName` stand-in called through `OOCallByName` on
+   the object, are C++ members of the same names in a by-name table, logging `callByName.unknownSelector` and
+   `callByName.badSignature` as that path did.
+
+**Behaviour.** No src change. Within the tests, the AIs, textures and ships the code under test hands to
+`oo::autorelease` (OOAIAutorelease, `OOTexture::clearCache`) now drain at the test's scopes where the Objective-C
+pools left them to leak; every case, input and expected value is unchanged.

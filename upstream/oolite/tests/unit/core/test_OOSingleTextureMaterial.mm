@@ -107,18 +107,6 @@ std::string OOTexture::className() const	{ return "OOTexture"; }
 void OOTexture::forceRebind()	{}
 
 
-// What the Objective-C factory's autoreleased result was: the texture, kept until the current
-// autorelease pool drains.
-@interface TestTextureKeeper: OOObject
-{
-@public
-	oo::Ref<OOTexture>	_texture;
-}
-@end
-
-@implementation TestTextureKeeper
-@end
-
 
 /*	The texture specifier OOTexture.mm makes of a diffuse_map value, recorded: a dictionary naming
 	what it was given (the game's own is pinned by the texture's tests).
@@ -158,9 +146,9 @@ namespace {
 
 TestTexture *MakeTexture()
 {
-	TestTextureKeeper *keeper = [[[TestTextureKeeper alloc] init] autorelease];
-	keeper->_texture = OOTexture::textureWithConfiguration(oo::PList("hull.png"));
-	return static_cast<TestTexture *>(keeper->_texture.get());
+	// What the Objective-C factory's autoreleased result was: the texture, kept until the current
+	// autorelease scope drains (an Objective-C keeper object until bead oo-4aq6a.2).
+	return static_cast<TestTexture *>(oo::autorelease(OOTexture::textureWithConfiguration(oo::PList("hull.png"))));
 }
 
 
@@ -192,8 +180,8 @@ bool Same(const GLfloat *a, std::initializer_list<GLfloat> b)
 
 OO_TEST(initWithTexture)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestTexture *texture = MakeTexture();
 		const oo::Ref<OOSingleTextureMaterial> m = Make(std::string("Hull"), texture, oo::PList(oo::PList::Dict{ { "diffuse_color", oo::PList("redColor") } }));
 		OO_CHECK(m != nullptr && m->name() == std::optional<std::string>("Hull"));
@@ -215,8 +203,8 @@ OO_TEST(initWithTexture)
 
 OO_TEST(initWithConfiguration)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		// A configuration: the texture is the diffuse_map's specifier, with the name as its default.
 		gTextureConfigurations.clear();
 		oo::Ref<OOSingleTextureMaterial> m = OOSingleTextureMaterial::materialWithName(std::string("Hull"), oo::PList(oo::PList::Dict{
@@ -251,8 +239,8 @@ OO_TEST(textureKeptForTheMaterialsLife)
 {
 	const int deallocated = gTexturesDeallocated;
 	oo::Ref<OOSingleTextureMaterial> m;
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		m = Make(std::string("Kept"), MakeTexture());
 	}
 	OO_CHECK(gTexturesDeallocated == deallocated);
@@ -263,8 +251,8 @@ OO_TEST(textureKeptForTheMaterialsLife)
 
 OO_TEST(texturesQuestions)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestTexture *texture = MakeTexture();
 		const oo::Ref<OOSingleTextureMaterial> m = Make(std::string("Asks"), texture);
 		OO_CHECK(!m->isFinishedLoading() && !m->wantsNormalsAsTextureCoordinates());
@@ -285,8 +273,8 @@ OO_TEST(texturesQuestions)
 OO_TEST(doApply)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestTexture *texture = MakeTexture();
 		const oo::Ref<OOSingleTextureMaterial> m = Make(std::string("Applied"), texture);
 		m->setDiffuseRed(0.5f, 0.25f, 0.125f, 1);
@@ -309,8 +297,8 @@ OO_TEST(doApply)
 OO_TEST(unapplyWithNext)
 {
 	if (!OOTestGLContext())  { OO_CHECK(false); return; }
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		const oo::Ref<OOSingleTextureMaterial> m = Make(std::string("Current"), MakeTexture());
 		m->setDiffuseRed(0.5f, 0.25f, 0.125f, 1);
 		m->doApply();
@@ -341,8 +329,8 @@ OO_TEST(unapplyWithNext)
 
 OO_TEST(description)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		const std::string text = Description(Make(std::string("Hull"), MakeTexture()).get());
 		OO_CHECK(text.starts_with("<OOSingleTextureMaterial 0x"));
 		OO_CHECK(text.ends_with(">{<TestTexture>}"));
@@ -354,8 +342,8 @@ OO_TEST(description)
 
 OO_TEST(cxxAPI)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestTexture *texture = MakeTexture();
 		const oo::Ref<OOSingleTextureMaterial> m = OOSingleTextureMaterial::materialWithName(std::string("Cxx"), texture, oo::PList());
 		OO_CHECK(m != nullptr && m->name() == std::optional<std::string>("Cxx") && m->shininess() == 10);
@@ -387,8 +375,8 @@ OO_TEST(cxxAPI)
 // The name and description, as the facade answered them (beads oo-9ht.38, oo-9ht.8).
 OO_TEST(nameAndDescription)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		const oo::Ref<OOSingleTextureMaterial> m = OOSingleTextureMaterial::materialWithName(std::string("Cxx"), MakeTexture(), oo::PList());
 		OO_CHECK(m->name() == std::optional<std::string>("Cxx"));
 		const std::string text = m->description();

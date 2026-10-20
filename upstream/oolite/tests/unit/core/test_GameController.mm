@@ -110,23 +110,30 @@ public:
 };
 
 
-// A deferred call's target: records the arguments it is sent, and raises on request.
-@interface TestTarget: OOObject
+// A deferred call's target: records the arguments it is sent, and raises on request. C++ since bead
+// oo-4aq6a.4 (it was rooted on the Objective-C root class OOObject, and the deferred call that
+// performed its selectors, retaining it and the argument until it ran, was the Objective-C form of
+// OOScheduleDeferredCall): a deferred C++ call holding both (Call below) does the same.
+class TestTarget final : public oo::RefCounted
 {
-@public
+public:
+	void record(oo::RefCounted *argument)	{ _calls.push_back(argument != nullptr ? "arg" : "nil"); }
+	void raise(oo::RefCounted *)			{ _calls.push_back("raise"); OORaiseException(OOGenericException, "%s", "deferred call failure"); }
+
 	std::vector<std::string>	_calls;
+};
+
+// A deferred call's argument (a plain OOObject until bead oo-4aq6a.4).
+class TestArgument final : public oo::RefCounted
+{
+};
+
+// OOScheduleDeferredCall(target, "record:" or "raise:", argument, delay): the call holds target and
+// argument (oo::Ref, as the performer retained them) until it has run.
+void Call(TestTarget *target, void (TestTarget::*method)(oo::RefCounted *), oo::RefCounted *argument, NSTimeInterval delay)
+{
+	OOScheduleDeferredCall([target = oo::Ref<TestTarget>(target), method, argument = oo::Ref<oo::RefCounted>(argument)]() { (target.get()->*method)(argument.get()); }, delay);
 }
-- (void) record:(id)argument;
-- (void) raise:(id)argument;
-@end
-
-
-@implementation TestTarget
-
-- (void) record:(id)argument	{ _calls.push_back(argument != nil ? "arg" : "nil"); }
-- (void) raise:(id)argument		{ _calls.push_back("raise"); OORaiseException(OOGenericException, "%s", "deferred call failure"); }
-
-@end
 
 
 // The controller's state is private since bead oo-auu6o; GameController.h names this struct its friend
@@ -432,7 +439,7 @@ OO_TEST(fullScreenMembers)
 		OO_CHECK(!GameControllerTestAccess::stayInFullScreenMode(controller));
 		OO_CHECK(!oo::Defaults::standard().boolForKey("fullscreen"));
 
-		TestTarget *target = [[TestTarget alloc] init];
+		TestTarget *target = oo::makeRef<TestTarget>().leakRef();
 		GameControllerTestAccess::stayInFullScreenMode(controller) = true;
 		controller->pauseFullScreenModeToPerform("record:", target);
 		OO_CHECK(GameControllerTestAccess::pauseSelector(controller) == "record:");
@@ -441,7 +448,7 @@ OO_TEST(fullScreenMembers)
 		controller->pauseFullScreenModeToPerform("raise:", nil);
 		OO_CHECK(GameControllerTestAccess::pauseSelector(controller) == "raise:");
 		OO_CHECK(GameControllerTestAccess::pauseTarget(controller) == nil);
-		[target release];
+		target->release();
 	}
 }
 
@@ -477,49 +484,49 @@ OO_TEST(deferredCalls)
 	@autoreleasepool
 	{
 		GameController *controller = ::GameController::sharedController();
-		TestTarget *target = [[TestTarget alloc] init];
-		OOObject *argument = [[OOObject alloc] init];
+		TestTarget *target = oo::makeRef<TestTarget>().leakRef();
+		TestArgument *argument = oo::makeRef<TestArgument>().leakRef();
 
-		OOScheduleDeferredCall(target, "record:", argument, 0.0);
-		OOScheduleDeferredCall(target, "record:", nil, -1.0);
-		OO_CHECK([target retainCount] == 3);
-		OO_CHECK([argument retainCount] == 2);
+		Call(target, &TestTarget::record, argument, 0.0);
+		Call(target, &TestTarget::record, nullptr, -1.0);
+		OO_CHECK(target->retainCount() == 3);
+		OO_CHECK(argument->retainCount() == 2);
 		OO_CHECK(target->_calls.empty());
 
 		// Not due until 0.0001 s have passed.
 		std::this_thread::sleep_for(std::chrono::milliseconds(5));
 		controller->fireDueTimers();
 		OO_CHECK(target->_calls == std::vector<std::string>({ "arg" }));
-		OO_CHECK([argument retainCount] == 1);
-		OO_CHECK([target retainCount] == 2);
+		OO_CHECK(argument->retainCount() == 1);
+		OO_CHECK(target->retainCount() == 2);
 		controller->fireDueTimers();
 		OO_CHECK(target->_calls == std::vector<std::string>({ "arg", "nil" }));
-		OO_CHECK([target retainCount] == 1);
+		OO_CHECK(target->retainCount() == 1);
 		controller->fireDueTimers();	// nothing left
 		OO_CHECK(target->_calls.size() == 2);
 
 		// A call not yet due stays.
-		OOScheduleDeferredCall(target, "record:", nil, 60.0);
+		Call(target, &TestTarget::record, nullptr, 60.0);
 		controller->fireDueTimers();
 		OO_CHECK(target->_calls.size() == 2);
 
 		// An OOException from the call is swallowed; the target is not released.
-		OOScheduleDeferredCall(target, "raise:", nil, 0.0);
+		Call(target, &TestTarget::raise, nullptr, 0.0);
 		std::this_thread::sleep_for(std::chrono::milliseconds(5));
 		controller->fireDueTimers();
 		OO_CHECK(target->_calls.size() == 3 && target->_calls.back() == "raise");
-		OO_CHECK([target retainCount] == 3);	// the leaked +1 and the pending 60 s call's
+		OO_CHECK(target->retainCount() == 3);	// the leaked +1 and the pending 60 s call's
 
 		// Bead oo-pvhrh (added): a C++ deferred call shares the performs' queue - due calls run one per
 		// pass in scheduling order, what the call captures is kept until it has run, and an OOException
 		// from it is swallowed and the call kept (its captures stay, as the performer leaked its target).
 		// (The pending 60 s call above is not due.)
-		TestTarget *cxxTarget = [[TestTarget alloc] init];
+		TestTarget *cxxTarget = oo::makeRef<TestTarget>().leakRef();
 		std::vector<std::string> order;
 		std::shared_ptr<int> kept = std::make_shared<int>(1);
 
 		OOScheduleDeferredCall([&order, kept]() { order.push_back("cxx"); }, 0.0);
-		OOScheduleDeferredCall(cxxTarget, "record:", nil, -1.0);
+		Call(cxxTarget, &TestTarget::record, nullptr, -1.0);
 		OOScheduleDeferredCall(std::function<void()>(), 0.0);	// an empty call: nothing scheduled
 		OO_CHECK(kept.use_count() == 2);
 
@@ -540,10 +547,10 @@ OO_TEST(deferredCalls)
 		OO_CHECK(order.size() == 2 && order.back() == "raise");
 		OO_CHECK(leaked.use_count() == 2);	// the call was not destroyed
 
-		[cxxTarget release];
+		cxxTarget->release();
 
 		controller->stopAnimationTimer();
-		[argument release];
+		argument->release();
 	}
 }
 
