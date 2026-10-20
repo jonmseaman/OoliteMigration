@@ -56,7 +56,7 @@ inline bool EntityRespondsToName(OOHarnessPlayer *player, const std::string &nam
 }
 inline PList CallEntityByName(OOHarnessPlayer *player, const std::string &name)
 {
-	return player != nullptr ? OOCallByName(ToObjC(player), OOSelectorFromName(name.c_str())) : PList();
+	return player != nullptr ? OOCallByName(ToObjC(player), name) : PList();
 }
 }
 inline OOHarnessPlayer *OOHarnessGetPlayer()

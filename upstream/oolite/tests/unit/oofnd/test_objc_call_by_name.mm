@@ -143,10 +143,10 @@ OO_TEST(the_reference_encodings_on_this_toolchain)
 OO_TEST(no_argument)
 {
 	OOTestCallTarget *target = [[OOTestCallTarget alloc] init];
-	OO_CHECK(OOCallByName(target, OOSelectorFromName("ping")).isNull());
+	OO_CHECK(OOCallByName(target, "ping").isNull());
 	OO_CHECK_EQ(target->pings, 1);
-	OO_CHECK_EQ(OOCallByName(target, OOSelectorFromName("answer")), oo::PList("forty-two"));
-	OO_CHECK(OOCallByName(target, OOSelectorFromName("scalarAction")).isNull());	// the BOOL is ignored
+	OO_CHECK_EQ(OOCallByName(target, "answer"), oo::PList("forty-two"));
+	OO_CHECK(OOCallByName(target, "scalarAction").isNull());	// the BOOL is ignored
 	OO_CHECK_EQ(target->scalarCalls, 1);
 	[target release];
 }
@@ -155,10 +155,10 @@ OO_TEST(no_argument)
 OO_TEST(string_argument)
 {
 	OOTestCallTarget *target = [[OOTestCallTarget alloc] init];
-	OO_CHECK(OOCallByName(target, OOSelectorFromName("takeString:"), std::string("hello world")).isNull());
+	OO_CHECK(OOCallByName(target, "takeString:", std::string("hello world")).isNull());
 	OO_CHECK_EQ(target->lastString, std::string("hello world"));
-	OO_CHECK_EQ(OOCallByName(target, OOSelectorFromName("echo:"), "hi"), oo::PList("hi!"));
-	OO_CHECK(OOCallByName(target, OOSelectorFromName("takePList:"), "as a plist").isNull());
+	OO_CHECK_EQ(OOCallByName(target, "echo:", "hi"), oo::PList("hi!"));
+	OO_CHECK(OOCallByName(target, "takePList:", "as a plist").isNull());
 	OO_CHECK_EQ(target->lastPList, oo::PList("as a plist"));
 	[target release];
 }
@@ -168,11 +168,11 @@ OO_TEST(plist_argument)
 {
 	OOTestCallTarget *target = [[OOTestCallTarget alloc] init];
 	const oo::PList dict(oo::PList::Dict{{"key", oo::PList(3)}});
-	OO_CHECK(OOCallByName(target, OOSelectorFromName("takePList:"), dict).isNull());
+	OO_CHECK(OOCallByName(target, "takePList:", dict).isNull());
 	OO_CHECK_EQ(target->lastPList, dict);
-	OO_CHECK(OOCallByName(target, OOSelectorFromName("takeString:"), oo::PList("a string plist")).isNull());
+	OO_CHECK(OOCallByName(target, "takeString:", oo::PList("a string plist")).isNull());
 	OO_CHECK_EQ(target->lastString, std::string("a string plist"));
-	OO_CHECK(OOCallByName(target, OOSelectorFromName("takeString:"), dict).isNull());	// not a string: logged, not called
+	OO_CHECK(OOCallByName(target, "takeString:", dict).isNull());	// not a string: logged, not called
 	OO_CHECK_EQ(target->lastString, std::string("a string plist"));
 	[target release];
 }
@@ -181,15 +181,15 @@ OO_TEST(plist_argument)
 OO_TEST(unusable_calls_are_logged_and_not_made)
 {
 	OOTestCallTarget *target = [[OOTestCallTarget alloc] init];
-	OO_CHECK(OOCallByName(target, OOSelectorFromName("noSuchAction")).isNull());
-	OO_CHECK(OOCallByName(target, OOSelectorFromName("takeInt:"), "5").isNull());
-	OO_CHECK(OOCallByName(target, OOSelectorFromName("take:and:"), "x").isNull());
-	OO_CHECK(OOCallByName(target, OOSelectorFromName("ping"), "an extra argument").isNull());
-	OO_CHECK(OOCallByName(target, OOSelectorFromName("takeString:")).isNull());		// a missing argument
-	OO_CHECK(OOCallByName(target, OOSelectorFromName("legacy:"), "x").isNull());	// id: the bridge is out of this build
+	OO_CHECK(OOCallByName(target, "noSuchAction").isNull());
+	OO_CHECK(OOCallByName(target, "takeInt:", "5").isNull());
+	OO_CHECK(OOCallByName(target, "take:and:", "x").isNull());
+	OO_CHECK(OOCallByName(target, "ping", "an extra argument").isNull());
+	OO_CHECK(OOCallByName(target, "takeString:").isNull());		// a missing argument
+	OO_CHECK(OOCallByName(target, "legacy:", "x").isNull());	// id: the bridge is out of this build
 	OO_CHECK_EQ(target->pings, 0);
 	OO_CHECK(target->lastString.empty());
-	OO_CHECK(OOCallByName(nil, OOSelectorFromName("ping")).isNull());
+	OO_CHECK(OOCallByName(nil, "ping").isNull());
 	[target release];
 }
 
@@ -199,7 +199,7 @@ OO_TEST(a_forwarding_proxy_is_followed)
 	OOTestCallTarget *target = [[OOTestCallTarget alloc] init];
 	OOTestForwarder *proxy = [[OOTestForwarder alloc] init];
 	proxy->target = target;
-	OO_CHECK(OOCallByName(proxy, OOSelectorFromName("takeString:"), "through the proxy").isNull());
+	OO_CHECK(OOCallByName(proxy, "takeString:", "through the proxy").isNull());
 	OO_CHECK_EQ(target->lastString, std::string("through the proxy"));
 	[proxy release];
 	[target release];

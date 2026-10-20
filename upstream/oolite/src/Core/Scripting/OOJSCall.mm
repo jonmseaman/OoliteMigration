@@ -265,7 +265,7 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 				case kMethodTypeVoidObject:
 				case kMethodTypeObjectObject:
 					// Called by name with the joined string (ADR-0055 item 5); a void method gives null.
-					result = (entity != nullptr) ? oo::CallEntityByName(entity, *selectorString, *paramString) : OOCallByName(object, selector, *paramString);
+					result = (entity != nullptr) ? oo::CallEntityByName(entity, *selectorString, *paramString) : OOCallByName(object, *selectorString, *paramString);
 					break;
 					
 				case kMethodTypeColorVoid:
@@ -276,7 +276,7 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 
 				case kMethodTypeObjectVoid:
 				case kMethodTypePListVoid:
-					if (type == kMethodTypePListVoid)  result = (entity != nullptr) ? oo::CallEntityByName(entity, *selectorString) : OOCallByName(object, selector);
+					if (type == kMethodTypePListVoid)  result = (entity != nullptr) ? oo::CallEntityByName(entity, *selectorString) : OOCallByName(object, *selectorString);
 					// An object result (a ship, a colour) is its PList::Object node, as oo::PListFrom()
 					// made of it; OOCallByName ignores an object result (ADR-0055 Amendment 2).
 					// An entity result is its entity's Object node (bead oo-9ht.39.24): the same object, class name,
@@ -297,7 +297,7 @@ bool CallMethod(ooscript::Context context, id object, const std::string &oo_jsCl
 					
 				case kMethodTypeVoidVoid:
 					if (entity != nullptr)  oo::CallEntityByName(entity, *selectorString);
-					else  OOCallByName(object, selector);
+					else  OOCallByName(object, *selectorString);
 					break;
 					
 				case kMethodTypeCharVoid:

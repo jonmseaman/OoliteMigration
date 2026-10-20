@@ -82,7 +82,7 @@ for f in "$SRC/Core/OOCallByName.mm" "$SRC/Core/OODescription.mm"; do
   clang++ "${flags[@]}" "${inc[@]}" -c "$(native "$f")" -o "$o" || die "$f does not compile"
   support+=("$o")
 done
-for f in "$SRC"/oofnd/objc/*.mm; do
+for f in "$SRC"/oofnd/objc/*.mm "$SRC"/oofnd/Exception.cpp; do	# Exception.cpp: OORaiseException, from objc/OOException.mm (bead oo-4aq6a.1)
   o="$w/oofnd-$(basename "$f" .mm).o"
   clang++ "${flags[@]}" "${inc[@]}" -c "$(native "$f")" -o "$o" || die "$f does not compile"
   support+=("$o")

@@ -224,8 +224,8 @@ bool oo::EntityRespondsToName(Entity *entity, const std::string &name)
 	::TestEntityObject *object = oo::ToObjC(entity);
 	return object != nil && [object respondsToSelector:OOSelectorFromName(name.c_str())];
 }
-oo::PList oo::CallEntityByName(Entity *entity, const std::string &name)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str())) : oo::PList(); }
-oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const std::string &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), OOSelectorFromName(name.c_str()), argument) : oo::PList(); }
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), name) : oo::PList(); }
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const std::string &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), name, argument) : oo::PList(); }
 // The typed call on the C++ table (bead oo-9ht.39.7.2), which callObjC() takes for every name of an
 // entity's table since bead oo-9ht.39.8.25 (the call no longer has the entity's object): the test's
 // entities have no C++ table, so it answers what the object's method answers, as the selector path

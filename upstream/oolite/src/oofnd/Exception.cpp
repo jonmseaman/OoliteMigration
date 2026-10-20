@@ -1,8 +1,10 @@
-/*	oofnd/objc/OOException.mm
-	The Foundation-free Objective-C exception (see OOException.h and proposed ADR-0029).
+/*	oofnd/Exception.cpp
+	OORaiseException(), the exception names and oo::CurrentOOException() (see oofnd/Exception.hpp).
+	Moved from oofnd/objc/OOException.mm when bead oo-4aq6a.1 deleted the Objective-C OOException
+	class; the code is unchanged.
 */
 
-#include "oofnd/objc/OOException.h"
+#include "oofnd/Exception.hpp"
 
 #include <cstdarg>
 #include <cstdio>
@@ -49,58 +51,6 @@ void OORaiseException(const char *name, const char *format, ...)
 	}
 	throw oo::Exception(name, reason.c_str());	// the C++ exception since bead oo-rskgl.1
 }
-
-
-@implementation OOException
-{
-	std::string _name;
-	std::string _reason;
-}
-
-+ (id) exceptionWithName:(const char *)name reason:(const char *)reason
-{
-	return [[[self alloc] initWithName:name reason:reason] autorelease];
-}
-
-+ (void) raise:(const char *)name format:(const char *)format, ...
-{
-	std::string reason;
-	if (format != nullptr)
-	{
-		va_list args;
-		va_start(args, format);
-		reason = FormatReason(format, args);
-		va_end(args);
-	}
-	@throw [self exceptionWithName:name reason:reason.c_str()];
-}
-
-- (id) initWithName:(const char *)name reason:(const char *)reason
-{
-	if ((self = [super init]))
-	{
-		_name = name != nullptr ? name : "";
-		_reason = reason != nullptr ? reason : "";
-	}
-	return self;
-}
-
-- (const char *) name
-{
-	return _name.c_str();
-}
-
-- (const char *) reason
-{
-	return _reason.c_str();
-}
-
-- (void) raise
-{
-	@throw self;
-}
-
-@end
 
 
 namespace oo {
