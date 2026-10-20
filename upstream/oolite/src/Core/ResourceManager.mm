@@ -2156,6 +2156,8 @@ std::optional<std::string> ResourceManager::pathForFileNamed(const std::string &
 	// [[[OOSound alloc] cxx_initWithContentsOfFile:path] autorelease], the facade's class cluster
 	// until bead oo-9ht.68: the C++ factory. With no cache the caller is the only user, as the
 	// autoreleased sound lived until the pool drained: oo::autorelease keeps that.
+	// Its one caller, ooSoundNamed(), always passes the cache, so this reaches oo::autorelease only
+	// with nil, as upstream's did (ADR-0056 amendment oo-31u.9).
 	const std::optional<std::string> path = pathForFileNamed(fileName, folderName, useCache);
 	if (path.has_value())  result = ::OOSound::initWithContentsOfFile(path);
 
