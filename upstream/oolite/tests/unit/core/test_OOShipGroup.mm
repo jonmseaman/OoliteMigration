@@ -42,16 +42,17 @@ std::optional<std::string> OOShipGroup::jsDescription()  { return std::nullopt; 
 	references to the ships' objects (the root's, which hold their C++ parts, oo::ToCxx reads them,
 	and which oo::ToObjC answers for them) and calls the ships' members. Declared as Entity.h and
 	ShipEntity.h declare them (the test imports neither); every object the test makes holds a ship
-	that records what the group asks of it.
+	that records what the group asks of it. The object is C++ since bead oo-4aq6a.2 (it was rooted on
+	the Objective-C root class OOObject, which Phase 4 deletes), answering as it did.
 */
-@class TestEntityObject;
+class TestEntityObject;
 
 class Entity : public oo::RefCounted
 {
 public:
 	virtual ~Entity();
 
-	::TestEntityObject *_object = nil;	// its object (not retained)
+	::TestEntityObject *_object = nullptr;	// its object (not retained)
 };
 
 class ShipEntity : public Entity
@@ -65,28 +66,16 @@ public:
 	int setGroupCalls = 0;
 };
 
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject	// the group holds its ships' C++ parts weakly since bead oo-9ht.22.1
+// The group holds its ships' C++ parts weakly since bead oo-9ht.22.1.
+class TestEntityObject final : public oo::RefCounted
 {
-@public
+public:
+	// Every object the test makes holds its ship.
+	TestEntityObject() : _cxxEntity(oo::makeRef<ShipEntity>())  { _cxxEntity->_object = this; }
+	const char *className() const  { return "Entity"; }	// its Objective-C class's runtime name
+
 	oo::Ref<Entity> _cxxEntity;
-}
-@end
-
-@implementation TestEntityObject
-
-// Every object the test makes holds its ship.
-- (id) init
-{
-	if ((self = [super init]))
-	{
-		_cxxEntity = oo::makeRef<ShipEntity>();
-		_cxxEntity->_object = self;
-	}
-	return self;
-}
-
-@end
+};
 
 Entity::~Entity() = default;
 
@@ -102,10 +91,12 @@ void ShipEntity::setOwner(Entity *who_owns_entity)
 	lastOwner = who_owns_entity;
 }
 
-namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }	// the test's (the game's went with its facade, bead oo-dpyk8)
-::TestEntityObject *oo::ToObjC(Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
+// The test's object of an entity (oo::ToObjC() until the stand-in became C++, bead oo-4aq6a.2; the
+// game's went with its facade, bead oo-dpyk8).
+::TestEntityObject *TestObjectOf(Entity *entity)  { return entity != nullptr ? entity->_object : nullptr; }
 
-#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
+#define OO_ENTITY_HELPERS_STAND_IN_CXX
+#include "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
 
 namespace {
@@ -116,14 +107,14 @@ ShipEntity *Ship(::TestEntityObject *object)  { return static_cast<ShipEntity *>
 // A ship, its object autoreleased (as [[[ShipEntity alloc] init] autorelease] was).
 ShipEntity *NewShip()
 {
-	return Ship([[[::TestEntityObject alloc] init] autorelease]);
+	return Ship(oo::autorelease(oo::makeRef<::TestEntityObject>()));
 }
 
 
 bool HasMembers(const std::vector<oo::EntityHold> &members, std::vector<ShipEntity *> expected)
 {
 	std::vector<ShipEntity *> got;
-	for (const oo::EntityHold &object : members)  got.push_back(Ship(oo::ToObjC(object.get())));
+	for (const oo::EntityHold &object : members)  got.push_back(Ship(TestObjectOf(object.get())));
 	std::sort(got.begin(), got.end());
 	std::sort(expected.begin(), expected.end());
 	return got == expected;
@@ -134,8 +125,8 @@ bool HasMembers(const std::vector<oo::EntityHold> &members, std::vector<ShipEnti
 
 OO_TEST(namesAndEmptyGroups)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		oo::Ref<OOShipGroup> unnamed = OOShipGroup::groupWithName(std::nullopt);	// -init
 		OO_CHECK(unnamed != nil && !unnamed->name().has_value());
 		OO_CHECK(unnamed->count() == 0 && unnamed->isEmpty() && unnamed->leader() == nil);
@@ -156,8 +147,8 @@ OO_TEST(namesAndEmptyGroups)
 
 OO_TEST(addingAndGrowing)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(std::nullopt);
 		std::vector<ShipEntity *> ships;
 		for (int i = 0; i < 20; i++)  ships.push_back(NewShip());	// past kMinSize (4): the array grows
@@ -175,8 +166,8 @@ OO_TEST(addingAndGrowing)
 
 OO_TEST(leader)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		ShipEntity *leader = NewShip();
 		ShipEntity *wingman = NewShip();
 		oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(std::string("g"), leader);
@@ -195,8 +186,8 @@ OO_TEST(leader)
 
 OO_TEST(removing)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		ShipEntity *a = NewShip(), *b = NewShip(), *c = NewShip();
 		oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(std::nullopt, a);
 		group->addShip(b);
@@ -215,12 +206,12 @@ OO_TEST(removing)
 
 OO_TEST(deadShipsLeave)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(std::nullopt);
 		ShipEntity *survivor = NewShip();
-		::TestEntityObject *doomedObject = [[::TestEntityObject alloc] init];
-		::TestEntityObject *doomedLeaderObject = [[::TestEntityObject alloc] init];
+		::TestEntityObject *doomedObject = oo::makeRef<::TestEntityObject>().leakRef();
+		::TestEntityObject *doomedLeaderObject = oo::makeRef<::TestEntityObject>().leakRef();
 		ShipEntity *doomed = Ship(doomedObject);
 		ShipEntity *doomedLeader = Ship(doomedLeaderObject);
 		group->addShip(survivor);
@@ -228,8 +219,8 @@ OO_TEST(deadShipsLeave)
 		group->setLeader(doomedLeader);
 		OO_CHECK(group->count() == 3);
 
-		[doomedObject release];
-		[doomedLeaderObject release];
+		doomedObject->release();
+		doomedLeaderObject->release();
 		OO_CHECK(group->leader() == nil);
 		OO_CHECK(group->count() == 1 && !group->isEmpty());
 		OO_CHECK(HasMembers(group->memberArray(), { survivor }));
@@ -239,8 +230,8 @@ OO_TEST(deadShipsLeave)
 
 OO_TEST(cursor)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(std::nullopt);
 		std::vector<ShipEntity *> ships = { NewShip(), NewShip(), NewShip() };
 		for (ShipEntity *ship : ships)  group->addShip(ship);
@@ -270,15 +261,15 @@ OO_TEST(cursor)
 
 OO_TEST(description)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(std::string("pirates"));
 		group->addShip(NewShip());
 		OO_CHECK(group->descriptionComponents() == std::optional<std::string>("\"pirates\", 1 ships"));
 		ShipEntity *leader = NewShip();
 		group->setLeader(leader);
 		std::optional<std::string> text = group->descriptionComponents();
-		OO_CHECK(text.has_value() && *text == "\"pirates\", 2 ships, leader: " + oo::ShortDescriptionOf(oo::ToObjC(leader)));
+		OO_CHECK(text.has_value() && *text == "\"pirates\", 2 ships, leader: " + TestEntityObjectDescription(TestObjectOf(leader)));
 		OO_CHECK(OOShipGroup::groupWithName(std::nullopt)->descriptionComponents() == std::optional<std::string>("0 ships"));
 	}
 }
@@ -286,8 +277,8 @@ OO_TEST(description)
 
 OO_TEST(cxxGroup)
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		ShipEntity *leader = NewShip(), *wingman = NewShip();
 		oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(std::string("g"), leader);
 		OO_CHECK(group != nullptr && group->name() == std::optional<std::string>("g"));
@@ -295,7 +286,7 @@ OO_TEST(cxxGroup)
 		OO_CHECK(group->addShip(wingman) && group->addShip(wingman) && group->count() == 2);
 		OO_CHECK(HasMembers(group->memberArray(), { leader, wingman }));
 		OO_CHECK(HasMembers(group->memberArrayExcludingLeader(), { wingman }));
-		OO_CHECK(group->descriptionComponents() == std::optional<std::string>("\"g\", 2 ships, leader: " + oo::ShortDescriptionOf(oo::ToObjC(leader))));
+		OO_CHECK(group->descriptionComponents() == std::optional<std::string>("\"g\", 2 ships, leader: " + TestEntityObjectDescription(TestObjectOf(leader))));
 
 		std::vector<ShipEntity *> seen;
 		OOShipGroupCursor cursor(group.get());
@@ -314,8 +305,8 @@ OO_TEST(objectNode)
 {
 	// A group is its own PList Object node payload (bead oo-9ht.19), as its facade was the node's
 	// object: the node gives the same group back, and describes it as "%@" printed the facade.
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(std::string("node"));
 		const oo::PList node = OOShipGroupObjectNode(group.get());
 		OO_CHECK(OOShipGroupInObjectNode(node) == group.get());
@@ -335,18 +326,18 @@ OO_TEST(dyingGroupReleasesLeaderReference)
 	// weak-reference proxy (bead oo-9ht.24). Since bead oo-9ht.22.1 the references are oo::WeakRef
 	// members, released with the group; the checks of the objects' weak-reference proxy (weakSelf)
 	// retired with it (ADR-0049, standing approval oo-9n5p9).
-	::TestEntityObject *leaderObject = [[::TestEntityObject alloc] init];
-	::TestEntityObject *memberObject = [[::TestEntityObject alloc] init];
+	::TestEntityObject *leaderObject = oo::makeRef<::TestEntityObject>().leakRef();
+	::TestEntityObject *memberObject = oo::makeRef<::TestEntityObject>().leakRef();
 	ShipEntity *leader = Ship(leaderObject), *member = Ship(memberObject);
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		oo::Ref<OOShipGroup> group = OOShipGroup::groupWithName(std::string("doomed"));
 		group->addShip(member);
 		group->setLeader(leader);
 		OO_CHECK(group->leader() == leader && group->count() == 2);
 	}
-	[leaderObject release];
-	[memberObject release];
+	leaderObject->release();
+	memberObject->release();
 }
 
 

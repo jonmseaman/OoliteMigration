@@ -33,22 +33,12 @@ uint32_t gDebugFlags = 0;
 
 
 // What an autoreleased Objective-C texture was (bead oo-9ht.99 deleted the facade): the C++
-// texture, kept until the current autorelease pool drains.
-@interface TestTextureKeeper: OOObject
-{
-@public
-	oo::Ref<OOTexture>	_texture;
-}
-@end
-
-@implementation TestTextureKeeper
-@end
-
+// texture, kept until the current autorelease scope drains (oo::autorelease; an Objective-C
+// keeper object until bead oo-4aq6a.2).
 static OOTexture *Autoreleased(const oo::Ref<OOTexture> &texture)
 {
 	if (texture == nullptr)  return nullptr;
-	TestTextureKeeper *keeper = [[[TestTextureKeeper alloc] init] autorelease];
-	keeper->_texture = texture;
+	oo::autorelease(oo::Ref<OOTexture>(texture));
 	return texture.get();
 }
 
@@ -59,8 +49,8 @@ namespace {
 // (and then answers nil, reading nothing).
 void SetUpLoaders()
 {
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		(void)OOTextureLoader::loaderWithPath(std::string("unknown.type"), 0);
 	}
 }
@@ -96,7 +86,6 @@ OOTextureGenerator *NewLoader(OOPixMap pixMap, uint32_t options, BOOL freeWhenDo
 
 void ClearCache()
 {
-	@autoreleasepool
 	{
 		oo::AutoreleaseScope scope;
 		OOTexture::clearCache();
@@ -110,8 +99,8 @@ OO_TEST(takesThePixMap)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OOTextureGenerator *loader = NewLoader(TestPixMap(), kOOTextureMinFilterLinear | kOOTextureRepeatS, YES);
 		OO_CHECK(loader != nullptr && dynamic_cast<OOTextureGenerator *>(loader) != nullptr);
 		OO_CHECK(loader->textureOptions() == OOApplyTextureOptionDefaults(kOOTextureMinFilterLinear | kOOTextureRepeatS));
@@ -135,8 +124,8 @@ OO_TEST(refusals)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		// Not a pixmap.
 		OO_CHECK(NewLoader(kOONullPixMap, kOOTextureMinFilterLinear, YES) == nullptr);
 
@@ -154,8 +143,8 @@ OO_TEST(loadsWithMipMaps)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OOTextureGenerator *loader = NewLoader(TestPixMap(), kOOTextureMinFilterMipMap, YES);
 		OO_CHECK(loader->textureOptions() == OOApplyTextureOptionDefaults(kOOTextureMinFilterMipMap));
 		OO_CHECK(loader->enqueue());
@@ -173,8 +162,8 @@ OO_TEST(aTextureOfTheGenerator)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OOTextureGenerator *loader = NewLoader(TestPixMap(), kOOTextureDefaultOptions | kOOTextureRepeatS, YES);
 		OOTexture *texture = Autoreleased(OOTexture::textureWithGenerator(loader));
 		OO_CHECK((dynamic_cast<OOConcreteTexture *>(texture) != nullptr));
@@ -192,8 +181,8 @@ OO_TEST(cxxApi)
 {
 	OO_CHECK(OOTestGLContext());
 	SetUpLoaders();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		OO_CHECK(!OOPixMapTextureLoader::loaderWithPixMap(kOONullPixMap, 0, true));
 
 		const oo::Ref<OOPixMapTextureLoader> loader = OOPixMapTextureLoader::loaderWithPixMap(TestPixMap(), kOOTextureMinFilterLinear, true);

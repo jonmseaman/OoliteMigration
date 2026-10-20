@@ -404,6 +404,7 @@ def sweep_extractors():
 def sweep_foundation():
     out = []
     for p in m_files():
+        if classify(p) == "done": continue   # converted .mm: Foundation migration is behind it (oo-9ht.187)
         header_ns = header_declares_ns(p)
         if not grep(p, r'\bNS(String|Array|Dictionary|Set|Number|Data|Enumerator|Mutable\w+)\b') and not header_ns: continue
         if p.name in GIANT: continue
@@ -522,10 +523,79 @@ def header_declares_ns(p):
 # the generator and only from the tests, so it could drift away from the live rule silently. Do not
 # reintroduce it: ask classify(p) == "renames".
 
+# Which `@implementation`s the Phase 3 exit gate counts (ADR-0061, the oo-o8x acceptance): a
+# definition at line start, outside src/oofnd/objc/ (Phase 4), outside the Mac-only
+# GameController+FullScreen.mm, and other than the Mac-only `GameController (MacOSX)` line (Phase 5).
+GATE_EXEMPT_DIRS = ("oofnd/objc/",)
+GATE_EXEMPT_FILES = ("Core/GameController+FullScreen.mm",)
+GATE_EXEMPT_LINES = {"Core/GameController.mm": {"@implementation GameController (MacOSX)"}}
+
+def gate_implementations(p):
+    """The `@implementation` lines in p that the Phase 3 exit gate counts (ADR-0061)."""
+    try: rel = p.relative_to(SRC).as_posix()
+    except ValueError: rel = p.name
+    if rel.startswith(GATE_EXEMPT_DIRS) or rel in GATE_EXEMPT_FILES: return []
+    try: lines = open(p, errors="replace").read().splitlines()
+    except OSError: return []
+    skip = GATE_EXEMPT_LINES.get(rel, set())
+    return [l for l in lines if l.startswith("@implementation") and l.rstrip("\r") not in skip]
+
+# `#if` arms the Windows game build never compiles: Mac-only code (Phase 5, ADR-0061 item 1), the
+# string expander's Foundation test surface (built only by tools/check-string-expander.sh), `#if 0`.
+DEAD_ARM = re.compile(r'^\s*#\s*(?:(?:el)?if\s+(?:OOLITE_MAC_OS_X|OO_EXPANDER_TEST_SURFACE|0)|ifdef\s+(?:OOLITE_MAC_OS_X|OO_EXPANDER_TEST_SURFACE))\s*(?://.*|/\*.*)?$')
+
+def strip_dead_arms(text):
+    """text with the lines of every DEAD_ARM arm blanked (line count kept). Only that arm: its
+    #else/#elif sibling is live, and nesting inside it is skipped with it."""
+    out = []; dead_at = None; depth = 0
+    for ln in text.splitlines():
+        d = re.match(r'^\s*#\s*(if|ifdef|ifndef|elif|else|endif)\b', ln); kw = d.group(1) if d else None
+        if kw in ("if", "ifdef", "ifndef"):
+            depth += 1
+            if dead_at is None and DEAD_ARM.match(ln): dead_at = depth; out.append(""); continue
+        elif kw in ("elif", "else") and dead_at == depth:
+            dead_at = None
+            if kw == "elif" and DEAD_ARM.match(ln): dead_at = depth
+            out.append(""); continue
+        elif kw == "elif" and dead_at is None and DEAD_ARM.match(ln):
+            dead_at = depth; out.append(""); continue
+        elif kw == "endif":
+            if dead_at == depth: dead_at = None
+            depth -= 1
+        out.append("" if dead_at is not None else ln)
+    return "\n".join(out)
+
+NS_OBJECT_PTR = re.compile(r'\bNS[A-Z]\w*\s*\*')
+
+def header_names_ns_object(p):
+    """True when p's own header, as the game build compiles it, still declares an NS* object pointer
+    (Foundation usage in its interface, the Foundation sweep's work). NSSize/NSPoint/NSRect/NSRange
+    are C structs (oofnd/objc/OOFoundationTypes.h), not Objective-C, so a converted C++ class may
+    keep them by value."""
+    h = header_for(p)
+    if h is None: return False
+    try: t = open(h, errors="replace").read()
+    except OSError: return False
+    return NS_OBJECT_PTR.search(strip_noncode(strip_dead_arms(t))) is not None
+
+def is_done(p):
+    """A converted file: no sweep may select it (bead oo-9ht.187).
+
+    Seam 2.1 (oo-x7o) renamed every .m to .mm, so a .mm is either still Objective-C awaiting Phase 3
+    or Phase 3's own output, which the convert story tells to "keep the file as .mm until Phase 4".
+    The selector is the Phase 3 gate's acceptance predicate itself (LEARNINGS [oo-iizf]): a .mm with
+    no @implementation the gate counts, and whose compiled header declares no NS* object, is done.
+    What Objective-C such a file still holds (sends to the root class, @selector glue, Mac-only
+    fences) is Phase 4/5 scope by ADR-0061, not a Phase 2/3 rename, Foundation, convert or
+    pre-split story. A .m is never done: the gate requires no .m."""
+    return p.suffix == ".mm" and not gate_implementations(p) and not header_names_ns_object(p)
+
 def classify(p):
-    """Which sweep owns this file: 'renames' (mechanical .m -> .c), 'foundation' (plain-C body but
-    the header declares NS* types: migrate Foundation first, rename bead emitted after it closes),
-    or 'convert' (real Objective-C, Phase 3 C++20 conversion)."""
+    """Which sweep owns this file: 'done' (a converted .mm, see is_done: no sweep selects it),
+    'renames' (mechanical .m -> .c), 'foundation' (plain-C body but the header declares NS* types:
+    migrate Foundation first, rename bead emitted after it closes), or 'convert' (real
+    Objective-C, Phase 3 C++20 conversion)."""
+    if is_done(p): return "done"
     if not body_is_c(p): return "convert"
     return "foundation" if header_declares_ns(p) else "renames"
 
@@ -689,7 +759,7 @@ def review_seam(n):
             f"(4) For each gap: `bd create --parent <phase {n} epic> --labels phase:{n},<fleet|frontier>,sweep:review-{n}` with a fenced ## Acceptance block, then `bd dep add <this review> <new bead>` so this review reopens behind it. "
             f"(5) Append findings to docs/fleet/LEARNINGS.md and the phase doc's status log; re-run tools/gen-stories.py --dry-run and file a generator-bug bead if the generator should have emitted the missing work. "
             f"Close only when nothing is left; the exit gate ({n}.gate) then walks the checklist. Never close beads yourself: accept.sh does.")
-    acc = [f"test \"$(bd list --label phase:{n} --status open,in_progress --json -n 0 | jq '[.[] | select((.labels | index(\"seam:{n}.review\")) or (.labels | index(\"seam:{n}.gate\")) | not)] | length')\" = 0",
+    acc = [f"test \"$(bd list --label phase:{n} --status open,in_progress --json -n 0 | jq '[.[] | select(.issue_type != \"epic\") | select((.labels | index(\"seam:{n}.review\")) or (.labels | index(\"seam:{n}.gate\")) | not)] | length')\" = 0",   # the phase epic cannot close before its review (oo-9ht.187)
            f"grep -q 'review {n} ' docs/fleet/LEARNINGS.md"]
     return (f"{n}.review", n, f"Phase {n} review (Claude Fable 5.1): every item verified done, missing work filed as beads", desc, acc, [], 1)
 

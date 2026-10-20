@@ -18,7 +18,10 @@
 	first; they ran through the facade (its forwarding test, amendment oo-8kx7 item 6) until bead
 	oo-9ht.73 deleted it, and now call the C++ class with the same expectations (each
 	[[[AI alloc] init] autorelease] an autoreleased oo::makeRef<AI>(), each send a member call); the
-	owner stand-in is an OOObject, since the AI holds the ship's C++ part weakly (oo::WeakRef).
+	owner stand-in is an object holding the ship, since the AI holds the ship's C++ part weakly
+	(oo::WeakRef). It was rooted on the Objective-C root class OOObject until bead oo-4aq6a.2 made it
+	C++ (Phase 4 deletes the root): its actions, once found and called by selector, are a table of
+	its members by the same names, answering as they did.
 	Run: bash tools/check-core-tests.sh
 */
 
@@ -155,7 +158,7 @@ void OOLogOutdent(void)		{ oo::log::outdent(); }
 	classes are declared as Entity.h and ShipEntity.h declare them (the test imports neither), and
 	the part answers from its object's fields, as the object's selectors did.
 */
-@class TestEntityObject;
+class TestEntityObject;
 
 class Entity : public oo::RefCounted
 {
@@ -164,7 +167,7 @@ public:
 	OOUniversalID getUniversalID();
 	bool getIsPlayer();
 
-	::TestEntityObject *_object = nil;	// not retained
+	::TestEntityObject *_object = nullptr;	// not retained
 };
 
 class ShipEntity : public Entity
@@ -175,82 +178,62 @@ public:
 	void setAIScript(const std::string &aiString);
 };
 
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject	// the AI holds its owner's C++ part weakly since bead oo-9ht.73
+// The AI holds its owner's C++ part weakly since bead oo-9ht.73.
+class TestEntityObject : public oo::RefCounted
 {
-@public
+public:
+	virtual const char *className() const  { return "Entity"; }	// its Objective-C class's runtime name
+
 	oo::Ref<Entity> _cxxEntity;
-}
-@end
+};
 
-@implementation TestEntityObject
-@end
-
-@interface TestShip: TestEntityObject
+class TestShip final : public TestEntityObject
 {
-@public
-	OOUniversalID				_id;
-	BOOL						_isPlayer;
-	AI							*_ai;			// not retained (C++ since bead oo-9ht.73)
+public:
+	// Every test ship has its C++ part (the ship).
+	TestShip() : TestEntityObject()
+	{
+		_cxxEntity = oo::makeRef<ShipEntity>();
+		_cxxEntity->_object = this;
+	}
+
+	const char *className() const override  { return "TestShip"; }
+
+	void interpretAIMessage(const std::string &message)
+	{
+		_calls.push_back("interpretAIMessage: " + message);
+	}
+
+	void doThing(const std::string &argument)
+	{
+		_calls.push_back("doThing: " + argument);
+		_runningAIs.push_back(AI::currentlyRunningAIDescription().value_or("(null)"));
+		if (AI::currentlyRunningAI() == _ai)  _runningAIs.back() += " (this AI)";
+	}
+
+	void doNothing()
+	{
+		_calls.push_back("doNothing");
+	}
+
+	void setStateTo(const std::string &state)
+	{
+		_calls.push_back("setStateTo: " + state);
+		_ai->setState(state);
+	}
+
+	void sendLoop()
+	{
+		_ai->reactToMessage("LOOP", "loop");
+	}
+
+	OOUniversalID				_id = {};
+	BOOL						_isPlayer = NO;
+	AI							*_ai = nullptr;	// not retained (C++ since bead oo-9ht.73)
 	std::vector<std::string>	_calls;			// "selector argument", in order
 	std::vector<std::string>	_runningAIs;	// +cxx_currentlyRunningAIDescription during each action
 	std::optional<std::string>	_script;
-}
-- (void) interpretAIMessage:(const std::string &)message;
-- (void) doThing:(const std::string &)argument;
-- (void) doNothing;
-- (void) setStateTo:(const std::string &)state;
-- (void) sendLoop;
-@end
-
-
-@implementation TestShip
-
-// Every test ship has its C++ part (the ship).
-- (id) init
-{
-	if ((self = [super init]))
-	{
-		_cxxEntity = oo::makeRef<ShipEntity>();
-		_cxxEntity->_object = self;
-	}
-	return self;
-}
-
-
-- (void) interpretAIMessage:(const std::string &)message
-{
-	_calls.push_back("interpretAIMessage: " + message);
-}
-
-
-- (void) doThing:(const std::string &)argument
-{
-	_calls.push_back("doThing: " + argument);
-	_runningAIs.push_back(AI::currentlyRunningAIDescription().value_or("(null)"));
-	if (AI::currentlyRunningAI() == _ai)  _runningAIs.back() += " (this AI)";
-}
-
-
-- (void) doNothing
-{
-	_calls.push_back("doNothing");
-}
-
-
-- (void) setStateTo:(const std::string &)state
-{
-	_calls.push_back("setStateTo: " + state);
-	_ai->setState(state);
-}
-
-
-- (void) sendLoop
-{
-	_ai->reactToMessage("LOOP", "loop");
-}
-
-@end
+};
 
 
 Entity::~Entity() = default;
@@ -260,26 +243,87 @@ bool ShipEntity::getReportAIMessages()						{ return false; }
 std::optional<std::string> ShipEntity::getName()			{ return std::string("Test ship"); }
 void ShipEntity::setAIScript(const std::string &aiString)	{ static_cast<TestShip *>(_object)->_script = aiString; }
 
-namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }	// Entity+ObjCBridge.mm's, which the test does not link
-::TestEntityObject *oo::ToObjC(Entity *entity)  { return entity != nullptr ? entity->_object : nil; }
-#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
+// The test's object of an entity (oo::ToObjC() until bead oo-4aq6a.2; Entity+ObjCBridge.mm's, which
+// the test does not link).
+::TestEntityObject *TestObjectOf(Entity *entity)  { return entity != nullptr ? entity->_object : nullptr; }
+#define OO_ENTITY_HELPERS_STAND_IN_CXX
+#include "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
 
-// OOEntityCalledByName.mm's (bead oo-9ht.39.7.1), which the test does not link: the test ship has
-// no C++ table, so every name goes to its object, the path that file takes for an untabled name.
+/*	OOEntityCalledByName.mm's (bead oo-9ht.39.7.1), which the test does not link: the test ship has
+	no C++ table, so every name goes to its object, the path that file takes for an untabled name.
+	The object's methods by their selectors' names, each taking its argument or none, as the
+	Objective-C methods did; OOCallByName's answers for a name the object has no method for
+	(callByName.unknownSelector) or called with or without an argument it does not take
+	(callByName.badSignature) are logged as it logged them.
+*/
+namespace {
+
+struct TestShipMethod
+{
+	void (TestShip::*withArgument)(const std::string &);
+	void (TestShip::*withoutArgument)();
+};
+
+const TestShipMethod *TestShipMethodNamed(::TestEntityObject *object, const std::string &name)
+{
+	static const std::map<std::string, TestShipMethod> methods = {
+		{ "interpretAIMessage:",	{ &TestShip::interpretAIMessage, nullptr } },
+		{ "doThing:",				{ &TestShip::doThing, nullptr } },
+		{ "doNothing",				{ nullptr, &TestShip::doNothing } },
+		{ "setStateTo:",			{ &TestShip::setStateTo, nullptr } },
+		{ "sendLoop",				{ nullptr, &TestShip::sendLoop } },
+	};
+	if (dynamic_cast<TestShip *>(object) == nullptr)  return nullptr;
+	auto found = methods.find(name);
+	return (found != methods.end()) ? &found->second : nullptr;
+}
+
+
+oo::PList CallTestObjectByName(::TestEntityObject *object, const std::string &name, const std::string *argument)
+{
+	if (object == nullptr)  return oo::PList();
+	const TestShipMethod *method = TestShipMethodNamed(object, name);
+	if (method == nullptr)
+	{
+		OO_LOG_ERR("callByName.unknownSelector", "{} does not respond to {}.", object->className(), name);
+	}
+	else if (argument != nullptr && method->withArgument != nullptr)
+	{
+		(static_cast<TestShip *>(object)->*method->withArgument)(*argument);
+	}
+	else if (argument == nullptr && method->withoutArgument != nullptr)
+	{
+		(static_cast<TestShip *>(object)->*method->withoutArgument)();
+	}
+	else
+	{
+		OO_LOG_ERR("callByName.badSignature", "-[{} {}] has no signature a by-name call can use.", object->className(), name);
+	}
+	return oo::PList();
+}
+
+}	// namespace
+
 bool oo::EntityRespondsToName(Entity *entity, const std::string &name)
 {
-	::TestEntityObject *object = oo::ToObjC(entity);
-	return object != nil && [object respondsToSelector:OOSelectorFromName(name.c_str())];
+	return TestShipMethodNamed(TestObjectOf(entity), name) != nullptr;
 }
-oo::PList oo::CallEntityByName(Entity *entity, const std::string &name)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), name) : oo::PList(); }
-oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const std::string &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), name, argument) : oo::PList(); }
-oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const oo::PList &argument)  { return entity != nullptr ? OOCallByName(oo::ToObjC(entity), name, argument) : oo::PList(); }
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name)  { return CallTestObjectByName(TestObjectOf(entity), name, nullptr); }
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const std::string &argument)  { return CallTestObjectByName(TestObjectOf(entity), name, &argument); }
+oo::PList oo::CallEntityByName(Entity *entity, const std::string &name, const oo::PList &argument)
+{
+	// A PList reaches a string parameter only when it is a string (OOCallByName).
+	const std::string *string = argument.getIf<std::string>();
+	if (string != nullptr || TestShipMethodNamed(TestObjectOf(entity), name) == nullptr)  return CallTestObjectByName(TestObjectOf(entity), name, string);
+	OO_LOG_ERR("callByName.badSignature", "-[{} {}] has no signature a by-name call can use.", TestObjectOf(entity)->className(), name);
+	return oo::PList();
+}
 
 
 namespace {
 
 // The test ship's C++ part, which AI is given as its owner.
-ShipEntity *Part(TestShip *ship)  { return ship != nil ? static_cast<ShipEntity *>(ship->_cxxEntity.get()) : nullptr; }
+ShipEntity *Part(TestShip *ship)  { return ship != nullptr ? static_cast<ShipEntity *>(ship->_cxxEntity.get()) : nullptr; }
 
 }	// namespace
 
@@ -354,7 +398,7 @@ void SetUp()
 
 TestShip *NewShip(OOUniversalID uid)
 {
-	TestShip *ship = [[[TestShip alloc] init] autorelease];
+	TestShip *ship = oo::autorelease(oo::makeRef<TestShip>());
 	ship->_id = uid;
 	return ship;
 }
@@ -386,8 +430,8 @@ AI *NewAI(TestShip *ship)
 OO_TEST(initialState)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		AI *ai = NewAI(nil);
 		OO_CHECK(ai->name() == std::optional<std::string>("<no AI>"));
 		OO_CHECK(!ai->state().has_value());
@@ -412,12 +456,12 @@ OO_TEST(initialState)
 OO_TEST(ownerIsWeak)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		AI *ai = Autoreleased(oo::makeRef<AI>());
-		@autoreleasepool
 		{
-			TestShip *ship = [[TestShip alloc] init];
+			oo::AutoreleaseScope pool;
+			TestShip *ship = oo::makeRef<TestShip>().leakRef();
 			ship->_id = 7;
 			ai->setOwner(Part(ship));
 			OO_CHECK(ai->owner() == Part(ship));
@@ -425,7 +469,7 @@ OO_TEST(ownerIsWeak)
 			ship->_isPlayer = YES;
 			ai->setOwner(Part(ship));
 			OO_CHECK(ai->descriptionComponents() == std::optional<std::string>("\"<no AI>\" in state: \"(null)\" for player autopilot"));
-			[ship release];
+			ship->release();
 		}
 		OO_CHECK(ai->owner() == nil);
 		ai->setOwner(nil);
@@ -437,8 +481,8 @@ OO_TEST(ownerIsWeak)
 OO_TEST(loadsAndRunsAStateMachine)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestShip *ship = NewShip(3);
 		AI *ai = NewAI(ship);
 		ai->setStateMachine("test.plist", "test.js");
@@ -482,8 +526,8 @@ OO_TEST(loadsAndRunsAStateMachine)
 OO_TEST(unknownStateMachines)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestShip *ship = NewShip(4);
 		AI *ai = NewAI(ship);
 		gLog.clear();
@@ -504,8 +548,8 @@ OO_TEST(unknownStateMachines)
 OO_TEST(stackOfStateMachines)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestShip *ship = NewShip(5);
 		AI *ai = NewAI(ship);
 		ai->setStateMachine("test.plist", "test.js");
@@ -575,8 +619,8 @@ OO_TEST(stackOfStateMachines)
 OO_TEST(messagesAndThinking)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestShip *ship = NewShip(6);
 		AI *ai = NewAI(ship);
 		ai->setStateMachine("test.plist", "test.js");
@@ -622,8 +666,8 @@ OO_TEST(messagesAndThinking)
 OO_TEST(actionsAndRecursion)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestShip *ship = NewShip(8);
 		AI *ai = NewAI(ship);
 		ai->setStateMachine("test.plist", "test.js");
@@ -655,8 +699,8 @@ OO_TEST(actionsAndRecursion)
 OO_TEST(deferredCalls)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestShip *ship = NewShip(9);
 		AI *ai = NewAI(ship);
 		ai->setStateMachine("test.plist", "test.js");
@@ -694,8 +738,8 @@ OO_TEST(deferredCalls)
 OO_TEST(initialiserWithStateMachine)
 {
 	SetUp();
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		AI *ai = Autoreleased(AI::newWithStateMachine(std::string("other.plist"), "FROZEN"));
 		OO_CHECK(ai->name() == std::optional<std::string>("other.plist"));
 		OO_CHECK(ai->state() == std::optional<std::string>("FROZEN"));
@@ -715,8 +759,8 @@ OO_TEST(cxxAPI)
 {
 	SetUp();
 	oo::Ref<AI> kept;
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		TestShip *ship = NewShip(10);
 		oo::Ref<AI> ai = oo::makeRef<AI>();
 		ship->_ai = ai.get();
@@ -740,8 +784,8 @@ OO_TEST(cxxAPI)
 		kept = ai;
 	}
 	OO_CHECK(kept->name() == std::optional<std::string>("test.plist"));
-	@autoreleasepool
 	{
+		oo::AutoreleaseScope pool;
 		oo::Ref<AI> bare = oo::makeRef<AI>();
 		OO_CHECK(bare->name() == std::optional<std::string>("<no AI>"));
 	}

@@ -18,7 +18,6 @@
 */
 
 #import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
 #include <objc/runtime.h>
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
@@ -68,20 +67,17 @@ public:
 #include "OOJSEntityHolder.h"
 
 
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject
+// C++ since bead oo-4aq6a.11 (it was rooted on the Objective-C root class OOObject, which Phase 4
+// deletes); its category's selectors are members of the same names.
+class TestEntityObject final : public oo::RefCounted
 {
-@public
+public:
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+	std::optional<std::string> cxx_oo_jsClassName();
+	bool isVisibleToScripts();
+
 	oo::Ref<Entity> _cxxEntity;	// the sun's C++ part (oo::ToCxx reads it)
-}
-@end
-
-@interface TestEntityObject (OOJavaScriptExtensions)
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-- (BOOL) isVisibleToScripts;
-@end
-
+};
 
 #import "OOJSSun.h"
 
@@ -95,18 +91,14 @@ __attribute__((objc_runtime_name("Entity")))
 #include <vector>
 
 
-@implementation TestEntityObject
 
-@end
 
 
 // The root's JS category, as the game's asks the C++ part (EntityOOJavaScriptExtensions+ObjCBridge.mm,
 // bead oo-9ht.107): the engine sends these selectors to the wrapped object.
-@implementation TestEntityObject (OOJavaScriptExtensions)
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { _cxxEntity->getJSClass(outClass, outPrototype); }
-- (std::optional<std::string>) cxx_oo_jsClassName  { return _cxxEntity->jsClassName(); }
-- (BOOL) isVisibleToScripts  { return _cxxEntity->isVisibleToScripts(); }
-@end
+void TestEntityObject::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { _cxxEntity->getJSClass(outClass, outPrototype); }
+std::optional<std::string> TestEntityObject::cxx_oo_jsClassName()  { return _cxxEntity->jsClassName(); }
+bool TestEntityObject::isVisibleToScripts()  { return _cxxEntity->isVisibleToScripts(); }
 
 
 Entity::~Entity()  {}
@@ -310,7 +302,7 @@ namespace {
 ooscript::Runtime sRuntime;
 ooscript::Context sContext;
 ooscript::Object sGlobal;
-TestEntityObject *sSunObject = nil;	// the sun's Objective-C object, which the JS object holds
+TestEntityObject *sSunObject = nullptr;	// the sun's object, which the JS object holds
 OOSunEntity *sSun = nullptr;	// its C++ part
 
 
@@ -329,7 +321,7 @@ ooscript::Value JSValueForEntity(TestEntityObject *entity)
 {
 	ooscript::ClassDef *jsClass = nullptr;
 	ooscript::Object prototype = nullptr;
-	[entity getJSClass:&jsClass andPrototype:&prototype];
+	entity->getJSClass(&jsClass, &prototype);
 	return JSValueForObject(jsClass, prototype, entity);
 }
 
@@ -351,13 +343,13 @@ void SetUpContext()
 	gOOEntityJSPrototype = ooscript::initClass(sContext, sGlobal, nullptr, &sFakeEntityClass, OOJSUnconstructableConstruct, 0, nullptr, nullptr, nullptr, nullptr);
 	InitOOJSSun(sContext, sGlobal);
 
-	sSunObject = [[TestEntityObject alloc] init];	// kept for the life of the test
+	sSunObject = oo::makeRef<TestEntityObject>().leakRef();	// kept for the life of the test
 	sSunObject->_cxxEntity = oo::makeRef<OOSunEntity>();
 	sSun = static_cast<OOSunEntity *>(sSunObject->_cxxEntity.get());
 	sSun->_radius = 250000.5;
 	sSun->_name = "Lave";
 	Define("sun", JSValueForEntity(sSunObject));
-	Define("plainEntity", JSValueForObject(&sFakeEntityClass, gOOEntityJSPrototype, [[TestEntityObject alloc] init]));
+	Define("plainEntity", JSValueForObject(&sFakeEntityClass, gOOEntityJSPrototype, oo::makeRef<TestEntityObject>().leakRef()));
 }
 
 
@@ -395,13 +387,13 @@ OO_TEST(registration)
 	SetUpContext();
 	ooscript::ClassDef *sunClass = nullptr;
 	ooscript::Object prototype = nullptr;
-	[sSunObject getJSClass:&sunClass andPrototype:&prototype];
+	sSunObject->getJSClass(&sunClass, &prototype);
 	OO_CHECK(sunClass != nullptr && std::strcmp(sunClass->name, "Sun") == 0);
 	OO_CHECK(prototype != nullptr);
 	OO_CHECK(OOJSIsSubclass(sunClass, &sFakeEntityClass));
 	OO_CHECK_EQ(sConverters[sunClass], 1);
-	OO_CHECK([sSunObject cxx_oo_jsClassName] == std::optional<std::string>("Sun"));
-	OO_CHECK([sSunObject isVisibleToScripts]);
+	OO_CHECK(sSunObject->cxx_oo_jsClassName() == std::optional<std::string>("Sun"));
+	OO_CHECK(sSunObject->isVisibleToScripts());
 	OO_CHECK_EVAL("typeof Sun", "function");
 	OO_CHECK_EVAL("new Sun()", "threw: unconstructable");
 	OO_CHECK_EVAL("Object.getPrototypeOf(Sun.prototype) === Entity.prototype", "true");

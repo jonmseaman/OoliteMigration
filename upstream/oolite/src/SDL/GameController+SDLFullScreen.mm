@@ -168,7 +168,7 @@ NSUInteger GameController::indexOfCurrentDisplayMode()
 }
 
 
-void GameController::pauseFullScreenModeToPerform(const char *selectorName, id target)
+void GameController::pauseFullScreenModeToPerform(const char *selectorName, oo::RefCounted *target)
 {
 	pauseSelector = selectorName != nullptr ? selectorName : "";	// by name since bead oo-xu228.3
 	pauseTarget = target;
