@@ -15,7 +15,6 @@
 */
 
 #import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
 #include <objc/runtime.h>
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
@@ -45,13 +44,16 @@ class ShipEntity : public Entity
 #include "OOJSEntityHolder.h"
 
 
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject
+// C++ since bead oo-4aq6a.11 (it was rooted on the Objective-C root class OOObject, which Phase 4
+// deletes); its category's two selectors are members of the same names.
+class TestEntityObject final : public oo::RefCounted
 {
-@public
+public:
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+	std::optional<std::string> cxx_oo_jsClassName();
+
 	oo::Ref<Entity> _cxxEntity;
-}
-@end
+};
 
 /*	A dock: C++ since bead oo-9ht.180 deleted the Objective-C dock this stood in for (its object is the
 	ship's facade); the members the binding calls, declared as DockEntity.h declares them (the test
@@ -82,12 +84,6 @@ public:
 	::ShipEntity *_queued = nullptr;
 };
 
-@interface TestEntityObject (OOJavaScriptExtensions)
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-@end
-
-
 #import "OOJSDock.h"
 
 #include "oo_test.hpp"
@@ -104,13 +100,9 @@ void Entity::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outProt
 std::optional<std::string> Entity::jsClassName()  { return std::nullopt; }
 
 
-@implementation TestEntityObject
-
 // As the game's Entity (OOJavaScriptExtensions) answers for an entity made in C++: its C++ part's.
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { _cxxEntity->getJSClass(outClass, outPrototype); }
-- (std::optional<std::string>) cxx_oo_jsClassName  { return _cxxEntity->jsClassName(); }
-
-@end
+void TestEntityObject::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { _cxxEntity->getJSClass(outClass, outPrototype); }
+std::optional<std::string> TestEntityObject::cxx_oo_jsClassName()  { return _cxxEntity->jsClassName(); }
 
 
 bool DockEntity::allowsDocking()  { return _allowsDocking; }
@@ -306,15 +298,15 @@ ooscript::Runtime sRuntime;
 ooscript::Context sContext;
 ooscript::Object sGlobal;
 DockEntity *sDock = nullptr;	// the C++ dock (its object: sDockObject)
-TestEntityObject *sDockObject = nil;
-TestEntityObject *sShip = nil;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
+TestEntityObject *sDockObject = nullptr;
+TestEntityObject *sShip = nullptr;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
 ShipEntity *sShipPart = nullptr;
 
 
 // A ship's object holding its C++ part, kept for the life of the test.
 TestEntityObject *NewShipObject(oo::Ref<Entity> part)
 {
-	TestEntityObject *object = [[TestEntityObject alloc] init];
+	TestEntityObject *object = oo::makeRef<TestEntityObject>().leakRef();
 	object->_cxxEntity = part;
 	return object;
 }
@@ -329,13 +321,13 @@ ooscript::Value JSValueForObject(ooscript::ClassDef *jsClass, ooscript::Object p
 }
 
 
-// A JS object for an entity, as -[TestEntityObject oo_jsValueInContext:] makes it: the class and prototype
+// A JS object for an entity, as the object's -oo_jsValueInContext: made it: the class and prototype
 // the entity's category names, and the entity in the private slot.
 ooscript::Value JSValueForEntity(TestEntityObject *entity)
 {
 	ooscript::ClassDef *jsClass = nullptr;
 	ooscript::Object prototype = nullptr;
-	[entity getJSClass:&jsClass andPrototype:&prototype];
+	entity->getJSClass(&jsClass, &prototype);
 	return JSValueForObject(jsClass, prototype, entity);
 }
 
@@ -371,7 +363,7 @@ void SetUpContext()
 	Define("dock", JSValueForEntity(sDockObject));
 	Define("ship", JSValueForObject(&sFakeShipClass, sShipPrototype, sShip));
 	Define("otherShip", JSValueForObject(&sFakeShipClass, sShipPrototype, NewShipObject(oo::makeRef<ShipEntity>())));
-	Define("plainEntity", JSValueForObject(&sFakeEntityClass, gOOEntityJSPrototype, [[TestEntityObject alloc] init]));
+	Define("plainEntity", JSValueForObject(&sFakeEntityClass, gOOEntityJSPrototype, oo::makeRef<TestEntityObject>().leakRef()));
 }
 
 
@@ -409,12 +401,12 @@ OO_TEST(registration)
 	SetUpContext();
 	ooscript::ClassDef *dockClass = nullptr;
 	ooscript::Object prototype = nullptr;
-	[sDockObject getJSClass:&dockClass andPrototype:&prototype];
+	sDockObject->getJSClass(&dockClass, &prototype);
 	OO_CHECK(dockClass != nullptr && std::strcmp(dockClass->name, "Dock") == 0);
 	OO_CHECK(prototype != nullptr);
 	OO_CHECK(OOJSIsSubclass(dockClass, &sFakeShipClass));
 	OO_CHECK_EQ(sConverters[dockClass], 1);
-	OO_CHECK([sDockObject cxx_oo_jsClassName] == std::optional<std::string>("Dock"));
+	OO_CHECK(sDockObject->cxx_oo_jsClassName() == std::optional<std::string>("Dock"));
 	OO_CHECK_EVAL("typeof Dock", "function");
 	OO_CHECK_EVAL("new Dock()", "threw: unconstructable");
 	OO_CHECK_EVAL("Object.getPrototypeOf(Dock.prototype) === Ship.prototype", "true");
