@@ -32,8 +32,12 @@ oo::DescriptionOf(x) is the text "%@" put in a formatted string for x: "(null)" 
 class name for a class object, -cxx_description for an OOObject; for an oo::PList, what "%@"
 printed for its object graph (oo::describe). oo::ShortDescriptionOf(x) is
 its short twin. OOConstantString describes itself as its text in both, in C++ (the category
-OOConstantString (OODescription) is deleted, bead oo-8sql7). The category on OOObject stays while
-tests/unit/oofnd/test_objc_description.mm, its own test, sends its four methods to a plain object.
+OOConstantString (OODescription) is deleted, bead oo-8sql7).
+
+Since bead oo-8sql7 the category OOObject (OODescription) is deleted too: the four methods are the
+@optional protocol OODescription, which a class implements to describe itself. A class without its
+own method gets the root's default in C++ (oo::ObjectDescription & co. below, what the category's
+methods answered); nil gets what the message to nil gave (nullopt).
 
 An object not rooted on OOObject (none in the game since oo-3rb.4 / oo-qps.18) describes as
 <ClassName 0xnnnnnnnn> in both. The transitional forwarding to legacy id-typed
@@ -73,8 +77,9 @@ extern "C++" {
 #include "oofnd/PListDescription.hpp"
 
 
-@interface OOObject (OODescription)
+@protocol OODescription
 
+@optional
 // What this object adds between the braces; nullopt for none (the root's default).
 - (std::optional<std::string>) cxx_descriptionComponents;
 - (std::optional<std::string>) cxx_shortDescriptionComponents;
@@ -83,6 +88,12 @@ extern "C++" {
 - (std::optional<std::string>) cxx_description;
 - (std::optional<std::string>) cxx_shortDescription;
 
+@end
+
+
+// The protocol's methods are declared on the root, so a send to an OOObject * type-checks; the root
+// does not implement them (no @implementation: ask with the functions below).
+@interface OOObject (OODescription) <OODescription>
 @end
 
 
@@ -96,6 +107,14 @@ std::string ShortDescriptionOf(id object);
 
 // <ClassName 0xnnnnnnnn>{components} for <object>; without the braces when <components> is nullopt.
 std::string DescriptionWithComponents(id object, const std::optional<std::string> &components);
+
+// What the protocol's four messages answered (bead oo-8sql7): <object>'s class's own method (its
+// class, a superclass or a category on one has it), else the root's default, which the deleted
+// category answered; nullopt for nil, as the message to nil.
+std::optional<std::string> ObjectDescriptionComponents(id object);			// default: none
+std::optional<std::string> ObjectShortDescriptionComponents(id object);		// default: none
+std::optional<std::string> ObjectDescription(id object);		// default: DescriptionWithComponents(object, components)
+std::optional<std::string> ObjectShortDescription(id object);	// default: the same with the short components
 
 // The text "%@" printed for the property list's object graph (oo::ObjectFromPList of it):
 // oo::describe (oofnd/PListDescription.hpp), GNUstep's -description byte for byte.

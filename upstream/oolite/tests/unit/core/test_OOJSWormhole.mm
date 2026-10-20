@@ -75,7 +75,6 @@ __attribute__((objc_runtime_name("Entity")))
 @public
 	oo::Ref<Entity> _cxxEntity;	// the wormhole's C++ part (oo::ToCxx reads it)
 }
-- (id) weakRefUnderlyingObject;
 @end
 
 @interface TestEntityObject (OOJavaScriptExtensions)
@@ -97,11 +96,6 @@ __attribute__((objc_runtime_name("Entity")))
 
 
 @implementation TestEntityObject
-
-- (id) weakRefUnderlyingObject
-{
-	return self;
-}
 
 @end
 

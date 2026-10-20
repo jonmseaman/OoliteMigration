@@ -62,7 +62,6 @@ MA 02110-1301, USA.
 #include "OOJSPrivateObject.h"
 #include "Universe.h"
 #include "OOPlanetEntity.h"
-#include "OOWeakReference.h"
 #include "EntityOOJavaScriptExtensions.h"
 #include "ResourceManager.h"
 #include "OOConstToJSString.h"
@@ -1967,7 +1966,7 @@ void OOJSObjectWrapperFinalize(ooscript::Context context, ooscript::Object thisO
 	id object = (id)ooscript::getPrivate((context), (thisObj));
 	if (object != nil)
 	{
-		OOJavaScriptEngineClearJSSelf(OOJavaScriptEngineWeakRefUnderlyingObject(object), thisObj);
+		OOJavaScriptEngineClearJSSelf(object, thisObj);	// the slot holds the object itself (bead oo-9ht.22)
 		objc_release(object);
 		ooscript::setPrivate((context), (thisObj), nil);
 	}
@@ -2219,8 +2218,8 @@ BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object obj
 	}
 	OOCAssert(static_cast<std::uint32_t>(actualClass->flags) & static_cast<std::uint32_t>(ooscript::ClassFlag::HasPrivate), "Native object accessor requires JS class with private storage.");
 	
-	// Get the underlying object.
-	*outObject = [(id)ooscript::getPrivate((context), (object)) weakRefUnderlyingObject];
+	// Get the underlying object: the slot's own since no slot holds a weak reference (bead oo-9ht.22).
+	*outObject = (id)ooscript::getPrivate((context), (object));
 	
 #ifndef NDEBUG
 	// Double-check that the underlying object is of the expected ObjC class.
@@ -2463,12 +2462,9 @@ oo::PList OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::O
 {
 	id						result;
 	
-	/*	This will do the right thing - for non-OOWeakReferences,
-		weakRefUnderlyingObject returns the object itself. For nil, of course,
-		it returns nil.
-	*/
+	// The slot holds the object itself (no weak reference since bead oo-9ht.22); nil: a null PList.
 	result = (id)ooscript::getPrivate((context), (object));
-	return oo::PListObject(OOJavaScriptEngineWeakRefUnderlyingObject(result));	// nil: a null PList
+	return oo::PListObject(result);
 }
 
 

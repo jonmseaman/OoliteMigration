@@ -31,16 +31,9 @@ MA 02110-1301, USA.
 
 #include "OOJavaScriptEngine.h"
 #include "ResourceManager.h"
-#include "OOWeakReference.h"
 #include "OOVector.h"
 #include "oofnd/objc/OOException.h"
 
-
-
-id OOJavaScriptEngineWeakRefUnderlyingObject(id object)
-{
-	return [object weakRefUnderlyingObject];
-}
 
 
 Class OOJavaScriptEngineClass(id object)
@@ -81,7 +74,7 @@ std::optional<std::string> OOJavaScriptEngineJSDescriptionWithClassName(id objec
 
 std::optional<std::string> OOJavaScriptEngineDescriptionComponents(id object)
 {
-	return [object cxx_descriptionComponents];
+	return oo::ObjectDescriptionComponents(object);	// the class's own, else the root's none (bead oo-8sql7)
 }
 
 

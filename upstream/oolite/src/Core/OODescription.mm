@@ -4,7 +4,8 @@ OODescription.mm
 
 The description family on the Objective-C root (proposed ADR-0055 item 1, bead oo-qps.31). See
 OODescription.h. Foundation-free: this file imports nothing from gnustep-base (the unit test
-tests/unit/oofnd/test_objc_description.mm links it against libobjc2 alone).
+tests/unit/oofnd/test_objc_plist.mm links it against libobjc2 alone). Since bead oo-8sql7 it holds
+no Objective-C class or category: the root's defaults are the C++ functions below.
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -60,38 +61,51 @@ bool IsLiteral(id object)
 	return IsKindOf(object, [OOConstantString class]);
 }
 
+// Whether <object>'s class (or a superclass, or a category on one) has its own method for
+// <selector>, so the object answers it rather than the root's default. false for nil.
+bool AnswersItself(id object, SEL selector)
+{
+	return object != nil && class_respondsToSelector(object_getClass(object), selector);
+}
+
 }	// namespace
 
 
-@implementation OOObject (OODescription)
-
-- (std::optional<std::string>) cxx_descriptionComponents
-{
-	return std::nullopt;
-}
-
-
-- (std::optional<std::string>) cxx_shortDescriptionComponents
-{
-	return std::nullopt;
-}
-
-
-- (std::optional<std::string>) cxx_description
-{
-	return oo::DescriptionWithComponents(self, [self cxx_descriptionComponents]);
-}
-
-
-- (std::optional<std::string>) cxx_shortDescription
-{
-	return oo::DescriptionWithComponents(self, [self cxx_shortDescriptionComponents]);
-}
-
-@end
-
-
+/*	The root's description family (bead oo-8sql7): the bodies of the deleted category
+	OOObject (OODescription), for an object whose class has no method of its own. A class that has
+	one is sent it, as the message was; nil answers nullopt, as the message to nil did.
+*/
 namespace oo {
+
+std::optional<std::string> ObjectDescriptionComponents(id object)
+{
+	if (AnswersItself(object, @selector(cxx_descriptionComponents)))  return [object cxx_descriptionComponents];
+	return std::nullopt;
+}
+
+
+std::optional<std::string> ObjectShortDescriptionComponents(id object)
+{
+	if (AnswersItself(object, @selector(cxx_shortDescriptionComponents)))  return [object cxx_shortDescriptionComponents];
+	return std::nullopt;
+}
+
+
+std::optional<std::string> ObjectDescription(id object)
+{
+	if (object == nil)  return std::nullopt;
+	if (AnswersItself(object, @selector(cxx_description)))  return [object cxx_description];
+	return DescriptionWithComponents(object, ObjectDescriptionComponents(object));
+}
+
+
+std::optional<std::string> ObjectShortDescription(id object)
+{
+	if (object == nil)  return std::nullopt;
+	if (AnswersItself(object, @selector(cxx_shortDescription)))  return [object cxx_shortDescription];
+	return DescriptionWithComponents(object, ObjectShortDescriptionComponents(object));
+}
+
 
 std::string DescriptionOf(id object)
 {
@@ -100,7 +114,7 @@ std::string DescriptionOf(id object)
 	if (IsLiteral(object))  return [(OOConstantString *)object UTF8String];
 	if (IsOOObject(object))
 	{
-		return [(OOObject *)object cxx_description].value_or("(null)");
+		return ObjectDescription(object).value_or("(null)");
 	}
 	// An object on another root (nothing in the game since oo-3rb.4 made every literal an
 	// OOConstantString and oo-qps.18 unlinked gnustep-base): <ClassName 0xnnnnnnnn>.
@@ -115,7 +129,7 @@ std::string ShortDescriptionOf(id object)
 	if (IsLiteral(object))  return [(OOConstantString *)object UTF8String];
 	if (IsOOObject(object))
 	{
-		return [(OOObject *)object cxx_shortDescription].value_or("(null)");
+		return ObjectShortDescription(object).value_or("(null)");
 	}
 	return DescriptionWithComponents(object, std::nullopt);	// another root, as DescriptionOf
 }

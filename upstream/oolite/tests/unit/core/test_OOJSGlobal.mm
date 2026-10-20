@@ -20,7 +20,6 @@
 
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
-#import "OOWeakReference.h"
 #import "OOColor.h"
 #import "GuiDisplayGen.h"
 #import "OOTextureSprite.h"	// the GUI stand-in's destructor destroys its sprite members

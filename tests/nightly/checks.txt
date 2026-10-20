@@ -96,8 +96,8 @@
 [oo-m7aj] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOProfilingStopwatch && bash tools/tier-c.sh --only goldens
 [oo-fo17] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOAsyncQueue && bash tools/tier-c.sh --only goldens
 [oo-x2wy] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOAsyncWorkManager && bash tools/tier-c.sh --only goldens
-[oo-3kqi] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOWeakReference && bash tools/tier-c.sh --only goldens
-[oo-cc8a] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOWeakSet && bash tools/tier-c.sh --only goldens
+[oo-3kqi] export PATH="/ucrt64/bin:$PATH"; ! test -e upstream/oolite/src/Core/OOWeakReference.mm && tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
+[oo-cc8a] export PATH="/ucrt64/bin:$PATH"; ! test -e upstream/oolite/src/Core/OOWeakSet.mm && tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
 [oo-vl43] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOBasicMaterial test_OOMaterial && bash tools/tier-c.sh --only goldens
 
 # The Foundation census's own selftest (100 cases, ~6 min under MSYS2 awk): over accept.sh's 300 s
@@ -142,7 +142,7 @@
 [oo-tuq8] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOTextureVerifierStage && bash tools/tier-c.sh --only goldens
 [oo-puw9] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_AI && bash tools/tier-c.sh --only goldens
 [oo-2en] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOSound && bash tools/tier-c.sh --only goldens
-[oo-9ht.66] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOWeakReference && bash tools/check-core-tests.sh test_OOCharacter && bash tools/tier-c.sh --only goldens
+[oo-9ht.66] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOCharacter && bash tools/tier-c.sh --only goldens
 [oo-xg7g] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSGuiScreenKeyDefinition && bash tools/tier-c.sh --only goldens
 
 # Slow proofs of the Phase 3 beads re-offered after the Phase 2 gate (oo-9ht.67).
@@ -706,7 +706,7 @@
 [oo-9ht.184] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
 [oo-3pl05] export PATH="/ucrt64/bin:$PATH"; ! grep -q '@implementation' upstream/oolite/src/Core/OOCallByName.mm && bash tools/check-oofnd-objc.sh && tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
 [oo-t7o84] export PATH="/ucrt64/bin:$PATH"; ! grep -q '@implementation' upstream/oolite/src/Core/Scripting/OOObject+OOJavaScript.mm && tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/js-api-contract.sh && bash tools/tier-c.sh --only goldens
-[oo-8sql7] export PATH="/ucrt64/bin:$PATH"; ! grep -q '@implementation OOConstantString' upstream/oolite/src/Core/OODescription.mm && tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
+[oo-8sql7] export PATH="/ucrt64/bin:$PATH"; ! grep -q '@implementation' upstream/oolite/src/Core/OODescription.mm && tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
 [oo-9ht.184.1] export PATH="/ucrt64/bin:$PATH"; grep -qF 'struct ShipEntityTestAccess' upstream/oolite/src/Core/Entities/ShipEntity.h && tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
 [oo-31u.1] export PATH="/ucrt64/bin:$PATH"; ! grep -qE '@autoreleasepool|objc_autoreleasePool' upstream/oolite/src/Core/OOLogging.mm upstream/oolite/src/Core/AI.mm upstream/oolite/src/Core/OOPolygonSprite.mm && tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
 [oo-31u.10] export PATH="/ucrt64/bin:$PATH"; ! grep -qE '@autoreleasepool|objc_autoreleasePool' upstream/oolite/src/Core/OOMesh.mm upstream/oolite/src/Core/OXPVerifier/OOOXPVerifier.mm && tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
@@ -725,3 +725,5 @@
 [oo-xu228.3.1] export PATH="/ucrt64/bin:$PATH"; ! grep -qE 'queueWithComparator\(SEL|pauseFullScreenModeToPerform\(SEL|OOScheduleDeferredCall\(id target, SEL' upstream/oolite/src/Core/OOPriorityQueue.h upstream/oolite/src/Core/GameController.h && tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOPriorityQueue && bash tools/check-core-tests.sh test_GameController
 # oo-6e1.1: NSObjectOOExtensions (the root's debug-only -oo_objectSize/+oo_instanceSize) is deleted with its last senders (ADR-0056 amendment oo-6e1.1).
 [oo-6e1.1] export PATH="/ucrt64/bin:$PATH"; ! test -e upstream/oolite/src/Core/NSObjectOOExtensions.mm && ! git grep -qE 'oo_(objectSize|instanceSize)|NSObjectOOExtensions' -- upstream/oolite/src upstream/oolite/tests && tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens
+# oo-9ht.22: OOWeakReference(+ObjCBridge) and OOWeakSet are deleted; an Objective-C shader binding target is held by the runtime's zeroing weak reference (ADR-0056 amendment oo-9ht.22).
+[oo-9ht.22] export PATH="/ucrt64/bin:$PATH"; ! test -e 'upstream/oolite/src/Core/OOWeakReference+ObjCBridge.mm' && ! test -e upstream/oolite/src/Core/OOWeakSet.mm && tools/build-windows.sh test && bash tools/check-core-tests.sh && bash tools/tier-c.sh --only goldens && bash tools/tier-c.sh --only asan

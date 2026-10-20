@@ -332,8 +332,8 @@ OO_TEST(dyingGroupReleasesLeaderReference)
 {
 	// The group weak-retains its leader (setLeader) as it does each member (addShip); its
 	// destructor must balance both, or every group that dies with a leader leaks one
-	// OOWeakReference (bead oo-9ht.24). Since bead oo-9ht.22.1 the references are oo::WeakRef
-	// members, released with the group; the checks of the objects' OOWeakReference (weakSelf)
+	// weak-reference proxy (bead oo-9ht.24). Since bead oo-9ht.22.1 the references are oo::WeakRef
+	// members, released with the group; the checks of the objects' weak-reference proxy (weakSelf)
 	// retired with it (ADR-0049, standing approval oo-9n5p9).
 	::TestEntityObject *leaderObject = [[::TestEntityObject alloc] init];
 	::TestEntityObject *memberObject = [[::TestEntityObject alloc] init];

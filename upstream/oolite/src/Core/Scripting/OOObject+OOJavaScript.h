@@ -90,11 +90,9 @@ inline bool OOJSObjectAnswersGlue(id object, SEL selector)
 
 /*	One-line bridges for OOJavaScriptEngine.mm's free functions (amendment oo-9ht.139 item 3): each
 	is the one message it is named after, verbatim, to a class that is still Objective-C (the root
-	class, weak references, the entity's object, OOException). Each goes with the conversion of the
+	class, the entity's object, OOException). Each goes with the conversion of the
 	class it messages.
 */
-// -weakRefUnderlyingObject (OOWeakReferenceSupport): the object itself for a non-weakref, nil for nil.
-id OOJavaScriptEngineWeakRefUnderlyingObject(id object);
 // The JS glue of any object: its class's own method, else OOObject's default (above).
 ooscript::Value OOJavaScriptEngineJSValueInContext(id object, ooscript::Context context);
 std::optional<std::string> OOJavaScriptEngineJSClassName(id object);

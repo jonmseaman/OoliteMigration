@@ -111,7 +111,6 @@ __attribute__((objc_runtime_name("Entity")))
 	oo::Ref<Entity> _cxxEntity;	// the planet's C++ part (oo::ToCxx reads it)
 	Quaternion _orientation;
 }
-- (id) weakRefUnderlyingObject;
 @end
 
 // The universe, as far as the binding asks it anything: its main planet (the C++ planet since bead
@@ -158,8 +157,6 @@ public:
 
 
 @implementation TestEntityObject
-
-- (id) weakRefUnderlyingObject  { return self; }
 
 @end
 

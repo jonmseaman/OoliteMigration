@@ -22,7 +22,6 @@
 */
 
 #import "OOShipGroup.h"
-#import "OOWeakReference.h"
 #include <objc/runtime.h>
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
@@ -69,7 +68,7 @@ public:
 };
 
 __attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOWeakRefObject
+@interface TestEntityObject: OOObject
 {
 @public
 	oo::Ref<Entity> _cxxEntity;

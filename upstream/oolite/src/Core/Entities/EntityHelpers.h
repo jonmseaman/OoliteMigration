@@ -68,7 +68,7 @@ std::string EntityDescription(Entity *entity);
 std::string EntityOwnDescription(Entity *entity);
 
 /*	What the root's debug size method answered for an entity's object, which the live-entity
-	memory count and the debug monitor's dump add up: the root facade's instance size (isa, OOWeakRefObject's weakSelf and
+	memory count and the debug monitor's dump add up: the root facade's instance size (isa, the weak-reference root's weakSelf and
 	its reference to the C++ entity; every entity's object was of the root facade's class). Kept as that
 	size, so the debug output is unchanged (bead oo-dpyk8; oo-6e1.1 may make it the C++ entity's).
 */

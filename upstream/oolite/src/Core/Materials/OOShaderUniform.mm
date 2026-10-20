@@ -30,6 +30,9 @@ SOFTWARE.
 #include "Entity.h"	// the shader binding targets' informal protocols (-superShaderBindingTarget)
 #include "oofnd/objc/OORuntime.h"
 
+#include "oofnd/objc/OOObjCRef.h"
+#include <objc/objc-arc.h>	// objc_storeWeak & co.: the binding target's weak reference (bead oo-9ht.22)
+
 #if OO_SHADERS
 
 #include "OOShaderProgram.h"
@@ -46,7 +49,7 @@ SOFTWARE.
 */
 @interface OOObject (ShaderBindingHierarchy)
 
-- (id<OOWeakReferenceSupport>) superShaderBindingTarget;
+- (id) superShaderBindingTarget;
 
 @end
 
@@ -155,7 +158,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &unifor
 
 oo::Ref<OOShaderUniform> OOShaderUniform::initWithName(const std::string &uniformName,
 													   OOShaderProgram *shaderProgram,
-													   id<OOWeakReferenceSupport> target,
+													   id target,
 													   SEL selector,
 													   OOUniformConvertOptions options)
 {
@@ -275,7 +278,7 @@ oo::Ref<OOShaderUniform> OOShaderUniform::initWithEntityTarget(const std::string
 
 OOShaderUniform::~OOShaderUniform()
 {
-	if (isBinding)  [value.binding.object release];
+	if (isBinding)  objc_destroyWeak(&value.binding.object);	// was the release of its weak-reference proxy (bead oo-9ht.22)
 }
 
 
@@ -302,10 +305,13 @@ std::optional<std::string> OOShaderUniform::description()
 	}
 	else if (isBinding)
 	{
-		object = [value.binding.object weakRefUnderlyingObject];
+		// The target, read from its weak reference (bead oo-9ht.22); the address printed is the
+		// target's, where it was its weak-reference proxy's.
+		object = objc_loadWeakRetained(&value.binding.object);
 		if (object != nil)
 		{
-			valueDesc = oo::str::format("[<%s %s> %s]", oo::DescriptionOf([object class]).c_str(), oo::str::pointerDescription(value.binding.object).c_str(), OOSelectorName(value.binding.selector));
+			valueDesc = oo::str::format("[<%s %s> %s]", oo::DescriptionOf([object class]).c_str(), oo::str::pointerDescription(object).c_str(), OOSelectorName(value.binding.selector));
+			objc_release(object);
 		}
 		else
 		{
@@ -402,11 +408,11 @@ void OOShaderUniform::apply()
 }
 
 
-void OOShaderUniform::setBindingTarget(id<OOWeakReferenceSupport> target)
+void OOShaderUniform::setBindingTarget(id target)
 {
 	BOOL					OK = YES;
 	std::string				methodProblem;
-	id<OOWeakReferenceSupport> superCandidate = nil;
+	id						superCandidate = nil;
 	OOShaderMemberBinding	memberBinding = {};
 	OOShaderUniformType		boundType = kOOShaderUniformTypeInvalid;
 
@@ -427,8 +433,7 @@ void OOShaderUniform::setBindingTarget(id<OOWeakReferenceSupport> target)
 		}
 	}
 
-	[value.binding.object release];
-	value.binding.object = [target weakRetain];
+	objc_storeWeak(&value.binding.object, target);	// was the target's weak-reference proxy (bead oo-9ht.22)
 
 	if (target == nil)
 	{
@@ -490,8 +495,7 @@ void OOShaderUniform::setEntityBindingTarget(Entity *target)
 	OOShaderMemberBinding memberBinding = {};
 	if (target != nullptr && hooks != nullptr && hooks->memberBinding(target, OOSelectorName(value.binding.selector), &memberBinding))
 	{
-		[value.binding.object release];
-		value.binding.object = nil;
+		objc_storeWeak(&value.binding.object, nil);
 		value.binding.method = NULL;
 		value.binding.cxxGet = memberBinding.get;
 		cxxTarget = memberBinding.target;
@@ -586,9 +590,12 @@ void OOShaderUniform::applyBinding()
 	// into the field its type uses.
 	OOShaderBindingValue		member = {};
 	const bool					isMember = value.binding.cxxGet != NULL;
+	// The Objective-C target, held for this apply (its weak reference read retained; bead oo-9ht.22).
+	oo::ObjCRef<id> heldTarget;
 	if (!cxxTargetOnly && !entityMember)
 	{
-		object = [value.binding.object weakRefUnderlyingObject];
+		heldTarget = oo::adoptObjC(objc_loadWeakRetained(&value.binding.object));
+		object = heldTarget.get();
 		if (object == nil)  return;
 	}
 	if (isMember)
