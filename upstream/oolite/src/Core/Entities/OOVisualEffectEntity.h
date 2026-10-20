@@ -31,7 +31,6 @@
 #include "OOPlanetEntity.h"
 #include "OOJSPropID.h"
 #include "HeadUpDisplay.h"
-#include "OOWeakReference.h"
 #include "OOColor.h"
 #include "OOPolygonSprite.h"	// OOHUDBeaconIcon (bead oo-7ae4p): the beacon drawable is oo::Ref
 

@@ -45,7 +45,7 @@ SOFTWARE.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 
-#include "OOWeakReference.h"	// the Objective-C binding target's weak reference (an entity's object; oo-9ht.39.28)
+#include "OOCocoa.h"	// id: the Objective-C binding target, held by the runtime's zeroing weak reference (bead oo-9ht.22)
 
 
 struct OOShaderBindingValue;	// OOShaderUniformMethodType.h (bead oo-9ht.158)
@@ -81,7 +81,7 @@ public:
 	*/
 	static oo::Ref<OOShaderUniform> initWithName(const std::string &uniformName,
 												 OOShaderProgram *shaderProgram,
-												 id<OOWeakReferenceSupport> target,	// boundToObject:
+												 id target,	// boundToObject:
 												 SEL selector,	// property:
 												 OOUniformConvertOptions options);	// convertOptions:
 
@@ -115,7 +115,7 @@ public:
 
 	void apply();
 
-	void setBindingTarget(id<OOWeakReferenceSupport> target);
+	void setBindingTarget(id target);
 	void setEntityBindingTarget(Entity *target);	// bead oo-9ht.39.6: as initWithEntityTarget() binds
 
 private:
@@ -150,7 +150,7 @@ private:
 		OOMatrix					constMatrix;
 		struct
 		{
-			::OOWeakReference			*object;
+			id							object;	// a zeroing weak reference (objc_storeWeak), as the deleted weak-reference proxy held it (bead oo-9ht.22)
 			SEL							selector;
 			IMP							method;
 			// A C++ target's getter (bead oo-t0e2m), or a member of the Objective-C target found in

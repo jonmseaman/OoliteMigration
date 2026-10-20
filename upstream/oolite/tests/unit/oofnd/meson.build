@@ -97,7 +97,7 @@ oofnd_objc_tests = [
     'test_objc_assert',
     'test_objc_ref',
     'test_objc_call_by_name',
-    'test_objc_description',
+    # test_objc_description retired with OODescription.mm's OOObject (OODescription) (bead oo-8sql7, ADR-0049; Jon approved 2026-10-19)
     'test_objc_plist',
     'test_objc_peer',
 ]

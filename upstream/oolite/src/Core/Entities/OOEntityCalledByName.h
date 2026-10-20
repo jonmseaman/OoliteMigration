@@ -105,7 +105,7 @@ struct OOEntityFacadeRow
 
 /*	Every name a C++ entity's Objective-C object (the root's facade) answered outside the by-name
 	table (bead oo-9ht.39.9, ADR-0056 amendment oo-9ht.39.9): its own methods, its categories' and
-	its root classes' (OOWeakRefObject, OOObject and their categories), measured on the facade by the
+	its root classes' (the weak-reference root, OOObject and their categories), measured on the facade by the
 	selector path OOCallByName took (OOEntityObjectNamesTable.h). oo::EntityRespondsToName answers
 	each for the entities the object answered it for, and oo::CallEntityByName no longer asks the
 	object: a facade row's method with no argument that OOCallByName could call is the row's body;

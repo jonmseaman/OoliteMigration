@@ -72,7 +72,7 @@ inline const OOJSCallEntityMethodRow kOOJSCallEntityMethods[] =
 	{ "throwSparks",	OOJSCallEntityMethodForm::VoidVoid,	nullptr },
 	{ "owner",	OOJSCallEntityMethodForm::Typed,	@encode(id) },
 	{ "parentEntity",	OOJSCallEntityMethodForm::Typed,	@encode(id) },
-	{ "superShaderBindingTarget",	OOJSCallEntityMethodForm::Typed,	@encode(id<OOWeakReferenceSupport>) },
+	{ "superShaderBindingTarget",	OOJSCallEntityMethodForm::Typed,	@encode(id) },
 	{ "rootShipEntity",	OOJSCallEntityMethodForm::Typed,	@encode(id) },
 	{ "position",	OOJSCallEntityMethodForm::Typed,	@encode(HPVector) },
 	{ "cameraRelativePosition",	OOJSCallEntityMethodForm::Typed,	@encode(Vector) },

@@ -158,7 +158,7 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 
 
 /*	An entity, as far as the conversion sees one: a JS object of the Entity class whose private
-	slot answers -weakRefUnderlyingObject with something that has an -orientation. A fake entity
+	slot holds something that has an -orientation. A fake entity
 	made with orientation w = -1 raises from -orientation, one made with w = -2 throws a C++
 	exception, so the test sees what an exception under a native becomes.
 */
@@ -170,11 +170,6 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 @end
 
 @implementation FakeEntity
-
-- (id) weakRefUnderlyingObject
-{
-	return self;
-}
 
 
 - (Quaternion) orientation
@@ -190,7 +185,7 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 // The fake entity's orientation, as the conversion asked its object (nil: zero) until bead oo-9ht.39.8.12.
 Quaternion OOJSEntityOrientationOfJSObject(ooscript::Context context, ooscript::Object object)
 {
-	FakeEntity *entity = [(id)ooscript::getPrivate(context, object) weakRefUnderlyingObject];
+	FakeEntity *entity = (FakeEntity *)ooscript::getPrivate(context, object);	// the slot's object itself (bead oo-9ht.22)
 	return [entity orientation];
 }
 

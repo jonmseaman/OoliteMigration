@@ -112,7 +112,6 @@ __attribute__((objc_runtime_name("Entity")))
 	int _dumps;
 	int _positionSets;
 }
-- (id) weakRefUnderlyingObject;
 - (float) collisionRadius;
 - (HPVector) position;
 - (void) setPosition:(HPVector)posn;
@@ -184,7 +183,6 @@ bool EntityFromArgumentList(ooscript::Context context, const std::optional<std::
 
 @implementation TestEntityObject
 
-- (id) weakRefUnderlyingObject  { return self; }
 - (float) collisionRadius  { return _collisionRadius; }
 - (HPVector) position  { return _position; }
 - (void) setPosition:(HPVector)posn  { _position = posn; _positionSets++; }
