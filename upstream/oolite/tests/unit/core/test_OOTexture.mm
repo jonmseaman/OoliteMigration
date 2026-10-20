@@ -478,4 +478,43 @@ OO_TEST(cxxTextureBehindTheFacade)
 }
 
 
+/*	Bead oo-31u.9: clearCache() hands the old recent-texture cache to oo::autorelease, as upstream's
+	[sRecentTextures autorelease] handed it to the enclosing pool. In the game that is the frame
+	loop's or the start-up's oo::AutoreleaseScope (oo-31u.8). The cache, and the textures only it
+	keeps, are released at the drain of the NEAREST open scope: not at the call, not at an outer
+	scope's drain, and nothing is counted as autoreleased without a scope.
+*/
+OO_TEST(clearCacheReleasesAtTheNearestScopesDrain)
+{
+	ClearCache();
+	const int deallocs = gTestDeallocs;
+	const std::size_t leaked = oo::AutoreleaseScope::leakedWithoutScope();
+	{
+		oo::AutoreleaseScope outer;	// stands for the frame loop's scope
+		{
+			oo::AutoreleaseScope made;
+			MakeTexture(std::string("test:drain"));
+		}
+		OO_CHECK(gTestDeallocs == deallocs);	// only the recent textures keep it
+		const std::size_t outerPending = outer.pendingCount();
+		{
+			oo::AutoreleaseScope nearest;
+			OOTexture::clearCache();
+			OO_CHECK(nearest.pendingCount() == 1);	// the old cache, waiting for the drain
+			OO_CHECK(outer.pendingCount() == outerPending);
+			OO_CHECK(gTestDeallocs == deallocs);	// no earlier than the drain
+			OO_CHECK(OOTexture::existingTextureForKey(std::string("test:drain")) == nil);	// forgotten at once
+
+			// With no recent textures left, a second clear hands nothing over.
+			OOTexture::clearCache();
+			OO_CHECK(nearest.pendingCount() == 1);
+		}
+		OO_CHECK(gTestDeallocs == deallocs + 1);	// released at the nearest scope's drain
+		OO_CHECK(outer.pendingCount() == outerPending);
+	}
+	OO_CHECK(gTestDeallocs == deallocs + 1);
+	OO_CHECK(oo::AutoreleaseScope::leakedWithoutScope() == leaked);
+}
+
+
 OO_TEST_MAIN()

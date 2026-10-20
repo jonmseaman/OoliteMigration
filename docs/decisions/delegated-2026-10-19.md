@@ -37,3 +37,7 @@ bead, as usual.
 - Human-assigned decisions (proposed ADRs, `human` beads) may be taken by the orchestrator on their
   recorded default (CLAUDE.md rule 10), each recorded here with Jon's quote. Goldens (rule 1) and
   re-blessing remain Jon's alone.
+- oo-31u.9 (batch BF): the two scope-less `oo::autorelease` calls (OOTexture::clearCache, the uncached sound)
+  keep upstream's semantics: released at the drain of the nearest enclosing `oo::AutoreleaseScope`, which
+  oo-31u.8 already opened where upstream's pools were; no new owner, no new scope (ADR-0056 amendment
+  oo-31u.9). Jon: "I approve you working through human decisions whenever it makes sense to unblock you."

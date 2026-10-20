@@ -368,6 +368,9 @@ void OOTexture::clearCache()
 	if (sLiveTextureCache != NULL)  sLiveTextureCache->clear();
 
 	SET_TRACE_CONTEXT("clearing sRecentTextures");
+	// [sRecentTextures autorelease]: released at the drain of the nearest oo::AutoreleaseScope, as
+	// upstream's pool did; the only caller, Universe::reinitAndShowDemo(), runs in the frame loop's
+	// or the start-up's scope (ADR-0056 amendment oo-31u.9).
 	oo::autorelease(sRecentTextures);
 	sRecentTextures = nullptr;
 	CLEAR_TRACE_CONTEXT();
