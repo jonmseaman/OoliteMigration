@@ -26,3 +26,14 @@ bead, as usual.
   the change (a change that edits a listed test may not also edit that file). The bead lists the
   paths and cases.
 - Delegation: Jon, 2026-10-19: "Please help me approve whatever is needed".
+
+## 2026-10-20: ADR-0062 accepted; human decisions delegated to the orchestrator
+
+- Jon, in chat 2026-10-20: "I approve ADR-0062. Also, you are an autonomous worker. I approve you
+  working through human decisions whenever it makes sense to unblock you."
+- ADR-0062 is Accepted. Its three rules are covered for Phase 4 beads the same way as
+  std-2026-10-19: each use gets a path line in `tools/retire-test-approvals.txt`, reason starting
+  `ADR-0062:`, landed on `main` in its own commit before the change.
+- Human-assigned decisions (proposed ADRs, `human` beads) may be taken by the orchestrator on their
+  recorded default (CLAUDE.md rule 10), each recorded here with Jon's quote. Goldens (rule 1) and
+  re-blessing remain Jon's alone.

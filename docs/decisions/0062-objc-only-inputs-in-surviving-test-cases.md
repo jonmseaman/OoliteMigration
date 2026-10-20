@@ -1,7 +1,6 @@
 # ADR-0062: Objective-C-only inputs inside test cases whose subject survives
 
-- Status: Proposed (default in effect for planning only; the test changes it describes wait for Jon,
-  because [delegated-2026-10-19](delegated-2026-10-19.md) keeps them his)
+- Status: Accepted (Jon, in chat 2026-10-20: "I approve ADR-0062")
 - Date: 2026-10-20
 - Beads: oo-4aq6a (retire OOObject and OOConstantString), its slices oo-4aq6a.3 (OOPriorityQueue),
   oo-4aq6a.5 (Objective-C objects in plist data and by-name calls), oo-4aq6a.7 (shader binding
