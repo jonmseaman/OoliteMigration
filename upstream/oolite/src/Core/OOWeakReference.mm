@@ -9,7 +9,6 @@ This code is hereby placed in the public domain.
 
 #include "OOWeakReference.h"
 #include "OOCocoa.h"	// OOObject's -description components
-#include "NSObjectOOExtensions.h"
 #include "OOJavaScriptEngine.h"	// OOObject (OOJavaScript)
 
 #include "oofnd/String.hpp"
@@ -163,12 +162,6 @@ std::optional<std::string> OOWeakReference::shortDescriptionComponents()
 id OOWeakReference::className()
 {
 	return oo::SendClassName(_object);	// the message send is the bridge's (bead oo-9ht.66)
-}
-
-
-size_t OOWeakReference::oo_objectSize()
-{
-	return [(id)_object oo_objectSize];
 }
 
 

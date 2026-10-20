@@ -61,7 +61,6 @@ public:
 	std::optional<std::string> shortDescription();
 	std::optional<std::string> shortDescriptionComponents();
 	id className();
-	size_t oo_objectSize();
 	ooscript::Value oo_jsValueInContext(ooscript::Context context);
 	std::optional<std::string> oo_jsDescription();
 	std::optional<std::string> oo_jsDescriptionWithClassName(const std::optional<std::string> &className);
