@@ -24,7 +24,6 @@
 */
 
 #import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
 #include <objc/runtime.h>
 #include "OOMaths.h"
 #include "ooscript/JSEngine.hpp"
@@ -68,14 +67,18 @@ public:
 #include "OOJSEntityHolder.h"
 
 
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject
+// C++ since bead oo-4aq6a.11 (it was rooted on the Objective-C root class OOObject, which Phase 4
+// deletes); its category's selectors are members of the same names.
+class TestEntityObject final : public oo::RefCounted
 {
-@public
+public:
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+	std::optional<std::string> cxx_oo_jsClassName();
+	bool isVisibleToScripts();
+
 	oo::Ref<Entity> _cxxEntity;	// the plume's C++ part (oo::ToCxx reads it)
-	id _owner;
-}
-@end
+	::TestEntityObject *_owner = nullptr;
+};
 
 // A ship: C++ since bead oo-9ht.144 deleted the Objective-C ship this stood in for, the C++ part of
 // its object, with the one member the binding calls (declared as ShipEntity.h declares it).
@@ -86,13 +89,6 @@ public:
 
 	OOExhaustPlumeEntity *_removed = nullptr;
 };
-
-@interface TestEntityObject (OOJavaScriptExtensions)
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-- (BOOL) isVisibleToScripts;
-@end
-
 
 extern "C" void InitOOJSExhaustPlume(ooscript::Context context, ooscript::Object global);
 // The category's bodies, which the stand-in's overrides call as the C++ class's do (declared in OOJSExhaustPlume.h).
@@ -109,23 +105,14 @@ bool OOJSExhaustPlumeIsVisibleToScripts(void);
 #include <string>
 
 
-@implementation TestEntityObject
-
-@end
-
-
 void ShipEntity::removeExhaust(OOExhaustPlumeEntity *exhaust)  { _removed = exhaust; }
 
 
 // The root's JS category, as the game's asks the C++ part (EntityOOJavaScriptExtensions+ObjCBridge.mm,
 // bead oo-9ht.107): the engine sends these selectors to the wrapped object.
-@implementation TestEntityObject (OOJavaScriptExtensions)
-
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { _cxxEntity->getJSClass(outClass, outPrototype); }
-- (std::optional<std::string>) cxx_oo_jsClassName  { return _cxxEntity->jsClassName(); }
-- (BOOL) isVisibleToScripts  { return _cxxEntity->isVisibleToScripts(); }
-
-@end
+void TestEntityObject::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { _cxxEntity->getJSClass(outClass, outPrototype); }
+std::optional<std::string> TestEntityObject::cxx_oo_jsClassName()  { return _cxxEntity->jsClassName(); }
+bool TestEntityObject::isVisibleToScripts()  { return _cxxEntity->isVisibleToScripts(); }
 
 
 Entity::~Entity()  {}
@@ -321,18 +308,18 @@ std::optional<std::string> OOJSEntityHolder::jsDescription()  { return std::null
 namespace {
 std::map<Entity *, TestEntityObject *> sObjects;
 }
-namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }
-::TestEntityObject *oo::ToObjC(Entity *entity)
+::TestEntityObject *TestObjectOf(Entity *entity);	// oo::ToObjC until bead oo-4aq6a.11
+::TestEntityObject *TestObjectOf(Entity *entity)
 {
 	auto found = sObjects.find(entity);
-	return found != sObjects.end() ? found->second : nil;
+	return found != sObjects.end() ? found->second : nullptr;
 }
 
 // The owner its object's -owner answered until bead oo-9ht.39.8.19, on the same object field.
 Entity *Entity::owner()
 {
-	::TestEntityObject *object = (::TestEntityObject *)oo::ToObjC(this)->_owner;
-	return object != nil ? object->_cxxEntity.get() : nullptr;	// its C++ part (bead oo-dpyk8)
+	::TestEntityObject *object = TestObjectOf(this)->_owner;
+	return object != nullptr ? object->_cxxEntity.get() : nullptr;	// its C++ part (bead oo-dpyk8)
 }
 
 
@@ -343,9 +330,9 @@ namespace {
 ooscript::Runtime sRuntime;
 ooscript::Context sContext;
 ooscript::Object sGlobal;
-TestEntityObject *sPlume = nil;						// the plume's object
+TestEntityObject *sPlume = nullptr;						// the plume's object
 OOExhaustPlumeEntity *sPlumePart = nullptr;	// its C++ part
-TestEntityObject *sShip = nil;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
+TestEntityObject *sShip = nullptr;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
 ShipEntity *sShipPart = nullptr;
 
 
@@ -365,7 +352,7 @@ ooscript::Value JSValueForEntity(TestEntityObject *entity)
 {
 	ooscript::ClassDef *jsClass = nullptr;
 	ooscript::Object prototype = nullptr;
-	[entity getJSClass:&jsClass andPrototype:&prototype];
+	entity->getJSClass(&jsClass, &prototype);
 	return JSValueForObject(jsClass, prototype, entity);
 }
 
@@ -387,10 +374,10 @@ void SetUpContext()
 	gOOEntityJSPrototype = ooscript::initClass(sContext, sGlobal, nullptr, &sFakeEntityClass, OOJSUnconstructableConstruct, 0, nullptr, nullptr, nullptr, nullptr);
 	InitOOJSExhaustPlume(sContext, sGlobal);
 
-	sShip = [[TestEntityObject alloc] init];	// kept for the life of the test
+	sShip = oo::makeRef<TestEntityObject>().leakRef();	// kept for the life of the test
 	sShip->_cxxEntity = oo::makeRef<ShipEntity>();
 	sShipPart = static_cast<ShipEntity *>(sShip->_cxxEntity.get());
-	sPlume = [[TestEntityObject alloc] init];
+	sPlume = oo::makeRef<TestEntityObject>().leakRef();
 	const oo::Ref<OOExhaustPlumeEntity> part = oo::makeRef<OOExhaustPlumeEntity>();
 	sPlume->_cxxEntity = part;
 	sPlumePart = part.get();
@@ -435,13 +422,13 @@ OO_TEST(registration)
 	SetUpContext();
 	ooscript::ClassDef *plumeClass = nullptr;
 	ooscript::Object prototype = nullptr;
-	[sPlume getJSClass:&plumeClass andPrototype:&prototype];
+	sPlume->getJSClass(&plumeClass, &prototype);
 	OO_CHECK(plumeClass != nullptr && std::strcmp(plumeClass->name, "ExhaustPlume") == 0);
 	OO_CHECK(prototype != nullptr);
 	OO_CHECK(OOJSIsSubclass(plumeClass, &sFakeEntityClass));
 	OO_CHECK_EQ(sConverters[plumeClass], 1);
-	OO_CHECK([sPlume cxx_oo_jsClassName] == std::optional<std::string>("ExhaustPlume"));
-	OO_CHECK([sPlume isVisibleToScripts]);
+	OO_CHECK(sPlume->cxx_oo_jsClassName() == std::optional<std::string>("ExhaustPlume"));
+	OO_CHECK(sPlume->isVisibleToScripts());
 	OO_CHECK_EVAL("typeof ExhaustPlume", "function");
 	OO_CHECK_EVAL("new ExhaustPlume()", "threw: unconstructable");
 	OO_CHECK_EVAL("Object.getPrototypeOf(ExhaustPlume.prototype) === Entity.prototype", "true");

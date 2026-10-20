@@ -24,7 +24,6 @@
 */
 
 #import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
 #include <objc/runtime.h>
 #import "OOColor.h"
 #include "ooscript/JSEngine.hpp"
@@ -92,17 +91,22 @@ public:
 #include "OOJSEntityHolder.h"
 
 
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject
+// C++ since bead oo-4aq6a.11 (it was rooted on the Objective-C root class OOObject, which Phase 4
+// deletes); its selectors and its category's are members of the same names.
+class TestEntityObject final : public oo::RefCounted
 {
-@public
+public:
+	bool isShip();
+	void getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+	std::optional<std::string> cxx_oo_jsClassName();
+	bool isVisibleToScripts();
+	const char *className() const  { return "Entity"; }	// its Objective-C class's runtime name
+
 	oo::Ref<Entity> _cxxEntity;	// the flasher's C++ part (oo::ToCxx reads it)
-	id _owner;
-	id _removed;
-	BOOL _isShip;
-}
-- (BOOL) isShip;
-@end
+	::TestEntityObject *_owner = nullptr;
+	::TestEntityObject *_removed = nullptr;
+	BOOL _isShip = NO;
+};
 
 // A ship: C++ since bead oo-9ht.144 deleted the Objective-C ship this stood in for, the C++ part of
 // its object, with the one member the binding calls (declared as ShipEntity.h declares it).
@@ -117,9 +121,7 @@ public:
 // A visual effect: C++ since bead oo-9ht.165 deleted the Objective-C effect this stood in for, the
 // C++ part of its object, with the one member the binding calls (declared as OOVisualEffectEntity.h
 // declares it).
-@protocol OOSubEntity
-@end
-typedef TestEntityObject<OOSubEntity> OOVisualEffectSubEntity;	// as OOVisualEffectEntity.h names it
+typedef TestEntityObject OOVisualEffectSubEntity;	// as OOVisualEffectEntity.h names it (an object conforming to OOSubEntity until bead oo-4aq6a.11)
 
 class OOVisualEffectEntity : public Entity
 {
@@ -127,14 +129,8 @@ public:
 	void removeSubEntity(OOVisualEffectSubEntity *sub);
 	void removeSubEntity(Entity *sub);	// the binding's since bead oo-9ht.39.8.20
 
-	id _removed = nil;
+	::TestEntityObject *_removed = nullptr;
 };
-
-@interface TestEntityObject (OOJavaScriptExtensions)
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (std::optional<std::string>) cxx_oo_jsClassName;
-- (BOOL) isVisibleToScripts;
-@end
 
 extern "C" void InitOOJSFlasher(ooscript::Context context, ooscript::Object global);
 // The category's bodies, which the stand-in's overrides call as the C++ class's do (declared in OOJSFlasher.h).
@@ -154,31 +150,24 @@ bool OOJSFlasherIsVisibleToScripts(void);
 #include <vector>
 
 
-@implementation TestEntityObject
-
-- (BOOL) isShip  { return _isShip; }
-
-@end
+bool TestEntityObject::isShip()  { return _isShip; }
 
 
 void ShipEntity::removeFlasher(OOFlasherEntity *flasher)  { _removedFlasher = flasher; }
 
 
 void OOVisualEffectEntity::removeSubEntity(OOVisualEffectSubEntity *sub)  { _removed = sub; }
-namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }	// defined below
-#import "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
-void OOVisualEffectEntity::removeSubEntity(Entity *sub)  { _removed = oo::ToObjC(sub); }	// its object, as the binding passed it until bead oo-9ht.39.8.20
+::TestEntityObject *TestObjectOf(Entity *entity);	// defined below (oo::ToObjC until bead oo-4aq6a.11)
+#define OO_ENTITY_HELPERS_STAND_IN_CXX
+#include "EntityHelpersStandIn.h"	// EntityHelpers.mm's, on the test's objects (bead oo-dpyk8)
+void OOVisualEffectEntity::removeSubEntity(Entity *sub)  { _removed = TestObjectOf(sub); }	// its object, as the binding passed it until bead oo-9ht.39.8.20
 
 
 // The root's JS category, as the game's asks the C++ part (EntityOOJavaScriptExtensions+ObjCBridge.mm,
 // bead oo-9ht.107): the engine sends these selectors to the wrapped object.
-@implementation TestEntityObject (OOJavaScriptExtensions)
-
-- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype  { _cxxEntity->getJSClass(outClass, outPrototype); }
-- (std::optional<std::string>) cxx_oo_jsClassName  { return _cxxEntity->jsClassName(); }
-- (BOOL) isVisibleToScripts  { return _cxxEntity->isVisibleToScripts(); }
-
-@end
+void TestEntityObject::getJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype)  { _cxxEntity->getJSClass(outClass, outPrototype); }
+std::optional<std::string> TestEntityObject::cxx_oo_jsClassName()  { return _cxxEntity->jsClassName(); }
+bool TestEntityObject::isVisibleToScripts()  { return _cxxEntity->isVisibleToScripts(); }
 
 
 Entity::~Entity()  {}
@@ -404,20 +393,19 @@ std::optional<std::string> OOJSEntityHolder::jsDescription()  { return std::null
 namespace {
 std::map<Entity *, TestEntityObject *> sObjects;
 }
-namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }
-::TestEntityObject *oo::ToObjC(Entity *entity)
+::TestEntityObject *TestObjectOf(Entity *entity)
 {
 	auto found = sObjects.find(entity);
-	return found != sObjects.end() ? found->second : nil;
+	return found != sObjects.end() ? found->second : nullptr;
 }
 
 // The owner its object's -owner answered until bead oo-9ht.39.8.20, on the same object field.
 Entity *Entity::owner()
 {
-	::TestEntityObject *object = (::TestEntityObject *)oo::ToObjC(this)->_owner;
-	return object != nil ? object->_cxxEntity.get() : nullptr;	// its C++ part (bead oo-dpyk8)
+	::TestEntityObject *object = TestObjectOf(this)->_owner;
+	return object != nullptr ? object->_cxxEntity.get() : nullptr;	// its C++ part (bead oo-dpyk8)
 }
-bool Entity::getIsShip()  { return [oo::ToObjC(this) isShip]; }
+bool Entity::getIsShip()  { ::TestEntityObject *object = TestObjectOf(this); return object != nullptr && object->isShip(); }	// (a message to nil answered NO)
 
 
 // MARK: The context -------------------------------------------------------------------------------
@@ -427,11 +415,11 @@ namespace {
 ooscript::Runtime sRuntime;
 ooscript::Context sContext;
 ooscript::Object sGlobal;
-TestEntityObject *sFlasher = nil;					// the flasher's object
+TestEntityObject *sFlasher = nullptr;					// the flasher's object
 OOFlasherEntity *sFlasherPart = nullptr;	// its C++ part
-TestEntityObject *sShip = nil;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
+TestEntityObject *sShip = nullptr;	// a ship's object and its C++ part (the Objective-C ship until bead oo-9ht.144)
 ShipEntity *sShipPart = nullptr;
-TestEntityObject *sEffect = nil;	// an effect's object and its C++ part (the Objective-C effect until bead oo-9ht.165)
+TestEntityObject *sEffect = nullptr;	// an effect's object and its C++ part (the Objective-C effect until bead oo-9ht.165)
 OOVisualEffectEntity *sEffectPart = nullptr;
 
 
@@ -451,7 +439,7 @@ ooscript::Value JSValueForEntity(TestEntityObject *entity)
 {
 	ooscript::ClassDef *jsClass = nullptr;
 	ooscript::Object prototype = nullptr;
-	[entity getJSClass:&jsClass andPrototype:&prototype];
+	entity->getJSClass(&jsClass, &prototype);
 	return JSValueForObject(jsClass, prototype, entity);
 }
 
@@ -473,14 +461,14 @@ void SetUpContext()
 	gOOEntityJSPrototype = ooscript::initClass(sContext, sGlobal, nullptr, &sFakeEntityClass, OOJSUnconstructableConstruct, 0, nullptr, nullptr, nullptr, nullptr);
 	InitOOJSFlasher(sContext, sGlobal);
 
-	sShip = [[TestEntityObject alloc] init];	// kept for the life of the test
+	sShip = oo::makeRef<TestEntityObject>().leakRef();	// kept for the life of the test
 	sShip->_cxxEntity = oo::makeRef<ShipEntity>();
 	sShipPart = static_cast<ShipEntity *>(sShip->_cxxEntity.get());
 	sShip->_isShip = YES;
-	sEffect = [[TestEntityObject alloc] init];
+	sEffect = oo::makeRef<TestEntityObject>().leakRef();
 	sEffect->_cxxEntity = oo::makeRef<OOVisualEffectEntity>();
 	sEffectPart = static_cast<OOVisualEffectEntity *>(sEffect->_cxxEntity.get());
-	sFlasher = [[TestEntityObject alloc] init];
+	sFlasher = oo::makeRef<TestEntityObject>().leakRef();
 	const oo::Ref<OOFlasherEntity> part = oo::makeRef<OOFlasherEntity>();
 	sFlasher->_cxxEntity = part;
 	sFlasherPart = part.get();
@@ -530,13 +518,13 @@ OO_TEST(registration)
 	SetUpContext();
 	ooscript::ClassDef *flasherClass = nullptr;
 	ooscript::Object prototype = nullptr;
-	[sFlasher getJSClass:&flasherClass andPrototype:&prototype];
+	sFlasher->getJSClass(&flasherClass, &prototype);
 	OO_CHECK(flasherClass != nullptr && std::strcmp(flasherClass->name, "Flasher") == 0);
 	OO_CHECK(prototype != nullptr);
 	OO_CHECK(OOJSIsSubclass(flasherClass, &sFakeEntityClass));
 	OO_CHECK_EQ(sConverters[flasherClass], 1);
-	OO_CHECK([sFlasher cxx_oo_jsClassName] == std::optional<std::string>("Flasher"));
-	OO_CHECK([sFlasher isVisibleToScripts]);
+	OO_CHECK(sFlasher->cxx_oo_jsClassName() == std::optional<std::string>("Flasher"));
+	OO_CHECK(sFlasher->isVisibleToScripts());
 	OO_CHECK_EVAL("typeof Flasher", "function");
 	OO_CHECK_EVAL("new Flasher()", "threw: unconstructable");
 	OO_CHECK_EVAL("Object.getPrototypeOf(Flasher.prototype) === Entity.prototype", "true");

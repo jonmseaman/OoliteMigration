@@ -421,32 +421,34 @@ Universe *gSharedUniverse = nil;
 
 
 // An entity, as the console's inspectEntity() sees it: one answers -inspect (the Mac debug OXP's
-// inspector), one does not.
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject
-@end
+// inspector), one does not. C++ since bead oo-4aq6a.11 (rooted on the Objective-C root class
+// OOObject, which Phase 4 deletes, until then): answersInspect() is what -respondsToSelector: of
+// -inspect answered.
+class TestEntityObject : public oo::RefCounted
+{
+public:
+	virtual bool answersInspect()  { return false; }
+	virtual void inspect()  {}
+};
 
-@implementation TestEntityObject
-@end
-
-@interface InspectableEntity: TestEntityObject
-@end
-
-@implementation InspectableEntity
-- (void) inspect  { sInspections++; }
-@end
+class InspectableEntity final : public TestEntityObject
+{
+public:
+	bool answersInspect() override  { return true; }
+	void inspect() override  { sInspections++; }
+};
 
 
 namespace {
 
-TestEntityObject *sPlainEntity = nil;
-TestEntityObject *sInspectableEntity = nil;
+TestEntityObject *sPlainEntity = nullptr;
+TestEntityObject *sInspectableEntity = nullptr;
 
 }	// namespace
 
 
 // Each entity's C++ part (bead oo-9ht.39.3: an entity's JS object holds it, JSValueToEntity() answers
-// it and oo::ToObjC its object, which the console asks to -inspect). Kept for the life of the test.
+// it and TestObjectOf its object, which the console asks to -inspect). Kept for the life of the test.
 class Entity : public oo::RefCounted
 {
 };
@@ -476,13 +478,12 @@ BOOL JSValueToEntity(ooscript::Context, ooscript::Value value, Entity **outEntit
 }
 
 
-// oo::ToObjC (Entity+ObjCBridge.mm): each C++ part's entity, nil for any other.
-namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }
-::TestEntityObject *oo::ToObjC(Entity *entity)
+// oo::ToObjC (Entity+ObjCBridge.mm) until bead oo-4aq6a.11: each C++ part's entity, null for any other.
+::TestEntityObject *TestObjectOf(Entity *entity)
 {
 	if (entity == InspectablePart())  return sInspectableEntity;
 	if (entity == PlainPart())  return sPlainEntity;
-	return nil;
+	return nullptr;
 }
 
 // EntityHelpers.mm's oo::InspectEntity() (bead oo-dpyk8), as the console asked the object until then:
@@ -490,8 +491,8 @@ namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }
 namespace oo { void InspectEntity(Entity *entity); }
 void oo::InspectEntity(Entity *entity)
 {
-	::TestEntityObject *object = oo::ToObjC(entity);
-	if ([object respondsToSelector:@selector(inspect)])  [(id)object inspect];
+	::TestEntityObject *object = TestObjectOf(entity);
+	if (object != nullptr && object->answersInspect())  object->inspect();
 }
 
 
@@ -537,8 +538,8 @@ void SetUpContext()
 	sGlobal = ooscript::getGlobalObject(sContext);
 	ooscript::initStandardClasses(sContext, sGlobal);
 	gSharedUniverse = new FakeUniverse();
-	sPlainEntity = [[TestEntityObject alloc] init];
-	sInspectableEntity = [[InspectableEntity alloc] init];
+	sPlainEntity = oo::makeRef<TestEntityObject>().leakRef();
+	sInspectableEntity = oo::makeRef<InspectableEntity>().leakRef();
 
 	sConsoleObject = DebugMonitorToJSConsole(sContext, OODebugMonitor::sharedDebugMonitor());
 	ooscript::Value value = ooscript::objectValue(sConsoleObject);

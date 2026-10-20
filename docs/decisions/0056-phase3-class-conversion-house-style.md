@@ -9663,3 +9663,21 @@ targets, plist/by-name objects, the JS engine's slot objects, shader binding tar
 **Behaviour.** No src change. Within the tests, the AIs, textures and ships the code under test hands to
 `oo::autorelease` (OOAIAutorelease, `OOTexture::clearCache`) now drain at the test's scopes where the Objective-C
 pools left them to leak; every case, input and expected value is unchanged.
+
+## Amendment (bead oo-4aq6a.11): the JS tests' Objective-C entity stand-ins that never reach src become C++
+
+**Context.** Batch BA, the JS-test follow-on of oo-4aq6a.2. In ten test_OOJS* files the OOObject-rooted stand-in
+(`TestEntityObject`, test_OOJSQuaternion's `FakeEntity`) is the test's own business: the JS private slot holds the C++
+`OOJSEntityHolder` (or the test's own class reads it back), and the code under test reaches the object only
+through the test's own `oo::ToObjC()` stand-in.
+
+**Decision (tests only; std-2026-10-19 item 1, approval lines "oo-4aq6a.11").** In test_OOJSDock,
+test_OOJSExhaustPlume, test_OOJSFlasher, test_OOJSSun, test_OOJSWaypoint, test_OOJSWormhole, test_OOJSPlanet,
+test_OOJSMission, test_OOJSConsole and test_OOJSQuaternion the stand-in is a C++ `oo::RefCounted`; its selectors and
+its `OOJavaScriptExtensions` category's (`-getJSClass:andPrototype:`, `-cxx_oo_jsClassName`, `-isVisibleToScripts`,
+`-oo_jsValueInContext:`, `-orientation`, `-isShip`, `-inspect`) are members of the same names and bodies; its ivars
+are zero-initialised members (an `id` one typed as the stand-in); the test's `oo::ToObjC()` is `TestObjectOf()`;
+`-respondsToSelector:` of `-inspect` is a virtual `answersInspect()`; where a message could go to nil, the member is
+asked only for a non-null object and nil's zero answer is kept. test_OOJSFlasher includes EntityHelpersStandIn.h
+in its C++ mode. Every case, input and expected value is unchanged. The remaining test_OOJS* stand-ins reach src
+(the engine's `OOJSValueFromNativeObject`, the slot's object, the root's JS glue) and stay for oo-4aq6a.6.
