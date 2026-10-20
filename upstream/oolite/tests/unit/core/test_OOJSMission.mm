@@ -22,7 +22,6 @@
 */
 
 #import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
 #include <objc/runtime.h>
 #include "OOMaths.h"
 #include "OOTypes.h"
@@ -42,15 +41,15 @@ typedef NSInteger OOGUIRow;	// as GuiDisplayGen.h declares it
 
 
 // The demo ship's object (the root's; the Objective-C ship's until bead oo-9ht.144 deleted it), which
-// oo::ToObjC answers for the demo ship.
-__attribute__((objc_runtime_name("Entity")))
-@interface TestEntityObject: OOObject
+// TestObjectOf answers for the demo ship. C++ since bead oo-4aq6a.11 (it was rooted on the
+// Objective-C root class OOObject, which Phase 4 deletes); its selector is a member of the same name.
+class TestEntityObject final : public oo::RefCounted
 {
-@public
-	ooscript::Object _jsSelf;
-}
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-@end
+public:
+	ooscript::Value oo_jsValueInContext(ooscript::Context context);
+
+	ooscript::Object _jsSelf = nullptr;
+};
 
 
 /*	The player: it records what it is told, as "selector(arguments)" lines. While _raise is set,
@@ -262,9 +261,7 @@ void CaptureLog(std::string_view line)
 }	// namespace
 
 
-@implementation TestEntityObject
-
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+ooscript::Value TestEntityObject::oo_jsValueInContext(ooscript::Context context)
 {
 	if (_jsSelf == nullptr)
 	{
@@ -275,8 +272,6 @@ void CaptureLog(std::string_view line)
 	}
 	return ooscript::objectValue(_jsSelf);
 }
-
-@end
 
 
 void PlayerEntity::setScriptTarget(::ShipEntity *ship)  { (void)ship; }
@@ -421,13 +416,13 @@ OOGUIRow GuiDisplayGen::addLongText(const std::optional<std::string> &, OOGUIRow
 void GuiDisplayGen::setArray(const std::vector<std::string> &, OOGUIRow)  { std::abort(); }
 
 
-// The demo ship's object, which oo::ToObjC answers (only the demo ship crosses).
-::TestEntityObject *sDemoShipObject = nil;
-namespace oo { ::TestEntityObject *ToObjC(Entity *entity); }
-::TestEntityObject *oo::ToObjC(Entity *entity)  { return entity != nullptr ? sDemoShipObject : nil; }
+// The demo ship's object, which TestObjectOf answers (only the demo ship crosses; oo::ToObjC until
+// bead oo-4aq6a.11).
+::TestEntityObject *sDemoShipObject = nullptr;
+::TestEntityObject *TestObjectOf(Entity *entity)  { return entity != nullptr ? sDemoShipObject : nullptr; }
 // The C++ ship's JS value (bead oo-9ht.39.8.2: displayModel is OOJSValueFromCxxObject of the demo
 // ship): its object's, which the binding asked until then.
-ooscript::Value Entity::jsValueInContext(ooscript::Context context)  { return [oo::ToObjC(this) oo_jsValueInContext:context]; }
+ooscript::Value Entity::jsValueInContext(ooscript::Context context)  { ::TestEntityObject *object = TestObjectOf(this); return object != nullptr ? object->oo_jsValueInContext(context) : ooscript::Value{0}; }	// (a message to nil gave the zero value)
 void Entity::clearJSSelf(ooscript::Object)  {}
 
 
@@ -816,7 +811,7 @@ void SetUpContext()
 	sUniverse = new StandInUniverse();
 	sUniverse->_gui = oo::makeRef<GuiDisplayGen>().leakRef();	// kept for the life of the test
 	sUniverse->_demoShip = new ShipEntity;
-	sDemoShipObject = [[TestEntityObject alloc] init];
+	sDemoShipObject = oo::makeRef<TestEntityObject>().leakRef();
 	gSharedUniverse = sUniverse;
 	sEngine = new OOJavaScriptEngine;
 	sRunningScript = oo::makeRef<OOJSScript>().leakRef();

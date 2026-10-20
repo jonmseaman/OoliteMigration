@@ -160,33 +160,32 @@ void OOJSUnreachable(const char *function, const char *, unsigned)
 /*	An entity, as far as the conversion sees one: a JS object of the Entity class whose private
 	slot holds something that has an -orientation. A fake entity
 	made with orientation w = -1 raises from -orientation, one made with w = -2 throws a C++
-	exception, so the test sees what an exception under a native becomes.
+	exception, so the test sees what an exception under a native becomes. C++ since bead oo-4aq6a.11
+	(it was rooted on the Objective-C root class OOObject, which Phase 4 deletes); its selector is a
+	member of the same name.
 */
-@interface FakeEntity: OOObject
+class FakeEntity final : public oo::RefCounted
 {
-@public
-	Quaternion _orientation;
-}
-@end
+public:
+	Quaternion orientation();
 
-@implementation FakeEntity
+	Quaternion _orientation = {};
+};
 
 
-- (Quaternion) orientation
+Quaternion FakeEntity::orientation()
 {
 	if (_orientation.w == -1)  OORaiseException(OOInvalidArgumentException, "orientation %s", "boom");
 	if (_orientation.w == -2)  throw std::runtime_error("cxx boom");
 	return _orientation;
 }
 
-@end
-
 
 // The fake entity's orientation, as the conversion asked its object (nil: zero) until bead oo-9ht.39.8.12.
 Quaternion OOJSEntityOrientationOfJSObject(ooscript::Context context, ooscript::Object object)
 {
 	FakeEntity *entity = (FakeEntity *)ooscript::getPrivate(context, object);	// the slot's object itself (bead oo-9ht.22)
-	return [entity orientation];
+	return entity != nullptr ? entity->orientation() : Quaternion{};	// (a message to nil gave zero)
 }
 
 Universe *gSharedUniverse = nil;	// OOJSVector.mm's coordinate-system methods read it; not called here
@@ -211,7 +210,7 @@ bool MakeEntity(ooscript::Context context, ooscript::CallArgs &args)
 {
 	double q[4] = {};
 	for (unsigned i = 0; i < 4 && i < args.count(); i++)  ooscript::valueToNumber(context, args.argv()[i], &q[i]);
-	FakeEntity *entity = [[FakeEntity alloc] init];	// kept for the life of the test
+	FakeEntity *entity = oo::makeRef<FakeEntity>().leakRef();	// kept for the life of the test
 	entity->_orientation = make_quaternion(q[0], q[1], q[2], q[3]);
 	ooscript::Object object = ooscript::newObject(context, &sFakeEntityClass, nullptr, nullptr);
 	if (object == nullptr || !ooscript::setPrivate(context, object, entity))  return false;
