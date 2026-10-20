@@ -9604,6 +9604,17 @@ Kept as they are: the selector path's runtime helpers (`OOShaderUniformBindMetho
 `sel_getName(selector)`; test_EntityShaderBindings and test_OOShaderUniformMethodType need no change. No case or
 expected value changes.
 
+## Amendment (bead oo-4aq6a.9): oo::ObjCPeers is deleted
+
+**Context.** Batch BA, a slice of oo-4aq6a. `src/oofnd/objc/OOObjCPeer.h` (`oo::ObjCPeers`, one live Objective-C
+facade per C++ object, held by libobjc2's weak references) served the Phase 3 `X+ObjCBridge` facades, all deleted;
+its one includer, OOEntityCalledByName.mm, used nothing from it. Its banner held the literal `@implementation`, so
+it was one of the three files oo-4aq6a's gate grep counts.
+
+**Decision.** The header and its include are deleted, with its README row. No behaviour changes.
+
+**Tests.** `tests/unit/oofnd/test_objc_peer.mm` retires with its only subject (std-2026-10-19 item 2, approval
+lines "oo-4aq6a.9"); its meson entry is a comment line.
 ## Amendment (bead oo-4aq6a.2): the tests' Objective-C stand-ins that never reach src become C++
 
 **Context.** Batch BA, the first slice of oo-4aq6a (retire OOObject and OOConstantString so `src/oofnd` has no
