@@ -1206,6 +1206,46 @@ unset BEADS_WORKER_BASE_BRANCH
 expect_fail "no base branch named: the guard falls back to main and sees the phase branch's deletion" "is deleted (CLAUDE.md rule 2"
 
 echo
+echo "=== retire-meson: a test meson.build may drop ONLY the entries of tests retired on record (bead oo-5vc5c) ==="
+# A miniature tests/unit/core: two tests listed the way the real meson.build lists them, and an
+# approvals file. <approved path> is the one test with an approval line (ADR-0049).
+retire_fixture() {  # retire_fixture <name> <approved path or "">
+  fixture "$1" || return 1
+  local t=upstream/oolite/tests/unit/core
+  mkdir -p "$t"
+  printf 'OO_TEST(a) { CHECK_TRUE(1); }\n' > "$t/test_A.mm"
+  printf 'OO_TEST(b) { CHECK_TRUE(1); }\n' > "$t/test_B.mm"
+  printf "core_tests = {\n    'test_A': ['Core/A.mm'],\n    'test_B': ['Core/B.mm'],\n}\n" > "$t/meson.build"
+  printf '# approvals\n' > tools/retire-test-approvals.txt
+  [ -z "$2" ] || printf '%s\tselftest: retired with its subject\n' "$2" >> tools/retire-test-approvals.txt
+  git_c add -A; git_c commit -qm "tests and approvals"
+}
+RT=upstream/oolite/tests/unit/core
+fixture_dropB() { git rm -q "$RT/test_B.mm"; sed -i "/'test_B'/d" "$RT/meson.build"; }
+
+retire_fixture retire_meson_ok "$RT/test_B.mm" || exit 1
+fixture_dropB
+expect_pass "an approved test deleted with its meson.build entry passes"
+
+retire_fixture retire_meson_unapproved "" || exit 1
+sed -i "/'test_B'/d" "$RT/meson.build"
+expect_fail "an unapproved meson.build entry removal is refused" "is emptied - test weight"
+
+retire_fixture retire_meson_file_kept "$RT/test_B.mm" || exit 1
+sed -i "/'test_B'/d" "$RT/meson.build"
+expect_fail "an approved test's entry dropped while the test file stays is refused" "is emptied - test weight"
+
+retire_fixture retire_meson_extra "$RT/test_B.mm" || exit 1
+fixture_dropB
+sed -i "/'test_A'/d" "$RT/meson.build"
+expect_fail "an approved entry removal does not excuse an unapproved one beside it" "is emptied - test weight"
+
+retire_fixture retire_meson_self "" || exit 1
+fixture_dropB
+printf '%s\tselftest: self-approved\n' "$RT/test_B.mm" >> tools/retire-test-approvals.txt
+expect_fail "a change that approves its own meson.build entry removal is refused" "is emptied - test weight"
+
+echo
 echo "=== castscan: a change to the cast scanner must leave its selftest passing (bead oo-tzd3n) ==="
 # The shipping scanner, matcher and selftest are copied in, with a stand-in tier-a.sh that runs it.
 install_castscan() {

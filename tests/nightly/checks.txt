@@ -749,3 +749,5 @@
 [oo-4aq6a.13] export PATH="/ucrt64/bin:$PATH"; ! grep -qE '^@implementation|TestEntityObject: OOObject' upstream/oolite/tests/unit/core/test_OOJSShipGroup.mm && tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJSShipGroup
 # oo-4aq6a.6.1: the JS private slot holds only C++ objects; the Objective-C getters and the id doScriptEvent forms go (ADR-0056 amendment oo-4aq6a.6.1).
 [oo-4aq6a.6.1] export PATH="/ucrt64/bin:$PATH"; ! grep -qE 'objc_release|OOJSObjectGetterImplPRIVATE|OOJSNativeObject(Of|From)' upstream/oolite/src/Core/Scripting/OOJavaScriptEngine.mm && ! grep -qE 'doScriptEvent\([^)]*\bid\b' upstream/oolite/src/Core/Entities/ShipEntity.h && tools/build-windows.sh test && bash tools/check-core-tests.sh test_OOJavaScriptEngine test_OOJSPrivateObject test_OOJSScript test_OOJSShip test_OOJSStation test_OOJSExhaustPlume test_OOJSWormhole test_OOJSPlayer test_OOJSManifest test_ShipEntity && bash tools/tier-c.sh --only goldens
+# oo-5vc5c: a test meson.build may drop only the entries of tests retired on record (ADR-0049); the retire-meson cases prove both shapes.
+[oo-5vc5c] tools/guardrails-selftest

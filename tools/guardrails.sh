@@ -975,9 +975,45 @@ unit_weight() {    # unit_weight <path> ; content on stdin -> an integer
   printf '%s' "${n:-0}"
 }
 
-# compare_units <label> <baseline-path> <disk-path>
+# retired_meson_lines <meson.build path> -> how many of the lines this change REMOVES from that
+# meson.build name a retired test (bead oo-5vc5c). A test is retired here only on the same terms
+# as a deleted test file (ADR-0049): the named test file existed at the base, is absent now, and
+# its exact path has a line in $RETIRE_TEST_APPROVALS. An entry names a test by a quoted token
+# `test_<name>` (with or without its extension) resolved against the meson.build's directory,
+# which is how every tests/ meson.build lists them (`'test_x',` or `'test_x': [...]`). A removed
+# line naming no such test counts as 0 - the caller still fails it on weight exactly as before.
+# The caller never asks when the change also edits the approvals file (no self-approval).
+retired_meson_lines() {
+  local mb="$1" dir n=0 line tok stem ext cand hit
+  dir=${mb%/*}; [ "$dir" = "$mb" ] && dir=.
+  while IFS= read -r line; do
+    hit=0
+    while IFS= read -r tok; do
+      [ -n "$tok" ] || continue
+      tok=${tok#?}; tok=${tok%?}    # the quotes grep matched around it
+      case "$tok" in
+        *.*) stem=${tok%.*}; set -- "${tok##*.}" ;;
+        *)   stem=$tok;      set -- mm m c cpp cc py ;;
+      esac
+      for ext in "$@"; do
+        cand="$dir/$stem.$ext"
+        if [ ! -e "$cand" ] && git cat-file -e "$BASE:$cand" 2>/dev/null \
+           && retire_test_approval_on_record "$cand"; then
+          hit=1; note "tests: $mb drops the entry for $cand, retire-test approval on record - allowed (ADR-0049)"
+          break 2
+        fi
+      done
+    done < <(printf '%s\n' "$line" | grep -oE "['\"]test_[A-Za-z0-9_]+(\.[A-Za-z0-9]+)?['\"]" || true)
+    n=$((n + hit))
+  done < <(git diff --no-color --no-ext-diff -U0 "$BASE" -- "$mb" 2>/dev/null \
+             | awk '/^@@/ { body = 1; next } body && /^-/ { print substr($0, 2) }')
+  printf '%s' "$n"
+}
+
+# compare_units <label> <baseline-path> <disk-path> [allowance]
+# allowance: a weight drop already proven to be approved retirements (retired_meson_lines).
 compare_units() {
-  local label="$1" oldp="$2" newp="$3"
+  local label="$1" oldp="$2" newp="$3" allow="${4:-0}"
   local ids_b ids_n missing
   ids_b=$(git show "$BASE:$oldp" 2>/dev/null | unit_ids "$newp")
   ids_n=$(cat -- "$newp" 2>/dev/null | unit_ids "$newp")
@@ -995,7 +1031,11 @@ compare_units() {
   before=$(git show "$BASE:$oldp" 2>/dev/null | unit_weight "$newp")
   after=$(cat -- "$newp" 2>/dev/null | unit_weight "$newp")
   if [ "${after:-0}" -lt "${before:-0}" ]; then
-    bad "tests: $label is emptied - test weight $before -> $after (CLAUDE.md rule 2: never modify a test to make it pass)"
+    if [ "$allow" -gt 0 ] && [ $(( ${after:-0} + allow )) -ge "${before:-0}" ]; then
+      note "tests: $label test weight $before -> $after, all $((before - after)) of it approved retirements (ADR-0049)"
+    else
+      bad "tests: $label is emptied - test weight $before -> $after (CLAUDE.md rule 2: never modify a test to make it pass)"
+    fi
   fi
 }
 
@@ -1034,7 +1074,16 @@ check_tests() {
         ;;
       M*|T*)
         is_test_path "$disk" || continue
-        compare_units "$disk" "$base" "$disk"
+        # bead oo-5vc5c: a test meson.build may drop the entries of tests retired on record, unless
+        # this change also edits the approvals file (the same no-self-approval rule as D above).
+        local allow=0 ap2 self2=0
+        if [ "${disk##*/}" = meson.build ]; then
+          while IFS= read -r ap2; do
+            [ "$ap2" = "$RETIRE_TEST_APPROVALS" ] && { self2=1; break; }
+          done < <(all_paths)
+          [ "$self2" = 1 ] || allow=$(retired_meson_lines "$disk")
+        fi
+        compare_units "$disk" "$base" "$disk" "$allow"
         ;;
     esac
   done <<EOF
