@@ -571,8 +571,9 @@ HUD dial, a deferred call) calls `OOCallByName(target, selector [, argument])` i
 signatures in every declaring class at once (the family rule); `python3 tools/check-selector-types.py --check`
 accepts exactly those and the transitional `id` form, and `--strict-called-by-name` (oo-qps.72)
 rejects the `id` form. Until then OOCallByName bridges an `id`-typed method's argument and result,
-so selectors flip file by file. `tests/unit/oofnd/test_objc_call_by_name.mm` pins the signatures'
-type encodings on this toolchain and the dispatch, linked against libobjc2 alone.
+so selectors flip file by file. `OOCallByName.mm` (the call on an Objective-C object) and its test,
+`test_objc_call_by_name.mm`, were deleted by bead oo-6e1.2; the entity call (`OOEntityCalledByName.mm`) keeps
+the signatures.
 
 ## Testing
 

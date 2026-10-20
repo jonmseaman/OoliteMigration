@@ -96,7 +96,7 @@ oofnd_objc_tests = [
     'test_objc_runtime',
     'test_objc_assert',
     'test_objc_ref',
-    'test_objc_call_by_name',
+    # test_objc_call_by_name retired with its only subject, src/Core/OOCallByName.mm's call on an Objective-C object (bead oo-6e1.2, std-2026-10-19)
     # test_objc_description retired with OODescription.mm's OOObject (OODescription) (bead oo-8sql7, ADR-0049; Jon approved 2026-10-19)
     # test_objc_plist retired with its only subject, src/Core/OOObjCPList.h's Objective-C object node (bead oo-4aq6a.5, std-2026-10-19)
     # test_objc_peer retired with its only subject, oofnd/objc/OOObjCPeer.h (bead oo-4aq6a.9, std-2026-10-19)

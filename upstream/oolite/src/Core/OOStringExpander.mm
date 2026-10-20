@@ -282,17 +282,6 @@ std::optional<std::string> cxx_OOGenerateSystemDescription(Random_Seed seed, con
 }
 
 
-/*	The Foundation forms, kept as the expander test's surface (OOStringExpander.h; bead oo-m2nh,
-	proposed ADR-0052). Compiled only by tools/check-string-expander.sh (OO_EXPANDER_TEST_SURFACE;
-	bead oo-qps.29), which links gnustep-base; the definitions live with that harness, in
-	tests/unit/expander/OOStringExpanderTestSurface.h (bead oo-3rb.345), which it copies next to
-	this file.
-*/
-#if OO_EXPANDER_TEST_SURFACE
-#import "OOStringExpanderTestSurface.h"
-#endif
-
-
 Random_Seed OOStringExpanderDefaultRandomSeed(void)
 {
 	auto *manager = (UNIVERSE != nullptr ? UNIVERSE->getSystemManager() : nullptr);	// null: a zero seed, as a message to nil (auto: the expander harness stubs the class)

@@ -8,13 +8,14 @@
 # compare FNV-1a digests captured from the original NSString engine.
 #
 #     bash tools/check-string-expander.sh             # the tree's OOStringExpander.mm
-#     bash tools/check-string-expander.sh FILE.mm     # another copy (how the digests were taken)
+#     bash tools/check-string-expander.sh FILE.mm     # another copy
 #     OO_EXPANDER_PRINT=1 bash tools/check-string-expander.sh   # print every recorded line
 #
 # The .mm is copied next to the stubs so that its quote-includes find them before the real
-# headers. Like the expander itself, the test still links gnustep-base (NSString at the lookup
-# boundary): it moves with the expander's lookups when they leave Foundation (oo-qps).
-# About 30 s from a clean checkout (three Objective-C++ translation units, then ~2 s to run).
+# headers. Since bead oo-6e1.2 the harness is C++ and links no gnustep-base (CLAUDE.md rule 8): it
+# drives cxx_OOExpandDescriptionString with the same inputs and records the same lines, so the
+# digests (taken through the Foundation surface the bead deleted) are unchanged.
+# About 30 s from a clean checkout (four translation units, then ~2 s to run).
 
 set -euo pipefail
 
@@ -34,9 +35,8 @@ EXPANDER="${1:-$SRC/Core/OOStringExpander.mm}"
 die() { printf 'check-string-expander: %s\n' "$*" >&2; exit 1; }
 
 command -v clang++ >/dev/null 2>&1 || die "clang++ is not on PATH; run tools/setup-windows.sh"
-command -v gnustep-config >/dev/null 2>&1 || die "gnustep-config is not on PATH; run tools/setup-windows.sh"
 [ -f "$EXPANDER" ] || die "missing $EXPANDER"
-[ -f "$TEST_DIR/test_string_expander.mm" ] || die "missing $TEST_DIR/test_string_expander.mm"
+[ -f "$TEST_DIR/test_string_expander.cpp" ] || die "missing $TEST_DIR/test_string_expander.cpp"
 
 # Native paths for every argument clang sees (docs/fleet/LEARNINGS.md), and a temp directory
 # clang can see.
@@ -48,7 +48,7 @@ fi
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-cp "$TEST_DIR"/*.h "$TEST_DIR/test_string_expander.mm" "$WORK/"
+cp "$TEST_DIR"/*.h "$TEST_DIR/test_string_expander.cpp" "$WORK/"
 cp "$EXPANDER" "$WORK/OOStringExpander.mm"
 # The expander calls the Universe, PlayerEntity and ResourceManager stubs' C++ members directly
 # since bead oo-9ht.159 deleted its bridge (the stubs stand in for the C++ classes).
@@ -61,23 +61,18 @@ done
 flags=(-x objective-c++ -std=gnu++20 -O2 -Wall -DOOLITE_DEBUG=1 -D_FILE_OFFSET_BITS=64 -DWIN32 -DXP_WIN
        -DWINVER=0x0A00 -DGNUSTEP_BASE_LIBRARY=1 -fexceptions -fobjc-exceptions -DGNUSTEP_RUNTIME=1
        -D_NONFRAGILE_ABI=1 -fobjc-runtime=gnustep-2.2 -fblocks -ffp-contract=off -pthread)
-# The test's Foundation-typed surface (OOExpandDescriptionString / OOGenerateSystemDescription) is
-# fenced out of the game build; only this harness compiles it (bead oo-qps.29, ADR-0054 item 4).
-flags+=(-DOO_EXPANDER_TEST_SURFACE=1)
 
 w="$(native "$WORK")"
-# The two Foundation-using units get Foundation's C types from Foundation, not from the game's
-# Foundation-free floor header (tests/unit/expander/OOHarnessFoundation.h, bead oo-3rb.335).
-harness=(-include "$w/OOHarnessFoundation.h")
-clang++ "${flags[@]}" "${harness[@]}" "${inc[@]}" -c "$w/OOStringExpander.mm" -o "$w/expander.o" || die "OOStringExpander.mm does not compile against the stubs"
-clang++ "${flags[@]}" "${harness[@]}" "${inc[@]}" -c "$w/test_string_expander.mm" -o "$w/test.o" || die "the test does not compile"
-# The expander calls legacy queries and special keys by name (OOCallByName, ADR-0055 item 5) and raises
-# OOException, so those (with OODescription, for oo::DescriptionOf; and ICU, as oofnd's
-# meson dependency, for oo::str's normalisation) and the oofnd Objective-C runtime they stand on are compiled in (build plumbing,
-# bead oo-qqz6: the transitional bridge .mm was deleted by oo-m2nh and NSNumberOOExtensions.mm,
-# once needed by oo::PListFrom, is gone too).
+# Since bead oo-6e1.2 the harness has no Foundation surface and no Foundation prefix: every unit
+# gets the game's own Foundation-free headers.
+clang++ "${flags[@]}" "${inc[@]}" -c "$w/OOStringExpander.mm" -o "$w/expander.o" || die "OOStringExpander.mm does not compile against the stubs"
+clang++ "${flags[@]}" "${inc[@]}" -c "$w/test_string_expander.cpp" -o "$w/test.o" || die "the test does not compile"
+# The expander raises oo::Exception and describes values with oo::DescriptionOf, so OODescription
+# (with ICU, as oofnd's meson dependency, for oo::str's normalisation) and the oofnd runtime they
+# stand on are compiled in (build plumbing, bead oo-qqz6). The harness's player answers the by-name
+# calls itself since bead oo-6e1.2 (OOCallByName.mm, the call on an Objective-C object, is deleted).
 support=()
-for f in "$SRC/Core/OOCallByName.mm" "$SRC/Core/OODescription.mm"; do
+for f in "$SRC/Core/OODescription.mm"; do
   o="$w/core-$(basename "$f" .mm).o"
   clang++ "${flags[@]}" "${inc[@]}" -c "$(native "$f")" -o "$o" || die "$f does not compile"
   support+=("$o")
@@ -88,7 +83,8 @@ for f in "$SRC"/oofnd/objc/*.mm "$SRC"/oofnd/Exception.cpp; do	# Exception.cpp: 
   support+=("$o")
 done
 clang -O2 "-I$(native "$SRC/Core")" -c "$(native "$SRC/Core/legacy_random.c")" -o "$w/legacy_random.o"
-read -r -a libs <<< "$(gnustep-config --base-libs) $(pkg-config --libs icu-i18n)"
+# libobjc2 alone (the game's runtime, as tests/unit/oofnd links it): no gnustep-base (rule 8).
+read -r -a libs <<< "-lobjc $(pkg-config --libs icu-i18n)"
 clang++ -fuse-ld=lld -o "$w/test_string_expander.exe" "$w/expander.o" "${support[@]}" "$w/test.o" "$w/legacy_random.o" "${libs[@]}" \
   || die "link failed"
 
