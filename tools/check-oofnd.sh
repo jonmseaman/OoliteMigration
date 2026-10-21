@@ -8,7 +8,8 @@
 # No build directory, no meson, no network: it compiles straight from the tree, so it runs from
 # a clean checkout well inside the ADR-0021 accept budget (about ten seconds per test file).
 #
-#   1. inventory  every upstream/oolite/tests/unit/oofnd/test_*.cpp; ZERO tests is a failure, and
+#   1. inventory  every upstream/oolite/tests/unit/oofnd/test_*.cpp but the floor's test_objc_*.cpp
+#                 (check-oofnd-objc.sh's, below); ZERO tests is a failure, and
 #                 so is a test file that tests/unit/oofnd/meson.build does not register (the
 #                 `meson test --suite oofnd` wiring must not silently lag the tree);
 #   2. canary     one TU per oofnd header, plus one TU including every header, compiles at
@@ -118,7 +119,12 @@ incs=(-I"$oo/src" -I"$test_dir")
 step "1/4 inventory"
 shopt -s nullglob
 headers=("$src_dir"/*.hpp)
-tests=("$test_dir"/test_*.cpp)
+tests=()
+for t in "$test_dir"/test_*.cpp; do
+	# test_objc_*.cpp (the floor's, .mm until bead oo-dbz.5) link oofnd/objc's sources: check-oofnd-objc.sh builds and runs them
+	case "${t##*/}" in test_objc_*) continue ;; esac
+	tests+=("$t")
+done
 shopt -u nullglob
 [ "${#headers[@]}" -gt 0 ] || fail "no headers under $src_dir"
 [ "${#tests[@]}" -gt 0 ] || fail "found ZERO tests matching $test_dir/test_*.cpp; an empty suite is not a pass"

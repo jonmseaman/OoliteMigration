@@ -76,7 +76,7 @@ only) and no longer waits on this file.
 oo-4216h (frontier), 4 oo-n8wn2 (frontier), 5 oo-uq8px, 6 oo-fz3l8, 7 oo-lmdi8.
 
 ```slice-plan
-source: upstream/oolite/src/Core/Entities/PlayerEntityControls.mm
+source: upstream/oolite/src/Core/Entities/PlayerEntityControls.cpp
 header: upstream/oolite/src/Core/Entities/PlayerEntityControls.h
 one-unit-slices: frontier
 

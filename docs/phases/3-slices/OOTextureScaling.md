@@ -21,7 +21,7 @@ file every time, so the numbers below are only a snapshot.
 | verbatim | every scaler, mipmap generator and helper | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/OOTextureScaling.mm
+source: upstream/oolite/src/Core/OOTextureScaling.cpp
 header: upstream/oolite/src/Core/OOTextureScaling.h
 
 slice 1: the format-dispatch wrappers that raise OOException

@@ -87,9 +87,9 @@ foreach t : oofnd_plist_tests
     test(t, exe, suite: ['oofnd', 'oofnd-plist'], timeout: 60)
 endforeach
 
-# Objective-C++ tests of the Foundation-free floor (oofnd/objc, proposed ADR-0029). They link
-# libobjc2 and nothing from gnustep-base; tools/check-oofnd-objc.sh proves that on the import
-# table. -fuse-ld=lld comes from the native file (clang.ini): GNU ld cannot link the gnustep-2 ABI.
+# Tests of what is left of the Foundation-free floor (oofnd/objc, proposed ADR-0029). Objective-C++
+# on libobjc2 until bead oo-dbz.5; C++ since, linking neither libobjc2 nor gnustep-base, which
+# tools/check-oofnd-objc.sh proves on the import table.
 # test_objc_exception retired with the Objective-C OOException class (bead oo-4aq6a.1, Jon approved 2026-10-19).
 oofnd_objc_tests = [
     # test_objc_floor retired with its only subject, the OOObject root class, OOConstantString and OOObjCInstallFloor() (bead oo-4aq6a.8, std-2026-10-19)
@@ -105,10 +105,10 @@ oofnd_objc_tests = [
 foreach t : oofnd_objc_tests
     exe = executable(
         'oofnd_' + t,
-        t + '.mm',
+        t + '.cpp',
         dependencies: oofnd_objc_dep,
-        objcpp_args: oofnd_objc_args,
-        override_options: oofnd_override_options + ['objcpp_std=c++20'],
+        # (objcpp_args, the floor's -fno-constant-cfstrings, and objcpp_std=c++20 went with libobjc2, bead oo-dbz.5)
+        override_options: oofnd_override_options,
         install: false,
     )
     test(t, exe, suite: 'oofnd', timeout: 60)

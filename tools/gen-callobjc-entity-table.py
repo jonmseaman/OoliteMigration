@@ -263,7 +263,7 @@ def render():
     out.append("or with one const std::string & argument and a void or oo::PList result; a Typed row keeps")
     out.append("the encoding of the declared return type (kOOTypeEncoding<>, @encode()'s measured literal;")
     out.append("OOTypeEncodings.h, bead oo-dbz.3).")
-    out.append("Included by OOJSCall.mm and its test only.")
+    out.append("Included by OOJSCall.cpp and its test only.")
     out.append("")
     out.append("*/")
     out.append("")

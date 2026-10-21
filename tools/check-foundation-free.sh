@@ -58,16 +58,17 @@ NSPoint NSSize NSRect NSZeroPoint NSZeroSize NSZeroRect NSRange NSMakeRange NSMa
 NSLocationInRange NSEqualRanges NSMakePoint NSMakeSize NSMakeRect NSEqualPoints NSEqualSizes
 NSEqualRects NSPointToVectorJSValue'
 # Deleted or retyped by oo-qps's children, so the sweeps stage does not count them.
-BOUNDARY='OOCocoa.h OOCocoa.mm OOFoundationException.h OOStringBridge.h OOFoundationBridge.h
-OOPListView.h OOObjectGNUstepBridge.h OOObjectGNUstepBridge.mm OOEnumerationShuffle.h
-OOEnumerationShuffle.mm OOManifestProperties.h OOTypes.h OOFunctionAttributes.h OOLogging.h
-OOLogging.mm OOCollectionExtractors.h OOCollectionExtractors.mm'
+# (Each .mm is listed with the .cpp it became, bead oo-dbz.5.)
+BOUNDARY='OOCocoa.h OOCocoa.mm OOCocoa.cpp OOFoundationException.h OOStringBridge.h OOFoundationBridge.h
+OOPListView.h OOObjectGNUstepBridge.h OOObjectGNUstepBridge.mm OOObjectGNUstepBridge.cpp OOEnumerationShuffle.h
+OOEnumerationShuffle.mm OOEnumerationShuffle.cpp OOManifestProperties.h OOTypes.h OOFunctionAttributes.h OOLogging.h
+OOLogging.mm OOLogging.cpp OOCollectionExtractors.h OOCollectionExtractors.mm OOCollectionExtractors.cpp'
 # Post-gate owners (ADR-0054 item 3), exempt at the sweeps stage only. OOCollectionExtractors (oo-snzn)
 # is in BOUNDARY above. The NSLog-hook bridge (oo-qps.28) is exempt from bridge and ns findings, and
 # so is its one #import in OOLogOutputHandler.h:
-POSTGATE_BRIDGE='OOLogOutputHandler+FoundationBridge.h OOLogOutputHandler+FoundationBridge.mm'
+POSTGATE_BRIDGE='OOLogOutputHandler+FoundationBridge.h OOLogOutputHandler+FoundationBridge.mm OOLogOutputHandler+FoundationBridge.cpp'
 # In these files only the declaration/definition lines of the two ADR-0052 functions (oo-qps.29):
-POSTGATE_EXPANDER='OOStringExpander.h OOStringExpander.mm'
+POSTGATE_EXPANDER='OOStringExpander.h OOStringExpander.mm OOStringExpander.cpp'
 POSTGATE_EXPANDER_LINE='^NSString [*](OOExpandDescriptionString|OOGenerateSystemDescription)[(]'
 # The Mac fence macros (ADR-0043 item 18(b)); adding one is an amendment to ADR-0054. Plus the
 # expander test fence, OO_EXPANDER_TEST_SURFACE (ADR-0054 item 4, oo-qps.29): only

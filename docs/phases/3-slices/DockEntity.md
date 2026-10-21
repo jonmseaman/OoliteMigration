@@ -32,7 +32,7 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | `ShipIDsIn()`, `DescriptionForLog()`, `DockingInstructions()`, `OptionalStringValue()` | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/Entities/DockEntity.mm
+source: upstream/oolite/src/Core/Entities/DockEntity.cpp
 header: upstream/oolite/src/Core/Entities/DockEntity.h
 
 slice 1: class shell, flags, geometry and lifecycle

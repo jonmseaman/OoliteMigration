@@ -46,13 +46,12 @@ oolite_dependencies += [quickjs_ng_proj.get_variable('qjs_dep')]
 
 subdir('meson')
 subdir('oofnd')
-# Game sources include oofnd headers, which are C++20 (ADR-0011): Objective-C++ builds as gnu++20.
+# Game sources include oofnd headers, which are C++20 (ADR-0011): the game builds as gnu++20.
 oolite_dependencies += [oofnd_dep]
-# The Foundation-free ObjC floor (ADR-0029, bead oo-3rb.2): since oo-qps.18 the game links libobjc2
-# and no Foundation library. OOObject/OOConstantString and OOObjCInstallFloor() went with bead
-# oo-4aq6a.8 (no game class is rooted on OOObject; no @"..." literal is compiled).
+# oofnd/objc's support (OORaiseException, OOCAssert's failure path). The game linked libobjc2 alone
+# for its Objective-C floor (ADR-0029) from oo-qps.18 until bead oo-dbz.5: no unit is Objective-C.
 oolite_dependencies += [oofnd_objc_dep]
-oolite_override_options += ['cpp_std=gnu++20']   # meson's cpp_std also governs Objective-C++
+oolite_override_options += ['cpp_std=gnu++20']
 subdir('Core')
 subdir('SDL')
 
@@ -62,8 +61,6 @@ oolite_bin = executable(
     oolite_sources,
     include_directories: oolite_includes,
     dependencies: oolite_dependencies,
-    objc_args: oofnd_objc_args,
-    objcpp_args: oofnd_objc_args,
     override_options: oolite_override_options,
     link_args: oolite_link_args,
     win_subsystem: 'windows',

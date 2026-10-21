@@ -33,7 +33,7 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | helpers with no Objective-C | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/Entities/PlayerEntityLegacyScriptEngine.mm
+source: upstream/oolite/src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp
 header: upstream/oolite/src/Core/Entities/PlayerEntityLegacyScriptEngine.h
 
 slice 1: interpreter, mission variables, missions list and descriptions

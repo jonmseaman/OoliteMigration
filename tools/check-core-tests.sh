@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 #
 # The unit tests of converted game classes (Phase 3; proposed ADR-0056, exemplar bead oo-11m):
-# upstream/oolite/tests/unit/core/test_<Class>.mm, one executable each, linked from the game's own
+# upstream/oolite/tests/unit/core/test_<Class>.cpp (.mm until bead oo-dbz.5), one executable each, linked from the game's own
 # objects by tests/unit/core/meson.build and run as `meson test --suite core`.
 #
 #     tools/build-windows.sh test && bash tools/check-core-tests.sh           # every class
 #     bash tools/check-core-tests.sh test_OOColor                              # one class
 #
 # Needs the 'test' build directory (tools/build-windows.sh test makes it); meson rebuilds what
-# changed before it runs. Fails when a test_*.mm is not registered in the meson file (it would
+# changed before it runs. Fails when a test_*.cpp (or .mm) is not registered in the meson file (it would
 # never run), when no test ran, or when any test fails.
 
 set -euo pipefail
@@ -31,11 +31,11 @@ command -v meson >/dev/null 2>&1 || die "meson is not on PATH; run this from the
 [ -f "$BUILD_DIR/build.ninja" ] || die "no build directory at $BUILD_DIR; run tools/build-windows.sh test first"
 
 shopt -s nullglob
-tests=("$TEST_DIR"/test_*.mm)
+tests=("$TEST_DIR"/test_*.cpp "$TEST_DIR"/test_*.mm)
 shopt -u nullglob
-[ "${#tests[@]}" -gt 0 ] || die "found ZERO tests matching $TEST_DIR/test_*.mm; an empty suite is not a pass"
+[ "${#tests[@]}" -gt 0 ] || die "found ZERO tests matching $TEST_DIR/test_*.cpp or test_*.mm; an empty suite is not a pass"
 for t in "${tests[@]}"; do
-  name="$(basename "$t" .mm)"
+  name="$(basename "$t")"; name="${name%.*}"
   grep -q "'$name'" "$TEST_DIR/meson.build" || die "$t is not registered in $TEST_DIR/meson.build, so it would never run"
 done
 

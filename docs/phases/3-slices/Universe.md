@@ -131,7 +131,7 @@ Calls from a converted body to a method of a slice that has not landed stay send
   `GameController`'s Mac category does).
 
 ```slice-plan
-source: upstream/oolite/src/Core/Universe.mm
+source: upstream/oolite/src/Core/Universe.cpp
 header: upstream/oolite/src/Core/Universe.h
 header-decls: per-slice
 header-names: by-use

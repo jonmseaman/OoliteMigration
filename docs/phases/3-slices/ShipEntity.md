@@ -152,7 +152,7 @@ sends to `oo::ToObjC(this)`.
   `@implementation` left in the four `ShipEntity*.mm` files, and the guardrails.
 
 ```slice-plan
-source: upstream/oolite/src/Core/Entities/ShipEntity.mm
+source: upstream/oolite/src/Core/Entities/ShipEntity.cpp
 header: upstream/oolite/src/Core/Entities/ShipEntity.h
 header-decls: per-slice
 
