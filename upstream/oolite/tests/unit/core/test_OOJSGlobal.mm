@@ -25,7 +25,6 @@
 #import "OOTextureSprite.h"	// the GUI stand-in's destructor destroys its sprite members
 #import "OOJSGuiScreenKeyDefinition.h"
 #import "OOStringExpander.h"
-#include <objc/runtime.h>
 #include "OOTypes.h"
 #include "OOEntityEnums.h"
 #include "ooscript/JSEngine.hpp"

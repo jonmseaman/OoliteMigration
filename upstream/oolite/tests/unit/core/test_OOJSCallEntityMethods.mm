@@ -24,7 +24,6 @@
 
 #include "oo_test.hpp"
 
-#include <objc/runtime.h>
 #include <cstdlib>
 #include <cstring>
 #include <iterator>
@@ -61,8 +60,8 @@ struct OracleRow
 // The matcher's classification of a by-name row's method (its declared result and argument).
 std::optional<OracleRow> Oracle(const OOEntityByNameRow &row)
 {
-	const bool voidResult = std::strcmp(row.result, @encode(void)) == 0;
-	const bool plistResult = std::strcmp(row.result, @encode(oo::PList)) == 0;
+	const bool voidResult = std::strcmp(row.result, kOOTypeEncoding<void>) == 0;
+	const bool plistResult = std::strcmp(row.result, kOOTypeEncoding<oo::PList>) == 0;
 	switch (row.argument)
 	{
 		case OOEntityByNameArgument::None:

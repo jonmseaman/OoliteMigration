@@ -76,33 +76,13 @@ extern "C++" {
 #include "oofnd/PListDescription.hpp"
 
 
-@protocol OODescription
-
-@optional
-// What this object adds between the braces; nullopt for none (the root's default).
-- (std::optional<std::string>) cxx_descriptionComponents;
-- (std::optional<std::string>) cxx_shortDescriptionComponents;
-
-// <ClassName 0xnnnnnnnn>{components}, or <ClassName 0xnnnnnnnn> without components.
-- (std::optional<std::string>) cxx_description;
-- (std::optional<std::string>) cxx_shortDescription;
-
-@end
-
-
 // (The protocol's methods were declared on the root OOObject, which went with bead oo-4aq6a.8.)
 
 
 namespace oo {
 
-// The text "%@" printed for <object>: "(null)" for nil, a class's name, else its description.
-std::string DescriptionOf(id object);
-
-// The same with -cxx_shortDescription.
-std::string ShortDescriptionOf(id object);
-
-// <ClassName 0xnnnnnnnn>{components} for <object>; without the braces when <components> is nullopt.
-std::string DescriptionWithComponents(id object, const std::optional<std::string> &components);
+// (DescriptionOf/ShortDescriptionOf/DescriptionWithComponents of an Objective-C object and the
+// OODescription protocol went with libobjc2, bead oo-dbz: the game describes no Objective-C object.)
 
 // (oo::ObjectDescription & co., what the protocol's messages answered for an object rooted on
 // OOObject, went with OOObject, bead oo-4aq6a.8.)

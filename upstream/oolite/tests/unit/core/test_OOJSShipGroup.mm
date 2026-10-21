@@ -22,7 +22,6 @@
 */
 
 #import "OOShipGroup.h"
-#include <objc/runtime.h>
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/PList.hpp"
@@ -287,12 +286,11 @@ BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::ClassDef *su
 
 
 // (No longer reached for a group, whose toString() is OOJSCxxObjectWrapperToString.)
-bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oojsArgs)
+// A link stub (bead oo-dbz.4): unreached, the slot holding the C++ object since bead oo-4aq6a.6; it
+// described the slot as an Objective-C object, which oo::DescriptionOf(id) did until libobjc2 went.
+bool OOJSObjectWrapperToString(ooscript::Context, ooscript::CallArgs &)
 {
-	id object = (id)ooscript::getPrivate(context, oojsArgs.thisObject());
-	std::string text = "[" + oo::DescriptionOf(object) + "]";
-	oojsArgs.setRval(ooscript::stringValue(ooscript::newStringCopyN(context, text.data(), text.size())));
-	return true;
+	std::abort();
 }
 
 

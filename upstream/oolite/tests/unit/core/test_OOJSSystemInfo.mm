@@ -30,7 +30,6 @@
 #import "OOCommodities.h"
 #import "OOCommodityMarket.h"
 #import "OOStringExpander.h"
-#include <objc/runtime.h>
 #include "OOMaths.h"
 #include "OOTypes.h"
 #include "ooscript/JSEngine.hpp"
@@ -466,12 +465,11 @@ extern "C" BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::C
 
 
 
-bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oojsArgs)
+// A link stub (bead oo-dbz.4): unreached, the slot holding the C++ object since bead oo-4aq6a.6; it
+// described the slot as an Objective-C object, which oo::DescriptionOf(id) did until libobjc2 went.
+bool OOJSObjectWrapperToString(ooscript::Context, ooscript::CallArgs &)
 {
-	id object = (id)ooscript::getPrivate(context, oojsArgs.thisObject());
-	std::string text = "[" + oo::DescriptionOf(object) + "]";
-	oojsArgs.setRval(ooscript::stringValue(ooscript::newStringCopyN(context, text.data(), text.size())));
-	return true;
+	std::abort();
 }
 
 

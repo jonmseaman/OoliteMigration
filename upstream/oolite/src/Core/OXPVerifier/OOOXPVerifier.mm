@@ -37,24 +37,18 @@ SOFTWARE.
 */
 
 #include "OOOXPVerifier.h"
-#include <objc/runtime.h>
-#include <objc/objc-arc.h>
 
 #if OO_OXP_VERIFIER_ENABLED
 
 #if OOLITE_WINDOWS
 
-#ifdef __OBJC__
 #pragma push_macro("interface")
 #undef interface
 #define interface struct
-#endif
 
 #include <shlwapi.h>
 
-#ifdef __OBJC__
 #pragma pop_macro("interface")
-#endif
 
 #include <tchar.h>
 #endif
@@ -72,7 +66,6 @@ SOFTWARE.
 #include "oofnd/Date.hpp"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/String.hpp"
-#include "oofnd/objc/OORuntime.h"
 #include "oofnd/Defaults.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/PListGet.hpp"
@@ -124,8 +117,8 @@ std::string ExpandTildeInPath(const std::string &path)
 
 
 /*	The stages verifyOXP.plist names ("stages") that are C++ (proposed ADR-0056 amendment oo-up4b
-	item 5). A converted leaf stage is global and has no Objective-C class, so OOClassFromName finds
-	nothing; -registerBaseStages looks here first and registers the stage (its facade until bead
+	item 5). A converted leaf stage is global and had no Objective-C class, so OOClassFromName found
+	nothing (no name is looked up as a class since bead oo-dbz.2); -registerBaseStages looks here first and registers the stage (its facade until bead
 	oo-9ht.4). Each bead that converts such a stage adds its line. It is the C++ verifier's since
 	oo-tsa4.
 */
@@ -418,8 +411,6 @@ void OOOXPVerifier::setUpLogOverrides()
 
 void OOOXPVerifier::registerBaseStages()
 {
-	Class					stageClass = Nil;
-
 	{
 		// Load stages specified as array of class names in verifyOXP.plist
 		std::vector<std::string> stages = configurationSetForKey("stages").value_or(std::vector<std::string>());
@@ -447,15 +438,11 @@ void OOOXPVerifier::registerBaseStages()
 				}
 			}
 
-			stageClass = OOClassFromName(stageName);
-			if (stageClass == Nil)
-			{
-				OO_LOG("verifyOXP.registration.failed", "Attempt to register unknown class {} as a verifier stage, ignoring.", stageName);
-				continue;
-			}
-			// Every stage is C++ since bead oo-9ht.4, so a class found by the name is not one: this is
-			// what registerStage() logged for the object [[stageClass alloc] init] made.
-			OO_LOG("verifyOXP.registration.failed", "Attempt to register class {} as a verifier stage, but it is not a subclass of OOOXPVerifierStage; ignoring.", oo::DescriptionOf(stageClass));
+			/*	No class has the name: every stage is C++ since bead oo-9ht.4, and since bead oo-dbz.2 there
+				is no Objective-C runtime to find one in (the only classes a name could still find there
+				were libobjc2's own, logged as "not a subclass of OOOXPVerifierStage").
+			*/
+			OO_LOG("verifyOXP.registration.failed", "Attempt to register unknown class {} as a verifier stage, ignoring.", stageName);
 		}
 	}
 }

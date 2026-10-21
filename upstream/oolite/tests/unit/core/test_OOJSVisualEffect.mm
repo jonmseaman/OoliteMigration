@@ -26,13 +26,11 @@
 */
 
 #import "OOCocoa.h"
-#include <objc/runtime.h>
 #import "OOColor.h"
 #include "OOMaths.h"
 #include "OOTypes.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
-#include "oofnd/objc/OOObjCRef.h"
 #include "OOEntityHold.h"	// the sub-entity lists (bead oo-xn1j1)
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"

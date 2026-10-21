@@ -138,7 +138,7 @@ OOINLINE OOHPScalar HPtriple_product(HPVector first, HPVector second, HPVector t
 /* Given three points on a surface, returns the normal to the surface. */
 OOINLINE HPVector HPnormal_to_surface(HPVector v1, HPVector v2, HPVector v3) CONST_FUNC;
 
-#if __OBJC__
+#if defined(__cplusplus) && !defined(OO_PLAIN_CPP_UNIT)	// was __OBJC__: a game unit (an Objective-C++ unit until bead oo-dbz), not a plain C++ one
 /*	Objective-C++ only: OOMaths.h is included inside extern "C" (proposed ADR-0043, bead oo-dlox). */
 extern "C++" {
 #include "oofnd/StdLib.hpp"
@@ -363,12 +363,5 @@ OOINLINE HPVector HPnormal_to_surface(HPVector v1, HPVector v2, HPVector v3)
 }
 
 
-#if __OBJC__
-/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed functions this header
-	declared before bead oo-dlox, forwarding to the cxx_ functions above, so unmigrated callers compile
-	unchanged (with their old C linkage). Callers move to the cxx_ API in their own sweep beads; the
-	bridge goes in its own bead.
-*/
-#endif
 
 #endif	/* INCLUDED_OOMATHS_h */

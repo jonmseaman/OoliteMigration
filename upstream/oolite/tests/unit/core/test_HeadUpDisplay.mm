@@ -28,7 +28,6 @@
 #include "oo_test.hpp"
 #include "oo_gl_test_context.hpp"
 
-#include "oofnd/objc/OORuntime.h"
 
 #include <process.h>
 #include <stdlib.h>

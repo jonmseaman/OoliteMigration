@@ -37,7 +37,6 @@ const HPVector2D			kBasisXHPVector2D = { 1.0, 0.0 };
 const HPVector2D			kBasisYHPVector2D = { 0.0, 1.0 };
 
 
-#if __OBJC__
 std::string cxx_HPVectorDescription(HPVector vector)
 {
 	return oo::str::format("(%g, %g, %g)", vector.x, vector.y, vector.z);
@@ -48,7 +47,6 @@ std::vector<double> cxx_ArrayFromHPVector(HPVector vec)
 	return { vec.x, vec.y, vec.z };
 }
 
-#endif
 
 
 #if !OOMATHS_STANDALONE

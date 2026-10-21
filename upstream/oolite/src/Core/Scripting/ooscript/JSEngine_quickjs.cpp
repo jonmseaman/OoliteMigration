@@ -116,6 +116,7 @@ Copyright (C) 2026 the Oolite migration project. GPL-2.0-or-later, as the rest o
 
 */
 
+#define OO_PLAIN_CPP_UNIT 1	// a plain C++ unit: the shared headers' game-unit parts stay out of it (bead oo-dbz)
 #include "JSEngine.hpp"
 
 #include <quickjs.h>

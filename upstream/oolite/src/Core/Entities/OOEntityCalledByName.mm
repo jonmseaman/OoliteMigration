@@ -7,7 +7,7 @@ oo-9ht.39.7.1; declared in OOCallByName.h). The facade's by-name categories are 
 table OOEntityCalledByNameTable.h (tools/gen-entity-by-name-table.py): a tabled name is answered
 for the C++ part it applies to, exactly as the root facade's -respondsToSelector: and the category method
 answered it, and called as OOCallByName called the method (the same signature rules, read from
-@encode() of the declared types instead of the method's type encoding). Since bead oo-9ht.39.9 any
+the declared types' encodings instead of the method's type encoding: @encode()'s, measured literals since bead oo-dbz.3). Since bead oo-9ht.39.9 any
 other name, and a tabled name that does not apply, are answered without the entity's Objective-C
 object, as OOCallByName answered them on it (OOEntityObjectNamesTable.h); an Objective-C stand-in's
 went to its object until bead oo-j12i2. callObjC() reads
@@ -54,9 +54,8 @@ MA 02110-1301, USA.
 #include "AI.h"
 #include "Universe.h"
 #include "OODescription.h"
-#include "oofnd/objc/OORuntime.h"
+#include "OOTypeEncodings.h"	// the rows' measured encodings (bead oo-dbz.3)
 #include "oofnd/Log.hpp"
-#include <objc/runtime.h>
 #include <cstring>
 #include <string_view>
 #include <type_traits>
@@ -133,7 +132,6 @@ void OOEntityByNameTyped(Entity *entity, OOEntityByNameValue &value)
 	else if constexpr (std::is_same_v<Result, Quaternion>)  value.quaternion = Function(entity);
 	else if constexpr (std::is_same_v<Result, OOColor *>)  value.color = Function(entity);	// borrowed (bead oo-9ht.39.8.25)
 	else if constexpr (std::is_convertible_v<Result, Entity *>)  value.entity = Function(entity);	// the C++ entity (bead oo-9ht.39.24)
-	else if constexpr (std::is_convertible_v<Result, id>)  static_assert(sizeof(Result) == 0, "an Objective-C object result: none is made since bead oo-4aq6a.5");
 	else  (void)Function(entity);	// a result callObjC() cannot read (it does not call such a method)
 }
 
@@ -521,7 +519,7 @@ Kind ResultKind(const char *encoding)
 	while (!type.empty() && std::strchr("rnNoORV", type.front()) != nullptr)  type.remove_prefix(1);
 	if (type == "v")  return Kind::Void;
 	if (type == "@")  return Kind::Object;
-	if (std::strcmp(encoding, @encode(oo::PList)) == 0)  return Kind::PList;
+	if (std::strcmp(encoding, kOOTypeEncoding<oo::PList>) == 0)  return Kind::PList;
 	if (type.size() == 1 && std::strchr("cCsSiIlLqQfdB", type.front()) != nullptr)  return Kind::Void;
 	return Kind::Unsupported;
 }
@@ -585,9 +583,9 @@ const char *ObjectClassName(Entity *)
 */
 void LogBadSignature(Entity *entity, const OOEntityByNameRow &row)
 {
-	std::string encoding = std::string(row.result) + @encode(id) + @encode(SEL);
-	if (row.argument == OOEntityByNameArgument::String)  encoding += @encode(const std::string &);
-	if (row.argument == OOEntityByNameArgument::PList)  encoding += @encode(const oo::PList &);
+	std::string encoding = std::string(row.result) + kOOTypeEncoding<OOObjCId> + kOOTypeEncoding<OOObjCSelector>;
+	if (row.argument == OOEntityByNameArgument::String)  encoding += kOOTypeEncoding<const std::string &>;
+	if (row.argument == OOEntityByNameArgument::PList)  encoding += kOOTypeEncoding<const oo::PList &>;
 	OO_LOG_ERR("callByName.badSignature", "-[{} {}] has no signature a by-name call can use (type encoding {}).", ObjectClassName(entity), row.name, encoding);
 }
 

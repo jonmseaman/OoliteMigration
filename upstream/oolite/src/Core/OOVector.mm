@@ -40,7 +40,6 @@ const BoundingBox		kZeroBoundingBox = {{ 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f 
 #endif
 
 
-#if __OBJC__
 std::string VectorDescription(Vector vector)
 {
 	return oo::str::format("(%g, %g, %g)", vector.x, vector.y, vector.z);
@@ -66,7 +65,6 @@ std::string OONativeVector::description() const
 	return oo::str::format("<OONativeVector %s>", oo::str::pointerDescription(this).c_str());
 }
 
-#endif
 
 
 

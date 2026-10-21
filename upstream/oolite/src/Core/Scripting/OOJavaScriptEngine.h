@@ -39,7 +39,6 @@ MA 02110-1301, USA.
 #include "OOJSPropID.h"
 
 #include "oofnd/objc/OOAssert.h"
-#include "oofnd/objc/OOObjCRef.h"
 #include "oofnd/Ref.hpp"
 
 /*	The plain C++ part of the engine API (bead oo-9ht.72): reporters, converters, argument and
@@ -229,6 +228,5 @@ OOJS_EXTERN_C BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
 // (The root class's JS glue and the engine's one-line sends to Objective-C objects,
 // OOObject+OOJavaScript.h, went with bead oo-4aq6a.6.2.)
 #include "OOCocoa.h"
-#include <objc/runtime.h>	// what OOObject+OOJavaScript.h gave its includers
 
 

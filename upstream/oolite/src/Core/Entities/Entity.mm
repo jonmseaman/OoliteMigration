@@ -23,7 +23,6 @@ MA 02110-1301, USA.
 */
 
 #include "Entity.h"
-#include "oofnd/objc/OORuntime.h"
 #include "oofnd/objc/OOException.h"	// oo::CurrentOOException (beads oo-rskgl, oo-rskgl.1)
 #include "EntityOOJavaScriptExtensions.h"
 #include "PlayerEntity.h"

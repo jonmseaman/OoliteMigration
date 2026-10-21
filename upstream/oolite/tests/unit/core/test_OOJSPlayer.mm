@@ -18,7 +18,6 @@
 */
 
 #import "OOCocoa.h"
-#include <objc/runtime.h>
 #include "OOTypes.h"
 #include "OOEntityEnums.h"
 #include "ooscript/JSEngine.hpp"

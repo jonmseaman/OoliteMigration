@@ -12,7 +12,6 @@
 #ifndef OOFND_OBJC_OOOBJECT_H
 #define OOFND_OBJC_OOOBJECT_H
 
-#include <objc/runtime.h>
 #include <stdint.h>
 
 // NSZone is a GNUstep-only concept Oolite never uses beyond passing it through; always nil.

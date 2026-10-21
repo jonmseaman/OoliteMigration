@@ -35,7 +35,6 @@ MA 02110-1301, USA.
 
 #include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 
 
 class AI;	// C++ since bead oo-9ht.73 (AI.h)

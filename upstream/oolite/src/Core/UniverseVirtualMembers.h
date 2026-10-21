@@ -37,7 +37,6 @@ MA 02110-1301, USA.
 #include "OOMaths.h"
 #include "OOTypes.h"
 #include "oofnd/PList.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 #include "OOEntityHold.h"	// owning entity references (bead oo-9ht.39.26)
 #include "OOEntityEnums.h"	// OOScanClass
 #include "OOSystemDescriptionManager.h"	// OOSystemLayer

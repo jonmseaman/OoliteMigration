@@ -29,7 +29,6 @@
 
 #include "oo_test.hpp"
 
-#include <objc/runtime.h>
 #include <string>
 
 

@@ -29,7 +29,6 @@
 #include "oofnd/String.hpp"
 #include "oo_test.hpp"
 
-#include <objc/runtime.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>

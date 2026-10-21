@@ -39,7 +39,6 @@ extern "C++" {
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 
 }	// extern "C++"
 

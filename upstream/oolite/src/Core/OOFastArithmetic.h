@@ -63,7 +63,7 @@ OOINLINE INLINE_CONST_FUNC uint64_t OORoundUpToPowerOf2_64(uint64_t value)
 }
 
 
-#if __OBJC__
+#if defined(__cplusplus) && !defined(OO_PLAIN_CPP_UNIT)	// was __OBJC__: a game unit (an Objective-C++ unit until bead oo-dbz), not a plain C++ one
 #if OOLITE_64_BIT
 OOINLINE INLINE_CONST_FUNC NSUInteger OORoundUpToPowerOf2_NS(NSUInteger value)
 {

@@ -18,7 +18,6 @@
 */
 
 #import "OOCocoa.h"
-#include <objc/runtime.h>
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/PList.hpp"
@@ -248,10 +247,6 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &ar
 }
 
 
-ooscript::Value OOJSValueFromNativeObject(ooscript::Context, id)
-{
-	return ooscript::undefinedValue();
-}
 
 
 bool OOJSUnconstructableConstruct(ooscript::Context context, ooscript::CallArgs &)

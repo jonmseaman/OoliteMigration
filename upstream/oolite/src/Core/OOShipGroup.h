@@ -37,7 +37,6 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 #include "OOEntityHold.h"	// memberArray() (bead oo-xn1j1)
 #include "OOJSPrivateObject.h"
 

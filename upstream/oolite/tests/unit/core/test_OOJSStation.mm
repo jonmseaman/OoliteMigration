@@ -28,7 +28,6 @@
 #import "OOEquipmentType.h"
 #import "OOStringExpander.h"
 #import "OOShipRegistry.h"
-#include <objc/runtime.h>
 #include "OOTypes.h"
 #include "OOEntityEnums.h"
 #include "ooscript/JSEngine.hpp"
@@ -643,7 +642,6 @@ std::optional<std::string> cxx_OOStringFromJSValue(ooscript::Context context, oo
 }
 
 
-extern "C" ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object);
 
 
 // A property list as JavaScript, as far as the binding hands one over: null, a string, a number,
@@ -775,15 +773,6 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &ar
 }
 
 
-// The engine's conversion asks the object for its JS value; nil is null. (An entity's object, the
-// only object the test made, is C++ since bead oo-4aq6a.12 and asked directly, so only nil, which
-// the binding passes, reaches this; anything else would be undefined, as the engine's default.)
-ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
-{
-	(void)context;
-	if (object == nil)  return ooscript::nullValue();
-	return ooscript::undefinedValue();
-}
 
 
 bool OOJSUnconstructableConstruct(ooscript::Context context, ooscript::CallArgs &)

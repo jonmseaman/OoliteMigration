@@ -24,7 +24,6 @@ MA 02110-1301, USA.
 */
 
 #include "OOCocoa.h"
-#include "oofnd/objc/OORuntime.h"
 #include "OOStringExpander.h"
 #include "Universe.h"
 #include "OOJavaScriptEngine.h"
@@ -33,7 +32,6 @@ MA 02110-1301, USA.
 #include "PlayerEntityScriptMethods.h"
 #include "PlayerEntity.h"
 #include "OOCallByName.h"
-#include <objc/objc-arc.h>
 
 #include <map>
 #include <optional>

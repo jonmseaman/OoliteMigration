@@ -22,7 +22,6 @@
 
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
-#include <objc/runtime.h>
 #include "OOTypes.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"

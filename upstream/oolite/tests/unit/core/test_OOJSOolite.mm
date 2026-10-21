@@ -16,9 +16,9 @@
 */
 
 #import "oofnd/objc/OOObject.h"
-#include <objc/runtime.h>
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/objc/OOFoundationTypes.h"	// BOOL (from <objc/runtime.h> until bead oo-dbz.4)
 #include "oofnd/PList.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/String.hpp"

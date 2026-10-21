@@ -23,9 +23,6 @@ MA 02110-1301, USA.
 */
 
 #include "AI.h"
-#include "oofnd/objc/OORuntime.h"
-#include <objc/runtime.h>
-#include <objc/objc-arc.h>
 #include "ResourceManager.h"
 #include "OOStringParsing.h"
 #include "OOCacheManager.h"

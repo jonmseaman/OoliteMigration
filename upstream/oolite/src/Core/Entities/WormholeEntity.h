@@ -31,7 +31,6 @@ MA 02110-1301, USA.
 #include "Entity.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 
 #define WORMHOLE_EXPIRES_TIMEINTERVAL	900.0
 #define WORMHOLE_SHRINK_RATE			4000.0

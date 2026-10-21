@@ -45,7 +45,6 @@ MA 02110-1301, USA.
 #include "oofnd/Notification.hpp"
 #include "oofnd/String.hpp"
 #include "OOJSPrivateObject.h"
-#include <objc/runtime.h>
 
 
 // MARK: Entity (OOJavaScriptExtensions)

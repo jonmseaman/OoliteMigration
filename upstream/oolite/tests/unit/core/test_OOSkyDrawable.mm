@@ -27,7 +27,6 @@
 
 #include <cmath>
 
-#include <objc/runtime.h>
 
 
 // main.mm defines the debug flags, and the test has its own main.

@@ -39,7 +39,6 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 
 #include "OOScript.h"	// oo::Ref<OOScript> members and results (bead oo-9ht.133)
 

@@ -179,16 +179,9 @@ oo::PList PListForKeyIn(const oo::PList &dict, std::string_view key);
 std::string ExpandKeyWith(const std::string &key, const char *name, const oo::PList &value);
 
 
-// -addObject: on a set of objects (identity, as Entity keeps NSObject's -isEqual:): once each, in
-// the order added.
-template <class T, class U>
-void AddIfAbsent(std::vector<oo::ObjCRef<T>> &objects, U object)
-{
-	if (std::find(objects.begin(), objects.end(), object) == objects.end())  objects.emplace_back(object);
-}
-
-
-// The same on a list of held entities (bead oo-9ht.39.26): the entity's object is retained once.
+// -addObject: on a set of held entities (identity, as Entity keeps NSObject's -isEqual:; bead
+// oo-9ht.39.26): once each, in the order added, the entity's object retained once. (Its form over
+// Objective-C object references had no caller left and went with them, bead oo-dbz.2.)
 void AddIfAbsent(std::vector<oo::EntityHold> &entities, Entity *entity)
 {
 	if (std::find(entities.begin(), entities.end(), entity) == entities.end())  entities.emplace_back(entity);

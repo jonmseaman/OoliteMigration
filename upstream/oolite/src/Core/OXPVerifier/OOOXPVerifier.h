@@ -52,7 +52,6 @@ SOFTWARE.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/Ref.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 
 class OOOXPVerifierStage;	// OOOXPVerifierStage.h, which imports this header
 

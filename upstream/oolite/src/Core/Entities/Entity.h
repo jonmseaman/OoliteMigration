@@ -43,7 +43,6 @@ MA 02110-1301, USA.
 #include "CollisionRegion.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
-#include "oofnd/objc/OOObjCRef.h"
 #include "OOEntityHold.h"	// the owning entity lists (bead oo-xn1j1)
 #include "OOJSPrivateObject.h"
 #include "EntityVirtualMembers.h"	// the virtual members (bead oo-9ht.39.8.21)

@@ -139,6 +139,9 @@ STRING_ARG = "const std::string &"
 # A facade method answering one entity (Entity *, Entity <OOBeaconEntity> *): its row is written
 # @encode(id), the same "@", as the by-name table writes an Entity * result (bead oo-9ht.39.24).
 ENTITY_RESULT = re.compile(r"^Entity\b[^*]*\*$")
+# A Typed row's encoding is the measured literal kOOTypeEncoding<> gives (OOTypeEncodings.h, bead
+# oo-dbz.3); id, which C++ has not, is keyed by OOObjCId.
+ENCODING_KEYS = {"id": "OOObjCId"}
 
 # The facade's Entity (OOJavaScriptExtensions) category was deleted by bead oo-9ht.39.8.9; its
 # callable methods stay callObjC() names (answered on the C++ part by OOEntityCalledByName.mm's
@@ -212,7 +215,7 @@ def by_name_methods():
             continue
         if s == "};":
             break
-        m = re.match(r'\{ "([^"]+)",\t[^\t]+,\t@encode\((.*)\),\tOOEntityByNameArgument::(\w+),', s)
+        m = re.match(r'\{ "([^"]+)",\t[^\t]+,\tkOOTypeEncoding<(.*)>,\tOOEntityByNameArgument::(\w+),', s)
         if m:
             result.append((list(conds), m.group(2), m.group(1), BY_NAME_ARG[m.group(3)]))
     if not result:
@@ -258,7 +261,8 @@ def render():
     out.append("Do not edit: rerun the script. callObjC()'s names for an entity (bead oo-9ht.44, ADR-0056")
     out.append("amendment oo-9ht.44): each is a selector the facade defines, or a by-name row, with no argument,")
     out.append("or with one const std::string & argument and a void or oo::PList result; a Typed row keeps")
-    out.append("@encode() of the declared return type.")
+    out.append("the encoding of the declared return type (kOOTypeEncoding<>, @encode()'s measured literal;")
+    out.append("OOTypeEncodings.h, bead oo-dbz.3).")
     out.append("Included by OOJSCall.mm and its test only.")
     out.append("")
     out.append("*/")
@@ -273,6 +277,7 @@ def render():
     out.append("#include \"OOVisualEffectEntity.h\"")
     out.append("#include \"OOPlanetEntity.h\"")
     out.append("#include \"oofnd/PList.hpp\"")
+    out.append("#include \"OOTypeEncodings.h\"")
     out.append("#include <string>")
     out.append("")
     out.append("enum class OOJSCallEntityMethodForm")
@@ -281,14 +286,14 @@ def render():
     out.append("\tVoidString,\t\t// - (void) name:(const std::string &)")
     out.append("\tPListString,\t// - (oo::PList) name:(const std::string &)")
     out.append("\tPListVoid,\t\t// - (oo::PList) name")
-    out.append("\tTyped\t\t\t// - (T) name: encoding is @encode(T)")
+    out.append("\tTyped\t\t\t// - (T) name: encoding is kOOTypeEncoding<T>")
     out.append("};")
     out.append("")
     out.append("struct OOJSCallEntityMethodRow")
     out.append("{")
     out.append("\tconst char\t\t\t\t\t*name;")
     out.append("\tOOJSCallEntityMethodForm\tform;")
-    out.append("\tconst char\t\t\t\t\t*encoding;\t// a Typed row's @encode() of the return type, else null")
+    out.append("\tconst char\t\t\t\t\t*encoding;\t// a Typed row's encoding of the return type, else null")
     out.append("};")
     out.append("")
     out.append("inline const OOJSCallEntityMethodRow kOOJSCallEntityMethods[] =")
@@ -301,7 +306,7 @@ def render():
             for c in conds:
                 out.append(c)
             current = conds
-        enc = f"@encode({ret})" if form == "Typed" else "nullptr"
+        enc = f"kOOTypeEncoding<{ENCODING_KEYS.get(ret, ret)}>" if form == "Typed" else "nullptr"
         out.append(f"\t{{ \"{name}\",\tOOJSCallEntityMethodForm::{form},\t{enc} }},")
     for _ in current:
         out.append("#endif")

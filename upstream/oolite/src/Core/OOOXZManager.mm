@@ -25,8 +25,6 @@ MA 02110-1301, USA.
 */
 
 #include "OOOXZManager.h"
-#include <objc/runtime.h>
-#include <objc/objc-arc.h>
 #include "OOPListParsing.h"
 #include "OOStringParsing.h"
 #include "ResourceManager.h"
