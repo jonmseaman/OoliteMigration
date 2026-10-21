@@ -91,13 +91,13 @@ extern const char * const kOOJavaScriptEngineDidResetNotificationName;
 	A nullopt function means no caller prefix; a nullopt scriptClass prefixes "function: ".
 	Plain C++, not OOJS_EXTERN_C.
 */
-void cxx_OOJSReportError(ooscript::Context context, const char *format, ...) __attribute__((format(printf, 2, 3)));
-void cxx_OOJSReportErrorWithArguments(ooscript::Context context, const char *format, va_list args) __attribute__((format(printf, 2, 0)));
-void cxx_OOJSReportErrorForCaller(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, const char *format, ...) __attribute__((format(printf, 4, 5)));
+void cxx_OOJSReportError(ooscript::Context context, const char *format, ...) OO_PRINTF_FORMAT(2, 3);
+void cxx_OOJSReportErrorWithArguments(ooscript::Context context, const char *format, va_list args) OO_PRINTF_FORMAT(2, 0);
+void cxx_OOJSReportErrorForCaller(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, const char *format, ...) OO_PRINTF_FORMAT(4, 5);
 
-void cxx_OOJSReportWarning(ooscript::Context context, const char *format, ...) __attribute__((format(printf, 2, 3)));
-void cxx_OOJSReportWarningWithArguments(ooscript::Context context, const char *format, va_list args) __attribute__((format(printf, 2, 0)));
-void cxx_OOJSReportWarningForCaller(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, const char *format, ...) __attribute__((format(printf, 4, 5)));
+void cxx_OOJSReportWarning(ooscript::Context context, const char *format, ...) OO_PRINTF_FORMAT(2, 3);
+void cxx_OOJSReportWarningWithArguments(ooscript::Context context, const char *format, va_list args) OO_PRINTF_FORMAT(2, 0);
+void cxx_OOJSReportWarningForCaller(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, const char *format, ...) OO_PRINTF_FORMAT(4, 5);
 
 OOJS_EXTERN_C void OOJSReportBadPropertySelector(ooscript::Context context, ooscript::Object thisObj, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec);
 OOJS_EXTERN_C void OOJSReportBadPropertyValue(ooscript::Context context, ooscript::Object thisObj, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec, ooscript::Value value);

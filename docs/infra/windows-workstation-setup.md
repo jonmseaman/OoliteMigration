@@ -63,6 +63,22 @@ still the fastest way to reproduce the exact set: `setup-vm.ps1` then `setup-vm-
    `mingw-w64-ucrt-x86_64-mesa` (the llvmpipe `opengl32.dll`), python with `pytest` and
    `pyautogui`. That is Phase 0 item 0.2 / bead `oo-f4i`; do it as the story, not by hand.
 
+   **GCC beside Clang** (bead oo-1q4, Phase 4 exit gate). `tools/setup-windows.sh` installs
+   UCRT64's `mingw-w64-ucrt-x86_64-gcc` (on the fleet desktop 16.2.0-3, already present; recorded
+   in `tools/windows-packages.lock`); by hand, `pacman -S --needed mingw-w64-ucrt-x86_64-gcc`.
+   `tools/build-windows.sh --gcc test` builds into `build/meson_test_gcc`, beside the Clang
+   `build/meson_test` (`tools/meson/ccache-gcc.ini`: upstream's `gcc.ini` plus ccache, `ld.bfd`);
+   `OO_APP_DIR=<that>/oolite.app tools/tier-c.sh --only goldens` runs the goldens on its game (which
+   do not reproduce yet: ADR-0063 item 5), and
+   `OO_CORE_BUILD=meson_test_gcc bash tools/check-core-tests.sh` the core tests once the test
+   suite builds under GCC (bead oo-1q4, [ADR-0063](../decisions/0063-gcc-flavour-and-gcc-only-diagnostics.md)
+   item 4: until then `--gcc` stops in the test suite, and `meson compile -C
+   upstream/oolite/build/meson_test_gcc post_build` builds the game alone). It is UCRT64's GCC,
+   not a MINGW64 environment: the phase doc's "GCC (MINGW64)" predates upstream's Windows CI
+   moving to UCRT64 only, and one environment gives both compilers one set of libraries (the
+   recorded default, bead oo-1q4). Under GCC, libstdc++ makes `std::vsnprintf` MinGW's C99 printf
+   (`__USE_MINGW_ANSI_STDIO=1`, unconditional in its `os_defines.h`); under Clang it is UCRT's.
+
 4. **Claude Code**: `npm i -g @anthropic-ai/claude-code`, then `claude` and `/login`.
    **This needs a browser and an interactive terminal** — it cannot be driven headlessly.
    Log in as the account the fleet runs as, so `run-story` and `reevaluate.sh` inherit it.

@@ -2178,7 +2178,7 @@ void ShipEntity::setUpMixedEscorts()
 		{
 			for (i = min ; i < max ; i++)
 			{
-				if (Ranrot()%11 < government+2)
+				if (Ranrot()%11 < static_cast<unsigned>(government)+2)	// unsigned, as the comparison converted it (GCC -Wsign-compare; bead oo-1q4)
 				{
 					desired--;
 				}

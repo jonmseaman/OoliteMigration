@@ -10028,3 +10028,33 @@ byte-identical), and the two test meson files' source names. Every case, input a
 **Left (Phase 5 and follow-ups).** `GameController+FullScreen.mm` and the Mac-only blocks; `tools/setup-windows.sh`
 still installs libobjc2 and gnustep-make for the reference tools that build against GNUstep (`tools/plist-fuzz`,
 `tools/captures`), which the game no longer needs.
+
+## Amendment (bead oo-1q4.2): what the game's code needs to build under GCC as well
+
+Phase 4's GCC flavour ([ADR-0063](0063-gcc-flavour-and-gcc-only-diagnostics.md),
+`tools/build-windows.sh --gcc`) compiles the same sources with UCRT64 g++ 16. House-style
+consequences, each behaviour-identical under Clang:
+
+1. **No `= {}` on a container of `oo::Ref<T>` with `T` incomplete in the header.** GCC instantiates
+   `~Ref<T>` at a default member initializer; Clang waits for the constructor. Such a member is
+   declared without an initializer (a `std::vector`, `std::map` or `oo::Ref` default-constructs
+   empty / null either way): AI's `aiStack`, OOEncodingConverter's `_cache`, OOJoystickProfile's
+   `segments`, OOSkyDrawable's `_quadSets`, OOShaderMaterial's `uniforms`, OOOXPVerifier's
+   `_stagesByName` and `_waitingStages`.
+2. **A printf-style function says `OO_PRINTF_FORMAT(fmt, first)`** (`oofnd/PrintfFormat.h`), not
+   `__attribute__((format(printf, ...)))`: GCC on MinGW reads `printf` as the Microsoft runtime's,
+   which has no `%zu`, while what runs is C99's (libstdc++ forces `__USE_MINGW_ANSI_STDIO`); the
+   macro names `gnu_printf` there and stays `printf` for Clang. (OOStringExpander.cpp's file-local
+   `ReportJavaScriptWarning` keeps `printf`: tools/check-string-expander.sh compiles that file against
+   stub `ooscript` types, so its declaration line stays as it was; none of its formats is a `%z`.)
+3. **No type-punning read** (`((int32_t *)&val)[i]`, the `fast_floor` of the two atmosphere / planet
+   texture generators): `std::memcpy` into the integer halves, the same bits.
+4. A local filled by a scan that may fail is initialised where it is declared when it is read only
+   after every scan succeeded (OOMesh, OOProbabilisticTextureManager); a function whose body asserts
+   its pointer arguments is not also declared `NONNULL_FUNC` (OOOpenGLStateManager's
+   `SwitchOpenGLStateInternal`, `StatesEqual`); a signed/unsigned comparison converts as the
+   comparison did (ShipEntity's government-weighted count); a generated table body puts each statement on its own
+   line after an unbraced `if` (OOEntityCalledByNameTable.h, `--check` unchanged).
+
+Goldens unchanged under Clang. The GCC game does not yet reproduce them: random draws inside one call's
+arguments follow the compiler's evaluation order (ADR-0063 item 5, for Jon).

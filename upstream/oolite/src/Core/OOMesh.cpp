@@ -1194,7 +1194,7 @@ bool OOMesh::loadData(const std::string &filename, float scale)
 		{
 			for (j = 0; j < vertexCount; j++)
 			{
-				float x, y, z;
+				float x = 0, y = 0, z = 0;	// read only after every scan succeeded (GCC -Wmaybe-uninitialized; bead oo-1q4)
 				if (!failFlag)
 				{
 					if (!scanner->scanFloat(&x))  failFlag = YES;
@@ -1223,7 +1223,7 @@ bool OOMesh::loadData(const std::string &filename, float scale)
 			for (j = 0; j < faceCount; j++)
 			{
 				int r, g, b;
-				float nx, ny, nz;
+				float nx = 0, ny = 0, nz = 0;	// read only after every scan succeeded (GCC -Wmaybe-uninitialized; bead oo-1q4)
 				int n_v;
 				if (!failFlag)
 				{
@@ -1424,7 +1424,7 @@ bool OOMesh::loadData(const std::string &filename, float scale)
 			
 			for (j = 0; j < vertexCount; j++)
 			{
-				float x, y, z;
+				float x = 0, y = 0, z = 0;	// read only after every scan succeeded (GCC -Wmaybe-uninitialized; bead oo-1q4)
 				if (!failFlag)
 				{
 					if (!scanner->scanFloat(&x))  failFlag = YES;

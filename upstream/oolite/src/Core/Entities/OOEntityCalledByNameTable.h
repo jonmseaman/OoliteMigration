@@ -629,37 +629,43 @@ oo::PList ByName_294(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return oo::PList();
- if (StationEntity *station = StationPart(entity))  return station->launchPolice(); return ship->launchPolice(); 
+	if (StationEntity *station = StationPart(entity))  return station->launchPolice();
+	return ship->launchPolice(); 
 }
 Entity * ByName_295(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return nullptr;
- if (StationEntity *station = StationPart(entity))  return station->launchDefenseShip(); ship->launchDefenseShip(); return nullptr; 
+	if (StationEntity *station = StationPart(entity))  return station->launchDefenseShip();
+	ship->launchDefenseShip(); return nullptr; 
 }
 Entity * ByName_296(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return nullptr;
- if (StationEntity *station = StationPart(entity))  return station->launchScavenger(); ship->launchScavenger(); return nullptr; 
+	if (StationEntity *station = StationPart(entity))  return station->launchScavenger();
+	ship->launchScavenger(); return nullptr; 
 }
 Entity * ByName_297(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return nullptr;
- if (StationEntity *station = StationPart(entity))  return station->launchMiner(); ship->launchMiner(); return nullptr; 
+	if (StationEntity *station = StationPart(entity))  return station->launchMiner();
+	ship->launchMiner(); return nullptr; 
 }
 Entity * ByName_298(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return nullptr;
- if (StationEntity *station = StationPart(entity))  return station->launchPirateShip(); ship->launchPirateShip(); return nullptr; 
+	if (StationEntity *station = StationPart(entity))  return station->launchPirateShip();
+	ship->launchPirateShip(); return nullptr; 
 }
 Entity * ByName_299(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return nullptr;
- if (StationEntity *station = StationPart(entity))  return station->launchShuttle(); ship->launchShuttle(); return nullptr; 
+	if (StationEntity *station = StationPart(entity))  return station->launchShuttle();
+	ship->launchShuttle(); return nullptr; 
 }
 void ByName_300(Entity *entity)
 { if (ShipEntity *ship = ShipPart(entity))  ship->launchTrader(); }
@@ -667,13 +673,15 @@ Entity * ByName_301(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return nullptr;
- if (StationEntity *station = StationPart(entity))  return station->launchEscort(); ship->launchEscort(); return nullptr; 
+	if (StationEntity *station = StationPart(entity))  return station->launchEscort();
+	ship->launchEscort(); return nullptr; 
 }
 Entity * ByName_302(Entity *entity)
 {
 	ShipEntity *ship = ShipPart(entity);
 	if (ship == nullptr)  return nullptr;
- if (StationEntity *station = StationPart(entity))  return station->launchPatrol(); (void)ship->launchPatrol(); return nullptr; 
+	if (StationEntity *station = StationPart(entity))  return station->launchPatrol();
+	(void)ship->launchPatrol(); return nullptr; 
 }
 void ByName_303(Entity *entity, const std::string &param)
 {

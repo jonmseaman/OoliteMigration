@@ -11,6 +11,8 @@
 #     tools/build-windows.sh dev             # a single named flavour
 #     tools/build-windows.sh --all           # deployment, test and dev, as CI builds them
 #     tools/build-windows.sh --clean test    # discard the build directory first
+#     tools/build-windows.sh --gcc test      # the same flavour built by GCC (g++, ld.bfd) into
+#                                            # build/meson_<flavour>_gcc, beside the Clang build
 #
 # Exits nonzero if the machine is not provisioned, if a flavour fails to build, or if the
 # expected binary is missing afterwards.
@@ -44,6 +46,7 @@ say() { echo "==> $*"; }
 die() { echo "build-windows: $*" >&2; exit 1; }
 
 CLEAN=false
+GCC=false
 FLAVOURS=()
 # --setup-flags="..." -- passed straight through to mk.sh, which splices it into `meson setup`.
 #
@@ -65,9 +68,10 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --all)   FLAVOURS=("${ALL_FLAVOURS[@]}") ;;
     --clean) CLEAN=true ;;
+    --gcc)   GCC=true ;;
     --setup-flags=*) SETUP_FLAGS="${1#--setup-flags=}" ;;
     --setup-flags)   SETUP_FLAGS="${2:?--setup-flags needs a value}"; shift ;;
-    -h|--help) sed -n '2,18p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    -h|--help) sed -n '2,20p' "${BASH_SOURCE[0]}"; exit 0 ;;
     -*)      die "unknown option '$1'" ;;
     *)       FLAVOURS+=("$1") ;;
   esac
@@ -77,6 +81,10 @@ done
 
 [ -d "$OOLITE" ] || die "upstream/oolite not found under $REPO_ROOT"
 [ -f "$NATIVE_FILE" ] || die "missing native file $NATIVE_FILE"
+if $GCC; then
+  NATIVE_FILE="$REPO_ROOT/tools/meson/ccache-gcc.ini"
+  [ -f "$NATIVE_FILE" ] || die "missing native file $NATIVE_FILE"
+fi
 
 # --- The machine must already be provisioned --------------------------------------------------
 #
@@ -87,7 +95,9 @@ done
 # every build. Check for the binaries this script actually needs and point at the full check.
 
 missing=()
-for c in clang meson ninja ccache cygpath; do
+compilers=(clang)
+$GCC && compilers=(gcc g++)
+for c in "${compilers[@]}" meson ninja ccache cygpath; do
   command -v "$c" >/dev/null 2>&1 || missing+=("$c")
 done
 if [ ${#missing[@]} -gt 0 ]; then
@@ -148,12 +158,71 @@ say "ccache $(ccache --version | head -1 | awk '{print $3}'), cache_dir $(ccache
 
 # --- Build --------------------------------------------------------------------------------------
 
+# THE GCC BUILD (bead oo-1q4; Phase 4 exit gate: "GCC build green alongside Clang"). mk.sh names
+# its build directory build/meson_<flavour> and offers no way to change it, and a GCC configure
+# there would replace the Clang build that every other tool and the goldens use. So --gcc runs the
+# two meson steps mk.sh runs (meson_setup, meson_compile) into build/meson_<flavour>_gcc, with
+# mk.sh's per-flavour options (its execute_target "setup"; keep the two in step) and
+# tools/meson/ccache-gcc.ini. VER_FULL reaches get_version.sh as mk.sh's --ver-full sends it, and
+# meson is still get_version.sh's parent. Without --gcc nothing below changes.
+#
+# NO LTO UNDER GCC. mk.sh's deployment/test flavours set b_lto=true; here it is false. The golden
+# flag policy pins -O2 and -ffp-contract=off, not LTO (tests/golden/check_build_flags.py), and GCC's
+# whole-program link is not Clang's ThinLTO: -flto=auto fans every one of ~170 test links out into
+# parallel lto1 jobs (an hour of the shared machine for one build), and it type-checks the whole
+# program, where the core tests' stand-ins deliberately replace a game class (UniverseStandIn.h and
+# the like) inside one test executable. Each object is compiled exactly as the Clang build compiles
+# it apart from -flto.
+build_gcc() {
+  local flavour="$1" bd="build/meson_$1_gcc" opts=() reconf=() extra=()
+  case "$flavour" in
+    deployment) opts=(-Ddeployment_release=true -Ddebug=false -Dstrip_bin=true -Db_lto=false) ;;
+    test)       opts=(-Ddebug=false -Dstrip_bin=true -Db_lto=false) ;;
+    dev)        opts=(-Ddev_release=true -Ddebug=false -Dstrip_bin=false) ;;
+    debug)      opts=(-Ddebug=true -Dstrip_bin=false) ;;
+  esac
+  # Two code-generation flags bring GCC's output nearer the Clang build's; neither is a diagnostic
+  # switch, and each function's own code is what it was. Passed here, not in the native file,
+  # because meson reads a native file's [built-in options] only on a directory's first configure.
+  #  * -fno-devirtualize-speculatively: at -O2 GCC turns a virtual call whose receiver might be the
+  #    one final class it can see into "if the vptr is that class's, call it directly, else through
+  #    the vtable"; Clang does not. The guessed call is a new reference, so a narrow core test then
+  #    needs a definition its link list never had (oo::EntityPListForeign::description and with it
+  #    oo::EntityDescription, from every unit that describes a PList), and GCC diagnoses the guessed
+  #    path as though it ran (-Warray-bounds on a test's stand-in subclass the receiver never is).
+  #  * function-level linking, as the Clang build has it (clang gives each function its own COMDAT
+  #    section on this target and lld drops unreferenced ones): -ffunction-sections -fdata-sections
+  #    and ld.bfd's --gc-sections.
+  local codegen=(-ffunction-sections -fdata-sections)
+  opts+=("-Dc_args=${codegen[*]}" "-Dcpp_args=${codegen[*]} -fno-devirtualize-speculatively"
+         "-Dc_link_args=-Wl,--gc-sections" "-Dcpp_link_args=-Wl,--gc-sections")
+  [ -n "$SETUP_FLAGS" ] && read -r -a extra <<< "$SETUP_FLAGS"	# split as mk.sh splits it
+  if $CLEAN; then
+    say "cleaning $bd"
+    rm -rf "${OOLITE:?}/$bd"
+  fi
+  [ -f "$OOLITE/$bd/build.ninja" ] && reconf=(--reconfigure)
+  say "building flavour '$flavour' with GCC into $bd${SETUP_FLAGS:+ (setup-flags: $SETUP_FLAGS)}"
+  ( cd "$OOLITE" && export PYTHONUTF8=1 VER_FULL="$OOLITE_VER_FULL" \
+      && meson setup "$bd" "${opts[@]}" ${extra[@]+"${extra[@]}"} \
+           --native-file "$(cygpath -m "$NATIVE_FILE")" ${reconf[@]+"${reconf[@]}"} \
+      && meson compile -C "$bd" )
+  binary="$OOLITE/$bd/oolite.app/oolite.exe"
+  [ -f "$binary" ] || die "flavour '$flavour' (GCC) reported success but $binary is missing"
+  say "flavour '$flavour' (GCC) ok: $(stat -c %s "$binary") bytes"
+}
+
 STARTED_AT=$SECONDS
 for flavour in "${FLAVOURS[@]}"; do
   case "$flavour" in
     deployment|test|dev|debug) ;;
     *) die "unknown flavour '$flavour' (expected: deployment, test, dev, debug)" ;;
   esac
+
+  if $GCC; then
+    build_gcc "$flavour"
+    continue
+  fi
 
   if $CLEAN; then
     say "cleaning build/meson_$flavour"
