@@ -52,3 +52,16 @@ bead, as usual.
   tools/setup-windows.sh, documented as the GNUstep reference tools' dependencies only, because a
   documented reference tool, the capture script under tools/captures/plist-description, needs them. Jon: "I approve
   you working through human decisions whenever it makes sense to unblock you."
+- oo-r3ffn item 5 (ADR-0063, GCC goldens): orchestrator decision, 2026-10-21. Where one call's
+  arguments draw more than one random number (e.g. `make_vector(randf()-0.5f, randf()-0.5f,
+  randf()-0.5f)`), each draw moves into a local variable in the order Clang evaluates them today, so
+  the Clang build is unchanged and GCC reproduces the same goldens. This applies to the plain-C
+  bodies in OOVector.cpp/OOHPVector.cpp too: making an unspecified evaluation order explicit is a
+  portability fix, not a rewrite (rule 9 forbids converting C, not fixing it); no other line of those
+  bodies changes. No golden is re-blessed. Jon: "I approve you working through human decisions
+  whenever it makes sense to unblock you."
+- oo-r3ffn item 4 (ADR-0063, GCC-only -Werror false positives in two oofnd tests): orchestrator
+  decision, 2026-10-21. Those tests keep -Werror under Clang; under GCC they build without -Werror,
+  so the warnings still print in the log (no -Wno-*, no pragma, no attribute: rule 3 holds). The
+  GCC false positives are listed in ADR-0063 item 3 for a later GCC upgrade to re-check. Jon: "I
+  approve you working through human decisions whenever it makes sense to unblock you."
