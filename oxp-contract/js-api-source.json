@@ -433,7 +433,7 @@
         },
         "toString": {
           "arity": 0,
-          "native": "OOJSObjectWrapperToString"
+          "native": "OOJSEntityToString"
         }
       },
       "properties": {
@@ -598,7 +598,7 @@
       "methods": {
         "toString": {
           "arity": 0,
-          "native": "OOJSObjectWrapperToString"
+          "native": "EquipmentInfoToString"
         }
       },
       "properties": {
@@ -1984,7 +1984,7 @@
       "methods": {
         "toString": {
           "arity": 0,
-          "native": "OOJSObjectWrapperToString"
+          "native": "ScriptToString"
         }
       },
       "properties": {},
@@ -3227,7 +3227,7 @@
         },
         "toString": {
           "arity": 0,
-          "native": "OOJSObjectWrapperToString"
+          "native": "ShipGroupToString"
         }
       },
       "properties": {
@@ -3266,7 +3266,7 @@
       "methods": {
         "toString": {
           "arity": 0,
-          "native": "OOJSObjectWrapperToString"
+          "native": "SoundToString"
         }
       },
       "properties": {
@@ -3316,7 +3316,7 @@
         },
         "toString": {
           "arity": 0,
-          "native": "OOJSObjectWrapperToString"
+          "native": "SoundSourceToString"
         }
       },
       "properties": {
@@ -3931,7 +3931,7 @@
         },
         "toString": {
           "arity": 0,
-          "native": "OOJSObjectWrapperToString"
+          "native": "SystemInfoToString"
         }
       },
       "properties": {
@@ -3987,7 +3987,7 @@
         },
         "toString": {
           "arity": 0,
-          "native": "OOJSObjectWrapperToString"
+          "native": "TimerToString"
         }
       },
       "properties": {
@@ -4403,7 +4403,7 @@
   "source_root": "upstream/oolite/src",
   "summary": {
     "class_count": 31,
-    "files_with_tables": 31,
+    "files_with_tables": 32,
     "method_count": 285,
     "property_count": 469,
     "readonly_properties": 268,

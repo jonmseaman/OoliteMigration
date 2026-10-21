@@ -133,3 +133,19 @@ globals, 86 Oolite, 54 ECMAScript, 39 native classes; the 72 additions are ECMAS
 QuickJS-ng has and SpiderMonkey 1.8.5 did not, such as `WeakRef` and `queueMicrotask`). The Tier C
 `jsapi` stage runs that comparison. Regenerate this file only from a QuickJS-ng build, and review the
 comparison before committing it.
+
+## `js-api-source.json`
+
+Scraped from the engine SOURCE (the property and function tables in `upstream/oolite/src`) by
+`tools/js_api_source_snapshot.py --out`, byte-compared by `--check` (Tier C `jsapi`). It is
+source-derived metadata, not a behaviour record: it adds what the live snapshot cannot see
+(READONLY vs READWRITE, arity), and each method's `native` is the C++ identifier in the table,
+which no script can observe (a script sees the table's JS name, e.g. `toString`). Regenerate it
+when the tables change; the JS-visible contract stays `js-api-1.93.json`.
+
+Bead oo-l4f2h (2026-10-20) regenerated it after Phase 3 gave eight classes (Entity, EquipmentInfo,
+Script, ShipGroup, Sound, SoundSource, SystemInfo, Timer) their own `toString` native when their
+JS private slot came to hold a C++ object (beads oo-6symp, oo-6symp.1-.3, oo-9ht.39.3). Each calls
+`OOJSCxxObjectWrapperToString`, which answers as upstream's `OOJSObjectWrapperToString` did (the
+object's JS description, else `[object <class>]`); name, arity and result are unchanged, and a live
+snapshot of the build compared 0 differences against `js-api-1.93.json`.
