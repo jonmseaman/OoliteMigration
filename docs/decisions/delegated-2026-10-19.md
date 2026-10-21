@@ -47,3 +47,8 @@ bead, as usual.
   `upstream/oolite/src/Core/OOTypeEncodings.h` (`kOOTypeEncoding<T>`) through `tools/gen-type-encodings.py`, whose
   `--check` keeps them in step (bead oo-dbz.3, ADR-0056 amendment oo-dbz.2/.3/.4). Jon: "I approve you working
   through human decisions whenever it makes sense to unblock you."
+- oo-ebds4 (batch BI): tools/check-selector-types.py, its probe and data files retire (no Objective-C
+  selector is left to check, ADR-0043 Amendment 4); libobjc2 and gnustep-make stay in
+  tools/setup-windows.sh, documented as the GNUstep reference tools' dependencies only, because a
+  documented reference tool, the capture script under tools/captures/plist-description, needs them. Jon: "I approve
+  you working through human decisions whenever it makes sense to unblock you."

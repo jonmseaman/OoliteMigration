@@ -41,10 +41,17 @@ UCRT_PKGS=(
 )
 
 # Installed by upstream's install_deps.sh from the oolite_windeps_build releases, not from a
-# repository: the libobjc2 runtime built against clang, and gnustep-make. The Foundation library
-# left the build with oo-qps.18 (ADR-0055); the test harnesses that still compile against it
-# (tools/check-string-expander.sh, tools/check-sysdesc-tools.sh, the plist-description capture)
-# install it themselves (bead oo-qqz6). (SpiderMonkey left with Phase 1, bead oo-7wx.)
+# repository: the libobjc2 runtime built against clang, and gnustep-make (gnustep-config).
+#
+# NOT FOR THE GAME (bead oo-ebds4). The game, its tests and every gate stopped using these when
+# libobjc2 left the build (bead oo-dbz.5); the deny-list (CLAUDE.md rule 8) fails a build or an
+# import table that names them, and tools/check-string-expander.sh / tools/check-sysdesc-tools.sh
+# are C++ (bead oo-6e1.2). They stay for the read-only GNUstep REFERENCE tools, which compile
+# against the real GNUstep to record what the game must match: tools/captures/plist-description
+# (capture.sh needs gnustep-config and the libobjc2 runtime) and the oracle half of
+# tools/plist_fuzz.py. Both also need GNUstep Base (Foundation), which no step here installs since the game
+# dropped Foundation (oo-qps.18, ADR-0055): a reference capture installs it by hand first.
+# (SpiderMonkey left with Phase 1, bead oo-7wx.)
 WINDEPS_PKGS=(libobjc2 gnustep-make)
 
 # Pure-Python, no MSYS2 package exists. pytest-bdd drives the component tier (ADR-0018);
@@ -135,7 +142,7 @@ elif want "ucrt64: ${needed_ucrt[*]}"; then
   pacman -S --needed --noconfirm "${needed_ucrt[@]}"
 fi
 
-# --- 3. Oolite Windows dependencies (libobjc2, GNUstep) ---------------------------------------
+# --- 3. GNUstep reference-tool dependencies (libobjc2, gnustep-make; not the game) -----------
 #
 # Delegated to upstream's install_deps.sh so this stays in step with CI. That script is not
 # idempotent - it re-downloads every release asset and re-runs pacman -U - so it is gated on the
