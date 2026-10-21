@@ -65,3 +65,10 @@ bead, as usual.
   so the warnings still print in the log (no -Wno-*, no pragma, no attribute: rule 3 holds). The
   GCC false positives are listed in ADR-0063 item 3 for a later GCC upgrade to re-check. Jon: "I
   approve you working through human decisions whenever it makes sense to unblock you."
+- oo-4d403 (proposed ADR-0064, GCC spelling of __PRETTY_FUNCTION__): orchestrator decision,
+  2026-10-21, on the recorded default. The four checks that pin the compiler's spelling of
+  `__PRETTY_FUNCTION__` (test_OOJSConsole.cpp ~623/639, test_objc_assert.cpp ~70/74) keep Clang's
+  expected strings byte-identical; under GCC (`#if defined(__GNUC__) && !defined(__clang__)`) they
+  expect GCC's spelling of the same function. No check is removed or loosened, and the game does
+  not change; each check still pins one exact string per compiler. Approval lines cite ADR-0064.
+  Jon: "I approve you working through human decisions whenever it makes sense to unblock you."
