@@ -55,7 +55,8 @@ MA 02110-1301, USA.
 #ifdef __cplusplus
 extern "C++" {
 #include "oofnd/StdLib.hpp"
-bool cxx_OOCheckOpenGLErrors(const char *format, ...) __attribute__((format(printf, 1, 2)));
+#include "oofnd/PrintfFormat.h"
+bool cxx_OOCheckOpenGLErrors(const char *format, ...) OO_PRINTF_FORMAT(1, 2);
 bool cxx_OOCheckOpenGLErrors(const std::function<std::string()> &context);
 }
 #endif

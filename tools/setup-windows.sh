@@ -37,6 +37,10 @@ UCRT_PKGS=(
   # it every sanitizer frame is a bare address, and a report cannot be attributed to oolite.exe
   # rather than to a prebuilt third-party DLL. clang alone does not provide it.
   llvm-tools
+  # gcc builds the GCC flavour beside the Clang one (tools/build-windows.sh --gcc; bead oo-1q4,
+  # the Phase 4 exit gate's "GCC build green alongside Clang"). UCRT64's, so both compilers share
+  # one set of libraries.
+  gcc
   python python-pip python-setuptools python-wheel python-pytest python-pillow
 )
 

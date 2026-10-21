@@ -43,6 +43,7 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOAssert.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/String.hpp"
+#include "oofnd/PrintfFormat.h"
 
 /*	The expansion engine works on UTF-16 code units, as it did on the Objective-C string's
 	characters, held in std::u16string; an empty optional stands for nil (bead oo-3rb.61, proposed
@@ -197,7 +198,7 @@ OOMaybeUnits ApplyOneOperator(const OOMaybeUnits &string, const OOUnits &op, con
 	
 	Errors that are not syntax or invalid keys are reported with OO_LOG_ERR().
 */
-void SyntaxIssue(OOStringExpansionContext *context, const char *function, const char *fileName, NSUInteger line, const char *logMessageClass, const char *prefix, const char *format, ...)  __attribute__((format(printf, 7, 8)));
+void SyntaxIssue(OOStringExpansionContext *context, const char *function, const char *fileName, NSUInteger line, const char *logMessageClass, const char *prefix, const char *format, ...)  OO_PRINTF_FORMAT(7, 8);
 void ReportJavaScriptWarning(ooscript::Context jsc, const char *format, ...)  __attribute__((format(printf, 2, 3)));
 }	// namespace
 

@@ -23,12 +23,14 @@ fi
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OOLITE="$REPO_ROOT/upstream/oolite"
 TEST_DIR="$OOLITE/tests/unit/core"
-BUILD_DIR="$OOLITE/build/meson_test"
+# OO_CORE_BUILD names another build directory under build/, e.g. meson_test_gcc for the GCC build
+# (tools/build-windows.sh --gcc test; bead oo-1q4). Default: the Clang 'test' build.
+BUILD_DIR="$OOLITE/build/${OO_CORE_BUILD:-meson_test}"
 
 die() { printf 'check-core-tests: %s\n' "$*" >&2; exit 1; }
 
 command -v meson >/dev/null 2>&1 || die "meson is not on PATH; run this from the MSYS2 UCRT64 shell"
-[ -f "$BUILD_DIR/build.ninja" ] || die "no build directory at $BUILD_DIR; run tools/build-windows.sh test first"
+[ -f "$BUILD_DIR/build.ninja" ] || die "no build directory at $BUILD_DIR; run tools/build-windows.sh test (with --gcc for meson_test_gcc) first"
 
 shopt -s nullglob
 tests=("$TEST_DIR"/test_*.cpp "$TEST_DIR"/test_*.mm)
