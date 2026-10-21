@@ -36,8 +36,8 @@ oo-9ht.39.7.1: the AI's actions and messages and the legacy script engine.
 
 oo-qps.72 deleted the transitional form that passed an id parameter the argument as an
 Objective-C object: such a method is logged (callByName.badSignature) and not called.
-tools/check-selector-types.py --check --strict-called-by-name rejects an object parameter, or an
-id result, on a selector a dispatcher calls by name.
+tools/check-selector-types.py --check --strict-called-by-name rejected an object parameter, or an
+id result, on a selector a dispatcher calls by name, until no selector was left (retired, bead oo-ebds4).
 
 A nil target does nothing (as messaging nil). A target that does not answer <selector>, or whose
 method has no signature above, is logged (callByName.unknownSelector / callByName.badSignature)
