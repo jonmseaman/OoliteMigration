@@ -1,7 +1,8 @@
 # ADR-0063: The GCC flavour, and what to do with GCC-only diagnostics
 
-- Status: Proposed (bead oo-1q4, batch BI, 2026-10-20). Items 1-3 are in effect (oo-1q4.2 lands items
-  1-2's tooling and src fixes); items 4 and 5 need Jon (hard rules 3, 9 and 1), so oo-1q4 stays open on them.
+- Status: Accepted on recorded defaults by the orchestrator under Jon's 2026-10-20 delegation
+  (items 4 and 5 decided 2026-10-21, docs/decisions/delegated-2026-10-19.md, bead oo-r3ffn; proposed
+  by bead oo-1q4, batch BI, 2026-10-20).
 - Date: 2026-10-20
 - Beads: oo-1q4.2 (the tooling and src fixes), oo-1q4 (seam 4.3, "GCC build alongside the Clang build"), oo-lqd (Phase 4 exit gate)
 
@@ -43,7 +44,8 @@ with `werror=true`.
    `oo::PList` (OOCommodityMarket, OOOpenGLMatrixManager), `-Waggressive-loop-optimizations` on a
    `u16string::resize` (PlayerEntityStickMapper), and `-Wnonnull-compare` in `OOMatrix.h`'s
    `OOMatrixGetBasisVectors`, which is plain C that OOVoxel.c also compiles (hard rule 9).
-4. **Open, for Jon:** two of those false positives are in oofnd unit tests built with
+4. **Decided 2026-10-21 (oo-r3ffn, recorded default): under GCC the oofnd suite builds without
+   `werror`; under Clang it keeps it.** Two of those false positives are in oofnd unit tests built with
    `werror=true` (`test_plist.cpp` valueSemanticsDeepCopy: `-Wmaybe-uninitialized` on a moved
    `PList`; `test_ref.cpp` copyingAnObjectGivesAFreshCount: `-Wstringop-overflow` on a null path
    GCC invents), so the GCC build is not green. Recommended default: the oofnd suite keeps
@@ -51,8 +53,9 @@ with `werror=true`.
    warnings still print and nothing is suppressed; the alternative is to respell the two test
    lines (an approval under std-2026-10-19 each), which batch BI tried and GCC still diagnosed.
 
-5. **Open, for Jon: the GCC game does not reproduce the goldens, because the game's random
-   draws depend on argument evaluation order.** Measured on bead oo-1q4.2 (batch BI): the GCC
+5. **Decided 2026-10-21 (oo-r3ffn, recorded default): multi-draw arguments move into locals in
+   Clang's order, the plain-C vector functions included; no golden is re-blessed.** The GCC game did not reproduce the goldens, because the game's random
+   draws depend on argument evaluation order. Measured on bead oo-1q4.2 (batch BI): the GCC
    `test` build plays scenario 001 with the Rock Hermit elsewhere and as `rockhermit-chaotic`
    (4 differences from `goldens/windows-x64/001`). C++ leaves the order of a call's arguments
    unspecified; Clang evaluates them left to right and GCC (x86-64) right to left, measured with a
