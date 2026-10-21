@@ -6,7 +6,11 @@ Two programs read the same files and print the same protocol (tools/plist-fuzz/*
   * gnustep_oracle   OOPropertyListFromData (ChangeDTDIfApplicable + NSPropertyListSerialization),
                      the game's OldSchoolPropertyListWriting.mm and GNUstep's XML writer, linked
                      against the installed GNUstep base. A test utility built on demand; it is
-                     not part of the game.
+                     not part of the game. The game's own writer has left the tree, so the
+                     oracle takes those sources from git history at ORACLE_COMMIT, the commit
+                     that blessed it (bead oo-5ekxm). GNUstep base is hand-installed
+                     (tools/setup-windows.sh does not provision it); without gnustep-config the
+                     tool prints SKIP and exits 0.
   * oofnd_plist      oo::parsePropertyList, oo::writeOldStylePList, oo::writeXMLPList.
 
 Each parse is printed in plist_dump.hpp's canonical form. Per file the comparator checks:
@@ -55,6 +59,13 @@ sys.path.insert(0, str(HERE))
 
 # ---------------------------------------------------------------------------------------- build
 
+# The commit that blessed this oracle (bead oo-g2k) and the game sources it links from there.
+ORACLE_COMMIT = "bd4f060b1e"
+ORACLE_DIR = "upstream/oolite/src/Core"
+ORACLE_FILES = ("OldSchoolPropertyListWriting.h", "OldSchoolPropertyListWriting.mm",
+                "NSNumberOOExtensions.h", "NSNumberOOExtensions.mm", "OOFunctionAttributes.h")
+
+
 def build(work: Path) -> tuple[Path, Path]:
     """Compile both programs into `work`; returns (oracle, oofnd)."""
     cxx = os.environ.get("CXX", "clang++")
@@ -66,10 +77,16 @@ def build(work: Path) -> tuple[Path, Path]:
                                       capture_output=True, text=True).stdout.split()
     # gnustep-config's -MMD would drop .d files into the working directory; no dependency files.
     objc = [f for f in cfg("--objc-flags") if f not in ("-MMD", "-MP")]
-    core = OO / "src" / "Core"
-    subprocess.run([cxx, "-x", "objective-c++", *objc, "-Wextra", f"-I{core}",
-                    str(SRC / "gnustep_oracle.mm"), str(core / "OldSchoolPropertyListWriting.mm"),
-                    str(core / "NSNumberOOExtensions.mm"), *cfg("--base-libs"), "-o", str(oracle)],
+    # The game's old-style writer and its number category left the tree (oo-n8gx, oo-h538): the
+    # oracle compiles them as they were at ORACLE_COMMIT, written into `work` (bead oo-5ekxm).
+    for name in ORACLE_FILES:
+        blob = subprocess.run(["git", "-C", str(REPO), "show", f"{ORACLE_COMMIT}:{ORACLE_DIR}/{name}"],
+                              check=True, capture_output=True).stdout
+        (work / name).write_bytes(blob)
+    subprocess.run([cxx, "-x", "objective-c++", *objc, "-Wextra", f"-I{work}",
+                    str(SRC / "gnustep_oracle.mm"),
+                    *[str(work / n) for n in ORACLE_FILES if n.endswith(".mm")],
+                    *cfg("--base-libs"), "-o", str(oracle)],
                    check=True, cwd=work)
     return oracle, oofnd
 
@@ -609,6 +626,12 @@ def main(argv=None) -> int:
     c.add_argument("--allow-missing", action="store_true")
     sub.add_parser("selftest")
     args = ap.parse_args(argv)
+    # The same lookup build() uses: gnustep-config is a shell script, found through sh.
+    if args.cmd != "selftest" and subprocess.run(["sh", "-c", "command -v gnustep-config"],
+                                                capture_output=True).returncode:
+        print("plist_fuzz: SKIP: gnustep-config not found; the GNUstep reference oracle needs a "
+              "hand-installed GNUstep base (bead oo-5ekxm). Nothing was compared.")
+        return 0
     return {"fuzz": cmd_fuzz, "corpus": cmd_corpus, "selftest": cmd_selftest}[args.cmd](args)
 
 
