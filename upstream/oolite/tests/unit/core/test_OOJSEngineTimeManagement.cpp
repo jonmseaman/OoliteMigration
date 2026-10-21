@@ -19,14 +19,14 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "oofnd/objc/OOObject.h"
-#import "OOTypes.h"
-#import "OODescription.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOTypes.h"
+#include "OODescription.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOJSEngineNativeWrappers.h"
+#include "OOJSEngineNativeWrappers.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/PList.hpp"
-#import "OOObjCPList.h"
+#include "OOObjCPList.h"
 
 #include "oo_test.hpp"
 #include "test_OOJSEngineTimeManagement.hpp"
@@ -112,7 +112,7 @@ public:
 };
 
 
-#import "OOScript.h"
+#include "OOScript.h"
 
 
 // OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the

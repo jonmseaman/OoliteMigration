@@ -23,11 +23,11 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "OOScriptTimer.h"
-#import "oofnd/objc/OOObject.h"
-#import "OODescription.h"
+#include "OOScriptTimer.h"
+#include "oofnd/objc/OOObject.h"
+#include "OODescription.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOJSEngineNativeWrappers.h"
+#include "OOJSEngineNativeWrappers.h"
 #include "oofnd/Notification.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
@@ -224,7 +224,7 @@ bool OOJavaScriptEngine::callJSFunction(ooscript::Value function, ooscript::Obje
 }
 
 
-#import "OOScript.h"
+#include "OOScript.h"
 
 
 // OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the

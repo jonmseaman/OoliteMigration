@@ -589,7 +589,8 @@ void OOTrumble::updateTrumble(double delta_t)
 			if (trumbleAppetiteAccumulator > 10.0)
 			{
 				// eaten all of this cargo!
-				const std::string ms = oo::str::formatRuntime(OO_DESC("trumbles-eat-@"),
+				const std::string eatFormat = OO_DESC("trumbles-eat-@");	// the format first, as Clang evaluates the arguments: a description that is an array draws (ADR-0063 item 5)
+				const std::string ms = oo::str::formatRuntime(eatFormat,
 								{ (UNIVERSE != nullptr ? UNIVERSE->displayNameForCommodity((selectedCargopod != nullptr ? selectedCargopod->commodityType() : std::optional<std::string>()).value_or("")) : std::optional<std::string>()).value_or("(null)") });
 
 				if (UNIVERSE != nullptr)  UNIVERSE->addMessage(ms, 4.5);

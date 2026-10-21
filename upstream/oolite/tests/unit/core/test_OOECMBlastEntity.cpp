@@ -19,10 +19,10 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "OOECMBlastEntity.h"
-#import "Universe.h"
-#import "ShipEntity.h"	// the ship is C++ (bead oo-9ht.144)
-#import "PlayerEntity.h"	// the stand-in PLAYER (bead oo-vdw34)
+#include "OOECMBlastEntity.h"
+#include "Universe.h"
+#include "ShipEntity.h"	// the ship is C++ (bead oo-9ht.144)
+#include "PlayerEntity.h"	// the stand-in PLAYER (bead oo-vdw34)
 
 #include "oo_test.hpp"
 

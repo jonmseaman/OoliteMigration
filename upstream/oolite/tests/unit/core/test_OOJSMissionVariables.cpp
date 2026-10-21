@@ -16,7 +16,7 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "oofnd/objc/OOObject.h"
+#include "oofnd/objc/OOObject.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/PList.hpp"
@@ -47,7 +47,7 @@ public:
 };
 
 
-#import "OOJSMissionVariables.h"
+#include "OOJSMissionVariables.h"
 
 #include "oo_test.hpp"
 

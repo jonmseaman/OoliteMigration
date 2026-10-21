@@ -23,8 +23,8 @@
 	engine. Run: bash tools/check-core-tests.sh
 */
 
-#import "OOCocoa.h"
-#import "OOColor.h"
+#include "OOCocoa.h"
+#include "OOColor.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/PList.hpp"

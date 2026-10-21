@@ -20,12 +20,12 @@
 	Run: bash tools/check-core-tests.sh test_OOJSConsole
 */
 
-#import "OOCocoa.h"
-#import "OOJSConsole.h"
-#import "OODebugMonitor.h"
-#import "OOOpenGLExtensionManager.h"
-#import "OOJSEngineCore.h"
-#import "OODebugFlags.h"
+#include "OOCocoa.h"
+#include "OOJSConsole.h"
+#include "OODebugMonitor.h"
+#include "OOOpenGLExtensionManager.h"
+#include "OOJSEngineCore.h"
+#include "OODebugFlags.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
 
@@ -311,7 +311,7 @@ Entity *oo::WithObject(Entity *entity)  { if (entity != nullptr)  std::abort(); 
 // is a test bug.
 
 #if OO_DEBUG
-#import "OOShaderUniformMethodType.h"
+#include "OOShaderUniformMethodType.h"
 
 class Entity;
 
@@ -327,7 +327,7 @@ int gOOTestEntityCxxEntityIvarOffset = 0;
 #endif
 
 #if DEBUG
-#import "ResourceManager.h"
+#include "ResourceManager.h"
 
 std::string cxx_OOJSDescribeValue(ooscript::Context, ooscript::Value, BOOL)  { std::abort(); }
 std::optional<std::string> ResourceManager::diagnosticFileLocation()  { std::abort(); }
@@ -483,7 +483,7 @@ void oo::InspectEntity(Entity *entity)
 }
 
 
-#import "OOScript.h"
+#include "OOScript.h"
 
 
 // OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the

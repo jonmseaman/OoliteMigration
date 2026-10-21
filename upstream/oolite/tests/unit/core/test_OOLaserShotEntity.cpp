@@ -19,11 +19,11 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "OOLaserShotEntity.h"
-#import "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
-#import "OOColor.h"
-#import "OODescription.h"
-#import "Universe.h"
+#include "OOLaserShotEntity.h"
+#include "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
+#include "OOColor.h"
+#include "OODescription.h"
+#include "Universe.h"
 
 #include "oo_test.hpp"
 

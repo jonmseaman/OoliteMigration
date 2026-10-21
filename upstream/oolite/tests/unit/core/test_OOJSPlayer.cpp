@@ -17,14 +17,14 @@
 	the player is sent, and a native's exception. Run: bash tools/check-core-tests.sh
 */
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #include "OOTypes.h"
 #include "OOEntityEnums.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
-#import "OOObjCPList.h"
+#include "OOObjCPList.h"
 #include "EntityPListForeign.h"	// an entity's node (bead oo-dpyk8)
 
 
@@ -169,7 +169,7 @@ public:
 };
 
 
-#import "UniverseStandIn.h"
+#include "UniverseStandIn.h"
 
 // The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
 // the Objective-C facade the test's Objective-C stand-in stood in for), with the header's names and signatures.
@@ -204,7 +204,7 @@ public:
 };
 
 
-#import "OOJSPlayer.h"
+#include "OOJSPlayer.h"
 
 #include "oo_test.hpp"
 
