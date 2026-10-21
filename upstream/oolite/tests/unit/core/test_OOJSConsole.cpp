@@ -620,7 +620,11 @@ OO_TEST(consoleMessage)
 	OO_CHECK(sWarnings.size() == 1);
 
 	// Not the console: an internal error.
+#if defined(__GNUC__) && !defined(__clang__)
+	OO_CHECK_EVAL("console.consoleMessage.call({}, 'x', 'y')", "threw: Expected OODebugMonitor, got (null) in bool ConsoleConsoleMessage(ooscript::Context, ooscript::CallArgs&). This is an internal error, please report it.");
+#else
 	OO_CHECK_EVAL("console.consoleMessage.call({}, 'x', 'y')", "threw: Expected OODebugMonitor, got (null) in bool ConsoleConsoleMessage(ooscript::Context, ooscript::CallArgs &). This is an internal error, please report it.");
+#endif
 }
 
 
@@ -636,7 +640,11 @@ OO_TEST(theMonitorsActions)
 	OO_CHECK_EVAL("console.writeLogMarker()", "undefined");
 	OO_CHECK(sMonitor.clears == 1 && sMonitor.memoryDumps == 1 && sMonitor.jsMemoryDumps == 1);
 	OO_CHECK(sLogMarkers == 1);
+#if defined(__GNUC__) && !defined(__clang__)
+	OO_CHECK_EVAL("console.clearConsole.call({})", "threw: Expected OODebugMonitor, got (null) in bool ConsoleClearConsole(ooscript::Context, ooscript::CallArgs&). This is an internal error, please report it.");
+#else
 	OO_CHECK_EVAL("console.clearConsole.call({})", "threw: Expected OODebugMonitor, got (null) in bool ConsoleClearConsole(ooscript::Context, ooscript::CallArgs &). This is an internal error, please report it.");
+#endif
 }
 
 
