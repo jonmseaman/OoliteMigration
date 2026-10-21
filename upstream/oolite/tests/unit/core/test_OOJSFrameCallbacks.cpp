@@ -18,10 +18,10 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "oofnd/objc/OOObject.h"
-#import "OOTypes.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOTypes.h"
 #include "ooscript/JSEngine.hpp"
-#import "OOJSEngineNativeWrappers.h"
+#include "OOJSEngineNativeWrappers.h"
 #include "OOJSEngineCore.h"	// OOJSValue
 #include "oofnd/String.hpp"
 

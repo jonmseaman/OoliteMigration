@@ -17,14 +17,14 @@
 	Run: bash tools/check-core-tests.sh test_StationEntity
 */
 
-#import "StationEntity.h"
-#import "DockEntity.h"
-#import "Universe.h"
-#import "PlayerEntity.h"
-#import "OOObjCPList.h"
-#import "EntityOOJavaScriptExtensions.h"
-#import "OOJSStation.h"
-#import "OOCallByName.h"	// oo::EntityRespondsToName / oo::CallEntityByName (bead oo-9ht.39.7.3)
+#include "StationEntity.h"
+#include "DockEntity.h"
+#include "Universe.h"
+#include "PlayerEntity.h"
+#include "OOObjCPList.h"
+#include "EntityOOJavaScriptExtensions.h"
+#include "OOJSStation.h"
+#include "OOCallByName.h"	// oo::EntityRespondsToName / oo::CallEntityByName (bead oo-9ht.39.7.3)
 
 #include "oo_test.hpp"
 

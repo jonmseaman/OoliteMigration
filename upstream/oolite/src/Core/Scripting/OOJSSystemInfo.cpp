@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #include "OOConstToString.h"
 #include "OOSystemDescriptionManager.h"
 #include "OOCommodities.h"
+#include "OOTypes.h"	// OOCreditsQuantity (ADR-0063 item 5 samplePrice)
 #include "OOJSScript.h"
 
 #include "ooscript/JSEngine.hpp"
@@ -868,7 +869,9 @@ static bool SystemInfoSamplePrice(ooscript::Context context, ooscript::CallArgs 
 		return false;
 	}
 
-	OOCreditsQuantity price = commodities->samplePriceForCommodity(commodity.value_or(""), PropertyIntValue(ValueForKey(thisInfo, std::string("economy"))), ManifestString(ValueForKey(thisInfo, std::string("commodity_script"))), SystemOf(thisInfo));
+	int economy = PropertyIntValue(ValueForKey(thisInfo, std::string("economy")));	// one system-data read per local, in the order Clang evaluates the arguments: a description that is an array draws (ADR-0063 item 5)
+	std::optional<std::string> commodityScript = ManifestString(ValueForKey(thisInfo, std::string("commodity_script")));
+	OOCreditsQuantity price = commodities->samplePriceForCommodity(commodity.value_or(""), economy, commodityScript, SystemOf(thisInfo));
 
 	return ooscript::newNumberValue(context, price, oojsArgs.rawVp());
 	

@@ -25,13 +25,13 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "WormholeEntity.h"
-#import "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
-#import "EntityOOJavaScriptExtensions.h"
-#import "OOJSWormhole.h"
-#import "OOSystemDescriptionManager.h"
-#import "OODescription.h"
-#import "Universe.h"
+#include "WormholeEntity.h"
+#include "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
+#include "EntityOOJavaScriptExtensions.h"
+#include "OOJSWormhole.h"
+#include "OOSystemDescriptionManager.h"
+#include "OODescription.h"
+#include "Universe.h"
 
 #include "oo_test.hpp"
 #include "oofnd/PListGet.hpp"

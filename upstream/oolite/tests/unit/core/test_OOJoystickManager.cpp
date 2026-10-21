@@ -18,7 +18,7 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "OOJoystickManager.h"
+#include "OOJoystickManager.h"
 
 #include "oofnd/Defaults.hpp"
 #include "oo_test.hpp"

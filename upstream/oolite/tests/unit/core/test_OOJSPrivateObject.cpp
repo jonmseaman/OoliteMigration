@@ -18,7 +18,7 @@
 */
 
 #include "OOJSPrivateObject.h"
-#import "OOJSEngineNativeWrappers.h"
+#include "OOJSEngineNativeWrappers.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Ref.hpp"
 #include "oofnd/String.hpp"

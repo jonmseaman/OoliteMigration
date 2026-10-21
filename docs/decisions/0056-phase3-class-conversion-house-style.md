@@ -10058,3 +10058,62 @@ consequences, each behaviour-identical under Clang:
 
 Goldens unchanged under Clang. The GCC game does not yet reproduce them: random draws inside one call's
 arguments follow the compiler's evaluation order (ADR-0063 item 5, for Jon).
+
+## Amendment (beads oo-1q4, oo-1q4.3): no call's arguments make two random draws; the GCC build compiles and plays the goldens
+
+[ADR-0063](0063-gcc-flavour-and-gcc-only-diagnostics.md) items 4 and 5, decided 2026-10-21
+(bead oo-r3ffn, docs/decisions/delegated-2026-10-19.md). Each change is behaviour-identical under
+Clang, which evaluates a call's arguments left to right; GCC (x86-64) evaluates them right to left.
+
+1. **A call, or a parenthesised construction, whose arguments may each draw from the game's random
+   generators takes those arguments from locals, declared in the order Clang evaluated them**, with
+   the expression's own type, so every value and conversion is as before. Braced initialisers
+   (`{a, b}`, `(S){...}`) are sequenced left to right by the language and stay; so do the operands
+   of the built-in arithmetic operators, which GCC 16 evaluates left to right as Clang does
+   (measured: `r() - r()`, `(R() % 16) + (R() % 11)`, `R() * 256 + R()`, `r() / r()`, `r() < r()`
+   give the same results under both compilers) - those 39 expressions (OOTrumble, OOSunEntity,
+   ShipEntity, Universe's placements, OOCommodities, ...) are unchanged.
+2. **How the sites were found** (batch BJ): the draw set is the closure, over Clang's call graph of
+   all 230 game translation units (`clang --analyze -analyzer-checker=debug.DumpCallGraph`), of every
+   function that reaches `randf`, `bellf`, `Ranrot`/`ranrot_rand`, `RanrotWithSeed`, `randfWithSeed`,
+   `gen_rnd_number`, `OOReallyRandom` or `rotate_seed` (about 1,500 functions; a virtual method counts if any
+   override draws; `oo::makeRef`, a template the call graph cannot tell apart by type, is left out).
+   A `clang-query` matcher then lists every call or parenthesised construction with two arguments that
+   reach the set. Before this bead: 26 sites (below); after it: none.
+3. **The sites.** Plain C bodies (rule 9 allows the portability fix; no other line of them changes,
+   delegated decision of 2026-10-21): OOVector.cpp `OORandomUnitVector`, `OOVectorRandomSpatial`
+   (`make_vector(randf() - 0.5f, ...)`), `OOVectorRandomRadial`; OOHPVector.cpp
+   `OORandomUnitHPVector`, `OOHPVectorRandomSpatial`, `OOHPVectorRandomRadial`,
+   `OORandomPositionInCylinder`. Converted code: Universe.cpp the sky colours (`colorWithHue` x3)
+   and `make_HPvector(randf()-0.5, ...)`; OOParticleSystem.cpp the particle colour (`make_vector`).
+   Description lookups, which draw one `Ranrot` when the descriptions.plist entry is an array
+   (`Universe::chooseStringForKey`; the station docking-clearance entries are): the format is read
+   into a local before the call whose other arguments may read descriptions too (cxx_ClockToString,
+   nameForGood, cxx_DisplayStringForMassUnit, humanSize, displayNameForCommodity) - PlayerEntity.cpp
+   (wormhole arrival message, route distance line, commodity information title and contracted line),
+   StationEntity.cpp (five docking-clearance messages), HeadUpDisplay.cpp (wormhole ETA),
+   OOOXZManager.cpp (filter and progress lines), OOTrumble.cpp (trumbles-eat message);
+   OOJSSystemInfo.cpp `samplePrice` reads the system's economy and commodity script, each a
+   system-data read that may look a description up, into locals. A guard that was on the call
+   (`if (UNIVERSE != nullptr)`, `if (gui != nullptr)`) is kept round the new local, so nothing is
+   evaluated that was not.
+4. **The oofnd unit tests keep `werror` under Clang and build without it under GCC**
+   (`src/oofnd/meson.build`): GCC 16's `-Wmaybe-uninitialized` (test_plist.cpp) and
+   `-Wstringop-overflow` (test_ref.cpp) fire inside libstdc++ inlines on correct code; the warnings
+   still print. Nothing is suppressed.
+5. **The tests' side** (`#import` to `#include` in 175 test files, test_Entity's ivar access by its own
+   type, test_OODebugMonitor's complete `OOJSValue`, test_OOJSGlobal's one-statement-per-line) lands
+   under std-2026-10-19 item 1 (approval lines in tools/retire-test-approvals.txt, ce6ccadf8).
+
+6. A file whose first use of a name moved onto a new line includes that name's header directly
+   (clang-tidy's include-cleaner judges first uses): `legacy_random.h` in OOVector.cpp and
+   OOHPVector.cpp, `OOVector.h` in OOParticleSystem.cpp, `OOTypes.h` in OOJSSystemInfo.cpp.
+7. One test computed an expectation in an order-dependent way (test_OOCombinedEmissionMapGenerator
+   `cacheKeys`: GCC built the expected key before the generator); its generator key is read into a
+   local first, as Clang evaluated it (approval line ee7838093).
+
+Measured on this branch (bead oo-1q4.3): Clang build, 173 core tests, oofnd suite, goldens, golden
+pytest and asan unchanged; the GCC `test` build compiles every target and the GCC game MATCHES every
+blessed golden (001, 001-launch-dock). No golden is re-blessed or added. Under GCC four test checks
+still fail because they pin Clang's spelling of `__PRETTY_FUNCTION__` (test_OOJSConsole,
+test_objc_assert): proposed [ADR-0064](0064-pretty-function-spelling-in-tests-under-gcc.md), for Jon.

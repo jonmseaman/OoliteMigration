@@ -17,7 +17,7 @@
 	engine. Run: bash tools/check-core-tests.sh
 */
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/PList.hpp"
@@ -78,7 +78,7 @@ public:
 	oo::Ref<Entity> _cxxEntity;	// the sun's C++ part (oo::ToCxx reads it)
 };
 
-#import "OOJSSun.h"
+#include "OOJSSun.h"
 
 #include "oo_test.hpp"
 

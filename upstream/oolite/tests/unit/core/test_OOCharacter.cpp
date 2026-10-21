@@ -15,9 +15,9 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "OOCharacter.h"
-#import "OOStringExpander.h"
-#import "OOObjCPList.h"
+#include "OOCharacter.h"
+#include "OOStringExpander.h"
+#include "OOObjCPList.h"
 #include "ooscript/JSEngine.hpp"
 
 #include "oo_test.hpp"
@@ -32,7 +32,7 @@
 	has government s % 8; even systems are inhabited by " Human Colonials " (padded, capitalised,
 	so trimming and lowercasing show), odd ones by "Furry Felines", and system 9 by nobody.
 */
-#import "UniverseStandIn.h"
+#include "UniverseStandIn.h"
 
 // The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
 // the Objective-C facade the test's Objective-C stand-in stood in for), with the header's names and signatures.
@@ -106,7 +106,7 @@ void ooscript::beginRequest(ooscript::Context)		{ std::abort(); }
 void ooscript::endRequest(ooscript::Context)		{ std::abort(); }
 bool ooscript::isInRequest(ooscript::Context)		{ std::abort(); }
 
-#import "OOScript.h"
+#include "OOScript.h"
 
 // OOScript's loader (an Objective-C OOScript stand-in until bead oo-9ht.133 deleted the facade).
 oo::Ref<OOScript> OOScript::jsScriptFromFileNamed(const std::string &, const oo::PList &)	{ std::abort(); }

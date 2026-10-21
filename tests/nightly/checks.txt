@@ -780,3 +780,5 @@
 [oo-l4f2h] export PATH="/ucrt64/bin:$PATH"; python3 tools/js_api_source_snapshot.py --check oxp-contract/js-api-source.json && bash tools/tier-c.sh --only jsapi
 # oo-5ekxm: the GNUstep reference oracle builds again (the game's deleted writer comes from git history at bd4f060b1e, the oracle's blessing) and the synthetic differential fuzz has 0 unexplained divergences.
 [oo-5ekxm] export PATH="/ucrt64/bin:$PATH" PYTHONUTF8=1; out="$(python3 tools/plist_fuzz.py fuzz --seed "$(date +%Y%m%d)" --count 20000)" && echo "$out" && grep -qxF '   unexplained divergences: 0' <<<"$out"
+# oo-1q4.3: the GCC flavour builds every target and its game reproduces every blessed golden (ADR-0063 items 4-5; no call's arguments make two random draws, ADR-0056 amendment oo-1q4). GCC core/oofnd suites wait on proposed ADR-0064 (oo-1q4).
+[oo-1q4.3] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh --gcc test && OO_APP_DIR="$(cygpath -m "$PWD/upstream/oolite/build/meson_test_gcc/oolite.app")" bash tools/tier-c.sh --only goldens

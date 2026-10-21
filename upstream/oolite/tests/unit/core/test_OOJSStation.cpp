@@ -21,21 +21,21 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "OOCocoa.h"
-#import "OOCommodities.h"
-#import "OOCommodityMarket.h"
-#import "OOJSInterfaceDefinition.h"
-#import "OOEquipmentType.h"
-#import "OOStringExpander.h"
-#import "OOShipRegistry.h"
+#include "OOCocoa.h"
+#include "OOCommodities.h"
+#include "OOCommodityMarket.h"
+#include "OOJSInterfaceDefinition.h"
+#include "OOEquipmentType.h"
+#include "OOStringExpander.h"
+#include "OOShipRegistry.h"
 #include "OOTypes.h"
 #include "OOEntityEnums.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
-#import "OODescription.h"
-#import "OOObjCPList.h"
+#include "OODescription.h"
+#include "OOObjCPList.h"
 #include "EntityPListForeign.h"	// an entity's node (bead oo-dpyk8)
 
 
@@ -236,7 +236,7 @@ public:
 	void setGamePaused(bool value);
 };
 
-#import "UniverseStandIn.h"
+#include "UniverseStandIn.h"
 
 // The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
 // the Objective-C facade the test's Objective-C stand-in stood in for), with the header's names and signatures.
@@ -274,7 +274,7 @@ public:
 	::StationEntity *station() override	{ return _station; }
 };
 
-#import "ResourceManager.h"
+#include "ResourceManager.h"
 
 // The engine (OOJavaScriptEngine.h; a C++ class since bead oo-wdqw1 deleted its facade), declared
 // with the header's names and signatures but not its class.
@@ -286,7 +286,7 @@ public:
 };
 
 
-#import "OOJSStation.h"
+#include "OOJSStation.h"
 
 #include "oo_test.hpp"
 
@@ -533,7 +533,7 @@ OOJavaScriptEngine *OOJavaScriptEngine::sharedEngine()
 bool OOJavaScriptEngine::callJSFunction(ooscript::Value, ooscript::Object, unsigned, ooscript::Value *, ooscript::Value *)  { std::abort(); }
 
 
-#import "OOScript.h"
+#include "OOScript.h"
 
 
 // OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the
@@ -571,7 +571,7 @@ std::string cxx_OOLookUpDescriptionPRIV(const std::string &key)
 	return "desc(" + key + ")";
 }
 
-#import "OOCacheManager.h"
+#include "OOCacheManager.h"
 
 // Link stubs (amendment oo-zffj item 2): what OOEquipmentType reaches to load equipment, which the
 // test never does (no equipment type is made), and the weapon lookups of addShipToShipyard(), which

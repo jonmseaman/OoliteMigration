@@ -14,7 +14,7 @@
 	category answers the engine. Run: bash tools/check-core-tests.sh
 */
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/PList.hpp"
@@ -83,7 +83,7 @@ public:
 	::ShipEntity *_queued = nullptr;
 };
 
-#import "OOJSDock.h"
+#include "OOJSDock.h"
 
 #include "oo_test.hpp"
 

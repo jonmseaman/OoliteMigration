@@ -20,8 +20,8 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
 #include "OOMaths.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
@@ -31,9 +31,9 @@
 
 // MARK: The classes, as far as the binding sees them ----------------------------------------------
 
-#import "OOSoundSource.h"
-#import "OOJSPrivateObject.h"
-#import "OOJSSoundSource.h"
+#include "OOSoundSource.h"
+#include "OOJSPrivateObject.h"
+#include "OOJSSoundSource.h"
 
 #include "oo_test.hpp"
 

@@ -20,7 +20,7 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "OOJSGuiScreenKeyDefinition.h"
+#include "OOJSGuiScreenKeyDefinition.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Notification.hpp"
 #include "oofnd/String.hpp"
@@ -89,7 +89,7 @@ OOJSScript *sRunningScript = nullptr;
 } // namespace
 
 
-#import "OOScript.h"
+#include "OOScript.h"
 
 
 // OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the

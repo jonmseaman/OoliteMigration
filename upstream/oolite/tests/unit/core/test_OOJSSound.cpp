@@ -20,8 +20,8 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
 #include "OOTypes.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
@@ -47,7 +47,7 @@ typedef enum OOEntityStatus
 	one named "throw" throws a C++ exception, so the test sees what an exception under a native
 	becomes.
 */
-#import "OOALSound.h"
+#include "OOALSound.h"
 #include <stdexcept>
 
 OOSound::OOSound()  {}
@@ -72,7 +72,7 @@ public:
 
 class OOSoundSource;	// only handed on (OOSoundSource.h)
 
-#import "ResourceManager.h"
+#include "ResourceManager.h"
 
 /*	The music controller is C++ (bead oo-9ht.90 deleted its Objective-C facade): the members the
 	binding calls, declared as OOMusicController.h declares them (that header would bring the real
@@ -114,8 +114,8 @@ public:
 	OOEntityStatus _status = {};
 };
 
-#import "OOJSSound.h"
-#import "OOJSSoundSource.h"
+#include "OOJSSound.h"
+#include "OOJSSoundSource.h"
 
 #include "oo_test.hpp"
 

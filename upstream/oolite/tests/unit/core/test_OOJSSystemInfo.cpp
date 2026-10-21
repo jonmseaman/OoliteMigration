@@ -24,20 +24,20 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "OOCocoa.h"
-#import "oofnd/objc/OOObject.h"
-#import "OOSystemDescriptionManager.h"
-#import "OOCommodities.h"
-#import "OOCommodityMarket.h"
-#import "OOStringExpander.h"
+#include "OOCocoa.h"
+#include "oofnd/objc/OOObject.h"
+#include "OOSystemDescriptionManager.h"
+#include "OOCommodities.h"
+#include "OOCommodityMarket.h"
+#include "OOStringExpander.h"
 #include "OOMaths.h"
 #include "OOTypes.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
-#import "OODescription.h"
-#import "OOObjCPList.h"
+#include "OODescription.h"
+#include "OOObjCPList.h"
 
 
 // MARK: The classes, as far as the binding and the converted classes see them --------------------
@@ -48,7 +48,7 @@ class StationEntity;
 	space, a system's coordinates (system 99's raise from -coordinatesForSystem:, system 98's throw
 	a C++ exception), routes, and what was set last.
 */
-#import "UniverseStandIn.h"
+#include "UniverseStandIn.h"
 
 // The universe as the code under test sees it: a stand-in for the C++ class (bead oo-ql9rn deleted
 // the Objective-C facade the test's Objective-C stand-in stood in for), with the header's names and signatures.
@@ -105,7 +105,7 @@ public:
 	NSPoint _coordinates = {};
 };
 
-#import "ResourceManager.h"
+#include "ResourceManager.h"
 
 // A station: C++ since bead oo-9ht.175 deleted the Objective-C station this stood in for; the
 // members the commodities call, declared as StationEntity.h declares them (the test imports no
@@ -121,7 +121,7 @@ public:
 
 
 
-#import "OOJSSystemInfo.h"
+#include "OOJSSystemInfo.h"
 
 #include "oo_test.hpp"
 
@@ -208,7 +208,7 @@ oo::PList sScriptManifest;
 }
 
 
-#import "OOScript.h"
+#include "OOScript.h"
 
 
 // OOJSScript (OOJSScript.h), which the code under test calls. Since bead oo-9ht.133 deleted the

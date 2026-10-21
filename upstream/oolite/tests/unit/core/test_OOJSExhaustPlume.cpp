@@ -23,7 +23,7 @@
 	category answers the engine. Run: bash tools/check-core-tests.sh
 */
 
-#import "OOCocoa.h"
+#include "OOCocoa.h"
 #include "OOMaths.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/objc/OOException.h"

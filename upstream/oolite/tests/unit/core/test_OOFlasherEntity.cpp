@@ -23,12 +23,12 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#import "OOFlasherEntity.h"
-#import "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
-#import "EntityOOJavaScriptExtensions.h"
-#import "OOJSFlasher.h"
-#import "OOColor.h"
-#import "Universe.h"
+#include "OOFlasherEntity.h"
+#include "PlayerEntity.h"	// PLAYER is C++ (bead oo-9ht.177)
+#include "EntityOOJavaScriptExtensions.h"
+#include "OOJSFlasher.h"
+#include "OOColor.h"
+#include "Universe.h"
 
 #include "oo_test.hpp"
 
