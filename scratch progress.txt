@@ -162,3 +162,16 @@ Summary:
   Closed:                 1837
   Ready to Work:          5
 
+Wednesday Evenging:
+Oct 10/21
+The project is officially c++
+
+Summary:
+  Total Issues:           2010
+  Open:                   0
+  In Progress:            0
+  Blocked:                0
+  Closed:                 2009
+  Ready to Work:          0
+
+(Phase 4 complete).
