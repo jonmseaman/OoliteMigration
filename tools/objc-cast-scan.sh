@@ -3,7 +3,8 @@
 # Silent C++ <-> Objective-C pointer casts (bead oo-tzd3n).
 #
 #     tools/objc-cast-scan.sh <file>...    # scan these translation units
-#     tools/objc-cast-scan.sh --all        # every .m/.mm under src/ and tests/ in the build (nightly)
+#     tools/objc-cast-scan.sh --all        # every .m/.mm/.cpp under src/ and tests/ in the build (nightly;
+#                                          # the game's .mm units are .cpp since bead oo-dbz.5)
 #
 # A C-style (or static_/reinterpret_) cast between a C++ record pointer and an Objective-C
 # object pointer compiles WITHOUT a diagnostic and reinterprets the pointer: casting a
@@ -102,11 +103,11 @@ seen = set()
 for e in json.load(open("compile_commands.json")):
     p = os.path.normpath(os.path.join(e["directory"], e["file"])).replace("\\", "/")
     rel = p.split("/upstream/oolite/", 1)[-1]
-    if rel.startswith(("src/", "tests/")) and rel.endswith((".m", ".mm")) and p not in seen:
+    if rel.startswith(("src/", "tests/")) and rel.endswith((".m", ".mm", ".cpp")) and p not in seen:
         seen.add(p); print(p)
 ' ) >"$LIST" || die "cannot read the compile database"
     n=$(wc -l <"$LIST")
-    [ "$n" -gt 0 ] || die "the compile database lists no .m/.mm under src/ or tests/"
+    [ "$n" -gt 0 ] || die "the compile database lists no .m/.mm/.cpp under src/ or tests/"
     # Two at a time: the fleet machine is shared (CPU rule); ~600 TUs at ~3 s is ~15 min.
     rc=0
     tr '\n' '\0' <"$LIST" | xargs -0 -n 1 -P "${OOLITE_CASTSCAN_JOBS:-2}" bash "${BASH_SOURCE[0]}" --one >"$OUT" || rc=$?

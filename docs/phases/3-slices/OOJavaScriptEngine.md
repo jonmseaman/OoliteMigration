@@ -28,7 +28,7 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | helpers with no Objective-C | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/Scripting/OOJavaScriptEngine.mm
+source: upstream/oolite/src/Core/Scripting/OOJavaScriptEngine.cpp
 header: upstream/oolite/src/Core/Scripting/OOJavaScriptEngine.h
 
 slice 1: engine class shell, lifecycle and monitor support

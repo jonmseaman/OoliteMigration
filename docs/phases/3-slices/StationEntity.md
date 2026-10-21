@@ -28,7 +28,7 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | `OptionalStringValue()` | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/Entities/StationEntity.mm
+source: upstream/oolite/src/Core/Entities/StationEntity.cpp
 header: upstream/oolite/src/Core/Entities/StationEntity.h
 
 slice 1: class shell, market and shipyard, flags and accessors

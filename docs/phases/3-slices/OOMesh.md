@@ -22,7 +22,7 @@ every time, so the numbers below are only a snapshot.
 | 4 | rendering: `renderOpaqueParts`, vertex arrays, display lists, buffers, debug draw | ~480 | ~930 |
 
 ```slice-plan
-source: upstream/oolite/src/Core/OOMesh.mm
+source: upstream/oolite/src/Core/OOMesh.cpp
 header: upstream/oolite/src/Core/OOMesh.h
 
 slice 1: class shell, factories, lifecycle, accessors, OOCacheManager categories

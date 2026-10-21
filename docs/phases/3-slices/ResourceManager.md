@@ -23,7 +23,7 @@ file every time, so the numbers below are only a snapshot.
 | verbatim | manifest/PList helpers | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/ResourceManager.mm
+source: upstream/oolite/src/Core/ResourceManager.cpp
 header: upstream/oolite/src/Core/ResourceManager.h
 
 slice 1: class shell, file-scope state, search paths, add-ons, preloading

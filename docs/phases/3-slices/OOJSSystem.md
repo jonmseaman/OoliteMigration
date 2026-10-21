@@ -24,7 +24,7 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | callbacks and helpers with no Objective-C | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/Scripting/OOJSSystem.mm
+source: upstream/oolite/src/Core/Scripting/OOJSSystem.cpp
 header: upstream/oolite/src/Core/Scripting/OOJSSystem.h
 
 slice 1: properties, planets, entity counts and searches

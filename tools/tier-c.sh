@@ -566,7 +566,7 @@ stage_asan() {
   local bdir="$OOLITE/build/meson_$flavour"
   local binary="$bdir/oolite.app/oolite.exe"
   detail "building flavour '$flavour' with -fsanitize=address (resource-dir $rd)"
-  ( cd "$REPO_ROOT" && bash "$HERE/build-windows.sh" "$flavour" --setup-flags="-Db_sanitize=address -Db_lundef=false -Dc_args=-resource-dir=$rd -Dcpp_args=-resource-dir=$rd -Dobjc_args=-resource-dir=$rd -Dc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dcpp_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dobjc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dobjcpp_args=-resource-dir=$rd -Dobjcpp_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition']" ) \
+  ( cd "$REPO_ROOT" && bash "$HERE/build-windows.sh" "$flavour" --setup-flags="-Db_sanitize=address -Db_lundef=false -Dc_args=-resource-dir=$rd -Dcpp_args=-resource-dir=$rd -Dc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dcpp_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition']" ) \
     > "$blog" 2>&1 || brc=$?
   if [ "$brc" -ne 0 ]; then
     tail -30 "$blog" >&2
@@ -594,7 +594,7 @@ stage_asan() {
   local symtest sym_addr
   # objdump prints the address as 8 hex digits under the 0x140000000 image base (hence the "0x1"
   # prefix) or, on the current toolchain, as the full 16-digit VA; take either as it comes.
-  # The probe is the game's main() in src/SDL/main.mm, which every build has; SDL3's SDL_main.h
+  # The probe is the game's main() in src/SDL/main.cpp (.mm until bead oo-dbz.5), which every build has; SDL3's SDL_main.h
   # renames it SDL_main (the symbol "main" is SDL_main_impl.h's, with no src/ line). It was the
   # Objective-C method -[OOOpenALController init] until the Phase 3 conversion deleted that method,
   # after which the entry-point fallback (the MinGW CRT's WinMainCRTStartup, no source line) failed

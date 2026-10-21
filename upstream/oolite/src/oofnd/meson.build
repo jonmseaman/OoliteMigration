@@ -19,13 +19,11 @@ oofnd_override_options = ['cpp_std=c++20', 'warning_level=2', 'werror=true']
 oofnd_icu_dep = dependency('icu-i18n', required: true)
 oofnd_dep = declare_dependency(include_directories: oofnd_inc, dependencies: oofnd_icu_dep)
 
-# The Objective-C floor (bead oo-3rb.1, proposed ADR-0029) on libobjc2 alone. Its OOObject root class
-# and OOConstantString (the class behind @"..." literals) went with bead oo-4aq6a.8: no game class or
-# test is rooted on OOObject and no literal is compiled, so -fconstant-string-class goes too (a stray
-# @"..." would now fail to link). Test consumers (tests/unit/oofnd/test_objc_*.mm) compile with these.
-oofnd_objc_args = ['-fno-constant-cfstrings']
+# What is left of the Objective-C floor (bead oo-3rb.1, proposed ADR-0029): oofnd/objc's C++ support,
+# OORaiseException (Exception.cpp) and OOCAssert's failure path. Its OOObject root class and
+# OOConstantString went with bead oo-4aq6a.8; libobjc2 itself and -fno-constant-cfstrings with bead
+# oo-dbz.5 (no unit is Objective-C). Test consumers: tests/unit/oofnd/test_objc_assert.cpp.
 oofnd_objc_dep = declare_dependency(
     include_directories: oofnd_inc,
-    sources: files('Exception.cpp', 'objc/OOAssert.mm'),
-    dependencies: cc.find_library('objc', required: true),
+    sources: files('Exception.cpp', 'objc/OOAssert.cpp'),
 )

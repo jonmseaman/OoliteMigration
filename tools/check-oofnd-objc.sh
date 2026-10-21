@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# tools/check-oofnd-objc.sh — the standalone acceptance for oofnd's Foundation-free Objective-C
-# floor (bead oo-3rb.1, proposed ADR-0029) on libobjc2 ALONE. (Its OOObject root class and the
+# tools/check-oofnd-objc.sh — the standalone acceptance for what is left of oofnd's Foundation-free
+# Objective-C floor (bead oo-3rb.1, proposed ADR-0029), on libobjc2 alone until bead oo-dbz.5 and C++
+# with NO Objective-C runtime since. (Its OOObject root class and the
 # OOConstantString class behind @"..." literals went with bead oo-4aq6a.8; the floor tests that stood
 # on their own copy of the root, and the copy, tests/unit/oofnd/OOFloorTestRoot.h, retired with
 # OOObjCRef.h and OORuntime.h, bead oo-dbz.4: test_objc_assert, the function forms, is left.) tools/check-oofnd.sh runs it; it also runs by itself:
@@ -9,21 +10,22 @@
 #
 # No build directory, no meson, no network, like check-oofnd.sh.
 #
-#   1. inventory  every upstream/oolite/tests/unit/oofnd/test_*.mm; ZERO is a failure, and so is
-#                 one that tests/unit/oofnd/meson.build does not register;
-#   2. canary     each src/oofnd/objc/*.h compiles alone as Objective-C++ at -Wall -Wextra -Werror;
-#   3. tests      each test_*.mm is built with the game's runtime flags (-fobjc-runtime=gnustep-2.2,
-#                 -fobjc-exceptions) plus the floor's (-fno-constant-cfstrings), linked with -lobjc and NOTHING else
-#                 from GNUstep, with -Wl,--fatal-warnings (as meson's werror links), and run;
-#   4. no-gnustep the linked executable's PE import table (objdump -p) must name libobjc and must
-#                 not name any gnustep-base DLL: the proof that the floor needs no Foundation;
+#   1. inventory  every upstream/oolite/tests/unit/oofnd/test_objc_*.cpp (and any test_objc_*.mm); ZERO
+#                 is a failure, and so is one that tests/unit/oofnd/meson.build does not register;
+#   2. canary     each src/oofnd/objc/*.h compiles alone as C++ at -Wall -Wextra -Werror;
+#   3. tests      each test is built as C++ (no -fobjc-*: the game has no Objective-C unit since bead
+#                 oo-dbz.5), linked with nothing from libobjc2 or GNUstep, with -Wl,--fatal-warnings
+#                 (as meson's werror links), and run;
+#   4. no-runtime the linked executable's PE import table (objdump -p) must name neither libobjc nor
+#                 any gnustep-base DLL: the proof that what is left needs no Objective-C runtime (it
+#                 had to name libobjc, and only it, until oo-dbz.5);
 #   5. asan       each is rebuilt under -fsanitize=address and run.
 #
 # Every build and run happens concurrently (bead oo-n712; OO_OOFND_JOBS bounds it, default nproc),
 # each run with its own TMP/TEMP/TMPDIR; the report then walks the logs in the fixed order above
 # and fails at the first failure, as a serial run did.
 #
-# lld is required: GNU ld cannot resolve the gnustep-2 ABI's COFF selector symbols (ADR-0029).
+# lld, as the game links (clang.ini).
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -43,24 +45,22 @@ t0=$(date +%s)
 
 command -v "$CXX" >/dev/null 2>&1 || fail "no $CXX on PATH (MSYSTEM=${MSYSTEM:-unset}); run this from the MSYS2 UCRT64 shell"
 
-flags=(-x objective-c++ -std=c++20 -Wall -Wextra -Werror
-	-fobjc-runtime=gnustep-2.2 -fexceptions -fobjc-exceptions -fblocks
-	-fno-constant-cfstrings)	# -fconstant-string-class=OOConstantString went with the class (bead oo-4aq6a.8)
+flags=(-x c++ -std=c++20 -Wall -Wextra -Werror)	# Objective-C++ on the gnustep-2.2 runtime until bead oo-dbz.5
 incs=(-I"$oo/src" -I"$test_dir")
-link=(-fuse-ld=lld -Wl,--fatal-warnings -lobjc)
+link=(-fuse-ld=lld -Wl,--fatal-warnings)	# -lobjc until bead oo-dbz.5
 
 # --- 1. inventory -------------------------------------------------------------------------------
 step "1/5 inventory"
 shopt -s nullglob
 headers=("$src_dir"/*.h)
-sources=("$src_dir"/*.mm "$oo/src/oofnd/Exception.cpp")	# OORaiseException & co. moved there from objc/OOException.mm (bead oo-4aq6a.1)
-tests=("$test_dir"/test_*.mm)
+sources=("$src_dir"/*.cpp "$src_dir"/*.mm "$oo/src/oofnd/Exception.cpp")	# OORaiseException & co. moved there from objc/OOException.mm (bead oo-4aq6a.1)
+tests=("$test_dir"/test_objc_*.cpp "$test_dir"/test_objc_*.mm)
 shopt -u nullglob
 [ "${#headers[@]}" -gt 0 ] || fail "no headers under $src_dir"
 [ "${#sources[@]}" -gt 0 ] || fail "no sources under $src_dir"
-[ "${#tests[@]}" -gt 0 ] || fail "found ZERO tests matching $test_dir/test_*.mm; an empty suite is not a pass"
+[ "${#tests[@]}" -gt 0 ] || fail "found ZERO tests matching $test_dir/test_objc_*.cpp; an empty suite is not a pass"
 for t in "${tests[@]}"; do
-	name="$(basename "$t" .mm)"
+	name="$(basename "$t")"; name="${name%.*}"
 	grep -q "'$name'" "$test_dir/meson.build" || fail "$t is not registered in $test_dir/meson.build, so meson test --suite oofnd would skip it"
 done
 echo "   ${#headers[@]} header(s), ${#sources[@]} source(s), ${#tests[@]} test file(s)"
@@ -69,7 +69,7 @@ echo "   ${#headers[@]} header(s), ${#sources[@]} source(s), ${#tests[@]} test f
 step "2/5 canary: every oofnd/objc header compiles alone"
 for h in "${headers[@]}"; do
 	hn="$(basename "$h")"
-	one="$work/canary_${hn%.h}.mm"
+	one="$work/canary_${hn%.h}.cpp"
 	printf '#include "oofnd/objc/%s"\n#include "oofnd/objc/%s"\nint main() { return 0; }\n' "$hn" "$hn" > "$one"
 	"$CXX" "${flags[@]}" -I"$oo/src" -fsyntax-only "$one" || fail "oofnd/objc/$hn does not compile on its own (or is not include-guarded)"
 done
@@ -121,7 +121,7 @@ run_one() {
 kinds=(plain)
 [ "$rd_ok" -ne 1 ] || kinds+=(asan)
 for t in "${tests[@]}"; do
-	name="$(basename "$t" .mm)"
+	name="$(basename "$t")"; name="${name%.*}"
 	for kind in "${kinds[@]}"; do
 		[ "$kind" = plain ] && exe="$work/$name.exe" || exe="$work/${name}_asan.exe"
 		throttle
@@ -135,7 +135,7 @@ if [ "$rd_ok" -eq 1 ]; then
 fi
 asan_opts="${ASAN_OPTIONS:-halt_on_error=1:abort_on_error=0:detect_leaks=0}"
 for t in "${tests[@]}"; do
-	name="$(basename "$t" .mm)"
+	name="$(basename "$t")"; name="${name%.*}"
 	if [ "$(cat "$work/$name.exe.build.rc" 2>/dev/null)" = 0 ]; then
 		throttle
 		bg_rc "$work/$name.log.rc" run_one "$work/$name.exe" "$work/$name.log"
@@ -149,16 +149,18 @@ done
 wait
 
 # --- 3 + 4. build, prove the imports, run -------------------------------------------------------
-step "3/5 unit tests: libobjc2 only, -Wall -Wextra -Werror, --fatal-warnings"
-step "4/5 import table: libobjc, no gnustep-base"
+step "3/5 unit tests: C++, -Wall -Wextra -Werror, --fatal-warnings"
+step "4/5 import table: no libobjc, no gnustep-base"
 for t in "${tests[@]}"; do
-	name="$(basename "$t" .mm)"
+	name="$(basename "$t")"; name="${name%.*}"
 	exe="$work/$name.exe"
 	echo "   link: $CXX ... $t ${sources[*]} ${link[*]}"
 	cat "$exe.build.log" >&2
 	[ "$(cat "$exe.build.rc" 2>/dev/null)" = 0 ] || fail "$t does not build"
 	imports="$(objdump -p "$exe" | sed -n 's/^[[:space:]]*DLL Name:[[:space:]]*//p')"
-	grep -qi '^libobjc' <<<"$imports" || fail "$name does not import libobjc; the floor is not on the runtime it claims"
+	if grep -qi '^libobjc' <<<"$imports"; then
+		fail "$name imports libobjc2 ($(grep -i '^libobjc' <<<"$imports" | tr '\n' ' ')); nothing is Objective-C since bead oo-dbz.5"
+	fi
 	if grep -qi 'gnustep' <<<"$imports"; then
 		fail "$name imports a GNUstep Foundation DLL: $(printf '%s\n' "$imports" | grep -i gnustep | tr '\n' ' ')"
 	fi
@@ -173,11 +175,11 @@ step "5/5 unit tests under -fsanitize=address"
 [ "$rd_ok" -ne 0 ] || fail "could not build the spliced ASan resource directory"
 [ "$rd_ok" -ne 2 ] || fail "could not locate the ASan runtime DLL directory"
 for t in "${tests[@]}"; do
-	name="$(basename "$t" .mm)"
+	name="$(basename "$t")"; name="${name%.*}"
 	cat "$work/${name}_asan.exe.build.log" >&2
 	[ "$(cat "$work/${name}_asan.exe.build.rc" 2>/dev/null)" = 0 ] || fail "$t does not build under -fsanitize=address"
 	report_test "$work/${name}_asan.exe" "$work/${name}_asan.log"
 	! grep -qi 'AddressSanitizer' "$work/${name}_asan.log" || fail "${name} printed an AddressSanitizer report"
 done
 
-echo "PASS: oofnd objc floor — ${#tests[@]} test file(s), $total_tests tests, $total_checks checks, libobjc2 only, green plain and under ASan ($(( $(date +%s) - t0 ))s)"
+echo "PASS: oofnd objc floor — ${#tests[@]} test file(s), $total_tests tests, $total_checks checks, no Objective-C runtime, green plain and under ASan ($(( $(date +%s) - t0 ))s)"

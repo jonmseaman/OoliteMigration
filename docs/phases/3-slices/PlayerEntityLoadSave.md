@@ -23,7 +23,7 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | string / file-name / deci-credit helpers | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/Entities/PlayerEntityLoadSave.mm
+source: upstream/oolite/src/Core/Entities/PlayerEntityLoadSave.cpp
 header: upstream/oolite/src/Core/Entities/PlayerEntityLoadSave.h
 
 slice 1: LoadSave category: entry points, scenarios, commander input, loadPlayerFromFile

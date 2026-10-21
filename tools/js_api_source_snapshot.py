@@ -106,13 +106,13 @@ def _read(path):
 
 
 def _iter_sources(root):
-    """Every .m and .mm under src/. os.walk deliberately: the repo's grep/search tooling silently returns
+    """Every .m, .mm and .cpp under src/ (the .mm units are .cpp since bead oo-dbz.5). os.walk deliberately: the repo's grep/search tooling silently returns
     zero matches for upstream/oolite/src, so a search-tool-based scraper here would find nothing
     and report a clean empty snapshot."""
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames.sort()
         for name in sorted(filenames):
-            if name.endswith((".m", ".mm")):
+            if name.endswith((".m", ".mm", ".cpp")):
                 yield os.path.join(dirpath, name)
 
 

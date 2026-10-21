@@ -23,7 +23,7 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | small string/specifier helpers | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/Materials/OODefaultShaderSynthesizer.mm
+source: upstream/oolite/src/Core/Materials/OODefaultShaderSynthesizer.cpp
 header: upstream/oolite/src/Core/Materials/OODefaultShaderSynthesizer.h
 
 slice 1: entry point, class shell, lifecycle, declarations, texture bookkeeping

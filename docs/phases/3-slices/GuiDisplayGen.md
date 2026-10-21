@@ -21,7 +21,7 @@ file every time, so the numbers below are only a snapshot.
 | verbatim | string helpers | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/GuiDisplayGen.mm
+source: upstream/oolite/src/Core/GuiDisplayGen.cpp
 header: upstream/oolite/src/Core/GuiDisplayGen.h
 
 slice 1: class shell, sizing, colours, fades, rows and selection

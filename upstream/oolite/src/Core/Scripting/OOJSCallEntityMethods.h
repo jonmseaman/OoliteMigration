@@ -10,7 +10,7 @@ amendment oo-9ht.44): each is a selector the facade defines, or a by-name row, w
 or with one const std::string & argument and a void or oo::PList result; a Typed row keeps
 the encoding of the declared return type (kOOTypeEncoding<>, @encode()'s measured literal;
 OOTypeEncodings.h, bead oo-dbz.3).
-Included by OOJSCall.mm and its test only.
+Included by OOJSCall.cpp and its test only.
 
 */
 

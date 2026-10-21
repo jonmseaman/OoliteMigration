@@ -9984,3 +9984,47 @@ compiling as plain C++ while the build is still Objective-C++; oo-dbz.5 renames 
 **Left (oo-dbz.5).** The `.mm` files themselves, the `objc`/`objcpp` languages and libobjc2 in meson, the `-fobjc-*`
 flags, and the tools that name `.mm`. Mac-only Objective-C stays for Phase 5 (`GameController+FullScreen.mm`, the
 `OOLITE_MAC_OS_X` blocks of `GameController.mm`, `OOMusicController.mm`'s `NSAppleScript`).
+## Amendment (bead oo-dbz.5): .mm becomes .cpp; the Objective-C languages, libobjc2 and the -fobjc-* flags leave the build
+
+**Context.** Batch BH, the last child of oo-dbz. After oo-dbz.2/.3/.4 every translation unit of the build compiles as
+plain C++; what was left was the spelling: 383 `.mm` files (209 in src, 174 in tests) built as Objective-C++ on
+libobjc2.
+
+**Decision.**
+
+1. Every `.mm` under `upstream/oolite/src` and `upstream/oolite/tests` is renamed `.cpp` with its content byte-identical
+   (git R100), except the Mac-only `src/Core/GameController+FullScreen.mm` (in no Windows build list; Phase 5). The
+   `OOLITE_MAC_OS_X` blocks inside cross-platform files (`GameController.cpp`'s `GameController (OOPrivate)`/
+   `(MacOSX)`, `OOMusicController`'s `NSAppleScript`) stay inside their `#if` for Phase 5, which adds the Objective-C++
+   language back on the Mac for them.
+2. meson: the project's languages are `c` and `cpp`; `c_family` loses `objc`/`objcpp`; `-Werror=objc-method-access`,
+   the `objc`/`objcpp` `-fexceptions -fobjc-exceptions`, `-DGNUSTEP_RUNTIME=1 -D_NONFRAGILE_ABI=1
+   -fobjc-runtime=gnustep-2.2 -fblocks` (and gcc's `-DGNU_RUNTIME=1 -fconstant-string-class`), `oofnd_objc_args`
+   (`-fno-constant-cfstrings`), every `objc_args`/`objcpp_args`/`objcpp_std`, libobjc2 (`oofnd_objc_dep`'s
+   `find_library('objc')`, Windows' `dep_libs`, Linux's libobjc2 search) go; `oofnd_objc_dep` keeps oofnd/objc's C++
+   support (`Exception.cpp`, `OOAssert.cpp`). The native files lose their `objc`/`objcpp` entries. No game source
+   read the removed macros; C++ has exceptions by default; the units keep `cpp_std=gnu++20` and every `c_family`
+   argument, so the game's code is compiled as it was, as C++ instead of Objective-C++ (no unit has Objective-C
+   since oo-dbz.2/.3/.4).
+3. The tools follow without weakening: `check-core-tests.sh` inventories `test_*.cpp` (and any `.mm`);
+   `check-oofnd-objc.sh` builds `test_objc_*.cpp` as C++ and now FAILS if the import table names libobjc (it required
+   it until now); `check-string-expander.sh`/`check-sysdesc-tools.sh` compile the harnesses as C++ and link neither
+   libobjc2 nor gnustep-base (digests unchanged); `objc-cast-scan.sh --all` scans `.cpp` too; `tier-c.sh`'s sanitized
+   build passes no `objc`/`objcpp` options; `js_api_source_snapshot.py` scrapes `.cpp` too (which also brings back
+   `OOJSSpecialFunctions.cpp`'s `special` class, missing since that file became `.cpp`) and the committed
+   `oxp-contract/js-api-source.json` names the `.cpp` sources; `check-foundation-free.sh`'s exemptions name each `.mm`
+   with its `.cpp`; the table generators' file names, the slice plans' `source:` lines, the mutant tools' paths and
+   the nightly lines' paths follow the rename, and the three nightly greps that searched `--include='*.mm'` search
+   `*.cpp` too.
+
+*Behaviour note:* the source file names the game prints only on its internal-error paths (`__FILE__` in
+`OOJSUnreachable`, the JS time limiter's bug report, `OOGL_PERFORM_CHECK`, OOCAssert's reason, and
+`OORegExpMatcher`'s JS function file name) say `.cpp` where they said `.mm`. Nothing else the game outputs names a
+source file; goldens unchanged.
+
+**Tests.** std-2026-10-19 item 1, approval lines "oo-dbz.5": 174 test files renamed `.mm` to `.cpp` (content
+byte-identical), and the two test meson files' source names. Every case, input and expected value unchanged.
+
+**Left (Phase 5 and follow-ups).** `GameController+FullScreen.mm` and the Mac-only blocks; `tools/setup-windows.sh`
+still installs libobjc2 and gnustep-make for the reference tools that build against GNUstep (`tools/plist-fuzz`,
+`tools/captures`), which the game no longer needs.

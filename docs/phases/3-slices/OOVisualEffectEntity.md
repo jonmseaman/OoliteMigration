@@ -35,7 +35,7 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | `ValueForKey()`, `OptionalStringForKey()`, `DictionaryForKey()` | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/Entities/OOVisualEffectEntity.mm
+source: upstream/oolite/src/Core/Entities/OOVisualEffectEntity.cpp
 header: upstream/oolite/src/Core/Entities/OOVisualEffectEntity.h
 
 slice 1: class shell, lifecycle, mesh, subentities and flashers, scaling, drawing and update

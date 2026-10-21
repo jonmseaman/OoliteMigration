@@ -1,6 +1,6 @@
 project(
     'oolite',
-    ['c', 'cpp', 'objc', 'objcpp'],
+    ['c', 'cpp'],	# the Objective-C languages went with libobjc2 (bead oo-dbz.5): every game unit is C++
     meson_version: '>= 1.4.0',
     version: run_command(
         'bash',
@@ -20,7 +20,7 @@ project(
 )
 
 host_os = host_machine.system()
-c_family = ['c', 'cpp', 'objc', 'objcpp']
+c_family = ['c', 'cpp']
 
 version_string = meson.project_version()
 cat_cmd = find_program('cat', required: true)
@@ -78,15 +78,9 @@ endif
 # not reach a subproject (nor does a subproject() c_args default option).
 add_global_arguments('-ffp-contract=off', language: c_family)
 
-# A MESSAGE TO AN UNDECLARED METHOD IS AN ERROR (proposed ADR-0050, bead oo-tk0w).
-#
-# While Foundation bridge categories are being deleted, clang's -Wobjc-method-access ("instance
-# method '-x' not found") is not a style warning: it is the only compile-time sign that a caller
-# still sends a selector nothing implements any more, and the run-time result is an
-# "unrecognized selector" exception. Bead oo-2o5x: oo-5pae deleted OOCacheManager+FoundationBridge
-# while six sends of -objectForKey:inCache: remained; the build warned, the game died at startup
-# and golden scenario 001 went red. This makes the check stricter; it silences nothing.
-add_project_arguments('-Werror=objc-method-access', language: ['objc', 'objcpp'])
+# (A message to an undeclared method was an error, -Werror=objc-method-access, proposed ADR-0050,
+# bead oo-tk0w, while the game sent Objective-C messages. No unit is Objective-C since bead oo-dbz.5:
+# a call to an undeclared C++ member is a compile error by itself.)
 
 if get_option('no_shaders')
     add_project_arguments('-DNO_SHADERS=1', language: c_family)

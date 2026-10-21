@@ -320,7 +320,7 @@ sets the root facade's -respondsToSelector: read (the applies-to flags), the enc
 (kOOTypeEncoding<>, @encode()'s measured literal: OOTypeEncodings.h, bead oo-dbz.3),
 the argument kind, the adaptor: the method's body, verbatim, with the entity for the facade's own C++
 entity, and for a method with no argument the typed adaptor (its result by type; bead oo-9ht.39.7.2).
-Included by OOEntityCalledByName.mm only, after the parts (ShipPart() ...) the bodies read.
+Included by OOEntityCalledByName.cpp only, after the parts (ShipPart() ...) the bodies read.
 
 */
 
