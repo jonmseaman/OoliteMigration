@@ -332,3 +332,17 @@ rule.
 24. **Runtime DESC formats use `formatRuntime`.** Every `-stringWithFormat:DESC(...)` (or other
     format that is data) with `%@` is item 19: oo-ys2e (WormholeEntity) and the ~10 PlayerEntity
     sites are unblocked.
+
+## Amendment 4 — the selector check retires with the selectors (2026-10-20, bead oo-ebds4)
+
+`tools/check-selector-types.py` (with its probe `tools/check-selector-types-probe.sh` and its data
+files `tools/typed-imp-selectors.txt`, `tools/dynamic-selectors.txt`) existed to keep a selector
+family's declarations agreeing on types while Objective-C dispatched by name. Since libobjc2 left
+the build (bead oo-dbz.5) no game unit declares or sends a selector: the tool scanned `.h/.m/.mm`,
+found nothing, and still reported its eight OOOXZManager typed-IMP anchors (stale since oo-3rb.53)
+as "not verified". It was in no gate. It is retired; the by-name dispatch it guarded is now
+C++ tables (`Core/OOCallByName.h`, `OOEntityCalledByNameTable.h`), checked by the compiler and by
+`tools/gen-entity-by-name-table.py --check` / `tools/gen-callobjc-entity-table.py --check`. The Phase 5 Mac glue (`GameController+FullScreen.mm`) is AppKit, not a sweep family, so
+nothing needs the check there. Items 1-24 above are history; `git show oo-ebds4^:<path>` restores
+the tool. Decision taken on the bead's recorded default under the 2026-10-20 delegation
+(docs/decisions/delegated-2026-10-19.md).
