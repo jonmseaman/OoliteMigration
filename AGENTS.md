@@ -4,7 +4,7 @@ This project uses **bd** (beads) for issue tracking. Run `bd prime` for full wor
 
 ## Workspace boundary
 
-**Never edit files outside this repository.** Cursor will prompt Jon for every Write/StrReplace outside the workspace. Put throwaway scripts and logs under `.agent-tmp/` (gitignored). Bead work lives in `.worktrees/<id>/`. See `.cursor/rules/workspace-boundary.mdc`.
+**Never edit files outside this repository.** Put throwaway scripts and logs under `.agent-tmp/` (gitignored). Bead work lives in `.worktrees/<id>/`.
 
 > **Architecture in one line:** Issues live in a local Dolt database
 > (`.beads/dolt/`); cross-machine sync uses `bd dolt push/pull` (a

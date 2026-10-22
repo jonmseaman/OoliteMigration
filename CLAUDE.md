@@ -2,8 +2,7 @@
 
 This repository plans and executes the migration of Oolite from Objective-C/GNUstep to C++23.
 `upstream/oolite` is a git subtree of the fork and is the tree being migrated; this repo holds the
-plan, the tooling, and the goldens. Everything runs natively on Windows from the MSYS2 UCRT64 shell
-([ADR-0017](docs/decisions/0017-native-windows-subtree.md)). Read [ROADMAP.md](ROADMAP.md) for where the project is, then the phase doc for the phase
+plan, the tooling, and the goldens. Read [ROADMAP.md](ROADMAP.md) for where the project is, then the phase doc for the phase
 you are working in. Terms are in [GLOSSARY.md](GLOSSARY.md). The human is in four places only
 ([ADR-0013](docs/decisions/0013-decide-up-front-minimise-human.md)); everything else is yours.
 
