@@ -65,7 +65,7 @@ public:
 	void renderOpaqueParts() override;
 	bool hasOpaqueParts() override;
 	GLfloat maxDrawDistance() override;
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	std::vector<oo::Ref<OOTexture>> allTextures() override;
 	size_t totalSize() override;
 	size_t objectSize() const override	{ return sizeof *this; }

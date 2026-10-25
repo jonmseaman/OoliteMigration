@@ -42,14 +42,14 @@ MA 02110-1301, USA.
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 uint32_t gLiveEntityCount = 0;
 size_t gTotalEntityMemory = 0;
 #endif
 
 
 // Message-class constants for OO_LOG (const char *).
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 constexpr const char *kOOLogEntityAddToList				= "entity.linkedList.add";
 constexpr const char *kOOLogEntityAddToListError			= "entity.linkedList.add.error";
 constexpr const char *kOOLogEntityRemoveFromList			= "entity.linkedList.remove";
@@ -135,7 +135,7 @@ void Entity::willDispose() noexcept
 	setOwner(nullptr);					// [self setOwner:nil]
 	setAtmosphereFogging(nullptr);		// [atmosphereFogging release]
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	gLiveEntityCount--;
 	gTotalEntityMemory -= oo::EntityObjectSize(this);
 #endif
@@ -258,7 +258,7 @@ bool Entity::validForAddToUniverse()
 
 void Entity::addToLinkedLists()
 {
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if (gDebugFlags & DEBUG_LINKED_LISTS)
 		OO_LOG(kOOLogEntityAddToList, "DEBUG adding entity {} to linked lists", oo::EntityDescription(this));
 #endif
@@ -301,7 +301,7 @@ void Entity::addToLinkedLists()
 
 	}
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if (gDebugFlags & DEBUG_LINKED_LISTS)
 	{
 		if (!checkLinkedLists())
@@ -316,7 +316,7 @@ void Entity::addToLinkedLists()
 
 void Entity::removeFromLinkedLists()
 {
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if (gDebugFlags & DEBUG_LINKED_LISTS)
 		OO_LOG(kOOLogEntityRemoveFromList, "DEBUG removing entity {} from linked lists", oo::EntityDescription(this));
 #endif
@@ -348,7 +348,7 @@ void Entity::removeFromLinkedLists()
 	y_previous = nil;	y_next = nil;
 	z_previous = nil;	z_next = nil;
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if (gDebugFlags & DEBUG_LINKED_LISTS)
 	{
 		if (!checkLinkedLists())
@@ -448,7 +448,7 @@ void Entity::updateLinkedLists()
 	if ((x_next == nil)&&(x_previous == nil))
 		return;	// not in the lists - don't do this!
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if (gDebugFlags & DEBUG_LINKED_LISTS)
 	{
 		if (!checkLinkedLists())
@@ -529,7 +529,7 @@ void Entity::updateLinkedLists()
 			UNIVERSE->z_list_start = this;
 
 	// done
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if (gDebugFlags & DEBUG_LINKED_LISTS)
 	{
 		if (!checkLinkedLists())
@@ -1155,7 +1155,7 @@ oo::Ref<OOColor> Entity::fogUniform()
 	return atmosphereFogging;
 }
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::optional<std::string> Entity::descriptionForObjDumpBasic()
 {
 	const std::optional<std::string> components = descriptionComponents();

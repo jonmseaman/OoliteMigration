@@ -87,7 +87,7 @@ which C++ has not, are keyed by the tag types OOObjCId and OOObjCSelector.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOTypes.h"
 #include "OOEntityEnums.h"
 #include "OOMaths.h"
@@ -125,7 +125,7 @@ def render():
 
 
 def probe():
-    lines = ['#include "OOCocoa.h"', '#include "OOTypeEncodings.h"', "#include <cstdio>", "", "int main()", "{"]
+    lines = ['#include "OOFoundation.h"', '#include "OOTypeEncodings.h"', "#include <cstdio>", "", "int main()", "{"]
     for key, names, encoding in data():
         for n in names:
             lines.append(f'\tstd::printf("%s\\t%s\\n", "{n}", @encode({n}));')

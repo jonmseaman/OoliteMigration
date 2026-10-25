@@ -48,13 +48,13 @@ MA 02110-1301, USA.
 #define INCLUDED_OOJSENGINENATIVEWRAPPERS_h
 
 /*	Plain includes (bead oo-9ht.72): this header is reached from C++ binding translation units
-	through OOJSEngineCore.h. OOCocoa.h gave it OOLITE_DEBUG and the function attributes.
+	through OOJSEngineCore.h. OOFoundation.h gave it OOLITE_DEBUG and the function attributes.
 */
 #include "OOFunctionAttributes.h"
 #include "ooscript/JSEngine.hpp"
 
 #ifndef OOLITE_DEBUG
-// As OOCocoa.h defines it (an identical redefinition there is harmless).
+// As OOFoundation.h defines it (an identical redefinition there is harmless).
 #ifdef NDEBUG
 #define OOLITE_DEBUG 0
 #else

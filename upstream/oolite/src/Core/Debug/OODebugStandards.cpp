@@ -33,7 +33,7 @@ SOFTWARE.
 #include "oofnd/PListGet.hpp"
 #include "GameController.h"
 
-#ifdef NDEBUG
+#ifndef OO_DEBUG_MONITOR_ENABLED
 // in release mode, stubs
 void cxx_OOStandardsDeprecated(const std::string &message) {}
 void cxx_OOStandardsError(const std::string &message) {}
@@ -66,7 +66,14 @@ typedef enum {
 	STANDARDS_ENFORCEMENT_QUIT
 } OOStandardsEnforcement;
 
-static OOStandardsEnforcement sEnforcement = STANDARDS_ENFORCEMENT_WARN;
+// Deployment builds stay quiet unless an OXP developer opts in with enforce-oxp-standards.
+#ifdef NDEBUG
+#define STANDARDS_ENFORCEMENT_DEFAULT STANDARDS_ENFORCEMENT_OFF
+#else
+#define STANDARDS_ENFORCEMENT_DEFAULT STANDARDS_ENFORCEMENT_WARN
+#endif
+
+static OOStandardsEnforcement sEnforcement = STANDARDS_ENFORCEMENT_DEFAULT;
 
 
 void OOStandardsSetup()
@@ -77,7 +84,7 @@ void OOStandardsSetup()
 	}
 	oo::Defaults &prefs = oo::Defaults::standard();
 	const oo::PList enforce = prefs.object("enforce-oxp-standards");
-	int s = oo::PListGet<int>::from(enforce.isNull() ? nullptr : &enforce, STANDARDS_ENFORCEMENT_WARN);
+	int s = oo::PListGet<int>::from(enforce.isNull() ? nullptr : &enforce, STANDARDS_ENFORCEMENT_DEFAULT);
 	if (s < STANDARDS_ENFORCEMENT_OFF)
 	{
 		s = STANDARDS_ENFORCEMENT_OFF;

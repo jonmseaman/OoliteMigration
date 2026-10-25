@@ -35,7 +35,7 @@ SOFTWARE.
 #ifndef OOPROBABILISTICTEXTUREMANAGER_H
 #define OOPROBABILISTICTEXTUREMANAGER_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OOOpenGL.h"
 #include "OOMaths.h"

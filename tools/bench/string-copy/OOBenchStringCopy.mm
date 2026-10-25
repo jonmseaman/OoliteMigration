@@ -24,7 +24,7 @@ At process exit, if OO_BENCH_STRING_REPORT names a file, one line is appended to
     mode=<m> shadow=<n> heap=<n> bytes=<n> user_ms=<n> kernel_ms=<n>
 */
 
-#import "OOCocoa.h"			// compiled from src/Core, beside it
+#import "OOFoundation.h"			// compiled from src/Core, beside it
 #include <objc/runtime.h>
 
 #include <atomic>
@@ -34,7 +34,7 @@ At process exit, if OO_BENCH_STRING_REPORT names a file, one line is appended to
 #include <string>
 #include <utility>
 
-// GetProcessTimes: OOCocoa.h's Foundation import already brings in <windows.h> on MinGW.
+// GetProcessTimes: OOFoundation.h's Foundation import already brings in <windows.h> on MinGW.
 
 namespace {
 

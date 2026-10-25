@@ -35,7 +35,7 @@ SOFTWARE.
 #ifndef OOSHADERPROGRAM_H
 #define OOSHADERPROGRAM_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OOOpenGL.h"
 #include "OOOpenGLExtensionManager.h"

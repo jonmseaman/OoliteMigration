@@ -5,7 +5,7 @@
 #ifndef OO_EXPANDER_STUB_PLAYERENTITY_H
 #define OO_EXPANDER_STUB_PLAYERENTITY_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOTypes.h"
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"

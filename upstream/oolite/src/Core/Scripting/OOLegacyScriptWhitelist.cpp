@@ -24,7 +24,7 @@ MA 02110-1301, USA.
 */
 
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOLegacyScriptWhitelist.h"
 #include "OOStringParsing.h"
 #include	"ResourceManager.h"

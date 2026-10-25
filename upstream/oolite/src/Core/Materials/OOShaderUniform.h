@@ -45,7 +45,7 @@ SOFTWARE.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 
 
 struct OOShaderBindingValue;	// OOShaderUniformMethodType.h (bead oo-9ht.158)

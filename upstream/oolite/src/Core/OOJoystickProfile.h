@@ -40,7 +40,7 @@ MA 02110-1301, USA.
 #ifndef OOJOYSTICKPROFILE_H
 #define OOJOYSTICKPROFILE_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
 

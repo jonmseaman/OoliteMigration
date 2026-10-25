@@ -53,9 +53,7 @@
 
 
 // Name of modifier key used to issue commands. See also IsCommandModifierKeyDown().
-#if OO_USE_CUSTOM_LOAD_SAVE
 #define COMMAND_MODIFIER_KEY		"Ctrl"
-#endif
 
 
 namespace
@@ -83,8 +81,6 @@ int SecondFieldIntValue(const std::optional<std::string> &key)
 	const std::vector<std::string> fields = oo::str::split(*key, ":");
 	return fields.size() > 1 ? oo::str::intValue(fields[1]) : 0;
 }
-
-#if OO_USE_CUSTOM_LOAD_SAVE
 
 // %@ of a string that may be nil, in a runtime format.
 oo::str::FormatArg TextArg(const std::optional<std::string> &string)
@@ -121,12 +117,8 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	return units.empty() ? 0 : static_cast<unsigned char>(units[0] & 0x00ff);
 }
 
-#endif
-
 }	// namespace
 
-
-#if OO_USE_CUSTOM_LOAD_SAVE
 
 namespace {
 
@@ -142,51 +134,19 @@ bool IsCommandModifierKeyDown(::MyOpenGLView *gameView)
 
 }	// namespace
 
-#endif
-
 
 bool PlayerEntity::loadPlayer()
 {
 	BOOL				OK = YES;
 	
-#if OO_USE_APPKIT_LOAD_SAVE_ALWAYS
-	OK = loadPlayerWithPanel();
-#elif OOLITE_USE_APPKIT_LOAD_SAVE
-	// OS X: use system open/save dialogs in windowed mode, custom interface in full-screen.
-	if ([(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) inFullScreenMode])
-	{
-		setGuiToLoadCommanderScreen();
-	}
-	else
-	{
-		OK = loadPlayerWithPanel();
-	}
-#else
-	// Other platforms: use custom interface all the time.
 	setGuiToLoadCommanderScreen();
-#endif
 	return OK;
 }
 
 
 void PlayerEntity::savePlayer()
 {
-#if OO_USE_APPKIT_LOAD_SAVE_ALWAYS
-	savePlayerWithPanel();
-#elif OOLITE_USE_APPKIT_LOAD_SAVE
-	// OS X: use system open/save dialogs in windowed mode, custom interface in full-screen.
-	if ([(UNIVERSE != nullptr ? UNIVERSE->gameController() : nullptr) inFullScreenMode])
-	{
-		setGuiToSaveCommanderScreen(lastsaveName().value_or(""));	// the member the property read (bead oo-w9pi2)
-	}
-	else
-	{
-		savePlayerWithPanel();
-	}
-#else
-	// Other platforms: use custom interface all the time.
 	setGuiToSaveCommanderScreen(lastsaveName().value_or(""));
-#endif
 }
 
 void PlayerEntity::autosavePlayer()
@@ -404,7 +364,6 @@ bool PlayerEntity::startScenario()
 }
 
 
-#if OO_USE_CUSTOM_LOAD_SAVE
 
 std::optional<std::string> PlayerEntity::commanderSelector()
 {
@@ -638,7 +597,6 @@ void PlayerEntity::overwriteCommanderInputHandler()
 	}
 }
 
-#endif
 
 
 bool PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool asNew)
@@ -866,55 +824,6 @@ bool PlayerEntity::loadPlayerFromFile(const std::string &fileToOpen, bool asNew)
 }
 
 
-#if OOLITE_USE_APPKIT_LOAD_SAVE
-
-bool PlayerEntity::loadPlayerWithPanel()
-{
-	NSOpenPanel *oPanel = [NSOpenPanel openPanel];
-	
-	oPanel.allowsMultipleSelection = NO;
-	oPanel.allowedFileTypes = [NSArray arrayWithObject:@"oolite-save"];
-	
-	if ([oPanel runModal] == NSOKButton)
-	{
-		NSURL *url = oPanel.URL;
-		if (url.isFileURL)
-		{
-			return loadPlayerFromFile(oo::StdString(url.path), NO);	// the member (bead oo-w9pi2)
-		}
-	}
-	
-	return NO;
-}
-
-
-void PlayerEntity::savePlayerWithPanel()
-{
-	NSSavePanel *sPanel = [NSSavePanel savePanel];
-	
-	sPanel.allowedFileTypes = [NSArray arrayWithObject:@"oolite-save"];
-	sPanel.canSelectHiddenExtension = YES;
-	sPanel.nameFieldStringValue = @(lastsaveName().value_or("").c_str());	// the member (bead oo-w9pi2)
-	
-	if ([sPanel runModal] == NSOKButton)
-	{
-		NSURL *url = sPanel.URL;
-		OOCAssert(url.isFileURL, "Save panel with default configuration should not provide non-file URLs.");
-		
-		NSString *path = url.path;
-		NSString *newName = [path.lastPathComponent stringByDeletingPathExtension];
-		
-		ShipScriptEventNoCx(this, "playerWillSaveGame", OOJSSTR("STANDARD_SAVE"));
-		
-		setLastsaveName(oo::StdString(newName));	// the member (bead oo-w9pi2)
-		writePlayerToPath(oo::StdString(path));
-	}
-	setGuiToStatusScreen();
-}
-
-#endif
-
-
 void PlayerEntity::writePlayerToPath(const std::string &path)
 {
 	std::string		errDesc;
@@ -968,7 +877,6 @@ void PlayerEntity::nativeSavePlayer(const std::string &cdrName)
 }
 
 
-#if OO_USE_CUSTOM_LOAD_SAVE
 
 void PlayerEntity::setGuiToLoadCommanderScreen()
 {
@@ -1389,7 +1297,6 @@ int PlayerEntity::findIndexOfCommander(const std::string &cdrName)
 	return -1;
 }
 
-#endif
 
 
 namespace

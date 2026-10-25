@@ -41,7 +41,7 @@ SOFTWARE.
 #ifndef OOPRIORITYQUEUE_H
 #define OOPRIORITYQUEUE_H
 
-#include "OOCocoa.h"	// OOComparisonResult
+#include "OOFoundation.h"	// OOComparisonResult
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"

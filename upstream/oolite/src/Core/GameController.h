@@ -27,7 +27,7 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OOFunctionAttributes.h"
 #include "OOFullScreenController.h"
@@ -66,9 +66,9 @@ class OOFullScreenController;	// C++ since bead oo-bgmb
 	the class shell, its state and accessors; the frame loop and deferred calls (slice 2, bead
 	oo-hn0fw); start-up, splash and progress messages, exit and the player file (slice 3, bead
 	oo-5ah4k); the SDL full-screen members (SDL/GameController+SDLFullScreen.mm, bead oo-qinv), the
-	former FullScreen category. The Mac FullScreen category (Core/GameController+FullScreen.mm) and
-	the Mac category at the end of GameController.mm are not compiled and are left as they were
-	(Phase 5). A global class since the Objective-C façade was deleted (bead oo-9ht.164).
+	former FullScreen category. The Mac FullScreen category (Core/GameController+FullScreen.mm) went
+	as upstream's did (OoliteProject #737, bead oo-we7mm); the Mac category at the end of
+	GameController.mm is not compiled and is left as it was (Phase 5). A global class since the Objective-C façade was deleted (bead oo-9ht.164).
 */
 class GameController : public oo::RefCounted
 {

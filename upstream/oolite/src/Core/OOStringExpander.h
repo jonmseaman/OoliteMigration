@@ -28,7 +28,7 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOMaths.h"
 
 

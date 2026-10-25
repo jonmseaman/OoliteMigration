@@ -30,7 +30,7 @@ MA 02110-1301, USA.
 #ifndef OOJSPOPULATORDEFINITION_H
 #define OOJSPOPULATORDEFINITION_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "ooscript/JSEngine.hpp"
 #include "OOMaths.h"
 #include "oofnd/Ref.hpp"

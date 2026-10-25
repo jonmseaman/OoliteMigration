@@ -26,7 +26,7 @@ SOFTWARE.
 */
 
 #include "OONullTexture.h"
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOTextureInternal.h"
 
 

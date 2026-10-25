@@ -98,7 +98,7 @@ static BOOL				rotateCargo_pressed;
 static BOOL				autopilot_key_pressed;
 static BOOL				fast_autopilot_key_pressed;
 static BOOL				docking_clearance_request_key_pressed;
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 static BOOL				dump_target_state_pressed;
 static BOOL				dump_entity_list_pressed;
 #endif
@@ -446,6 +446,7 @@ void PlayerEntity::initKeyConfigSettings()
 
 	LOAD_KEY_SETTING2(n_key_oxzmanager_setfilter, 'f', NO, NO, 0, NO, NO);
 	LOAD_KEY_SETTING2(n_key_oxzmanager_showinfo, 'i', NO, NO, 0, NO, NO);
+	LOAD_KEY_SETTING2(n_key_oxzmanager_copyurl, 'c', NO, NO, 0, NO, NO);
 	LOAD_KEY_SETTING2(n_key_oxzmanager_extract, 'x', NO, NO, 0, NO, NO);
 	
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
@@ -453,7 +454,7 @@ void PlayerEntity::initKeyConfigSettings()
 	LOAD_KEY_SETTING2(n_key_dec_field_of_view, 'k', NO, NO, 0, NO, NO);
 #endif
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	LOAD_KEY_SETTING2(n_key_dump_target_state, 'H', YES, NO, 0, NO, NO);
 	LOAD_KEY_SETTING2(n_key_dump_entity_list, '0', NO, NO, 0, NO, NO);
 	LOAD_KEY_SETTING2(n_key_debug_full, 'd', NO, NO, 0, NO, NO);
@@ -1014,13 +1015,11 @@ void PlayerEntity::pollApplicationControls()
 						/*	Ensure the keyboard pitch override (intended to lock
 						 out the joystick if the player runs to the keyboard)
 						 is reset */
-					#if OOLITE_GNUSTEP
 						if (gameView != nullptr)  gameView->resetMouse();
 						if (oo::Defaults::standard().boolForKey("grab-mouse-on-mouse-control"))
 						{
 							if (gameView != nullptr)  gameView->grabMouseInsideGameWindow(YES);
 						}
-					#endif
 						mouse_x_axis_map_to_yaw = checkKeyPress(n_key_mouse_control_yaw);
 						keyboardRollOverride = (mouse_x_axis_map_to_yaw != NO);   // Getafix: set keyboardRollOverride to TRUE only if yaw is mapped to mouse x-axis
 						keyboardPitchOverride = NO;
@@ -1029,9 +1028,7 @@ void PlayerEntity::pollApplicationControls()
 					else
 					{
 						if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("mouse-off"), 3.0);
-                    #if OOLITE_GNUSTEP
 						if (gameView != nullptr)  gameView->grabMouseInsideGameWindow(NO);
-                    #endif
 					}
 				}
 				if (OOMouseInteractionModeIsFlightMode((gameController != nullptr ? gameController->mouseInteractionMode() : OOMouseInteractionMode{})))
@@ -1051,10 +1048,8 @@ void PlayerEntity::pollApplicationControls()
 			{
 				mouse_control_on = NO;
 				if (UNIVERSE != nullptr)  UNIVERSE->addMessage(OO_DESC("mouse-off"), 3.0);
-            #if OOLITE_GNUSTEP
 				if (gameView != nullptr)  gameView->grabMouseInsideGameWindow(NO);
-            #endif
-				
+
 				if (OOMouseInteractionModeIsFlightMode((gameController != nullptr ? gameController->mouseInteractionMode() : OOMouseInteractionMode{})))
 				{
 					if (gameController != nullptr)  gameController->setMouseInteractionModeForFlight();
@@ -1777,7 +1772,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			}
 #endif
 
-	#ifndef NDEBUG
+	#ifdef OO_DEBUG_MONITOR_ENABLED
 			exceptionContext = "dump target state";
 			if (checkKeyPress(n_key_dump_target_state))
 			{
@@ -1835,7 +1830,7 @@ void PlayerEntity::pollFlightControls(double delta_t)
 			}
 			
 			exceptionContext = "debug keys";
-	#ifndef NDEBUG
+	#ifdef OO_DEBUG_MONITOR_ENABLED
 			// look for debugging keys
 			if (checkKeyPress(n_key_dump_entity_list) && !(gameView != nullptr ? gameView->getAllowingStringInput() : StringInput{}))// look for the '0' key
 			{
@@ -2449,7 +2444,6 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 			}
 			break;
 			
-#if OO_USE_CUSTOM_LOAD_SAVE
 			// DJS: Farm off load/save screen options to LoadSave.m
 		case GUI_SCREEN_LOAD:
 		{
@@ -2479,8 +2473,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
 		case GUI_SCREEN_SAVE_OVERWRITE:
 			overwriteCommanderInputHandler();
 			break;
-#endif
-			
+
 		case GUI_SCREEN_STICKMAPPER:
 			handleStickMapperScreenKeys();
 			break;
@@ -5132,6 +5125,7 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 				} // endif isAcceptingGUIInput
 				if (checkKeyPress(n_key_oxzmanager_setfilter) ||
 					checkKeyPress(n_key_oxzmanager_showinfo) ||
+					checkKeyPress(n_key_oxzmanager_copyurl) ||
 					checkKeyPress(n_key_oxzmanager_extract))
 				{
 					if (!oxz_manager_pressed)
@@ -5144,6 +5138,10 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 						else if (checkKeyPress(n_key_oxzmanager_showinfo))
 						{
 							oxzmanager->processShowInfoKey();
+						}
+						else if (checkKeyPress(n_key_oxzmanager_copyurl))
+						{
+							oxzmanager->processCopyUrlKey();
 						}
 						else if (checkKeyPress(n_key_oxzmanager_extract))
 						{
@@ -5252,7 +5250,6 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 			}
 			break;
 			
-#if OO_USE_CUSTOM_LOAD_SAVE
 			// DJS: Farm off load/save screen options to LoadSave.m
 		case GUI_SCREEN_LOAD:
 		{
@@ -5266,7 +5263,6 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
 			}
 			break;
 		}
-#endif
 
 		default:
 			break;

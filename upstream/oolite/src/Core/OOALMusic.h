@@ -36,7 +36,7 @@ SOFTWARE.
 #ifndef OOALMUSIC_H
 #define OOALMUSIC_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOALSound.h"
 #include "OOSoundSource.h"
 

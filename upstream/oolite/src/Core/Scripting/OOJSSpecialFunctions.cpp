@@ -31,7 +31,7 @@ MA 02110-1301, USA.
 
 
 static bool SpecialJSWarning(ooscript::Context context, ooscript::CallArgs &oojsArgs);
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 static bool SpecialMarkConsoleEntryPoint(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 #endif
 
@@ -40,7 +40,7 @@ static ooscript::FunctionSpec sSpecialFunctionsMethods[] =
 {
 	// JS name					Function						min args
 	{ "jsWarning",				SpecialJSWarning,				1 },
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	{ "markConsoleEntryPoint",	SpecialMarkConsoleEntryPoint,	0 },
 #endif
 	{ 0 }
@@ -96,7 +96,7 @@ static bool SpecialJSWarning(ooscript::Context context, ooscript::CallArgs &oojs
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 static bool SpecialMarkConsoleEntryPoint(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	// First stack frame will be in eval() in console.script.evaluate(), unless someone is playing silly buggers.

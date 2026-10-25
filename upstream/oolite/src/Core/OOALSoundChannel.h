@@ -37,7 +37,7 @@ SOFTWARE.
 #ifndef OOALSOUNDCHANNEL_H
 #define OOALSOUNDCHANNEL_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OOOpenALController.h"
 #include "OOMaths.h"

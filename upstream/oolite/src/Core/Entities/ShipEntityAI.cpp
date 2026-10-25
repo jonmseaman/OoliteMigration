@@ -571,7 +571,7 @@ bool ShipEntity::suggestEscortTo(::ShipEntity *mother)
 {
 	if (mother)
 	{
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 		if (reportAIMessages)
 		{
 			OO_LOG("ai.suggestEscort", "DEBUG: {} suggests escorting {}", oo::EntityDescription(this), oo::EntityDescription(mother));
@@ -595,7 +595,7 @@ bool ShipEntity::suggestEscortTo(::ShipEntity *mother)
 			return YES;
 		}
 		
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 		if (reportAIMessages)
 		{
 			OO_LOG("ai.suggestEscort.refused", "DEBUG: {} refused by {}", oo::EntityDescription(this), oo::EntityDescription(mother));

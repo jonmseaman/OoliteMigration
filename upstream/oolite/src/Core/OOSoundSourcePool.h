@@ -39,7 +39,7 @@ SOFTWARE.
 #ifndef OOSOUNDSOURCEPOOL_H
 #define OOSOUNDSOURCEPOOL_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OOTypes.h"
 #include "OOMaths.h"

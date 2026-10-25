@@ -37,7 +37,7 @@ SOFTWARE.
 #ifndef OOEQUIPMENTTYPE_H
 #define OOEQUIPMENTTYPE_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "ooscript/JSEngine.hpp"
 #include "OOTypes.h"

@@ -45,7 +45,7 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 
 #include "oofnd/StdLib.hpp"
@@ -143,11 +143,7 @@ enum {
 #define STICK_NORMALDIV 32768
 #define STICK_PRECISIONDIV (STICK_PRECISIONFAC*STICK_NORMALDIV)
 
-#if OOLITE_MAC_OS_X
-#define STICK_DEADZONE	0.0025
-#else
 #define STICK_DEADZONE	0.05
-#endif
 
 #define STICK_MAX_DEADZONE	(STICK_DEADZONE * 2)
 

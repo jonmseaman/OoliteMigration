@@ -30,7 +30,7 @@ SOFTWARE.
 #ifndef OOASYNCWORKMANAGER_H
 #define OOASYNCWORKMANAGER_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/Ref.hpp"
 
 

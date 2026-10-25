@@ -246,7 +246,7 @@ OOJavaScriptEngine	*jsEng = OOJavaScriptEngine::sharedEngine();
 			}
 		}
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 		bool dump;
 		if (report->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))  dump = jsEng->dumpStackForWarnings();
 		else  dump = jsEng->dumpStackForErrors();
@@ -301,7 +301,7 @@ void OOJavaScriptEngine::init()
 	ooscript::setCStringsAreUTF8();
 
 	oo::Defaults &defaults = oo::Defaults::standard();
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	/*	Set stack trace preferences from preferences. These will be overriden
 		by the debug OXP script if installed, but being able to enable traces
 		without setting up the debug console could be useful for debugging
@@ -661,7 +661,7 @@ ooscript::ClassDef *OOJavaScriptEngine::booleanClass()
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 
 
 namespace {
@@ -741,7 +741,7 @@ void OOJavaScriptEngine::sendMonitorLogMessage(const std::optional<std::string> 
 #endif
 
 
-#ifndef NDEBUG
+#if OOLITE_DEBUG || defined(OO_DEBUG_MONITOR_ENABLED)
 
 namespace {
 static void DumpVariable(ooscript::Context context, ooscript::Variable *prop)

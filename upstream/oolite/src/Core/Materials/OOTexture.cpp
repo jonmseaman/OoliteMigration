@@ -106,7 +106,7 @@ static BOOL					sCheckedExtensions;
 OOTextureInfo				gOOTextureInfo;
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 namespace {
 
 const char *sGlobalTraceContext = nullptr;
@@ -394,7 +394,7 @@ void OOTexture::rebindAllTextures()
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::vector<oo::Ref<OOTexture>> OOTexture::cachedTexturesByAge()
 {
 	std::vector<oo::Ref<OOTexture>> result;

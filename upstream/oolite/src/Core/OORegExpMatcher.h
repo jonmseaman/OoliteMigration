@@ -38,7 +38,7 @@ SOFTWARE.
 #ifndef OOREGEXPMATCHER_H
 #define OOREGEXPMATCHER_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/Ref.hpp"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"

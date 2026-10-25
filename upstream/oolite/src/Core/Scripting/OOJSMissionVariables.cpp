@@ -100,7 +100,7 @@ namespace {
 static bool MissionVariablesEnumerate(Context cx, Object obj, EnumerateOp enumOp, Value *state, PropertyId *idp);
 } // namespace
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 namespace {
 static oo::PList MissionVariablesConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
@@ -133,14 +133,14 @@ void InitOOJSMissionVariables(ooscript::Context context, ooscript::Object global
 {
 	ooscript::defineObject((context), (global), "missionVariables", &sMissionVariablesClass, nullptr, OOJS_PROP_READONLY);
 	
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	// Allow callObjC() on missionVariables to call methods on the mission variables dictionary.
 	OOJSRegisterObjectConverter(&sMissionVariablesClass, MissionVariablesConverter);
 #endif
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 namespace {
 static oo::PList MissionVariablesConverter(ooscript::Context context, ooscript::Object object)
 {

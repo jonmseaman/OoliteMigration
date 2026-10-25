@@ -36,7 +36,7 @@ SOFTWARE.
 #ifndef OOALSOUNDMIXER_H
 #define OOALSOUNDMIXER_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 
 #include "oofnd/Ref.hpp"

@@ -62,7 +62,7 @@ GameController *controller = nullptr;
 #endif
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 uint32_t gDebugFlags = 0;
 #endif
 
@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
 							"Options marked with \"*\" are available only in Test Release configuration.\n"
 							"Version " OO_VERSION_FULL"\n"
 							"Debug functionality enabled (Test Release): "
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 								"yes\n"
 #else
 								"no\n"

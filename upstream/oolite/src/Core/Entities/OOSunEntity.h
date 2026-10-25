@@ -95,7 +95,7 @@ public:
 
 	std::optional<std::string> descriptionComponents() const override;
 	bool canCollide() override;
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	bool checkCloseCollisionWith(Entity *other) override;
 #endif
 	void update(OOTimeDelta delta_t) override;

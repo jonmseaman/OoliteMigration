@@ -27,7 +27,7 @@ SOFTWARE.
 */
 
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOLogOutputHandler.h"
 #include "OOLogging.h"
 #include <stdlib.h>

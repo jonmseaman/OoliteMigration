@@ -143,7 +143,7 @@ enum : std::uint8_t
 	kOolite_postFX,				// current post processing effect, integer, read/write
 	kOolite_hdrToneMapper,		// currently active HDR tone mapper, string, read/write
 	kOolite_sdrToneMapper,		// currently active SDR tone mapper, string, read/write
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	kOolite_timeAccelerationFactor,	// time acceleration, float, read/write
 #endif
 };
@@ -169,7 +169,7 @@ static PropertySpec sOoliteProperties[] =
 	{ "postFX",					kOolite_postFX,				kOolitePropertyFlagsRW, nullptr, nullptr },
 	{ "hdrToneMapper",			kOolite_hdrToneMapper, 		kOolitePropertyFlagsRW, nullptr, nullptr },
 	{ "sdrToneMapper",			kOolite_sdrToneMapper, 		kOolitePropertyFlagsRW, nullptr, nullptr },
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	{ "timeAccelerationFactor",	kOolite_timeAccelerationFactor,	kOolitePropertyFlagsRW, nullptr, nullptr },
 #endif
 	{ 0 }
@@ -193,7 +193,7 @@ static ooscript::PropertySpec sOolitePropertiesRaw[] =
 	{ "postFX",					kOolite_postFX,				OOJS_PROP_READWRITE_CB },
 	{ "hdrToneMapper",			kOolite_hdrToneMapper, 		OOJS_PROP_READWRITE_CB },
 	{ "sdrToneMapper",			kOolite_sdrToneMapper, 		OOJS_PROP_READWRITE_CB },
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	{ "timeAccelerationFactor",	kOolite_timeAccelerationFactor,	OOJS_PROP_READWRITE_CB },
 #endif
 	{ 0 }
@@ -307,7 +307,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			break;
 		}
 			
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 		case kOolite_timeAccelerationFactor:
 			return ooscript::newNumberValue(cx, (UNIVERSE != nullptr ? UNIVERSE->getTimeAccelerationFactor() : 0.0), value);
 #endif
@@ -385,7 +385,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			}
 			break;
 			
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 		case kOolite_timeAccelerationFactor:
 			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{

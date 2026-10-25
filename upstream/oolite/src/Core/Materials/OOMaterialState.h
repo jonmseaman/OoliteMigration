@@ -4,7 +4,7 @@ OOMaterialState.h
 
 The current-material slot of OOMaterial (OOMaterial.h), for plain C++ translation units
 (bead oo-9ht.185, proposed ADR-0056 amendment oo-9ht.185). OOMaterial.h is Objective-C++ (it imports
-OOCocoa.h); a .cpp that only
+OOFoundation.h); a .cpp that only
 saves, clears and restores the current material, as OODebugGLDrawing.cpp does around its
 wireframes, includes this instead. Defined in OOMaterial.mm.
 

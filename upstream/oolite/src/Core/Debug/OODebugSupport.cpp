@@ -25,7 +25,7 @@ SOFTWARE.
 
 */
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 
 
 #include "OODebugSupport.h"
@@ -92,4 +92,4 @@ void OOInitDebugSupport(void)
 }
 
 
-#endif	/* NDEBUG */
+#endif	/* OO_DEBUG_MONITOR_ENABLED */

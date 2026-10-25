@@ -35,7 +35,7 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "ooscript/JSEngine.hpp"
 #include "WormholeEntity.h"
 #include "ShipEntity.h"
@@ -115,20 +115,6 @@ typedef enum
 #else
 #define OO_RESOLUTION_OPTION		1
 #endif
-
-// The load / save macros, moved from PlayerEntityLoadSave.h: they condition the declarations of
-// that file's members below (ADR-0056 amendment oo-lmdi8).
-// Set to 1 to use custom load/save dialogs in windowed mode on Macs in debug builds. No effect on other platforms.
-#define USE_CUSTOM_LOAD_SAVE_ON_MAC_DEBUG		0
-
-// OOLITE_USE_APPKIT_LOAD_SAVE is true if we ever want AppKit dialogs.
-#define OOLITE_USE_APPKIT_LOAD_SAVE				(OOLITE_MAC_OS_X && !USE_CUSTOM_LOAD_SAVE_ON_MAC_DEBUG)
-
-// Mac 64-bit builds: never use custom load/save dialogs.
-#define OO_USE_APPKIT_LOAD_SAVE_ALWAYS			(OOLITE_USE_APPKIT_LOAD_SAVE && OOLITE_64_BIT)
-
-// OO_USE_CUSTOM_LOAD_SAVE is true if we will ever want custom dialogs.
-#define OO_USE_CUSTOM_LOAD_SAVE					(!OO_USE_APPKIT_LOAD_SAVE_ALWAYS)
 
 // dictionary keys - used in the custom key config for oxp equipment
 inline constexpr std::string_view CUSTOMEQUIP_EQUIPKEY = "equipmentKey";
@@ -937,7 +923,7 @@ public:
 	void setExtraMissionKeys(const oo::PList &keys);
 	void clearExtraGuiScreenKeys(OOGUIScreenID gui, const std::string &key);
 	bool setExtraGuiScreenKeys(OOGUIScreenID gui, ::OOJSGuiScreenKeyDefinition *definition);
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	void dumpSelfState() override;
 #endif
 #if OO_DEBUG
@@ -1417,46 +1403,20 @@ public:
 	void addScenarioModel(const std::string &shipKey);
 	void showScenarioDetails();
 	bool startScenario();
-#if OO_USE_CUSTOM_LOAD_SAVE
 	std::optional<std::string> commanderSelector();
-#endif
-#if OO_USE_CUSTOM_LOAD_SAVE
 	void saveCommanderInputHandler();
-#endif
-#if OO_USE_CUSTOM_LOAD_SAVE
 	void overwriteCommanderInputHandler();
-#endif
 	bool loadPlayerFromFile(const std::string &fileToOpen, bool asNew);
 	// Slice 2 of docs/phases/3-slices/PlayerEntityLoadSave.md.
-#if OOLITE_USE_APPKIT_LOAD_SAVE
-	bool loadPlayerWithPanel();
-#endif
-#if OOLITE_USE_APPKIT_LOAD_SAVE
-	void savePlayerWithPanel();
-#endif
 	void writePlayerToPath(const std::string &path);
 	void nativeSavePlayer(const std::string &cdrName);
-#if OO_USE_CUSTOM_LOAD_SAVE
 	void setGuiToLoadCommanderScreen();
-#endif
-#if OO_USE_CUSTOM_LOAD_SAVE
 	void setGuiToSaveCommanderScreen(const std::string &cdrName);
-#endif
-#if OO_USE_CUSTOM_LOAD_SAVE
 	void setGuiToOverwriteScreen(const std::string &cdrName);
-#endif
-#if OO_USE_CUSTOM_LOAD_SAVE
 	void lsCommanders(::GuiDisplayGen *gui, const std::string &directory, int page, const std::optional<std::string> &highlightName);
-#endif
-#if OO_USE_CUSTOM_LOAD_SAVE
 	bool existingNativeSave(const std::string &cdrName);
-#endif
-#if OO_USE_CUSTOM_LOAD_SAVE
 	void showCommanderShip(int cdrArrayIndex);
-#endif
-#if OO_USE_CUSTOM_LOAD_SAVE
 	int findIndexOfCommander(const std::string &cdrName);
-#endif
 
 #ifndef NDEBUG
 	/*	Names the members the analyser would call unused because only the categories read them
@@ -1777,6 +1737,7 @@ private:
 
 	oo::PList					n_key_oxzmanager_setfilter;
 	oo::PList					n_key_oxzmanager_showinfo;
+	oo::PList					n_key_oxzmanager_copyurl;
 	oo::PList					n_key_oxzmanager_extract;
 	
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
@@ -1784,7 +1745,7 @@ private:
 	oo::PList					n_key_dec_field_of_view;
 #endif
 	
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	oo::PList					n_key_dump_target_state;
 	oo::PList					n_key_dump_entity_list;
 	oo::PList					n_key_debug_full;

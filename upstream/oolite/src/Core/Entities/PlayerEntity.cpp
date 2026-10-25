@@ -2419,8 +2419,12 @@ bool PlayerEntity::setUpAndConfirmOK(bool stopOnError, bool saveGame)
 	// Most of this is probably also set more than once
 	
 	setCommanderName(std::string(PLAYER_DEFAULT_NAME));
-	setLastsaveName(std::string(PLAYER_DEFAULT_NAME));
-	
+	const std::optional<std::string> savedName = oo::Defaults::standard().stringForKey("last_savename");
+	if (savedName.has_value())
+	{
+		_lastsaveName = savedName;
+	}
+
 	galaxy_coordinates		= NSMakePoint(0x14,0xAD);	// 20,173
 
 	credits					= 1000;
@@ -5144,7 +5148,7 @@ std::string PlayerEntity::dial_fpsinfo()
 std::string PlayerEntity::dial_objinfo()
 {
 	std::string result = oo::str::format("Entities: %3zu", (UNIVERSE != nullptr ? UNIVERSE->entityCount() : 0));
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	result = oo::str::format("%s (%d, %zu KiB, avg %zu bytes)", result.c_str(), gLiveEntityCount, gTotalEntityMemory >> 10, gTotalEntityMemory / gLiveEntityCount);
 #endif
 	
@@ -9144,12 +9148,10 @@ void PlayerEntity::setGuiToGameOptionsScreen()
 		float modeRefresh = mode->get<float>(std::string(kOODisplayRefreshRate));
 
 		BOOL runningOnPrimaryDisplayDevice = (gameView != nullptr ? gameView->isRunningOnPrimaryDisplayDevice() : false);
-#if OOLITE_WINDOWS
 		if (!runningOnPrimaryDisplayDevice)
 		{
 			if (gameView != nullptr)  gameView->getDisplayDimensions(&modeWidth, &modeHeight);
 		}
-#endif
 		
 		const std::optional<std::string> displayModeString = screenModeStringForWidth(modeWidth, modeHeight, modeRefresh);
 
@@ -13381,6 +13383,7 @@ void PlayerEntity::setLastsaveName(const std::optional<std::string> &value)
 {
 	OOCParameterAssert(value.has_value());
 	_lastsaveName = value;
+	oo::Defaults::standard().setObject("last_savename", _lastsaveName.has_value() ? oo::PList(*_lastsaveName) : oo::PList());
 }
 
 
@@ -13743,7 +13746,7 @@ bool PlayerEntity::setExtraGuiScreenKeys(OOGUIScreenID gui, ::OOJSGuiScreenKeyDe
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 void PlayerEntity::dumpSelfState()
 {
 	std::vector<std::string>	flags;
@@ -13932,6 +13935,7 @@ bool PlayerEntity::suppressClangStuff() const
 	n_key_switch_previous_mfd &&
 	n_key_oxzmanager_setfilter &&
 	n_key_oxzmanager_showinfo &&
+	n_key_oxzmanager_copyurl &&
 	n_key_oxzmanager_extract &&
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
 	n_key_inc_field_of_view &&

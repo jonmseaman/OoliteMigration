@@ -36,7 +36,7 @@ Rules that hold for every component:
 | `src/oofnd/ResourcePaths.hpp` | `oo::ResourcePaths`: the game's Resources/AddOns/saves/logs/caches locations, exactly as computed today on Windows and Linux |
 | `src/oofnd/Notification.hpp` | `oo::NotificationCenter`, `oo::Notification`: `NSNotificationCenter` / `NSNotification` (named, synchronous, registration order; bead oo-3rb.9, ADR-0029 Decision 5) |
 | `src/oofnd/Date.hpp` | `oo::date`: `NSDate` on `std::chrono`: the reference-date (2001) wall clock, a monotonic clock for intervals, NSDate's `-description` (bead oo-3rb.11) |
-| `src/oofnd/StdLib.hpp` | the standard containers and clocks game code uses instead of Foundation collections, `NSValue` boxes and `NSDate`, included under the OOCocoa.h `true`/`false` guard (bead oo-3rb.10); game code includes it rather than `<vector>` etc. |
+| `src/oofnd/StdLib.hpp` | the standard containers and clocks game code uses instead of Foundation collections, `NSValue` boxes and `NSDate`, included under the OOFoundation.h `true`/`false` guard (bead oo-3rb.10); game code includes it rather than `<vector>` etc. |
 | `src/oofnd/Process.hpp` | `oo::process` + `oo::env`: `NSProcessInfo` (arguments captured in `main`, `hasArgument`, `processName`, `processorCount`, `operatingSystemVersionString`) with GNUstep's measured semantics |
 | `src/oofnd/Thread.hpp` | `oo::thread`: `NSThread` on `std::thread`: `detach`, `isMainThread` (id captured at static init), `setCurrentName`, `setCurrentPriority` (GNUstep's measured Windows mapping) |
 | `src/oofnd/String.hpp` | `oo::str`: the `NSString` methods and Oolite `NSString` categories the game uses (`NSStringOOExtensions`, `OOStringParsing`'s `NSString (OOUtilities)`, `ScanTokensFromString`, the version helpers) over UTF-8 `std::string`, GNUstep 1.31.1's answers exactly: case tables, whitespace set, composed-sequence rules, `-pathExtension`, `-replaceOccurrencesOfString:`, `-hasPrefix:`, `-stringWithFormat:` without `%@` ([ADR-0034](../../../../docs/decisions/0034-oofnd-strings.md)) |
@@ -55,7 +55,7 @@ Rules that hold for every component:
 | `src/oofnd/objc/OOConstantString.h`, `.mm` | `OOConstantString`/`OOTinyString`: the classes behind `@"..."` under `-fconstant-string-class=OOConstantString` (ADR-0029). Deleted by bead oo-4aq6a.8 (OOObject.h stays as a forwarding header) |
 | ~~`src/oofnd/objc/OORuntime.h`~~ | deleted with libobjc2 (bead oo-dbz.2): `OOClassFromName` & co., libobjc2's class and selector lookups, had no user left; its test `test_objc_runtime.mm` retired with it |
 | `src/oofnd/objc/OOException.h`, `.mm` | `OOException`: `NSException` without Foundation; `@try`/`@catch` stay Objective-C (ADR-0029 Decision 4). `+raise:format:` is printf-style; `OOInvalidArgumentException` & co. are `const char *` with Foundation's text |
-| `src/oofnd/objc/OOFoundationTypes.h` | Foundation's C types (`NSInteger`/`NSUInteger`, `NSRange`, `NSNotFound`, `NSPoint`/`NSSize`/`NSRect`, `NSMake*`, `NSEqual*`, `NSTimeInterval`, `CGFloat`) with GNUstep's exact definitions and names (ADR-0029 Decision 5); refuses to compile beside Foundation, so OOCocoa.h includes it only from oo-qps. Pinned by `tests/unit/oofnd/test_foundation_types.cpp` |
+| `src/oofnd/objc/OOFoundationTypes.h` | Foundation's C types (`NSInteger`/`NSUInteger`, `NSRange`, `NSNotFound`, `NSPoint`/`NSSize`/`NSRect`, `NSMake*`, `NSEqual*`, `NSTimeInterval`, `CGFloat`) with GNUstep's exact definitions and names (ADR-0029 Decision 5); refuses to compile beside Foundation, so OOFoundation.h includes it only from oo-qps. Pinned by `tests/unit/oofnd/test_foundation_types.cpp` |
 | `src/oofnd/meson.build` | `oofnd_dep` (include path `src/`, so consumers write `#include "oofnd/X.hpp"`) |
 | `tests/unit/oofnd/test_*.cpp` | one executable per component, plain C++20 |
 | `tests/unit/oofnd/oo_test.hpp` | the whole test harness: `OO_TEST`, `OO_CHECK`, `OO_CHECK_EQ`, `OO_TEST_MAIN` |
@@ -264,12 +264,12 @@ acceptance grep matches (comments included), the whole tree builds, and the game
 
 ### 1. Types
 
-Use `oofnd/StdLib.hpp` for standard containers (never `<vector>` directly: OOCocoa.h's
+Use `oofnd/StdLib.hpp` for standard containers (never `<vector>` directly: OOFoundation.h's
 `true`/`false` macros), `oofnd/String.hpp` for `oo::str`, `oofnd/PList.hpp` for `oo::PList`,
 `oofnd/objc/OOObjCRef.h` for `oo::ObjCRef`, a C++ `oo::PListForeign` for an object inside a
 property list (the Objective-C object's node, `Core/OOObjCPList.h`'s `oo::PListObject` & co., went with
 bead oo-4aq6a.5), and
-`oo::DescriptionOf` (`Core/OODescription.h`, imported by `OOCocoa.h`) for `%@` text. The boundary
+`oo::DescriptionOf` (`Core/OODescription.h`, imported by `OOFoundation.h`) for `%@` text. The boundary
 helpers this step used to name (`oo::StdString`, `oo::NSStringFrom`, `oo::NSStringOrNil`,
 `oo::NSArrayFromStrings` & co.) lived in `OOFoundationBridge.h` / `OOStringBridge.h`, deleted by
 oo-qps.16 (ADR-0055): where the tables below still name them they are history, and the forms that
@@ -342,7 +342,7 @@ directly.
 A header reached inside `extern "C"` (the `OOMaths.h` family) wraps its C++ declarations in
 `extern "C++" { ... }`, as `OOVector.h` does; the same goes for an `#include` of a C++ header (an
 oofnd `.hpp`, `oofnd/StdLib.hpp`) from such a header: `#ifdef __cplusplus` / `extern "C++" {
-#include "..." }` / `#endif`, the idiom `OOCocoa.h` and `OOLogging.h` use.
+#include "..." }` / `#endif`, the idiom `OOFoundation.h` and `OOLogging.h` use.
 
 ### 3. Shared selectors
 
@@ -439,7 +439,7 @@ the two files, the `meson.build` line and the import in `X.h`.
 ### 7. Categories on Foundation classes, and Foundation subclasses: retire, do not sweep
 
 `@interface NSString (OOExtensions)` and its kind (`NSData`, `NSDictionary`, `NSMutableDictionary`,
-`NSNumber`, `NSFileManager`, `OOCollectionExtractors`, `OODeepCopy`, OOCocoa.h's `NSEnumerator`
+`NSNumber`, `NSFileManager`, `OOCollectionExtractors`, `OODeepCopy`, OOFoundation.h's `NSEnumerator`
 category) and subclasses of Foundation classes (`OOFilteringEnumerator`,
 `OOExcludeObjectEnumerator`) cannot stop naming Foundation while they exist. Their beads wait on
 the sweep beads of their callers (the dependency is recorded). The bead is ready when `git grep`
@@ -516,7 +516,7 @@ Foundation-free and is what Phase 3 keeps (it drops the `cxx_` prefix as it conv
 
 ### Describing an object: `Core/OODescription.h` (item 1, oo-qps.31)
 
-Imported by `OOCocoa.h`, so no file includes it. A class describes itself by overriding **one**
+Imported by `OOFoundation.h`, so no file includes it. A class describes itself by overriding **one**
 method on the `OOObject` root; the printers wrap it:
 
 | Override | Printed by | As |
@@ -533,7 +533,7 @@ literal). `oo::DescriptionOf([x shortDescription])` is `oo::ShortDescriptionOf(x
 
 Transitional, until oo-qps.43 flips the legacy family tree-wide in one codemod commit
 (`python3 tools/codemods/description-family.py --fix upstream/oolite/src`, then `--check` for the
-hand residue) and deletes the legacy root in `OOCocoa.h/.mm`: the root's `cxx_` defaults forward to a
+hand residue) and deletes the legacy root in `OOFoundation.h/.mm`: the root's `cxx_` defaults forward to a
 legacy `- (id) descriptionComponents` (& co.) override while a class has one, and `oo::DescriptionOf`
 of an object not rooted on `OOObject` asks its `-description` (oo-qps.72 deletes both). Do not flip
 one class's override by hand before oo-qps.43: a converted superclass hides an unconverted
@@ -595,7 +595,7 @@ cd upstream/oolite && ./mk.sh build test
 meson test -C build/meson_test --suite oofnd
 ```
 
-Objective-C++ game code builds as `gnu++20` and sees OOCocoa.h's `#define true 1` / `#define false 0`:
+Objective-C++ game code builds as `gnu++20` and sees OOFoundation.h's `#define true 1` / `#define false 0`:
 a header that game code includes must suspend them with `#pragma push_macro`/`pop_macro` as
 `Data.hpp` does (ADR-0028; `tests/unit/oofnd/test_cocoa_macros.cpp` checks it).
 

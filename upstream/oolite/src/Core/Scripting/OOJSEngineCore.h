@@ -66,7 +66,7 @@ OOINLINE ooscript::Context OOJSAcquireContext(void)
 // End a request on the main thread's context.
 OOINLINE void OOJSRelinquishContext(ooscript::Context context)
 {
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	extern ooscript::Context gOOJSMainThreadContext;
 	OOCParameterAssert(context == gOOJSMainThreadContext && ooscript::isInRequest(context));
 #endif
@@ -445,7 +445,7 @@ OOJS_EXTERN_C void OOJSResumeTimeLimiter(void);
 	console, so that matching locations can be described specially by
 	OOJSDescribeLocation().
 */
-#ifndef NDEBUG
+#if OOLITE_DEBUG || defined(OO_DEBUG_MONITOR_ENABLED)
 OOJS_EXTERN_C void OOJSDumpStack(ooscript::Context context);
 
 std::optional<std::string> OOJSDescribeLocation(ooscript::Context context, ooscript::StackFrame stackFrame);	// nullopt: no location

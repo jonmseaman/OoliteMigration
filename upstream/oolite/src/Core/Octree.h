@@ -27,7 +27,7 @@ MA 02110-1301, USA.
 #ifndef OCTREE_H
 #define OCTREE_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OOOpenGL.h"
 #include "OOMaths.h"
@@ -38,7 +38,7 @@ MA 02110-1301, USA.
 #define	OCTREE_MIN_HALF_WIDTH	1.0
 
 
-#if !defined(OODEBUGLDRAWING_DISABLE) && defined(NDEBUG)
+#if !defined(OODEBUGLDRAWING_DISABLE) && !defined(OO_DEBUG_MONITOR_ENABLED)
 #define OODEBUGLDRAWING_DISABLE 1
 #endif
 
@@ -78,7 +78,7 @@ public:
 	Vector randomPoint();
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	size_t totalSize();
 #endif
 

@@ -30,7 +30,7 @@ MA 02110-1301, USA.
 #ifndef OOJSINTERFACEDEFINITION_H
 #define OOJSINTERFACEDEFINITION_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"

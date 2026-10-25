@@ -71,7 +71,7 @@ public:
 	std::optional<std::string> descriptionComponents() const override;
 	std::optional<std::string> shortDescriptionComponents() const override;
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	std::optional<std::string> name() override;
 #endif
 
@@ -143,7 +143,7 @@ private:
 	float					_anisotropy = {};
 #endif
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	std::optional<std::string>	_name = {};
 #endif
 };

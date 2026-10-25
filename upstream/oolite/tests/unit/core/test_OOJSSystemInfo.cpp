@@ -24,7 +24,7 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OOSystemDescriptionManager.h"
 #include "OOCommodities.h"

@@ -484,7 +484,7 @@ public:
 	void updateTrackingCurve();
 	void calculateTrackingCurve();
 	void drawImmediate(bool immediate, bool translucent) override;
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	void drawDebugStuff();
 #endif
 	void drawSubEntityImmediate(bool immediate, bool translucent) override;
@@ -520,7 +520,7 @@ public:
 	void setGroup(::OOShipGroup *group);
 	::OOShipGroup *escortGroup();
 	void setEscortGroup(::OOShipGroup *group);
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	::OOShipGroup *rawEscortGroup();
 #endif
 	::OOShipGroup *stationGroup();
@@ -927,7 +927,7 @@ public:
 #if OO_SALVAGE_SUPPORT
 	void pilotArrived();
 #endif
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	void dumpSelfState() override;
 #endif
 	::OOScript *getScript();
@@ -951,7 +951,7 @@ public:
 	virtual OOAlertCondition alertCondition();
 	virtual OOAlertCondition realAlertCondition();
 	void doNothing();
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	std::optional<std::string> descriptionForObjDump() override;
 #endif
 
@@ -1360,7 +1360,7 @@ public:
 	// Collision detection
 	oo::Ref<Octree>				octree;
 	
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	// DEBUGGING
 	OOBehaviour				debugLastBehaviour = {};
 #endif

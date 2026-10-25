@@ -7,10 +7,10 @@
 	OOALObject holding its value as an oo::PList (a string, a data buffer or the parsed packet).
 */
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 
 #include "OOTCPStreamDecoderAbstractionLayer.h"
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/Ref.hpp"	// oo::AutoreleaseScope (was objc-arc.h's pool functions, oo-31u.8)
 
 #include "oofnd/PListParsing.hpp"
@@ -209,4 +209,4 @@ const oo::PList &OOALObjectPList(OOALObjectRef object)
 	return object->value;
 }
 
-#endif /* NDEBUG */
+#endif /* OO_DEBUG_MONITOR_ENABLED */

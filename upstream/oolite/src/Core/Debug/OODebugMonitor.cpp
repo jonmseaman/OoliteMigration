@@ -27,7 +27,7 @@ SOFTWARE.
 
 */
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 
 
 #include "OODebugMonitor.h"
@@ -974,4 +974,4 @@ std::string OODebugMonitor::description() const
 	(bead oo-9ht.74 deleted it): the one monitor is made by sharedDebugMonitor() and never released.
 */
 
-#endif /* NDEBUG */
+#endif /* OO_DEBUG_MONITOR_ENABLED */

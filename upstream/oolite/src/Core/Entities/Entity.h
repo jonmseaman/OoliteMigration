@@ -33,7 +33,7 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "ooscript/JSEngine.hpp"
 #include "OOMaths.h"
 #include "OOCacheManager.h"
@@ -54,7 +54,7 @@ class OOVisualEffectEntity;	// C++ since bead oo-9ht.165
 class ShipEntity;	// C++ since bead oo-9ht.144
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 
 extern uint32_t gLiveEntityCount;
 extern size_t gTotalEntityMemory;
@@ -299,7 +299,7 @@ public:
 	// jsDescription(): virtual, in OO_ENTITY_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 	void deleteJSSelf();
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	std::optional<std::string> descriptionForObjDumpBasic();
 	// descriptionForObjDump(): virtual, in OO_ENTITY_DEBUG_VIRTUAL_MEMBERS (EntityVirtualMembers.h)
 

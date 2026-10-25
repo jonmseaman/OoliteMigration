@@ -119,7 +119,7 @@ static std::optional<std::string> StringFromPList(const oo::PList *value)
 	return oo::PListGet<std::string>::from(value, std::string());
 }
 } // namespace
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 namespace {
 static bool GlobalSetProperty(Context cx, Object obj, PropertyId propID, bool strict, Value *value);
 } // namespace
@@ -180,7 +180,7 @@ namespace {
 static bool GlobalClearExtraGuiScreenKeys(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 namespace {
 static bool GlobalTakeSnapShot(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
@@ -196,7 +196,7 @@ static ClassDef sGlobalClass =
 	nullptr,			// addProperty (engine default: PropertyStub)
 	nullptr,			// delProperty (engine default: PropertyStub)
 	GlobalGetProperty,	// getProperty
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	GlobalSetProperty,	// setProperty
 #else
 	// No writeable properties in non-debug builds
@@ -220,7 +220,7 @@ enum : std::int8_t
 	kGlobal_galaxyNumber,		// galaxy number, integer, read-only
 	kGlobal_global,				// global.global.global.global, integer, read-only
 	kGlobal_guiScreen,			// current GUI screen, string, read-only
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	kGlobal_timeAccelerationFactor	// time acceleration, float, read/write
 #endif
 };
@@ -228,7 +228,7 @@ enum : std::int8_t
 
 namespace {
 static constexpr PropertyFlag kGlobalROPropFlags  = PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared;
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 static constexpr PropertyFlag kGlobalRWPropFlags  = PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared;
 #endif
 static PropertySpec sGlobalProperties[] =
@@ -236,7 +236,7 @@ static PropertySpec sGlobalProperties[] =
 	// JS name					ID							flags									getter	setter
 	{ "galaxyNumber",			kGlobal_galaxyNumber,		kGlobalROPropFlags,	nullptr, nullptr },
 	{ "guiScreen",				kGlobal_guiScreen,			kGlobalROPropFlags,	nullptr, nullptr },
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	{ "timeAccelerationFactor",	kGlobal_timeAccelerationFactor,	kGlobalRWPropFlags,	nullptr, nullptr },
 #endif
 	{ 0 }
@@ -254,7 +254,7 @@ static ooscript::PropertySpec sGlobalPropertiesRaw[] =
 	// JS name					ID							flags
 	{ "galaxyNumber",			kGlobal_galaxyNumber,		OOJS_PROP_READONLY_CB },
 	{ "guiScreen",				kGlobal_guiScreen,			OOJS_PROP_READONLY_CB },
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	{ "timeAccelerationFactor",	kGlobal_timeAccelerationFactor,	OOJS_PROP_READWRITE_CB },
 #endif
 	{ 0 }
@@ -283,7 +283,7 @@ static FunctionSpec sGlobalMethods[] =
 	{ "setExtraGuiScreenKeys",			GlobalSetExtraGuiScreenKeys,		2,			0 },
 	{ "clearExtraGuiScreenKeys",		GlobalClearExtraGuiScreenKeys,		2,			0 },
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	{ "takeSnapShot",					GlobalTakeSnapShot,					1,			0 },
 	{ "quitGame",						GlobalQuitGame,						0,			0 },
 #endif
@@ -343,7 +343,7 @@ static bool GlobalGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			*value = (OOJSValueFromGUIScreenID(context, (player != nullptr ? player->guiScreen() : OOGUIScreenID{})));
 			return true;
 			
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 		case kGlobal_timeAccelerationFactor:
 			return ooscript::newNumberValue(cx, (UNIVERSE != nullptr ? UNIVERSE->getTimeAccelerationFactor() : 0.0), value);
 #endif
@@ -358,7 +358,7 @@ static bool GlobalGetProperty(Context cx, Object obj, PropertyId propID, Value *
 } // namespace
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 namespace {
 static bool GlobalSetProperty(Context cx, Object obj, PropertyId propID, bool /*strict*/, Value *value)
 {
@@ -973,7 +973,7 @@ static bool GlobalSetGuiColorSettingForKey(ooscript::Context context, ooscript::
 } // namespace
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 // takeSnapShot([name : alphanumeric String]) : Boolean
 namespace {
 static bool GlobalTakeSnapShot(ooscript::Context context, ooscript::CallArgs &oojsArgs)

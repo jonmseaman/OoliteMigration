@@ -35,7 +35,7 @@ SOFTWARE.
 #ifndef OODEBUGGERINTERFACE_H
 #define OODEBUGGERINTERFACE_H
 
-#include "OOCocoa.h"	// NSRange
+#include "OOFoundation.h"	// NSRange
 #include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"
 #include <optional>

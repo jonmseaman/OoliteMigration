@@ -27,7 +27,7 @@ SOFTWARE.
 
 */
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "unzip.h"
 
 #include "oofnd/FileSystem.hpp"

@@ -33,11 +33,11 @@ SOFTWARE.
 
 #ifndef OOSTOPWATCH_STANDALONE
 #if defined(__cplusplus) && !defined(OO_PLAIN_CPP_UNIT)	// was __OBJC__: a game unit (an Objective-C++ unit until bead oo-dbz), not a plain C++ one
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #else
 /*	A plain C++ translation unit (bead oo-9ht.72: the JS bindings, through
-	OOJSEngineNativeWrappers.h) cannot parse OOCocoa.h's Objective-C class declarations. The one platform switch
-	below that differs from its default on this build is set as OOCocoa.h sets it (WIN32 is only
+	OOJSEngineNativeWrappers.h) cannot parse OOFoundation.h's Objective-C class declarations. The one platform switch
+	below that differs from its default on this build is set as OOFoundation.h sets it (WIN32 is only
 	defined on the GNUstep build), so
 	OOHighResTimeValue is the same type in both kinds of translation unit.
 */

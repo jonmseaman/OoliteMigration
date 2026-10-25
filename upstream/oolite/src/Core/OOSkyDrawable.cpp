@@ -98,7 +98,7 @@ public:
 
 	void render();
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	size_t totalSize();
 	OOTexture *texture();
 #endif
@@ -242,7 +242,7 @@ GLfloat OOSkyDrawable::maxDrawDistance()
 	return INFINITY;
 }
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::vector<oo::Ref<OOTexture>> OOSkyDrawable::allTextures()
 {
 	std::vector<oo::Ref<OOTexture>> result;
@@ -683,7 +683,7 @@ void OOSkyQuadSet::render()
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 size_t OOSkyQuadSet::totalSize()
 {
 	// sizeof *this stands for the Objective-C instance size (the object's own size).

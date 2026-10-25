@@ -11,7 +11,7 @@
 	    NSParameterAssert(cond)                     OOParameterAssert(cond)
 	    NSCParameterAssert(cond)                    OOCParameterAssert(cond)
 
-	Blocked exactly when Foundation's were: OOCocoa.h defines NS_BLOCK_ASSERTIONS iff NDEBUG, so
+	Blocked exactly when Foundation's were: OOFoundation.h defines NS_BLOCK_ASSERTIONS iff NDEBUG, so
 	these test NDEBUG. Blocked, a macro expands to an empty statement and its arguments are not
 	evaluated. Otherwise a false condition logs one line in message class "gnustep" (where the NSLog
 	hook, OOLogOutputHandler, sent gnustep-base's assertion log; NSLog's own date/process prefix is

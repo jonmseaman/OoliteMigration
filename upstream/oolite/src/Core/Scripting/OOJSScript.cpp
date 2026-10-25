@@ -846,7 +846,7 @@ static Script LoadScriptWithName(ooscript::Context context, const std::optional<
 
 		if (fileContents.has_value())
 		{
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 		/* FIXME: this isn't strictly the right test, since strict
 		 * mode can be enabled with this string within a function
 		 * definition, but it seems unlikely anyone is actually doing

@@ -235,7 +235,6 @@ OO_TEST(slice2AccessorsAndViewSettings)
 		unsigned width = 7, height = 9;
 		view->getDisplayDimensions(&width, &height);	// no window, no display: unchanged
 		OO_CHECK(width == 7 && height == 9);
-		(void)view->isDarkModeOn();	// the user's theme; not pinned
 
 		// HDR settings: clamped and saved to the defaults.
 		view->setHDRMaxBrightness(10.0f);

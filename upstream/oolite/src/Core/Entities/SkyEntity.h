@@ -55,7 +55,7 @@ public:
 	GLfloat cameraRangeBack() override;
 	void drawImmediate(bool immediate, bool translucent) override;
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	std::optional<std::string> descriptionForObjDump() override;
 #endif
 

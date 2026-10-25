@@ -38,7 +38,7 @@ SOFTWARE.
 #ifndef OOTEXTURE_H
 #define OOTEXTURE_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 
 #include "OOOpenGL.h"
 #include "OOPixMap.h"
@@ -227,7 +227,7 @@ public:
 	// Called by OOGraphicsResetManager as necessary.
 	static void rebindAllTextures();
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	static std::vector<oo::Ref<OOTexture>> cachedTexturesByAge();	// youngest first
 	static std::vector<oo::Ref<OOTexture>> allTextures();	// in no particular order
 
@@ -261,7 +261,7 @@ public:
 	static OOTexture *existingTextureForKey(const std::optional<std::string> &key);	// borrowed; null for nullopt
 
 protected:
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	bool	_trace = {};	// was the facade's @protected ivar; the subclasses read it (bead oo-qa7c)
 #endif
 

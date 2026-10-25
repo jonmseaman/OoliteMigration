@@ -282,7 +282,7 @@ void DustEntity::drawImmediate(bool /*immediate*/, bool translucent)
 	::PlayerEntity* player = PLAYER;
 	assert(player != nil);
 	
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if (gDebugFlags & DEBUG_NO_DUST)  return;
 #endif
 	
@@ -454,7 +454,7 @@ void DustEntity::resetGraphicsState()
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::optional<std::string> DustEntity::descriptionForObjDump()
 {
 	// Don't include range and visibility flag as they're irrelevant.

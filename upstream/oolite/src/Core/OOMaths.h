@@ -44,7 +44,7 @@ extern "C" {
 #endif
 
 #if defined(__cplusplus) && !defined(OO_PLAIN_CPP_UNIT)	// was __OBJC__: a game unit (an Objective-C++ unit until bead oo-dbz), not a plain C++ one
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #endif
 
 #include "OOFunctionAttributes.h"
@@ -60,7 +60,7 @@ extern "C" {
 #include "OOOpenGL.h"
 #else
 /*	A plain C or C++ translation unit (ADR-0012: OOVoxel.c) needs only the GL types. OOOpenGL.h
-	imports OOCocoa.h, i.e. Foundation, which does not compile outside Objective-C.
+	imports OOFoundation.h, i.e. Foundation, which does not compile outside Objective-C.
 */
 #include "OOOpenGLOnly.h"
 #endif

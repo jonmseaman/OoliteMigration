@@ -24,6 +24,7 @@ MA 02110-1301, USA.
 
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_timer.h>
+#include <SDL3/SDL_clipboard.h>
 #include "png.h"
 #include "MyOpenGLView.h"
 #include "oofnd/Process.hpp"
@@ -58,29 +59,6 @@ extern "C" int SaveEXRSnapshot(const char* outfilename, int width, int height, c
 #include <ctype.h>
 #include "oofnd/Date.hpp"
 
-#if OOLITE_WINDOWS
-#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
-#define DWMWA_USE_IMMERSIVE_DARK_MODE	20
-#endif
-extern "C" HRESULT WINAPI DwmSetWindowAttribute (HWND hwnd, DWORD dwAttribute, LPCVOID pvAttribute, DWORD cbAttribute);
-
-#define USE_UNDOCUMENTED_DARKMODE_API	1
-
-#if USE_UNDOCUMENTED_DARKMODE_API
-#ifndef LOAD_LIBRARY_SEARCH_SYSTEM32
-#define LOAD_LIBRARY_SEARCH_SYSTEM32	0x00000800
-#endif
-typedef DWORD(WINAPI* pfnSetPreferredAppMode)(DWORD appMode);
-enum PreferredAppMode
-{
-    Default,
-    AllowDark,
-    ForceDark,
-    ForceLight,
-    Max
-};
-#endif
-#endif //OOLITE_WINDOWS
 
 
 namespace {
@@ -271,7 +249,8 @@ void MyOpenGLView::createWindowWithSize(NSSize size)
 	}
 
 #if OOLITE_WINDOWS
-	//capture the window handle for later
+	// capture the window handle for later (only needed for ugly hack later when transitioning between
+    // full screen and window). Don't use anywhere else.
 	SDL_PropertiesID windowPropertiesId = SDL_GetWindowProperties(window);
 	windowHandle = (HWND)SDL_GetPointerProperty(windowPropertiesId, SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
 	if (!windowHandle)
@@ -282,18 +261,6 @@ void MyOpenGLView::createWindowWithSize(NSSize size)
 
 	atDesktopResolution = YES;
 
-#if USE_UNDOCUMENTED_DARKMODE_API
-	// dark mode stuff - this is mainly for the winodw titlebar's context menu
-	HMODULE hUxTheme = LoadLibraryExW(L"uxtheme.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
-	if (hUxTheme)
-	{
-		// hack alert! ordinal 135 is undocumented and could change in a future version of Windows
-		pfnSetPreferredAppMode SetPreferredAppMode = (pfnSetPreferredAppMode)GetProcAddress(hUxTheme, MAKEINTRESOURCEA(135));
-		if (SetPreferredAppMode)  SetPreferredAppMode(AllowDark);
-		FreeLibrary(hUxTheme);
-	}
-	refreshDarKOrLightMode();
-#endif
 #endif //OOLITE_WINDOWS
 
 	imagesDir = oo::fs::utf8String(oo::ResourcePaths::current().builtInResourcesDirectory() / "Images");
@@ -920,7 +887,6 @@ NSSize MyOpenGLView::modeAsSize(int sizeIndex)
 
 
 
-#if OOLITE_WINDOWS
 void MyOpenGLView::getDisplayDimensions(unsigned *width, unsigned *height)
 {
 	SDL_DisplayID displayID = SDL_GetDisplayForWindow(window);
@@ -950,61 +916,18 @@ void MyOpenGLView::grabMouseInsideGameWindow(bool value)
 	grabMouseStatus = value;
 }
 
-
 void MyOpenGLView::stringToClipboard(const std::string &stringToCopy)
 {
 	{
 		const char *clipboardText = stringToCopy.c_str();
-		const size_t clipboardTextLength = strlen(clipboardText) + 1;
-		HGLOBAL clipboardMem = GlobalAlloc(GMEM_MOVEABLE, clipboardTextLength);
-		if (clipboardMem)
+		if (!SDL_SetClipboardText(clipboardText))
 		{
-			memcpy(GlobalLock(clipboardMem), clipboardText, clipboardTextLength);
-			GlobalUnlock(clipboardMem);
-			OpenClipboard(0);
-			EmptyClipboard();
-			if (!SetClipboardData(CF_TEXT, clipboardMem))
-			{
-				OO_LOG("stringToClipboard.failed", "Failed to copy string {} to clipboard", stringToCopy);
-				// free global allocated memory if clipboard copy failed
-				// note: no need to free it if copy succeeded; the OS becomes
-				// the owner of the copied memory once SetClipboardData has
-				// been executed successfully
-				GlobalFree(clipboardMem);
-			}
-			CloseClipboard();
+			OO_LOG("stringToClipboard.failed", "Failed to copy string {} to clipboard: {}", stringToCopy, SDL_GetError());
 		}
 	}
 }
 
-
-void MyOpenGLView::refreshDarKOrLightMode()
-{
-	int shouldSetDarkMode = isDarkModeOn();
-	DwmSetWindowAttribute (windowHandle, DWMWA_USE_IMMERSIVE_DARK_MODE, &shouldSetDarkMode, sizeof(shouldSetDarkMode));
-}
-
-
-bool MyOpenGLView::isDarkModeOn()
-{
-	char buffer[4];
-	DWORD bufferSize = sizeof(buffer);
-	
-	// reading a REG_DWORD value from the Registry
-	HRESULT resultRegGetValue = RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-									L"AppsUseLightTheme", RRF_RT_REG_DWORD, NULL, buffer, &bufferSize);
-	if (resultRegGetValue != ERROR_SUCCESS)
-	{
-		return NO;
-	}
-	
-	// get our 4 obtained bytes into integer little endian format
-	int i = (int)(buffer[3] << 24 | buffer[2] << 16 | buffer[1] << 8 | buffer[0]);
-	
-	// dark mode is 0, light mode is 1
-	return i == 0;
-}
-
+#if OOLITE_WINDOWS
 
 bool MyOpenGLView::getAtDesktopResolution()
 {
@@ -1086,25 +1009,6 @@ void MyOpenGLView::setHDRToneMapper(OOHDRToneMapper newToneMapper)
 
 
 #else	// Linus stub methods
-
-// for Linux we assume we are always on the primary monitor for now
-bool MyOpenGLView::isRunningOnPrimaryDisplayDevice()
-{
-	return YES;
-}
-
-
-void MyOpenGLView::grabMouseInsideGameWindow(bool value)
-{
-	// do nothing
-}
-
-
-void MyOpenGLView::stringToClipboard(const std::string &stringToCopy)
-{
-	// TODO: implement string clipboard copy for Linux
-}
-
 
 bool MyOpenGLView::hdrOutput()
 {

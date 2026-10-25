@@ -503,7 +503,7 @@ void OOMesh::renderOpaqueParts()
 	OOGL(glDisableClientState(GL_TEXTURE_COORD_ARRAY));
 #endif
 	
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if (gDebugFlags & DEBUG_DRAW_NORMALS)  debugDrawNormals();
 	if (gDebugFlags & DEBUG_OCTREE_DRAW)  { if (Octree *cxxOctree = getOctree().get())  cxxOctree->drawOctree(); }	// a nil octree did nothing
 #endif
@@ -760,7 +760,7 @@ void OOMesh::setBindingTarget(Entity *target)
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 void OOMesh::dumpSelfState()
 {
 	OODrawable::dumpSelfState();
@@ -772,7 +772,7 @@ void OOMesh::dumpSelfState()
 #endif
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::vector<oo::Ref<OOTexture>> OOMesh::allTextures()
 {
 	// Every material's textures; id forwarder NSSetFromObjects drops duplicates as -unionSet: did.
@@ -1657,7 +1657,7 @@ bool OOMesh::setUpVertexArrays()
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 void OOMesh::debugDrawNormals()
 {
 	GLuint				i;

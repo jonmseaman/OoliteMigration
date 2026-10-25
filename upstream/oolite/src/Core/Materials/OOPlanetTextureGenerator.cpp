@@ -23,7 +23,7 @@
 	MA 02110-1301, USA.
 */
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOStellarBody.h"
 
 

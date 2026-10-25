@@ -25,12 +25,12 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "Universe.h"
 #include "PlayerEntity.h"
 #include "PlayerEntityLegacyScriptEngine.h"
 #include "oofnd/objc/OOObject.h"
-#define OOJSENGINE_MONITOR_SUPPORT OOLITE_DEBUG
+#define OOJSENGINE_MONITOR_SUPPORT OO_DEBUG_MONITOR_ENABLED
 
 
 #include "ooscript/JSEngine.hpp"
@@ -92,7 +92,7 @@ public:
 	ooscript::ClassDef *numberClass();
 	ooscript::ClassDef *booleanClass();
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	bool dumpStackForErrors();
 	void setDumpStackForErrors(bool value);
 
@@ -132,7 +132,7 @@ private:
 	ooscript::ClassDef				*_numberClass = {};
 	ooscript::ClassDef				*_booleanClass = {};
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	bool							_dumpStackForErrors = {};
 	bool							_dumpStackForWarnings = {};
 #endif
@@ -227,6 +227,6 @@ OOJS_EXTERN_C BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
 
 // (The root class's JS glue and the engine's one-line sends to Objective-C objects,
 // OOObject+OOJavaScript.h, went with bead oo-4aq6a.6.2.)
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 
 

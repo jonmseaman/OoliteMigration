@@ -35,7 +35,7 @@ SOFTWARE.
 #ifndef OODRAWABLE_H
 #define OODRAWABLE_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OOOpenGL.h"
 #include "OOMaths.h"
@@ -74,7 +74,7 @@ public:
 	// the C++ class's name and the drawable's own address.
 	std::string description() const;
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	virtual std::vector<oo::Ref<OOTexture>> allTextures();
 	virtual size_t totalSize();	// Size including dynamic data, not counting textures.
 

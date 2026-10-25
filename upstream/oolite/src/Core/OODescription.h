@@ -69,7 +69,7 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObject.h"
 
 // extern "C++" because this header is reached from inside an extern "C" block (OOMaths.h ->
-// OOCocoa.h), as OOLogging.h is.
+// OOFoundation.h), as OOLogging.h is.
 extern "C++" {
 
 #include "oofnd/StdLib.hpp"

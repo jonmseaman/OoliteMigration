@@ -46,7 +46,7 @@ SOFTWARE.
 
 #if OO_OXP_VERIFIER_ENABLED
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 
 #include "oofnd/StdLib.hpp"

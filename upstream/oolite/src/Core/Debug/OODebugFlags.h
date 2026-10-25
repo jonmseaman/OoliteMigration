@@ -23,7 +23,7 @@ enum OODebugFlags
 #define DEBUG_ALL					0xffffffff
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 
 extern uint32_t gDebugFlags;
 extern uint32_t gLiveEntityCount;

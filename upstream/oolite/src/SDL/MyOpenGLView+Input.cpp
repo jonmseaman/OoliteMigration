@@ -650,12 +650,6 @@ void MyOpenGLView::pollControls()
 			}
 
 #if OOLITE_WINDOWS
-			case SDL_EVENT_WINDOW_MOVED:
-			{
-				if(grabMouseStatus)  grabMouseInsideGameWindow(YES);
-				break;
-			}
-
 			case SDL_EVENT_WINDOW_FOCUS_GAINED:
 			{
 				if (gameController != nullptr)  gameController->setEcoQoS((gameController != nullptr ? gameController->isGamePaused() : false));

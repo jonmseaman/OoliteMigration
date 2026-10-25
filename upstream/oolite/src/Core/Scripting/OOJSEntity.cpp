@@ -82,7 +82,7 @@ static bool EntityGetProperty(Context cx, Object obj, PropertyId propID, Value *
 namespace {
 static bool EntitySetProperty(Context cx, Object obj, PropertyId propID, bool strict, Value *value);
 } // namespace
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 namespace {
 static bool EntityDumpState(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
@@ -190,7 +190,7 @@ static FunctionSpec sEntityMethods[] =
 {
 	// JS name					Function					min args
 	{ "toString",				OOJSEntityToString,				0,	0 },
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	{ "dumpState",				EntityDumpState,			0,	0 },
 #endif
 	{ 0 }
@@ -538,7 +538,7 @@ static bool EntitySetProperty(Context cx, Object obj, PropertyId propID, bool /*
 } // namespace
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 namespace {
 static bool EntityDumpState(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {

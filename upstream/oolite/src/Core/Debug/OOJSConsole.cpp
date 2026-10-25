@@ -26,7 +26,7 @@ SOFTWARE.
 
 */
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 
 #include "OOJSConsole.h"
 #include "OODebugMonitor.h"
@@ -380,7 +380,7 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 	
 	switch (ooscript::idToInt32(propID))
 	{
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 		case kConsole_debugFlags:
 			*value = ooscript::int32Value((uint32_t)gDebugFlags);
 			break;
@@ -479,7 +479,7 @@ bool ConsoleSetProperty(ooscript::Context context, ooscript::Object thisObject, 
 	
 	switch (ooscript::idToInt32(propID))
 	{
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 		case kConsole_debugFlags:
 			if (ooscript::valueToInt32(context, *value, &iValue))
 			{
@@ -1366,4 +1366,4 @@ bool PerformProfiling(ooscript::Context context, const char *nominalFunction, un
 
 #endif // OOJS_PROFILE
 
-#endif /* NDEBUG */
+#endif /* OO_DEBUG_MONITOR_ENABLED */

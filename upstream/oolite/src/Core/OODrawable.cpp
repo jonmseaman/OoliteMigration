@@ -107,7 +107,7 @@ std::string OODrawable::description() const
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::vector<oo::Ref<OOTexture>> OODrawable::allTextures()
 {
 	return {};

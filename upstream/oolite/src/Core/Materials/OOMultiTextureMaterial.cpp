@@ -218,7 +218,7 @@ void OOMultiTextureMaterial::unapplyWithNext(OOMaterial *next)
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::vector<oo::Ref<OOTexture>> OOMultiTextureMaterial::allTextures()
 {
 	std::vector<oo::Ref<OOTexture>> result;

@@ -43,7 +43,7 @@ SOFTWARE.
 #ifndef OODEBUGMONITOR_H
 #define OODEBUGMONITOR_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "ooscript/JSEngine.hpp"
 #include "OODebuggerInterface.h"
 #include "OOJavaScriptEngineMonitor.h"	// the engine's monitor, a C++ interface since bead oo-9ht.74.1

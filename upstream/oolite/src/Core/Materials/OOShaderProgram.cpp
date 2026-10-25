@@ -296,7 +296,7 @@ BOOL ValidateShaderObject(GLhandleARB object, const std::optional<std::string> &
 		return NO;
 	}
 	
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if (0 && (gDebugFlags & DEBUG_SHADER_VALIDATION))
 	{
 		OOGL(glValidateProgramARB(object));

@@ -126,7 +126,7 @@ void OOEntityWithDrawable::drawImmediate(bool /*immediate*/, bool translucent)
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::vector<oo::Ref<OOTexture>> OOEntityWithDrawable::allTextures()
 {
 	OODrawable *cxxDrawable = getDrawable();

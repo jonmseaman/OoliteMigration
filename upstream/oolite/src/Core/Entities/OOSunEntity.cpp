@@ -223,7 +223,7 @@ bool OOSunEntity::canCollide()
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 bool OOSunEntity::checkCloseCollisionWith(Entity *other)
 {
 	if (gDebugFlags & DEBUG_COLLISIONS)

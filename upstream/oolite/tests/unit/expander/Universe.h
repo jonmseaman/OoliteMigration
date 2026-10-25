@@ -1,6 +1,6 @@
 // Stub for tests/unit/expander (bead oo-3rb.61): only what src/Core/OOStringExpander.mm uses.
 #pragma once
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOMaths.h"
 #include "OOTypes.h"
 #ifdef __cplusplus

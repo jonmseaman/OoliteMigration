@@ -28,7 +28,7 @@ SOFTWARE.
 */
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 
 #ifdef __cplusplus
 #include "oofnd/StdLib.hpp"

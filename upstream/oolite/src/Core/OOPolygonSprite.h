@@ -37,7 +37,7 @@ SOFTWARE.
 #ifndef OOPOLYGONSPRITE_H
 #define OOPOLYGONSPRITE_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OOOpenGL.h"
 #include "OOOpenGLExtensionManager.h"

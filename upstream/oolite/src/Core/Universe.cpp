@@ -102,13 +102,13 @@ MA 02110-1301, USA.
 #include "OOObjCPList.h"
 
 
-#if OO_LOCALIZATION_TOOLS
-#include "OOConvertSystemDescriptions.h"
-#include "OOPListGameTypes.h"
+#include "OOPListGameTypes.h"	// used by every build, not only OO_LOCALIZATION_TOOLS ones (bead oo-we7mm)
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"
+#if OO_LOCALIZATION_TOOLS
+#include "OOConvertSystemDescriptions.h"
 #endif
 
 enum
@@ -129,8 +129,10 @@ enum
 
 static const char * const kOOLogUniversePopulateError			= "universe.populate.error";
 static const char * const kOOLogUniversePopulateWitchspace	= "universe.populate.witchspace";
+#ifndef NDEBUG	// read only by the #ifndef NDEBUG list checks below (unused, and so a warning, in deployment builds)
 static const char * const kOOLogEntityVerificationError		= "entity.linkedList.verify.error";
 static const char * const kOOLogEntityVerificationRebuild		= "entity.linkedList.verify.rebuild";
+#endif
 
 
 
@@ -7648,7 +7650,7 @@ void Universe::update(OOTimeDelta inDeltaT)
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 double Universe::getTimeAccelerationFactor()
 {
 	return timeAccelerationFactor;
@@ -10657,7 +10659,7 @@ void Universe::setUpSettings()
 	//
 	
 	time_delta = 0.0;
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	setTimeAccelerationFactor(TIME_ACCELERATION_FACTOR_DEFAULT);
 #endif
 	universal_time = 0.0;
@@ -11828,7 +11830,7 @@ NSUInteger Universe::entityCount()
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 void Universe::debugDumpEntities()
 {
 	int				i;

@@ -131,7 +131,7 @@ bool OOSingleTextureMaterial::wantsNormalsAsTextureCoordinates()
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::vector<oo::Ref<OOTexture>> OOSingleTextureMaterial::allTextures()
 {
 	std::vector<oo::Ref<OOTexture>> result;

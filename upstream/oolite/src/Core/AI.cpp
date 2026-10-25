@@ -325,7 +325,7 @@ void AI::preserveCurrentStateMachine()
 														pendingMessages,
 																									(script != nullptr && script->isString()) ? std::optional<std::string>(*script->getIf<std::string>()) : std::nullopt);
 	
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if ((owner() != nullptr ? owner()->getReportAIMessages() : false))  OO_LOG("ai.stack.push", "Pushing state machine for {}", description());
 #endif
 	
@@ -339,7 +339,7 @@ void AI::restorePreviousStateMachine()
 
 	const oo::Ref<OOPreservedAIStateMachine> preservedMachine = aiStack.back();
 	
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if ((owner() != nullptr ? owner()->getReportAIMessages() : false))  OO_LOG("ai.stack.pop", "Popping previous state machine for {}", description());
 #endif
 	
@@ -500,6 +500,9 @@ void AI::reactToMessage(const std::string &message, const std::optional<std::str
 		.context = &*debugContext
 	};
 	sStack = &stackElement;
+#else
+	// The argument as given: the deployment build's message log (OO_DEBUG_MONITOR_ENABLED, upstream #756) reads it.
+	const std::optional<std::string> &debugContext = debugContextArgument;
 #endif
 	
 	/*	CRASH when calling reactToMessage: FOO in state FOO causes infinite
@@ -510,9 +513,6 @@ void AI::reactToMessage(const std::string &message, const std::optional<std::str
 	*/
 	if (recursionLimiter > kRecursionLimiter)
 	{
-#ifdef NDEBUG
-		const std::optional<std::string> &debugContext = debugContextArgument;
-#endif
 		OO_LOG_ERR("ai.error.recursion", "AI dispatch: hit stack depth limit in AI {}, state {} handling message {} in context \"{}\", aborting.", stateMachineName, currentState.value_or("(null)"), message, debugContext.value_or("(null)"));
 		
 #ifndef NDEBUG
@@ -541,7 +541,7 @@ void AI::reactToMessage(const std::string &message, const std::optional<std::str
 		return;
 	}
 	
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if (currentState.has_value() && message != "UPDATE" && (owner != nullptr ? owner->getReportAIMessages() : false))
 	{
 		OO_LOG("ai.message.receive", "AI {} for {} in state '{}' receives message '{}'. Context: {}, stack depth: {}", stateMachineName, ownerDesc.value_or("(null)"), currentState.value_or("(null)"), message, debugContext.value_or("(null)"), static_cast<unsigned>(recursionLimiter));
@@ -596,7 +596,7 @@ void AI::takeAction(const std::string &action)
 {
 	::ShipEntity *owner = this->owner();
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	bool report = (owner != nullptr ? owner->getReportAIMessages() : false);
 	if (report)
 	{
@@ -649,12 +649,12 @@ void AI::takeAction(const std::string &action)
 	}
 	else
 	{
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 		if (report)  OO_LOG("ai.takeAction.noAction", "DEBUG: - no action '{}'", action);
 #endif
 	}
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if (report)
 	{
 		OOLogOutdent();

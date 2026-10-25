@@ -24,7 +24,7 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OOOpenGL.h"
 #include "OOMouseInteractionMode.h"
@@ -216,10 +216,8 @@ public:
 	::GameController *getGameController();
 	virtual void setGameController(::GameController *controller);
 	bool isRunningOnPrimaryDisplayDevice();
-#if OOLITE_WINDOWS
 	void getDisplayDimensions(unsigned *width, unsigned *height);
-	void refreshDarKOrLightMode();
-	bool isDarkModeOn();
+#if OOLITE_WINDOWS
 	bool getAtDesktopResolution();
 	float hdrMaxBrightness();
 	void setHDRMaxBrightness(float newMaxBrightness);

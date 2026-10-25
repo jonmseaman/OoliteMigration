@@ -966,7 +966,7 @@ bool DockEntity::shipIsInDockingCorridor(::ShipEntity *ship)
 	ww *= 0.5;
 	hh *= 0.5;
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if ((ship != nullptr ? ship->getIsPlayer() : false) && (gDebugFlags & DEBUG_DOCKING))
 	{
 		BOOL			inLane;

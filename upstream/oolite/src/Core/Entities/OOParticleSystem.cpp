@@ -250,7 +250,7 @@ OOTexture *OOParticleSystem::texture()
 	return ::OOLightParticleEntity::defaultParticleTexture();
 }
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::vector<oo::Ref<OOTexture>> OOParticleSystem::allTextures()
 {
 	std::vector<oo::Ref<OOTexture>> result;

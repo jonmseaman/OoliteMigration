@@ -349,7 +349,7 @@ bool OOBasicMaterial::permitSpecular()
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::vector<oo::Ref<OOTexture>> OOBasicMaterial::allTextures()
 {
 	return {};

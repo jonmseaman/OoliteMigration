@@ -51,7 +51,7 @@ const OOEntityObjectName kOOEntityObjectNames[] =
 	{ "compareZeroDistance:",	nullptr,	kOOEntityObjectSignature,	"q24@0:8@16" },
 	{ "conformsToProtocol:",	nullptr,	kOOEntityObjectSignature,	"c24@0:8@16" },
 	{ "copy",	nullptr,	kOOEntityObjectLifetime,	"@16@0:8" },
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	{ "cxx_allTextures",	nullptr,	kOOEntityObjectSignature,	"{vector<oo::Ref<OOTexture>, std::allocator<oo::Ref<OOTexture>>>={_Vector_impl=^{Ref<OOTexture>}^{Ref<OOTexture>}^{Ref<OOTexture>}}}16@0:8" },
 #endif
 	{ "cxx_collidingEntities",	nullptr,	kOOEntityObjectSignature,	"^{vector<oo::EntityHold, std::allocator<oo::EntityHold>>={_Vector_impl=^{EntityHold}^{EntityHold}^{EntityHold}}}16@0:8" },
@@ -63,10 +63,10 @@ const OOEntityObjectName kOOEntityObjectNames[] =
 	{ "cxx_shortDescription",	nullptr,	kOOEntityObjectSignature,	"{optional<std::basic_string<char>>={_Optional_payload<std::basic_string<char>, false, false, false>=(_Storage<std::basic_string<char>, false>={_Empty_byte=}{basic_string<char, std::char_traits<char>, std::allocator<char>>={_Alloc_hider=*}Q(?=[16c]Q)})B}}16@0:8" },
 	{ "cxx_shortDescriptionComponents",	nullptr,	kOOEntityObjectSignature,	"{optional<std::basic_string<char>>={_Optional_payload<std::basic_string<char>, false, false, false>=(_Storage<std::basic_string<char>, false>={_Empty_byte=}{basic_string<char, std::char_traits<char>, std::allocator<char>>={_Alloc_hider=*}Q(?=[16c]Q)})B}}16@0:8" },
 	{ "dealloc",	nullptr,	kOOEntityObjectLifetime,	"v16@0:8" },
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	{ "descriptionForObjDump",	nullptr,	kOOEntityObjectSignature,	"{optional<std::basic_string<char>>={_Optional_payload<std::basic_string<char>, false, false, false>=(_Storage<std::basic_string<char>, false>={_Empty_byte=}{basic_string<char, std::char_traits<char>, std::allocator<char>>={_Alloc_hider=*}Q(?=[16c]Q)})B}}16@0:8" },
 #endif
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	{ "descriptionForObjDumpBasic",	nullptr,	kOOEntityObjectSignature,	"{optional<std::basic_string<char>>={_Optional_payload<std::basic_string<char>, false, false, false>=(_Storage<std::basic_string<char>, false>={_Empty_byte=}{basic_string<char, std::char_traits<char>, std::allocator<char>>={_Alloc_hider=*}Q(?=[16c]Q)})B}}16@0:8" },
 #endif
 	{ "distanceTravelled",	nullptr,	kOOEntityObjectCalled,	"f16@0:8" },

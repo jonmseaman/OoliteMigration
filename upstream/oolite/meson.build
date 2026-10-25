@@ -135,8 +135,13 @@ gnustep_folder = ''  # Not needed for Windows
 # dependencies, compiler/linker flags and build
 subdir('src')
 
-# Unit tests that need no game build (meson test --suite oofnd).
-subdir('tests/unit/oofnd')
+# The unit tests are built by every flavour but deployment (bead oo-we7mm): they test the live
+# assertion and debug paths, which a deployment build (NDEBUG) compiles out, and upstream's CI
+# builds `./mk.sh build deployment` (since #756), which builds every default target.
+if not get_option('deployment_release')
+    # Unit tests that need no game build (meson test --suite oofnd).
+    subdir('tests/unit/oofnd')
 
-# Unit tests of converted game classes, linked from the game's own objects (meson test --suite core).
-subdir('tests/unit/core')
+    # Unit tests of converted game classes, linked from the game's own objects (meson test --suite core).
+    subdir('tests/unit/core')
+endif

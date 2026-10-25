@@ -239,7 +239,7 @@ static bool OperationCallback(ooscript::Context context)
 	
 	OOJSScript *runningScript = OOJSScript::currentlyRunningScript();
 	OO_LOG_ERR("script.javaScript.timeLimit", "Script \"{}\" ran for {:g} seconds and has been terminated.", ((runningScript != nullptr) ? runningScript->name() : std::nullopt).value_or("(null)"), elapsed);
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	OOJSDumpStack(context);
 #endif
 	

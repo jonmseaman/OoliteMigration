@@ -329,7 +329,7 @@ bool OOLightParticleEntity::canCollide()
 
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::vector<oo::Ref<OOTexture>> OOLightParticleEntity::allTextures()
 {
 	std::vector<oo::Ref<OOTexture>> result;

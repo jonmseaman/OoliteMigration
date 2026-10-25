@@ -38,7 +38,7 @@ MA 02110-1301, USA.
 #include <typeinfo>
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 extern uint32_t gLiveEntityCount;
 extern size_t gTotalEntityMemory;
 #endif
@@ -95,7 +95,7 @@ Entity *oo::MadeEntityRetained(const Ref<Entity> &entity)
 	if (entity == nullptr)  return nullptr;
 	// The facade's -initWithCxxEntity:: from here the entity has its object, and it is counted.
 	entity->setMadeWithObject();
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	gLiveEntityCount++;
 	gTotalEntityMemory += EntityObjectSize(entity.get());
 #endif
@@ -113,7 +113,7 @@ Entity *oo::MadeEntity(const Ref<Entity> &entity)
 Entity *oo::EntityInitAgain(Entity *entity)
 {
 	entity->init();
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	gLiveEntityCount++;
 	gTotalEntityMemory += EntityObjectSize(entity);
 #endif

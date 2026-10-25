@@ -42,6 +42,7 @@
 #include "OOCallByName.h"	// oo::EntityRespondsToName / oo::CallEntityByName (bead oo-9ht.39.7.3)
 
 #include "oo_test.hpp"
+#include "oofnd/Defaults.hpp"
 
 #include <cmath>
 #include <string>
@@ -1679,6 +1680,27 @@ OO_TEST(loadSaveSlice2FindCommander)
 		OO_CHECK(player->findIndexOfCommander("Jameson") == 0);
 		OO_CHECK(player->findIndexOfCommander("Other") == 1);
 		PlayerEntityTestAccess::cdrDetailArray(player).clear();
+	}
+}
+
+
+// The last save name is remembered in the user defaults (upstream OoliteProject #740, bead oo-we7mm):
+// setLastsaveName() writes "last_savename", which a new game's set-up reads back instead of
+// resetting the name to Jameson.
+OO_TEST(lastsaveNameIsRememberedInTheDefaults)
+{
+	{
+		oo::AutoreleaseScope scope;
+		SetUp();
+		TestPlayer *player = MakePlayer();
+		oo::Defaults::standard().removeObject("last_savename");
+		OO_CHECK(!oo::Defaults::standard().stringForKey("last_savename").has_value());
+		player->setLastsaveName(std::string("Commander Save"));
+		OO_CHECK(player->lastsaveName() == std::optional<std::string>("Commander Save"));
+		OO_CHECK(oo::Defaults::standard().stringForKey("last_savename") == std::optional<std::string>("Commander Save"));
+		player->setLastsaveName(std::string("Second"));
+		OO_CHECK(oo::Defaults::standard().stringForKey("last_savename") == std::optional<std::string>("Second"));
+		oo::Defaults::standard().removeObject("last_savename");
 	}
 }
 

@@ -79,7 +79,7 @@ public:
 	void renderTranslucentParts() override;
 	bool hasOpaqueParts() override;
 	bool hasTranslucentParts() override;
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	size_t objectSize() const override	{ return sizeof *this; }
 #endif
 	GLfloat collisionRadius() override;
@@ -87,13 +87,13 @@ public:
 	BoundingBox boundingBox() override;
 	void setBindingTarget(Entity *target) override;
 	void dumpSelfState() override;
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	std::vector<oo::Ref<OOTexture>> allTextures() override;
 #endif
 
 private:
 	void recalculateTransform();
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	void debugDrawNormals();
 #endif
 	void renderCommonParts();

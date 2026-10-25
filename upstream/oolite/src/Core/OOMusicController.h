@@ -32,7 +32,7 @@ MA 02110-1301, USA.
 #ifndef OOMUSICCONTROLLER_H
 #define OOMUSICCONTROLLER_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OOSoundSource.h"
 

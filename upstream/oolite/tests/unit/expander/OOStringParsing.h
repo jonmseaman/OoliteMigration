@@ -3,7 +3,7 @@
 // The C++ forms the expander calls since bead oo-3rb.147, over the harness's credits formatter
 // (test_string_expander.cpp; Foundation-free since bead oo-6e1.2, the same text). The Foundation
 // forms OOCredits/OOIntCredits went with the harness's Foundation.
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOTypes.h"
 #ifdef __cplusplus
 #include <string>

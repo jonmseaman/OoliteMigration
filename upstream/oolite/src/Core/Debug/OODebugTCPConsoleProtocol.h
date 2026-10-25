@@ -34,7 +34,7 @@ SOFTWARE.
 
 #ifndef OOALSTR
 #if defined(__cplusplus) && !defined(OO_PLAIN_CPP_UNIT)	// was __OBJC__: a game unit (an Objective-C++ unit until bead oo-dbz), not a plain C++ one
-#include "OOCocoa.h"	// (OOALSTR(x) was the literal @"" x: no game unit spells one since oo-4aq6a.8)
+#include "OOFoundation.h"	// (OOALSTR(x) was the literal @"" x: no game unit spells one since oo-4aq6a.8)
 #else	// C
 #include <CoreFoundation/CoreFoundation.h>
 #define OOALSTR(x) CFSTR(x)

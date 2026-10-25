@@ -22,7 +22,7 @@ MA 02110-1301, USA.
 
 */
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOException.h"
 #include "HeadUpDisplay.h"
 #include "GameController.h"

@@ -33,7 +33,7 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOAssert.h"
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 #define OctreeDebugLog(format, ...) do { if (EXPECT_NOT(gDebugFlags & DEBUG_OCTREE_LOGGING))  OO_LOG("octree.debug", format, ## __VA_ARGS__); } while (0)
 #else
 #define OctreeDebugLog(...) do {} while (0)
@@ -742,7 +742,7 @@ Vector Octree::randomPoint()
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 size_t Octree::totalSize()
 {
 	// (the data object is now a member: its size is sizeof _data where it was the Foundation object's)

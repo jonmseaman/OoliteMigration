@@ -27,7 +27,7 @@ SOFTWARE.
 
 */
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 
 
 #include "OODebugTCPConsoleClient.h"
@@ -1079,4 +1079,4 @@ static void LogSendPacket(const oo::PList &packet)
 }
 #endif
 
-#endif /* NDEBUG */
+#endif /* OO_DEBUG_MONITOR_ENABLED */

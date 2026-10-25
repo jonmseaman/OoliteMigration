@@ -99,7 +99,7 @@ MA 02110-1301, USA.
 #define USEMASC 1
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 #endif
 
 #if MASS_DEPENDENT_FUEL_PRICES
@@ -2830,7 +2830,7 @@ void ShipEntity::update(OOTimeDelta delta_t)
 	} // end if !isSubEntity
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	// DEBUGGING
 	if (reportAIMessages && (debugLastBehaviour != behaviour))
 	{
@@ -6847,7 +6847,7 @@ void ShipEntity::drawImmediate(bool immediate, bool translucent)
 	// Draw self.
 	OOEntityWithDrawable::drawImmediate(immediate, translucent);
 	
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	// Draw bounding boxes if we have to before going for the subentities.
 	// TODO: the translucent flag here makes very little sense. Something's wrong with the matrices.
 	if (translucent)  drawDebugStuff();
@@ -6877,7 +6877,7 @@ void ShipEntity::drawImmediate(bool immediate, bool translucent)
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 void ShipEntity::drawDebugStuff()
 {
 
@@ -6926,7 +6926,7 @@ void ShipEntity::drawSubEntityImmediate(bool immediate, bool translucent)
 	OOGLMultModelView(rotMatrix);
 	drawImmediate(immediate, translucent);
 	
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if (gDebugFlags & DEBUG_BOUNDING_BOXES)
 	{
 		OODebugDrawBoundingBox(getBoundingBox());
@@ -7400,7 +7400,7 @@ void ShipEntity::setEscortGroup(::OOShipGroup *group)
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 ::OOShipGroup *ShipEntity::rawEscortGroup()
 {
 	return _escortGroup.get();
@@ -14804,7 +14804,7 @@ void ShipEntity::setTrackCloseContacts(bool value)
 }
 
 
-#if OO_SALVAGE_SUPPORT || !defined(NDEBUG)
+#if OO_SALVAGE_SUPPORT || defined(OO_DEBUG_MONITOR_ENABLED)
 // What oo::DescriptionOf printed for the deleted facade: "(null)" for none, else
 // <OORoleSet 0x...>{roles} (OODescription.h).
 namespace {
@@ -14919,7 +14919,7 @@ void ShipEntity::pilotArrived()
 #endif
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 void ShipEntity::dumpSelfState()
 {
 	std::vector<std::string>	flags;
@@ -15277,7 +15277,7 @@ void ShipEntity::doNothing()
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::optional<std::string> ShipEntity::descriptionForObjDump()
 {
 	// DescriptionOf(nil) was "(null)"; preserve that for a disengaged super result.

@@ -24,7 +24,7 @@
 	for as the Objective-C glue was (the same class check and error, the same toString()).
 */
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOMaths.h"
 #include "OOTypes.h"
 #include "OOEntityEnums.h"

@@ -58,7 +58,7 @@ public:
 
 	virtual OOTexture *texture();
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	std::vector<oo::Ref<OOTexture>> allTextures() override;
 #endif
 

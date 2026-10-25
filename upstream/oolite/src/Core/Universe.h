@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "ooscript/JSEngine.hpp"
 #include "OOOpenGL.h"
 #include "OOShaderProgram.h"
@@ -263,7 +263,7 @@ public:
 	bool setUseAddOns(const std::string &newUse, bool saveGame);
 	bool setUseAddOns(const std::string &newUse, bool saveGame, bool force);
 	NSUInteger entityCount();
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	void debugDumpEntities();
 	std::vector<oo::EntityHold> entityList();
 #endif
@@ -408,7 +408,7 @@ public:
 
 	BOOL					no_update = NO;
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	double					timeAccelerationFactor = 0;
 #endif
 

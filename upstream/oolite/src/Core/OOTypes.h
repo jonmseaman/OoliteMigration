@@ -30,10 +30,10 @@ MA 02110-1301, USA.
 
 #include "OOFunctionAttributes.h"
 #if defined(__cplusplus) && !defined(OO_PLAIN_CPP_UNIT)	// was __OBJC__: a game unit (an Objective-C++ unit until bead oo-dbz), not a plain C++ one
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #else
 /*	A plain C or C++ translation unit (bead oo-9ht.64: OOConstToJSString) needs only the C types
-	OOCocoa.h's floor gives (NSInteger, NSUInteger). OOCocoa.h itself declares @interfaces.
+	OOFoundation.h's floor gives (NSInteger, NSUInteger). OOFoundation.h itself declares @interfaces.
 */
 #include <limits.h>
 #include "oofnd/objc/OOFoundationTypes.h"

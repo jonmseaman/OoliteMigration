@@ -32,7 +32,7 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OOOpenGL.h"
 #include "OOTypes.h"
@@ -128,6 +128,7 @@ public:
 	void refreshTextInput(const std::string &input);
 	void processFilterKey();
 	void processShowInfoKey();
+	void processCopyUrlKey();
 	void processExtractKey();
 	OOGUIRow showInstallOptions();
 	OOGUIRow showRemoveOptions();
@@ -171,6 +172,7 @@ public:
 	void setOXZList(const oo::PList &list);	// an Array (sorted here), or null
 	void setFilteredList(const oo::PList &list);
 	void setFilter(const std::string &filter);
+	void setOXPURL(const std::optional<std::string> &url);	// lowercased; nullopt: none (was nil)
 	oo::PList applyCurrentFilter(const oo::PList &list);	// an Array
 
 	void setCurrentDownload(oo::http::Download *download, const std::string &label);
@@ -196,6 +198,7 @@ public:
 	oo::PList			_managedList;	// Array of the managed OXZs' manifests; null: to be rebuilt
 	oo::PList			_filteredList;	// Array of the manifests on show
 	std::string			_currentFilter;	// lowercase; "*" initially
+	std::optional<std::string>	_currentOXPURL;	// lowercase; the info page's URL, nullopt: none (was nil)
 
 	OXZInterfaceState	_interfaceState = {};
 	bool				_interfaceShowingOXZDetail = {};

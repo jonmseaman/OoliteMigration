@@ -31,9 +31,9 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
 #include <string>

@@ -28,7 +28,7 @@ MA 02110-1301, USA.
 #ifndef OOTEXTURESPRITE_H
 #define OOTEXTURESPRITE_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OOOpenGL.h"
 

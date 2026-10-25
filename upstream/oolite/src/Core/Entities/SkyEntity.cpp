@@ -253,7 +253,7 @@ void SkyEntity::drawImmediate(bool immediate, bool translucent)
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::optional<std::string> SkyEntity::descriptionForObjDump()
 {
 	// Don't include range and visibility flag as they're irrelevant.

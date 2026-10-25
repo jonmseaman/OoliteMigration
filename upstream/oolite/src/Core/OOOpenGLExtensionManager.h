@@ -37,7 +37,7 @@ SOFTWARE.
 #ifndef OOOPENGLEXTENSIONMANAGER_H
 #define OOOPENGLEXTENSIONMANAGER_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOOpenGL.h"
 #include "OOFunctionAttributes.h"
 #include "OOTypes.h"

@@ -19,7 +19,7 @@ which C++ has not, are keyed by the tag types OOObjCId and OOObjCSelector.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOTypes.h"
 #include "OOEntityEnums.h"
 #include "OOMaths.h"

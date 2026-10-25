@@ -39,7 +39,7 @@ SOFTWARE.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include <optional>
 #include <string>
 #include <string_view>

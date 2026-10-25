@@ -59,7 +59,7 @@ NSLocationInRange NSEqualRanges NSMakePoint NSMakeSize NSMakeRect NSEqualPoints 
 NSEqualRects NSPointToVectorJSValue'
 # Deleted or retyped by oo-qps's children, so the sweeps stage does not count them.
 # (Each .mm is listed with the .cpp it became, bead oo-dbz.5.)
-BOUNDARY='OOCocoa.h OOCocoa.mm OOCocoa.cpp OOFoundationException.h OOStringBridge.h OOFoundationBridge.h
+BOUNDARY='OOFoundation.h OOFoundation.cpp OOCocoa.h OOCocoa.mm OOCocoa.cpp OOFoundationException.h OOStringBridge.h OOFoundationBridge.h
 OOPListView.h OOObjectGNUstepBridge.h OOObjectGNUstepBridge.mm OOObjectGNUstepBridge.cpp OOEnumerationShuffle.h
 OOEnumerationShuffle.mm OOEnumerationShuffle.cpp OOManifestProperties.h OOTypes.h OOFunctionAttributes.h OOLogging.h
 OOLogging.mm OOLogging.cpp OOCollectionExtractors.h OOCollectionExtractors.mm OOCollectionExtractors.cpp'

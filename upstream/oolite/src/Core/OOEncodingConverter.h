@@ -33,7 +33,7 @@ SOFTWARE.
 
 #ifndef OOENCODINGCONVERTER_EXCLUDE	// For the convenience of fonttexgen
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"

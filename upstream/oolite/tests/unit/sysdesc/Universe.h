@@ -1,6 +1,6 @@
 // Stub for tests/unit/sysdesc (bead oo-vjwp): only what src/Core/OOConvertSystemDescriptions.mm uses.
 #pragma once
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/PList.hpp"
 #ifndef OO_LOCALIZATION_TOOLS
 #define OO_LOCALIZATION_TOOLS	1

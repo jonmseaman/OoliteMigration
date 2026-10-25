@@ -35,7 +35,7 @@
 #include "MyOpenGLView.h"
 #include "oofnd/Log.hpp"
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 #include "Entity.h"
 #include "OODebugGLDrawing.h"
 #include "OODebugFlags.h"
@@ -280,7 +280,7 @@ void OOPlanetDrawable::renderCommonParts()
 	
 	OOGL(glDrawElements(GL_TRIANGLES, data->faceCount*3, data->type, data->indices));
 	
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if ((UNIVERSE != nullptr ? UNIVERSE->getWireframeGraphics() : false))
 	{
 		OODebugDrawBasisAtOrigin(1.5);
@@ -297,7 +297,7 @@ void OOPlanetDrawable::renderCommonParts()
 
 	
 	OOGLPopModelView();
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	if (gDebugFlags & DEBUG_DRAW_NORMALS)  debugDrawNormals();
 #endif
 	
@@ -360,7 +360,7 @@ void OOPlanetDrawable::recalculateTransform()
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 
 void OOPlanetDrawable::debugDrawNormals()
 {

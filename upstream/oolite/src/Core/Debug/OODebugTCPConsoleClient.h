@@ -29,7 +29,7 @@ SOFTWARE.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OODebuggerInterface.h"
 #include "OOTCPStreamDecoderAbstractionLayer.h"

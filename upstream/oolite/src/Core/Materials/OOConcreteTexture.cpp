@@ -40,7 +40,7 @@
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 #include "OOTextureGenerator.h"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/objc/OOAssert.h"
@@ -75,7 +75,7 @@ OOConcreteTexture::OOConcreteTexture(OOTextureLoader *loader,
 	_lodBias = lodBias;
 #endif
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	// "<" + [loader class] + ">" of a generator: the C++ class's name since bead oo-9ht.118 deleted
 	// the generator's facade (ADR-0056 amendment oo-9ht.114 item 4).
 	if (dynamic_cast<OOTextureGenerator *>(loader) != nullptr)
@@ -133,7 +133,7 @@ oo::Ref<OOConcreteTexture> OOConcreteTexture::initWithPath(const std::string &pa
 
 OOConcreteTexture::~OOConcreteTexture()
 {
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	// The Objective-C object has gone: the C++ object's address is the one printed.
 	OO_LOG(_trace ? "texture.allocTrace.dealloc" : "texture.dealloc", "Deallocating and uncaching texture {}", oo::str::pointerDescription(this));
 #endif
@@ -161,7 +161,7 @@ OOConcreteTexture::~OOConcreteTexture()
 
 	_loader = nullptr;
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	_name = std::nullopt;
 #endif
 }
@@ -197,7 +197,7 @@ std::optional<std::string> OOConcreteTexture::shortDescriptionComponents() const
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::optional<std::string> OOConcreteTexture::name()
 {
 	if (_name.has_value())  return _name;
@@ -433,7 +433,7 @@ void OOConcreteTexture::setUpTexture()
 		}
 #endif
 
-#if !defined(NDEBUG) && OOTEXTURE_RELOADABLE
+#if defined(OO_DEBUG_MONITOR_ENABLED) && OOTEXTURE_RELOADABLE
 		if (_trace)
 		{
 			static unsigned dumpID = 0;

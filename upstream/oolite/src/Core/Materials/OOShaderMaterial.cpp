@@ -215,7 +215,7 @@ bool OOShaderMaterial::initWithName(const std::optional<std::string> &name,
 			{
 
 				BOOL canFallBack = !modifiedMacros.get<bool>("OO_REDUCED_COMPLEXITY");
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 				if (gDebugFlags & DEBUG_NO_SHADER_FALLBACK)  canFallBack = NO;
 #endif
 				if (canFallBack)
@@ -757,7 +757,7 @@ bool OOShaderMaterial::permitSpecular()
 }
 
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 std::vector<oo::Ref<OOTexture>> OOShaderMaterial::allTextures()
 {
 	std::vector<oo::Ref<OOTexture>> result;

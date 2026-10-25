@@ -1,6 +1,6 @@
 /*
 
-OOCocoa.h
+OOFoundation.h
 
 Import OpenStep main headers and define some Macisms and other compatibility
 stuff.
@@ -82,38 +82,10 @@ MA 02110-1301, USA.
 	// gnustep-base's macro; the Mac OS X path below defines the same one.
 	
 #else
-	#import <AppKit/AppKit.h>
-	
 	#define OOLITE_MAC_OS_X			1
-	#define OOLITE_SPEECH_SYNTH		1
-	
-	#if __LP64__
-		#define OOLITE_64_BIT		1
-	#endif
-	
+
 	/*	Useful macro copied from GNUstep.
 	*/
-	
-	#if defined MAC_OS_X_VERSION_10_7 && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_7
-		#define OOLITE_MAC_OS_X_10_7	1
-	#endif
-	
-	#if defined MAC_OS_X_VERSION_10_8 && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_8
-		#define OOLITE_MAC_OS_X_10_8	1
-	#endif
-
-	#if OOLITE_MAC_OS_X && !defined(MAC_OS_X_VERSION_10_12)
-		typedef NSUInteger NSWindowStyleMask;
-	#endif
-#endif
-
-
-#ifndef OOLITE_MAC_OS_X_10_7
-	#define OOLITE_MAC_OS_X_10_7	0
-#endif
-
-#ifndef OOLITE_MAC_OS_X_10_8
-	#define OOLITE_MAC_OS_X_10_8	0
 #endif
 
 
@@ -154,7 +126,7 @@ MA 02110-1301, USA.
 	stay exactly as they were (game code keeps its int-typed true/false), but a C++20 standard
 	header parsed after them breaks: <optional> has `bool(__x) <=> false`, i.e. bool <=> int.
 	So those headers are parsed here first, with the real keywords; their include guards make
-	every later #include of them a no-op. extern "C++" because OOCocoa.h is sometimes reached
+	every later #include of them a no-op. extern "C++" because OOFoundation.h is sometimes reached
 	from inside an extern "C" block (OOMaths.h).
 */
 extern "C++" {
@@ -268,23 +240,7 @@ extern "C++" {
 #endif
 
 
-/*	@optional directive for protocols: added in Objective-C 2.0.
-	
-	As a nasty, nasty hack, the OOLITE_OPTIONAL(foo) macro allows an optional
-	section with or without @optional. If @optional is not available, it
-	actually ends the protocol and starts an appropriately-named informal
-	protocol, i.e. a category on the root class. Since it ends the protocol, there
-	can only be one and there's no way to switch back to @required.
-*/
-#ifndef OOLITE_HAVE_PROTOCOL_OPTIONAL
-#define OOLITE_HAVE_PROTOCOL_OPTIONAL  (OOLITE_MAC_OS_X || OOLITE_HAVE_CLANG || OOLITE_GCC_VERSION >= 40700)
-#endif
-
-#if OOLITE_HAVE_PROTOCOL_OPTIONAL
 #define OOLITE_OPTIONAL(protocolName) @optional
-#else
-#define OOLITE_OPTIONAL(protocolName) @end @interface OOObject (protocolName ## Optional)
-#endif
 
 
 /*	instancetype contextual keyword; added in Clang 3.0ish.

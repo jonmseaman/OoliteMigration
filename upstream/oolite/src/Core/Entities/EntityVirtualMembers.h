@@ -34,7 +34,7 @@ MA 02110-1301, USA.
 #ifndef ENTITY_VIRTUAL_MEMBERS_H
 #define ENTITY_VIRTUAL_MEMBERS_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOMaths.h"
 #include "OOTypes.h"
 #include "OOEntityEnums.h"	// OOEntityStatus, OOScanClass
@@ -114,7 +114,7 @@ class Entity;
 	void clearJSSelf(ooscript::Object /*selfVal*/) override VOID_BODY \
 	std::optional<std::string> jsDescription() override VALUE_BODY
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 #define OO_ENTITY_DEBUG_VIRTUAL_MEMBERS(VOID_BODY, VALUE_BODY) \
 	virtual std::optional<std::string> descriptionForObjDump() VALUE_BODY \
 	virtual std::vector<oo::Ref<OOTexture>> allTextures() VALUE_BODY

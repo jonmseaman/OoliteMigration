@@ -325,7 +325,7 @@ const OOEntityFacadeRow kOOEntityFacadeRows[] =
 	{ "cameraRelativePosition",	nullptr,	&OOEntityByNameTyped<&Facade_cameraRelativePosition> },
 	{ "canCollide",	nullptr,	&OOEntityByNameTyped<&Facade_canCollide> },
 	{ "collisionRadius",	nullptr,	&OOEntityByNameTyped<&Facade_collisionRadius> },
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	{ "cxx_allTextures",	nullptr,	nullptr },
 #endif
 	{ "cxx_collidingEntities",	nullptr,	nullptr },
@@ -333,10 +333,10 @@ const OOEntityFacadeRow kOOEntityFacadeRows[] =
 	{ "cxx_descriptionComponents",	nullptr,	nullptr },
 	{ "cxx_oo_jsClassName",	nullptr,	nullptr },
 	{ "deleteJSSelf",	nullptr,	&OOEntityByNameTyped<&Facade_deleteJSSelf> },
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	{ "descriptionForObjDump",	nullptr,	nullptr },
 #endif
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 	{ "descriptionForObjDumpBasic",	nullptr,	nullptr },
 #endif
 	{ "distanceTravelled",	nullptr,	&OOEntityByNameTyped<&Facade_distanceTravelled> },
