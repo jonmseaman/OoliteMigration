@@ -138,7 +138,10 @@ subdir('src')
 # The unit tests are built by every flavour but deployment (bead oo-we7mm): they test the live
 # assertion and debug paths, which a deployment build (NDEBUG) compiles out, and upstream's CI
 # builds `./mk.sh build deployment` (since #756), which builds every default target.
-if not get_option('deployment_release')
+# They are Windows-only for now (bead oo-cpohc): they were written and verified on the native
+# Windows toolchain (ADR-0017) and use its headers and LLP64 types (<process.h>, _putenv_s,
+# <winsock2.h>, long == 32 bits), so the Linux CI flavours build the game without them.
+if not get_option('deployment_release') and host_machine.system() == 'windows'
     # Unit tests that need no game build (meson test --suite oofnd).
     subdir('tests/unit/oofnd')
 

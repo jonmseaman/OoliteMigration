@@ -33,6 +33,7 @@ MA 02110-1301, USA.
 #include "OOOpenGLExtensionManager.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/objc/OOAssert.h"
+#include <cstring>
 
 /*	DESIGN NOTES
 

@@ -40,6 +40,7 @@ MA 02110-1301, USA.
 #if OOLITE_WINDOWS
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL_stdinc.h>
+#include <cstring>
 #include <locale.h>
 #include <optional>
 // Make sure that a high performance GPU is
@@ -155,7 +156,9 @@ int main(int argc, char* argv[])
     if (last_slash != NULL) {
         *last_slash = '\0'; // Chop off the executable name, leaving just the directory
     }
-    chdir(result);
+    if (chdir(result) != 0) {
+        // As before: if the executable's directory cannot be entered, the game starts where it is.
+    }
 #endif
 #define OO_SHOW_MSG(ooMsg, ooTitle, ooFlags) fprintf(stdout, "%s", ooMsg)
 #define TABS1 "\t\t"

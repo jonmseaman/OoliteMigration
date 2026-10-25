@@ -288,7 +288,9 @@ static OOTimeProfileEntry* ProfileEntryForKey(const void* key)
 } // namespace
 static double sProfilerOverhead;
 static double sProfilerTotalNativeTime;
+#ifdef MOZ_TRACE_JSCALLS // read only by the call-tracing paths below
 static double sProfilerTotalJavaScriptTime;
+#endif
 static double sProfilerEntryTimeLimit;
 static OOHighResTimeValue sProfilerStartTime;
 
@@ -301,7 +303,9 @@ void OOJSBeginProfiling(bool trace)
     sProfileInfo->reserve(100);
     sProfilerOverhead = 0.0;
     sProfilerTotalNativeTime = 0.0;
+#ifdef MOZ_TRACE_JSCALLS
     sProfilerTotalJavaScriptTime = 0.0;
+#endif
     sProfilerEntryTimeLimit = OOJSGetTimeLimiterLimit();
 
     // This should be last for precision.

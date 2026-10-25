@@ -65,6 +65,7 @@ run_script() {
     if [[ -z "$1" || "$1" == "clang" ]]; then
         pacboy -S clang --noconfirm
         pacboy -S lld --noconfirm
+        pacboy -S llvm-tools --noconfirm  # llvm-ar, which clang.ini names as the archiver
 
         echo "Installing GNUStep libraries with clang"
         export cc=$MINGW_PREFIX/bin/clang

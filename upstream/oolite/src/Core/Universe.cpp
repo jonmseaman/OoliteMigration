@@ -107,6 +107,7 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 #if OO_LOCALIZATION_TOOLS
 #include "OOConvertSystemDescriptions.h"
+#include <cstring>
 #endif
 
 enum {

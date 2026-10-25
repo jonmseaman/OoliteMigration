@@ -58,6 +58,7 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
 #include "oofnd/objc/OOException.h"
+#include <cstring>
 
 // If set, collision octree depth varies depending on the size of the mesh.
 #define ADAPTIVE_OCTREE_DEPTH 1

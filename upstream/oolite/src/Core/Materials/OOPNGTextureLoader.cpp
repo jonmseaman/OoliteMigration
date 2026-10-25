@@ -33,6 +33,7 @@ SOFTWARE.
 #include "OOCPUInfo.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/String.hpp"
+#include <cstring>
 
 // void png_error(png_structp, png_const_charp) NO_RETURN_FUNC;
 

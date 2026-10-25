@@ -72,3 +72,15 @@ bead, as usual.
   expect GCC's spelling of the same function. No check is removed or loosened, and the game does
   not change; each check still pins one exact string per compiler. Approval lines cite ADR-0064.
   Jon: "I approve you working through human decisions whenever it makes sense to unblock you."
+- oo-cpohc (fork CI on PR #1, the first Linux builds of the C++ tree): orchestrator decisions,
+  2026-10-25, each the conservative default. (a) The unit test suites (`tests/unit/oofnd`,
+  `tests/unit/core`) are built on Windows only (`meson.build`): they were written against the
+  native Windows toolchain (ADR-0017) and use `<process.h>`, `_putenv_s`, `<winsock2.h>` and LLP64
+  `long`; no test or check is changed, and Windows builds and runs exactly the same suites. Porting
+  them to Linux is a follow-up bead. (b) `clang.ini` names `llvm-ar` as the archiver and the CI
+  install scripts install it (MSYS2 `llvm-tools`, distro `llvm`): with `b_lto` the static
+  `libqjs.a` holds LLVM bitcode, which GNU `ar` cannot index, so Windows LTO links lost every
+  `JS_*` symbol once meson fell back to binutils' `ar`. (c) `post_build.sh` copies `GNUstep.conf`
+  only when a GNUstep install provides one (the game no longer links GNUstep-base and
+  `gnustep_folder` is empty); `run_oolite.sh` skips the copy when it is absent. Jon: "I approve
+  you working through human decisions whenever it makes sense to unblock you."

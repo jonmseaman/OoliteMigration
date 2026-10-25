@@ -46,8 +46,9 @@ MA 02110-1301, USA.
 // prevent the including of SDL_opengl.h loading a previous version of glext.h
 #define NO_SDL_GLEXT
 
-// GL_GLEXT_PROTOTYPES must be defined for the Linux build to use shaders.
-#if OOLITE_LINUX
+// GL_GLEXT_PROTOTYPES must be defined for the Linux build to use shaders. A plain C++ unit
+// (OO_PLAIN_CPP_UNIT) does not include OOFoundation.h, so test the build's LINUX define as well.
+#if OOLITE_LINUX || defined(LINUX)
 #ifndef GL_GLEXT_PROTOTYPES
 #define GL_GLEXT_PROTOTYPES
 #define __DEFINED_GL_GLEXT_PROTOTYPES

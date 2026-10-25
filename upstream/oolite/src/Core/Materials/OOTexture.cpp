@@ -104,22 +104,11 @@ OOCache* sRecentTextures;
 static BOOL sCheckedExtensions;
 OOTextureInfo gOOTextureInfo;
 
-#ifdef OO_DEBUG_MONITOR_ENABLED
-namespace {
-
-const char* sGlobalTraceContext = nullptr;
-
-} // namespace
-
-#define SET_TRACE_CONTEXT(str)       \
-    do {                             \
-        sGlobalTraceContext = (str); \
-    } while (0)
-#else
+// The ObjC tree kept a trace context here for the debug monitor; nothing in the C++ tree reads
+// it, so the markers are no-ops in every build.
 #define SET_TRACE_CONTEXT(str) \
     do {                       \
     } while (0)
-#endif
 #define CLEAR_TRACE_CONTEXT() SET_TRACE_CONTEXT(nullptr)
 
 OOTexture::NameFactory OOTexture::nameFactory = &OOTexture::loadTextureWithName;

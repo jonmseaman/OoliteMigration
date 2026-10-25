@@ -70,6 +70,7 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
 #include "oofnd/objc/OOException.h"
+#include <cstring>
 
 #define CUSTOM_VIEW_ROTATE_SPEED 1.0
 #define CUSTOM_VIEW_ZOOM_SPEED 5.0
