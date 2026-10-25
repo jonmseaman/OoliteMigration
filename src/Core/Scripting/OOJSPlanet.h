@@ -25,10 +25,12 @@ MA 02110-1301, USA.
 
 */
 
+#pragma once
+
+#import "OOPlanetEntity.h"
 #import <Foundation/Foundation.h>
 #include <jsapi.h>
 
 @class OOPlanetEntity;
 
-
-void InitOOJSPlanet(JSContext *context, JSObject *global);
+void InitOOJSPlanet(JSContext* context, JSObject* global);

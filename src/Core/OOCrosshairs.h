@@ -26,24 +26,22 @@ SOFTWARE.
 
 */
 
-#import "OOCocoa.h"
+#import "OOFoundation.h"
 #import "OOOpenGL.h"
 
 @class OOColor;
 
-
-@interface OOCrosshairs: NSObject
-{
+@interface OOCrosshairs : NSObject {
 @private
-	NSUInteger					_count;
-	GLfloat						*_data;
+    NSUInteger _count;
+    GLfloat* _data;
 }
 
-- (id) initWithPoints:(NSArray *)points
-				scale:(GLfloat)scale
-				color:(OOColor *)color
-		 overallAlpha:(GLfloat)alpha;
+- (id)initWithPoints:(NSArray*)points
+               scale:(GLfloat)scale
+               color:(OOColor*)color
+        overallAlpha:(GLfloat)alpha;
 
-- (void) render;
+- (void)render;
 
 @end

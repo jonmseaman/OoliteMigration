@@ -22,31 +22,27 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
+#import "OOFoundation.h"
 #import "OOOpenGL.h"
 
 @class OOTexture;
 
+#define OPEN_GL_SPRITE_MIN_WIDTH 64.0
+#define OPEN_GL_SPRITE_MIN_HEIGHT 64.0
 
-#define	OPEN_GL_SPRITE_MIN_WIDTH	64.0
-#define	OPEN_GL_SPRITE_MIN_HEIGHT	64.0
-
-
-@interface OOTextureSprite: NSObject
-{
+@interface OOTextureSprite : NSObject {
 @private
-	OOTexture	*texture;
-	NSSize		size;
+    OOTexture* texture;
+    NSSize size;
 }
 
+- (id)initWithTexture:(OOTexture*)texture;
+- (id)initWithTexture:(OOTexture*)texture size:(NSSize)spriteSize;
 
-- (id) initWithTexture:(OOTexture *)texture;
-- (id) initWithTexture:(OOTexture *)texture size:(NSSize)spriteSize;
+- (NSSize)size;
 
-- (NSSize) size;
-
-- (void) blitToX:(float)x Y:(float)y Z:(float)z alpha:(float)a;
-- (void) blitCentredToX:(float)x Y:(float)y Z:(float)z alpha:(float)a;
-- (void) blitBackgroundCentredToX:(float)x Y:(float)y Z:(float)z alpha:(float)a;
+- (void)blitToX:(float)x Y:(float)y Z:(float)z alpha:(float)a;
+- (void)blitCentredToX:(float)x Y:(float)y Z:(float)z alpha:(float)a;
+- (void)blitBackgroundCentredToX:(float)x Y:(float)y Z:(float)z alpha:(float)a;
 
 @end

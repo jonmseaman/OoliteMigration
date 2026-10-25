@@ -27,15 +27,14 @@ SOFTWARE.
 
 */
 
-#import "OOCocoa.h"
-
+#import "OOFoundation.h"
 
 @interface NSObject (OOExtensions)
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 
-+ (size_t) oo_instanceSize;
-- (size_t) oo_objectSize;
++ (size_t)oo_instanceSize;
+- (size_t)oo_objectSize;
 
 #endif
 

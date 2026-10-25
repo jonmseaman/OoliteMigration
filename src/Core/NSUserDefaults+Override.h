@@ -22,13 +22,13 @@ MA 02110-1301, USA.
 
 */
 
-#import "OOCocoa.h"
+#import "OOFoundation.h"
 
 #import <Foundation/NSUserDefaults.h>
 
 @interface NSUserDefaults (Override)
 
-- (BOOL) writeDictionary: (NSDictionary*)dict
-                  toFile: (NSString*)file;
+- (BOOL)writeDictionary:(NSDictionary*)dict
+                 toFile:(NSString*)file;
 
 @end

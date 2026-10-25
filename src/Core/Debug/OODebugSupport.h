@@ -27,12 +27,14 @@ SOFTWARE.
 
 */
 
-#ifndef NDEBUG
+#ifdef OO_DEBUG_MONITOR_ENABLED
 
 void OOInitDebugSupport(void);
 
 #else
 
-#define OOInitDebugSupport() do {} while (0)
+#define OOInitDebugSupport() \
+    do {                     \
+    } while (0)
 
 #endif
