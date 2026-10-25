@@ -30,47 +30,44 @@ SOFTWARE.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOFunctionAttributes.h"
 #include <stdarg.h>
 
 // OO_LOG / oo::log (ADR-0035): the Foundation-free logging API. extern "C++" because this header
-// is sometimes reached from inside an extern "C" block (OOMaths.h), as OOCocoa.h notes.
+// is sometimes reached from inside an extern "C" block (OOMaths.h), as OOFoundation.h notes.
 #ifdef __cplusplus
 extern "C++" {
 #include "oofnd/Log.hpp"
 }
 #endif
 
-
 #ifndef OOLOG_FUNCTION_NAME
-	#if defined (__GNUC__) && __GNUC__ >= 2
-		#define OOLOG_FUNCTION_NAME	__FUNCTION__
-	#elif 199901L <= __STDC_VERSION__
-		#define OOLOG_FUNCTION_NAME	__func__
-	#else
-		#define OOLOG_FUNCTION_NAME	NULL
-	#endif
+#if defined(__GNUC__) && __GNUC__ >= 2
+#define OOLOG_FUNCTION_NAME __FUNCTION__
+#elif 199901L <= __STDC_VERSION__
+#define OOLOG_FUNCTION_NAME __func__
+#else
+#define OOLOG_FUNCTION_NAME NULL
+#endif
 #endif
 
 #ifndef OOLOG_FILE_NAME
-	#ifdef OOLOG_NO_FILE_NAME
-		#define OOLOG_FILE_NAME NULL
-	#else
-		#define OOLOG_FILE_NAME __FILE__
-	#endif
+#ifdef OOLOG_NO_FILE_NAME
+#define OOLOG_FILE_NAME NULL
+#else
+#define OOLOG_FILE_NAME __FILE__
 #endif
-
+#endif
 
 /*	OOLOG_SHORT_CIRCUIT:
-	If nonzero, the test of whether to display a message before evaluating the
-	other parameters of the call. This saves time, but could cause weird bugs
-	if the parameters involve calls with side effects.
+        If nonzero, the test of whether to display a message before evaluating the
+        other parameters of the call. This saves time, but could cause weird bugs
+        if the parameters involve calls with side effects.
 */
 #ifndef OOLOG_SHORT_CIRCUIT
-	#define OOLOG_SHORT_CIRCUIT		1
+#define OOLOG_SHORT_CIRCUIT 1
 #endif
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -92,37 +89,36 @@ void OOLogPushIndent(void);
 void OOLogPopIndent(void);
 
 // OOLogGenericParameterError(): general parameter error message, "***** $function_name: bad parameters. (This is an internal programming error, please report it.)"
-#define OOLogGenericParameterError()	OOLogGenericParameterErrorForFunction(OOLOG_FUNCTION_NAME)
-void OOLogGenericParameterErrorForFunction(const char *inFunction);
+#define OOLogGenericParameterError() OOLogGenericParameterErrorForFunction(OOLOG_FUNCTION_NAME)
+void OOLogGenericParameterErrorForFunction(const char* inFunction);
 
 // OOLogGenericSubclassResponsibility(): general subclass responsibility message, "***** $function_name is a subclass responsibility. (This is an internal programming error, please report it.)"
-#define OOLogGenericSubclassResponsibility()	OOLogGenericSubclassResponsibilityForFunction(OOLOG_FUNCTION_NAME)
-void OOLogGenericSubclassResponsibilityForFunction(const char *inFunction);
+#define OOLogGenericSubclassResponsibility() OOLogGenericSubclassResponsibilityForFunction(OOLOG_FUNCTION_NAME)
+void OOLogGenericSubclassResponsibilityForFunction(const char* inFunction);
 
 #ifdef __cplusplus
 }
 #endif
 
-
 // *** Predefined message classes.
 /*	These are general coding error types. Generally a subclass should be used
-	for each instance -- for instance, Entity::warnAboutHostiles() uses
-	@"general.error.subclassResponsibility.Entity-warnAboutHostiles".
+        for each instance -- for instance, Entity::warnAboutHostiles() uses
+        @"general.error.subclassResponsibility.Entity-warnAboutHostiles".
 */
 
 #ifdef __cplusplus
-extern const char *const cxx_kOOLogSubclassResponsibility;	// "general.error.subclassResponsibility"
-extern const char *const cxx_kOOLogParameterError;			// "general.error.parameterError"
-extern const char *const cxx_kOOLogDeprecatedMethod;		// "general.error.deprecatedMethod"
-extern const char *const cxx_kOOLogAllocationFailure;		// "general.error.allocationFailure"
-extern const char *const cxx_kOOLogInconsistentState;		// "general.error.inconsistentState"
-extern const char *const cxx_kOOLogException;				// "exception"
+extern const char* const cxx_kOOLogSubclassResponsibility; // "general.error.subclassResponsibility"
+extern const char* const cxx_kOOLogParameterError; // "general.error.parameterError"
+extern const char* const cxx_kOOLogDeprecatedMethod; // "general.error.deprecatedMethod"
+extern const char* const cxx_kOOLogAllocationFailure; // "general.error.allocationFailure"
+extern const char* const cxx_kOOLogInconsistentState; // "general.error.inconsistentState"
+extern const char* const cxx_kOOLogException; // "exception"
 
-extern const char *const cxx_kOOLogFileNotFound;			// "files.notFound"
-extern const char *const cxx_kOOLogFileNotLoaded;			// "files.notLoaded"
+extern const char* const cxx_kOOLogFileNotFound; // "files.notFound"
+extern const char* const cxx_kOOLogFileNotLoaded; // "files.notLoaded"
 
-extern const char *const cxx_kOOLogOpenGLError;				// "rendering.opengl.error"
+extern const char* const cxx_kOOLogOpenGLError; // "rendering.opengl.error"
 
 // Don't use.
-extern const char *const cxx_kOOLogUnconvertedNSLog;		// "unclassified"
+extern const char* const cxx_kOOLogUnconvertedNSLog; // "unclassified"
 #endif

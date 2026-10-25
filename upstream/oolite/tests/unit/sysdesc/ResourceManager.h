@@ -2,7 +2,7 @@
 #pragma once
 // ResourceManager is C++ since bead oo-9ht.150 deleted its Objective-C facade: the stub declares the
 // two statics the tools call.
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/PList.hpp"
 #include "oofnd/Data.hpp"
 class ResourceManager

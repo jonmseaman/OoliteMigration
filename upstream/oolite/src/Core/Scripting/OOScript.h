@@ -9,9 +9,9 @@ scripts, was supported until 1.69.1, but never used. OOScript unifies the
 interfaces to the script types and abstracts loading. Additionally, it falls
 back to a more "primitive" script if loading of one type fails; specifically,
 the order of precedence is:
-	script.js		(JavaScript)
+        script.js		(JavaScript)
 //	script.oos		(OOS)
-	script.plist	(property list)
+        script.plist	(property list)
 
 C++20 since bead oo-604l (proposed ADR-0056, Amendment 1 of bead oo-cwz: a hierarchy root, as
 amendment oo-6bux's OOJoystickManager). The methods a subclass overrides (name, scriptDescription,
@@ -47,11 +47,11 @@ MA 02110-1301, USA.
 #ifndef OOSCRIPT_H
 #define OOSCRIPT_H
 
-#include "OOCocoa.h"
-#include "oofnd/StdLib.hpp"
-#include "oofnd/Ref.hpp"
-#include "oofnd/PList.hpp"
+#include "OOFoundation.h"
 #include "OOJSPrivateObject.h"
+#include "oofnd/PList.hpp"
+#include "oofnd/Ref.hpp"
+#include "oofnd/StdLib.hpp"
 #include "ooscript/JSEngine.hpp"
 
 #include <optional>
@@ -60,73 +60,70 @@ MA 02110-1301, USA.
 
 class Entity;
 
-
-class OOScript : public oo::PListForeign, public ::OOJSPrivateObject
-{
+class OOScript : public oo::PListForeign, public ::OOJSPrivateObject {
 public:
-	/*	Looks for path/world-scripts.plist, path/script.js, then path/script.plist.
-		May return zero or more scripts; nullopt (was nil) when none could be loaded.
-	*/
-	static std::optional<std::vector<oo::Ref<OOScript>>> worldScriptsAtPath(const std::string &path);
+    /*	Looks for path/world-scripts.plist, path/script.js, then path/script.plist.
+            May return zero or more scripts; nullopt (was nil) when none could be loaded.
+    */
+    static std::optional<std::vector<oo::Ref<OOScript>>> worldScriptsAtPath(const std::string& path);
 
-	//	Load named scripts from Scripts folders. nullopt where these returned nil.
-	static std::optional<std::vector<oo::Ref<OOScript>>> scriptsFromFileNamed(const std::string &fileName);
-	static std::vector<oo::Ref<OOScript>> scriptsFromList(const std::vector<std::string> &fileNames);
+    //	Load named scripts from Scripts folders. nullopt where these returned nil.
+    static std::optional<std::vector<oo::Ref<OOScript>>> scriptsFromFileNamed(const std::string& fileName);
+    static std::vector<oo::Ref<OOScript>> scriptsFromList(const std::vector<std::string>& fileNames);
 
-	static std::optional<std::vector<oo::Ref<OOScript>>> scriptsFromFileAtPath(const std::string &filePath);
+    static std::optional<std::vector<oo::Ref<OOScript>>> scriptsFromFileAtPath(const std::string& filePath);
 
-	//	Load a single JavaScript script (an OOJSScript; null where it answered nil). The properties may hold live objects (oo::PList Object nodes).
-	static oo::Ref<OOScript> jsScriptFromFileNamed(const std::string &fileName, const oo::PList &properties);
-	//  As above, but load from the "AIs" directory
-	static oo::Ref<OOScript> jsAIScriptFromFileNamed(const std::string &fileName, const oo::PList &properties);
+    //	Load a single JavaScript script (an OOJSScript; null where it answered nil). The properties may hold live objects (oo::PList Object nodes).
+    static oo::Ref<OOScript> jsScriptFromFileNamed(const std::string& fileName, const oo::PList& properties);
+    //  As above, but load from the "AIs" directory
+    static oo::Ref<OOScript> jsAIScriptFromFileNamed(const std::string& fileName, const oo::PList& properties);
 
-	// The subclass responsibilities (Amendment 1 item 2). The root's own answer none, logging an error.
-	virtual std::optional<std::string> descriptionComponents();
-	virtual std::optional<std::string> name();				// nullopt: none (bead oo-3rb.289.6)
-	virtual std::optional<std::string> scriptDescription();	// nullopt: none
-	virtual std::optional<std::string> version();			// nullopt: none (bead oo-3rb.291.1)
-	virtual bool requiresTickle();
-	virtual void runWithTarget(Entity *target);	// the C++ entity (bead oo-w9pi2; was its object)
+    // The subclass responsibilities (Amendment 1 item 2). The root's own answer none, logging an error.
+    virtual std::optional<std::string> descriptionComponents();
+    virtual std::optional<std::string> name(); // nullopt: none (bead oo-3rb.289.6)
+    virtual std::optional<std::string> scriptDescription(); // nullopt: none
+    virtual std::optional<std::string> version(); // nullopt: none (bead oo-3rb.291.1)
+    virtual bool requiresTickle();
+    virtual void runWithTarget(Entity* target); // the C++ entity (bead oo-w9pi2; was its object)
 
-	std::optional<std::string> displayName();	// flipped with its family (bead oo-3rb.267): "name version" if version is defined, otherwise just "name".
+    std::optional<std::string> displayName(); // flipped with its family (bead oo-3rb.267): "name version" if version is defined, otherwise just "name".
 
-	/*	OOScript (JavaScriptEvents), which every script answered: call a method. For simplicity,
-		calling methods on non-JS scripts works but does nothing (false). Requires a request on
-		context; outResult may be NULL.
-	*/
-	virtual bool callMethod(ooscript::PropertyId methodID, ooscript::Context context, ooscript::Value *argv, int argc, ooscript::Value *outResult);
+    /*	OOScript (JavaScriptEvents), which every script answered: call a method. For simplicity,
+            calling methods on non-JS scripts works but does nothing (false). Requires a request on
+            context; outResult may be NULL.
+    */
+    virtual bool callMethod(ooscript::PropertyId methodID, ooscript::Context context, ooscript::Value* argv, int argc, ooscript::Value* outResult);
 
-	// oo::PListForeign: the facade's class name, and its -description ("<C++ class address>{components}").
-	std::string className() const override;
-	std::string description() const override;
+    // oo::PListForeign: the facade's class name, and its -description ("<C++ class address>{components}").
+    std::string className() const override;
+    std::string description() const override;
 
-	// OOJSPrivateObject: undefined (OOObject's -oo_jsValueInContext:); a JS script answers its Script object.
-	ooscript::Value jsValueInContext(ooscript::Context context) override;
-	void clearJSSelf(ooscript::Object selfVal) override;
+    // OOJSPrivateObject: undefined (OOObject's -oo_jsValueInContext:); a JS script answers its Script object.
+    ooscript::Value jsValueInContext(ooscript::Context context) override;
+    void clearJSSelf(ooscript::Object selfVal) override;
 };
 
-
 /*	[script autorelease], which the deleted facade answered (bead oo-9ht.133): keeps the script
-	until the current autorelease pool drains, so a script a holder lets go of (replaced, or the
-	holder deallocated) or a caller does not keep lives exactly as long as its autoreleased object
-	did. Nothing for null.
+        until the current autorelease pool drains, so a script a holder lets go of (replaced, or the
+        holder deallocated) or a caller does not keep lives exactly as long as its autoreleased object
+        did. Nothing for null.
 */
 void OOScriptAutorelease(oo::Ref<OOScript> script);
 
-
 /*	A script carried through plist data as a PList::Object node (proposed ADR-0043 Amendment 2), as
-	oo::PListObject() and oo::ObjectIn() carried the facade (bead oo-9ht.133).
+        oo::PListObject() and oo::ObjectIn() carried the facade (bead oo-9ht.133).
 */
-inline oo::PList OOScriptObjectNode(OOScript *script)	// null script -> null PList
+inline oo::PList OOScriptObjectNode(OOScript* script) // null script -> null PList
 {
-	if (script == nullptr)  return oo::PList();
-	return oo::PList(oo::PList::Object(oo::Ref<oo::PListForeign>(script)));
+    if (script == nullptr)
+        return oo::PList();
+    return oo::PList(oo::PList::Object(oo::Ref<oo::PListForeign>(script)));
 }
 
-inline OOScript *OOScriptInObjectNode(const oo::PList &plist)	// null for any other node
+inline OOScript* OOScriptInObjectNode(const oo::PList& plist) // null for any other node
 {
-	const oo::PList::Object *node = plist.getIf<oo::PList::Object>();
-	return (node != nullptr) ? dynamic_cast<OOScript *>(node->get()) : nullptr;
+    const oo::PList::Object* node = plist.getIf<oo::PList::Object>();
+    return (node != nullptr) ? dynamic_cast<OOScript*>(node->get()) : nullptr;
 }
 
-#endif	// OOSCRIPT_H
+#endif // OOSCRIPT_H

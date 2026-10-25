@@ -90,7 +90,8 @@ if get_option('deployment_release')
     add_project_arguments(
         '-DNDEBUG',
         '-DOO_CHECK_GL_HEAVY=0',
-        '-DOO_OXP_VERIFIER_ENABLED=0',
+        '-DOO_DEBUG_MONITOR_ENABLED=1',
+        '-DOO_OXP_VERIFIER_ENABLED=1',
         '-DOO_LOCALIZATION_TOOLS=0',
         '-DDEBUG_GRAPHVIZ=0',
         '-DOO_FOV_INFLIGHT_CONTROL_ENABLED=0',
@@ -102,6 +103,9 @@ else
     endif
     if get_option('oo_exclude_debug_support')
         add_project_arguments('-DNDEBUG', language: c_family)
+    endif
+    if get_option('oo_debug_monitor_enabled')
+        add_project_arguments('-DOO_DEBUG_MONITOR_ENABLED=1', language: c_family)
     endif
     if get_option('oo_oxp_verifier_enabled')
         add_project_arguments('-DOO_OXP_VERIFIER_ENABLED=1', language: c_family)
@@ -131,8 +135,13 @@ gnustep_folder = ''  # Not needed for Windows
 # dependencies, compiler/linker flags and build
 subdir('src')
 
-# Unit tests that need no game build (meson test --suite oofnd).
-subdir('tests/unit/oofnd')
+# The unit tests are built by every flavour but deployment (bead oo-we7mm): they test the live
+# assertion and debug paths, which a deployment build (NDEBUG) compiles out, and upstream's CI
+# builds `./mk.sh build deployment` (since #756), which builds every default target.
+if not get_option('deployment_release')
+    # Unit tests that need no game build (meson test --suite oofnd).
+    subdir('tests/unit/oofnd')
 
-# Unit tests of converted game classes, linked from the game's own objects (meson test --suite core).
-subdir('tests/unit/core')
+    # Unit tests of converted game classes, linked from the game's own objects (meson test --suite core).
+    subdir('tests/unit/core')
+endif

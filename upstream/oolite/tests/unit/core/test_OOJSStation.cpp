@@ -21,7 +21,7 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOCommodities.h"
 #include "OOCommodityMarket.h"
 #include "OOJSInterfaceDefinition.h"

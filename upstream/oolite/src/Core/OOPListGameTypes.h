@@ -38,52 +38,47 @@ MA 02110-1301, USA.
 #ifndef OOPLISTGAMETYPES_H
 #define OOPLISTGAMETYPES_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOMaths.h"
 
 #include "oofnd/PListGet.hpp"
 
+Vector OOVectorFromPList(const oo::PList* value, Vector defaultValue); // OOVectorFromObject
+HPVector OOHPVectorFromPList(const oo::PList* value, HPVector defaultValue); // OOHPVectorFromObject
+Quaternion OOQuaternionFromPList(const oo::PList* value, Quaternion defaultValue); // OOQuaternionFromObject
 
-Vector OOVectorFromPList(const oo::PList *value, Vector defaultValue);			// OOVectorFromObject
-HPVector OOHPVectorFromPList(const oo::PList *value, HPVector defaultValue);	// OOHPVectorFromObject
-Quaternion OOQuaternionFromPList(const oo::PList *value, Quaternion defaultValue);	// OOQuaternionFromObject
+oo::PList OOPListFromVector(Vector value); // OOPropertyListFromVector: {x y z} single-precision reals
+oo::PList OOPListFromHPVector(HPVector value); // OOPropertyListFromHPVector: {x y z} doubles
+oo::PList OOPListFromQuaternion(Quaternion value); // OOPropertyListFromQuaternion: {w x y z} single-precision reals
 
-oo::PList OOPListFromVector(Vector value);			// OOPropertyListFromVector: {x y z} single-precision reals
-oo::PList OOPListFromHPVector(HPVector value);		// OOPropertyListFromHPVector: {x y z} doubles
-oo::PList OOPListFromQuaternion(Quaternion value);	// OOPropertyListFromQuaternion: {w x y z} single-precision reals
-
-BOOL OOFuzzyBooleanFromPList(const oo::PList *value, float defaultValue);	// OOFuzzyBooleanFromObject (draws randf())
-
+BOOL OOFuzzyBooleanFromPList(const oo::PList* value, float defaultValue); // OOFuzzyBooleanFromObject (draws randf())
 
 namespace oo {
 
 template <>
-struct PListGet<Vector>
-{
-	using Result = Vector;
-	using Fallback = Vector;
-	static Vector defaultFallback() { return kZeroVector; }
-	static Vector from(const PList *v, Vector fallback) { return OOVectorFromPList(v, fallback); }
+struct PListGet<Vector> {
+    using Result = Vector;
+    using Fallback = Vector;
+    static Vector defaultFallback() { return kZeroVector; }
+    static Vector from(const PList* v, Vector fallback) { return OOVectorFromPList(v, fallback); }
 };
 
 template <>
-struct PListGet<HPVector>
-{
-	using Result = HPVector;
-	using Fallback = HPVector;
-	static HPVector defaultFallback() { return kZeroHPVector; }
-	static HPVector from(const PList *v, HPVector fallback) { return OOHPVectorFromPList(v, fallback); }
+struct PListGet<HPVector> {
+    using Result = HPVector;
+    using Fallback = HPVector;
+    static HPVector defaultFallback() { return kZeroHPVector; }
+    static HPVector from(const PList* v, HPVector fallback) { return OOHPVectorFromPList(v, fallback); }
 };
 
 template <>
-struct PListGet<Quaternion>
-{
-	using Result = Quaternion;
-	using Fallback = Quaternion;
-	static Quaternion defaultFallback() { return kIdentityQuaternion; }
-	static Quaternion from(const PList *v, Quaternion fallback) { return OOQuaternionFromPList(v, fallback); }
+struct PListGet<Quaternion> {
+    using Result = Quaternion;
+    using Fallback = Quaternion;
+    static Quaternion defaultFallback() { return kIdentityQuaternion; }
+    static Quaternion from(const PList* v, Quaternion fallback) { return OOQuaternionFromPList(v, fallback); }
 };
 
-}	// namespace oo
+} // namespace oo
 
-#endif	// OOPLISTGAMETYPES_H
+#endif // OOPLISTGAMETYPES_H

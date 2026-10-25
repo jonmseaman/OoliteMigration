@@ -17,7 +17,7 @@
 	the player is sent, and a native's exception. Run: bash tools/check-core-tests.sh
 */
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOTypes.h"
 #include "OOEntityEnums.h"
 #include "ooscript/JSEngine.hpp"

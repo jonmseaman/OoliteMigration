@@ -39,24 +39,25 @@ MA 02110-1301, USA.
 #include "OOJSPrivateObject.h"
 #include "oofnd/Ref.hpp"
 
-
-class OOJSEntityHolder final : public oo::RefCounted, public OOJSPrivateObject
-{
+class OOJSEntityHolder final : public oo::RefCounted, public OOJSPrivateObject {
 public:
-	explicit OOJSEntityHolder(Entity *entity) : _entity(entity) {}
+    explicit OOJSEntityHolder(Entity* entity)
+        : _entity(entity)
+    {
+    }
 
-	// The entity, borrowed; null once it has gone (what the weak reference proxy's underlying object was: nil).
-	Entity *entity() const  { return _entity.get(); }
+    // The entity, borrowed; null once it has gone (what the weak reference proxy's underlying object was: nil).
+    Entity* entity() const { return _entity.get(); }
 
-	// The entity's own glue, as the engine sent its selectors to the slot's weak reference, which
-	// forwarded them to the facade: its JS value, nothing on finalization (OOObject's
-	// -oo_clearJSSelf:), its description; null, nothing and nullopt once it has gone.
-	ooscript::Value jsValueInContext(ooscript::Context context) override;
-	void clearJSSelf(ooscript::Object selfVal) override;
-	std::optional<std::string> jsDescription() override;
+    // The entity's own glue, as the engine sent its selectors to the slot's weak reference, which
+    // forwarded them to the facade: its JS value, nothing on finalization (OOObject's
+    // -oo_clearJSSelf:), its description; null, nothing and nullopt once it has gone.
+    ooscript::Value jsValueInContext(ooscript::Context context) override;
+    void clearJSSelf(ooscript::Object selfVal) override;
+    std::optional<std::string> jsDescription() override;
 
 private:
-	oo::WeakRef<Entity>	_entity;
+    oo::WeakRef<Entity> _entity;
 };
 
-#endif	// OOJSENTITYHOLDER_H
+#endif // OOJSENTITYHOLDER_H

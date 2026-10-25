@@ -35,67 +35,66 @@ SOFTWARE.
 #ifndef OOSHADERPROGRAM_H
 #define OOSHADERPROGRAM_H
 
-#include "OOCocoa.h"
-#include "oofnd/objc/OOObject.h"
+#include "OOFoundation.h"
 #include "OOOpenGL.h"
 #include "OOOpenGLExtensionManager.h"
+#include "oofnd/objc/OOObject.h"
 
 #if OO_SHADERS
 
-#include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/Ref.hpp"
+#include "oofnd/StdLib.hpp"
 
 /*	Foundation sweep (proposed ADR-0043, bead oo-vqvw): shader sources, names, prefix and cache key
-	are nil-able strings (std::optional: a missing source means no shader of that kind, an empty
-	prefix counts as none). Attribute bindings are a property-list dictionary of attribute name ->
-	location (oo::PList, null for none).
+        are nil-able strings (std::optional: a missing source means no shader of that kind, an empty
+        prefix counts as none). Attribute bindings are a property-list dictionary of attribute name ->
+        location (oo::PList, null for none).
 */
-class OOShaderProgram : public oo::RefCounted
-{
+class OOShaderProgram : public oo::RefCounted {
 public:
-	~OOShaderProgram() override;
+    ~OOShaderProgram() override;
 
-	// Null where no program could be made (it answered nil).
-	static oo::Ref<OOShaderProgram> shaderProgramWithVertexShader(const std::optional<std::string> &vertexShaderSource,
-																  const std::optional<std::string> &fragmentShaderSource,
-																  const std::optional<std::string> &vertexShaderName,
-																  const std::optional<std::string> &fragmentShaderName,
-																  const std::optional<std::string> &prefixString,			// String prepended to program source (both vs and fs)
-																  const oo::PList &attributeBindings,	// Maps vertex attribute names to "locations".
-																  const std::optional<std::string> &cacheKey);
+    // Null where no program could be made (it answered nil).
+    static oo::Ref<OOShaderProgram> shaderProgramWithVertexShader(const std::optional<std::string>& vertexShaderSource,
+        const std::optional<std::string>& fragmentShaderSource,
+        const std::optional<std::string>& vertexShaderName,
+        const std::optional<std::string>& fragmentShaderName,
+        const std::optional<std::string>& prefixString, // String prepended to program source (both vs and fs)
+        const oo::PList& attributeBindings, // Maps vertex attribute names to "locations".
+        const std::optional<std::string>& cacheKey);
 
-	// Loads a shader from a file, caching and sharing shader program instances.
-	static oo::Ref<OOShaderProgram> shaderProgramWithVertexShaderName(const std::string &vertexShaderName,
-																	  const std::string &fragmentShaderName,
-																	  const std::optional<std::string> &prefixString,			// String prepended to program source (both vs and fs)
-																	  const oo::PList &attributeBindings);	// Maps vertex attribute names to "locations".
+    // Loads a shader from a file, caching and sharing shader program instances.
+    static oo::Ref<OOShaderProgram> shaderProgramWithVertexShaderName(const std::string& vertexShaderName,
+        const std::string& fragmentShaderName,
+        const std::optional<std::string>& prefixString, // String prepended to program source (both vs and fs)
+        const oo::PList& attributeBindings); // Maps vertex attribute names to "locations".
 
-	void apply();
-	static void applyNone();
+    void apply();
+    static void applyNone();
 
-	GLhandleARB program();
+    GLhandleARB program();
 
 private:
-	OOShaderProgram() = default;
+    OOShaderProgram() = default;
 
-	bool initWithVertexShaderSource(const std::optional<std::string> &vertexSource,
-									const std::optional<std::string> &fragmentSource,
-									const std::optional<std::string> &prefixString,
-									const std::optional<std::string> &vertexName,
-									const std::optional<std::string> &fragmentName,
-									const oo::PList &attributeBindings,
-									const std::optional<std::string> &key);
+    bool initWithVertexShaderSource(const std::optional<std::string>& vertexSource,
+        const std::optional<std::string>& fragmentSource,
+        const std::optional<std::string>& prefixString,
+        const std::optional<std::string>& vertexName,
+        const std::optional<std::string>& fragmentName,
+        const oo::PList& attributeBindings,
+        const std::optional<std::string>& key);
 
-	void bindAttributes(const oo::PList &attributeBindings);
-	void bindStandardMatrixUniforms();
+    void bindAttributes(const oo::PList& attributeBindings);
+    void bindStandardMatrixUniforms();
 
-	// The leading underscore: program() is the getter's name (amendment oo-rdfh).
-	GLhandleARB						_program = {};
-	std::optional<std::string>		key = {};
-	oo::PList						standardMatrixUniformLocations = {};
+    // The leading underscore: program() is the getter's name (amendment oo-rdfh).
+    GLhandleARB _program = { };
+    std::optional<std::string> key = { };
+    oo::PList standardMatrixUniformLocations = { };
 };
 
 #endif // OO_SHADERS
 
-#endif	// OOSHADERPROGRAM_H
+#endif // OOSHADERPROGRAM_H

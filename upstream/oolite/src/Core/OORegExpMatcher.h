@@ -38,47 +38,43 @@ SOFTWARE.
 #ifndef OOREGEXPMATCHER_H
 #define OOREGEXPMATCHER_H
 
-#include "OOCocoa.h"
-#include "oofnd/Ref.hpp"
-#include "ooscript/JSEngine.hpp"
-#include "oofnd/StdLib.hpp"
+#include "OOFoundation.h"
+#include "OOJSEngineCore.h" // OOJSValue, which the matcher holds
 #include "OOJSFunction.h"
-#include "OOJSEngineCore.h"	// OOJSValue, which the matcher holds
+#include "oofnd/Ref.hpp"
+#include "oofnd/StdLib.hpp"
+#include "ooscript/JSEngine.hpp"
 
-
-enum
-{
-	kOORegExpCaseInsensitive	= ooscript::RegExpFoldCase,
-	kOORegExpMultiLine			= ooscript::RegExpMultiline
+enum {
+    kOORegExpCaseInsensitive = ooscript::RegExpFoldCase,
+    kOORegExpMultiLine = ooscript::RegExpMultiline
 };
 
-
-class OORegExpMatcher : public oo::RefCounted
-{
+class OORegExpMatcher : public oo::RefCounted {
 public:
-	/*	Pseudo-singleton: a single instance exists at a given time, but can be released. While
-		one is alive (held by a Ref) this returns it; otherwise a new one. Null if the tester
-		function could not be compiled.
-	*/
-	static oo::Ref<OORegExpMatcher> regExpMatcher();
+    /*	Pseudo-singleton: a single instance exists at a given time, but can be released. While
+            one is alive (held by a Ref) this returns it; otherwise a new one. Null if the tester
+            function could not be compiled.
+    */
+    static oo::Ref<OORegExpMatcher> regExpMatcher();
 
-	// Strings are UTF-8 (Foundation sweep, proposed ADR-0043). The Objective-C string category
-	// -oo_matchesRegularExpression: was [[OORegExpMatcher regExpMatcher] string:self matchesExpression:regExp];
-	// its callers now send that message themselves.
-	bool string(const std::string &string, const std::string &regExp);
-	bool string(const std::string &string, const std::string &regExp, NSUInteger flags);
+    // Strings are UTF-8 (Foundation sweep, proposed ADR-0043). The Objective-C string category
+    // -oo_matchesRegularExpression: was [[OORegExpMatcher regExpMatcher] string:self matchesExpression:regExp];
+    // its callers now send that message themselves.
+    bool string(const std::string& string, const std::string& regExp);
+    bool string(const std::string& string, const std::string& regExp, NSUInteger flags);
 
-	~OORegExpMatcher() override;
+    ~OORegExpMatcher() override;
 
 private:
-	// The old -init, which could fail (proposed ADR-0056 amendment oo-r7m0 item 2): regExpMatcher()
-	// calls it right after making the object, and drops the object when it returns false.
-	bool init();
+    // The old -init, which could fail (proposed ADR-0056 amendment oo-r7m0 item 2): regExpMatcher()
+    // calls it right after making the object, and drops the object when it returns false.
+    bool init();
 
-	oo::Ref<OOJSFunction>	_tester = {};
-	std::optional<std::string>	_cachedRegExpString = {};	// UTF-8; nullopt: nothing cached (proposed ADR-0043)
-	oo::Ref<OOJSValue>		_cachedRegExpObject = {};
-	NSUInteger				_cachedFlags = {};
+    oo::Ref<OOJSFunction> _tester = { };
+    std::optional<std::string> _cachedRegExpString = { }; // UTF-8; nullopt: nothing cached (proposed ADR-0043)
+    oo::Ref<OOJSValue> _cachedRegExpObject = { };
+    NSUInteger _cachedFlags = { };
 };
 
-#endif	// OOREGEXPMATCHER_H
+#endif // OOREGEXPMATCHER_H

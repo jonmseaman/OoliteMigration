@@ -1,4 +1,4 @@
-/*	
+/*
 
 OOProfilingStopwatch.m
 Oolite
@@ -30,105 +30,91 @@ SOFTWARE.
 
 #include "OOProfilingStopwatch.h"
 
-
 OOProfilingStopwatch::OOProfilingStopwatch()
 {
-	_start = OOGetHighResTime();
-	_end = OOCopyHighResTime(_start);
-	_running = true;
+    _start = OOGetHighResTime();
+    _end = OOCopyHighResTime(_start);
+    _running = true;
 }
-
 
 oo::Ref<OOProfilingStopwatch> OOProfilingStopwatch::stopwatch()
 {
-	return oo::makeRef<OOProfilingStopwatch>();
+    return oo::makeRef<OOProfilingStopwatch>();
 }
-
 
 OOProfilingStopwatch::~OOProfilingStopwatch()
 {
-	OODisposeHighResTime(_start);
-	OODisposeHighResTime(_end);
+    OODisposeHighResTime(_start);
+    OODisposeHighResTime(_end);
 }
-
 
 void OOProfilingStopwatch::start()
 {
-	OOHighResTimeValue temp = _start;
-	_start = OOGetHighResTime();
-	OODisposeHighResTime(temp);
-	_running = true;
+    OOHighResTimeValue temp = _start;
+    _start = OOGetHighResTime();
+    OODisposeHighResTime(temp);
+    _running = true;
 }
-
 
 void OOProfilingStopwatch::stop()
 {
-	OOHighResTimeValue temp = _start;
-	_end = OOGetHighResTime();
-	OODisposeHighResTime(temp);
-	_running = false;
+    OOHighResTimeValue temp = _start;
+    _end = OOGetHighResTime();
+    OODisposeHighResTime(temp);
+    _running = false;
 }
-
 
 OOTimeDelta OOProfilingStopwatch::currentTime()
 {
-	if (_running)
-	{
-		OOHighResTimeValue temp = _end;
-		_end = OOGetHighResTime();
-		OODisposeHighResTime(temp);
-	}
-	return OOHighResTimeDeltaInSeconds(_start, _end);
+    if (_running) {
+        OOHighResTimeValue temp = _end;
+        _end = OOGetHighResTime();
+        OODisposeHighResTime(temp);
+    }
+    return OOHighResTimeDeltaInSeconds(_start, _end);
 }
-
 
 OOTimeDelta OOProfilingStopwatch::reset()
 {
-	OOTimeDelta result;
-	if (_running)
-	{
-		OOHighResTimeValue now = OOGetHighResTime();
-		result = OOHighResTimeDeltaInSeconds(_start, now);
-		OODisposeHighResTime(_start);
-		_start = now;
-	}
-	else
-	{
-		result = OOHighResTimeDeltaInSeconds(_start, _end);
-		OODisposeHighResTime(_end);
-		_end = OOCopyHighResTime(_start);
-	}
-	return result;
+    OOTimeDelta result;
+    if (_running) {
+        OOHighResTimeValue now = OOGetHighResTime();
+        result = OOHighResTimeDeltaInSeconds(_start, now);
+        OODisposeHighResTime(_start);
+        _start = now;
+    } else {
+        result = OOHighResTimeDeltaInSeconds(_start, _end);
+        OODisposeHighResTime(_end);
+        _end = OOCopyHighResTime(_start);
+    }
+    return result;
 }
-
 
 OOTimeDelta OOHighResTimeDeltaInSeconds(OOHighResTimeValue startTime, OOHighResTimeValue endTime)
 {
 #if OO_PROFILING_STOPWATCH_MACH_ABSOLUTE_TIME
-	uint64_t diff = endTime - startTime;
-	static double conversion = 0.0;
-	
-	if (EXPECT_NOT(conversion == 0.0))
-	{
-		mach_timebase_info_data_t info;
-		kern_return_t err = mach_timebase_info(&info);
-		
-		if (err == 0)
-		{
-			conversion = 1e-9 * (double)info.numer / (double)info.denom;
-		}
-	}
-	
-	return conversion * (double)diff;
+    uint64_t diff = endTime - startTime;
+    static double conversion = 0.0;
+
+    if (EXPECT_NOT(conversion == 0.0)) {
+        mach_timebase_info_data_t info;
+        kern_return_t err = mach_timebase_info(&info);
+
+        if (err == 0) {
+            conversion = 1e-9 * (double)info.numer / (double)info.denom;
+        }
+    }
+
+    return conversion * (double)diff;
 #elif OO_PROFILING_STOPWATCH_WINDOWS
-	return 1e-3 * (double)(endTime - startTime);
+    return 1e-3 * (double)(endTime - startTime);
 #elif OO_PROFILING_STOPWATCH_GETTIMEOFDAY
-	int32_t deltaS = (int32_t)endTime.tv_sec - (int32_t)startTime.tv_sec;
-	int32_t deltaU = (int32_t)endTime.tv_usec - (int32_t)startTime.tv_usec;
-	double result = deltaU;
-	result = (result * 1e-6) + deltaS;
-	return result;
+    int32_t deltaS = (int32_t)endTime.tv_sec - (int32_t)startTime.tv_sec;
+    int32_t deltaU = (int32_t)endTime.tv_usec - (int32_t)startTime.tv_usec;
+    double result = deltaU;
+    result = (result * 1e-6) + deltaS;
+    return result;
 #elif OO_PROFILING_STOPWATCH_MICROSECONDS
-	return 1e-6 * (double)(endTime - startTime);
+    return 1e-6 * (double)(endTime - startTime);
 #endif
 }

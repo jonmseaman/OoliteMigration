@@ -30,19 +30,18 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#include "OOCocoa.h"
-#include "ooscript/JSEngine.hpp"
+#include "MyOpenGLView.h"
+#include "OOFoundation.h"
 #include "OOFunctionAttributes.h"
 #include "OOTypes.h"
-#include "MyOpenGLView.h"
+#include "ooscript/JSEngine.hpp"
 
-enum
-{
-	// Values used for unknown strings.
-	kOOCargoTypeDefault			= CARGO_NOT_CARGO,
-//	kOOCommodityTypeDefault		= COMMODITY_UNDEFINED,
-	kOOEnergyUnitTypeDefault	= ENERGY_UNIT_NONE,
-	kOORouteTypeDefault			= OPTIMIZED_BY_JUMPS
+enum {
+    // Values used for unknown strings.
+    kOOCargoTypeDefault = CARGO_NOT_CARGO,
+    //	kOOCommodityTypeDefault		= COMMODITY_UNDEFINED,
+    kOOEnergyUnitTypeDefault = ENERGY_UNIT_NONE,
+    kOORouteTypeDefault = OPTIMIZED_BY_JUMPS
 };
 
 /*
@@ -51,76 +50,75 @@ To avoid pulling in unnecessary headers, some functions defined in
 OOConstToString.mm are declared in the header with the appropriate type
 declaration, each with its C++ (cxx_) form beside it, in particular:
 
-	Entity.h:
-	cxx_OOStringFromEntityStatus()
-	cxx_OOEntityStatusFromString()
-	cxx_OOStringFromScanClass()
-	cxx_OOScanClassFromString()
+        Entity.h:
+        cxx_OOStringFromEntityStatus()
+        cxx_OOEntityStatusFromString()
+        cxx_OOStringFromScanClass()
+        cxx_OOScanClassFromString()
 
-	ShipEntity.h:
-	cxx_OOStringFromBehaviour()
-	cxx_OOEquipmentIdentifierFromWeaponType()
-	cxx_OOWeaponTypeFromEquipmentIdentifierSloppy()
-	cxx_OOWeaponTypeFromEquipmentIdentifierStrict()
-	cxx_OOStringFromWeaponType()
-	cxx_OOWeaponTypeFromString()
-	cxx_OODisplayStringFromAlertCondition()
-	
-	PlayerEntity.h:
-	cxx_OODisplayRatingStringFromKillCount()
-	cxx_KillCountToRatingAndKillString()
-	cxx_OODisplayStringFromLegalStatus()
-	cxx_OOStringFromGUIScreenID()
-	cxx_OOGUIScreenIDFromString()
-	cxx_OOGalacticHyperspaceBehaviourFromString()
-	cxx_OOStringFromGalacticHyperspaceBehaviour()
-	
-	Universe.h:
-	cxx_OODisplayStringFromGovernmentID()
-	cxx_OODisplayStringFromEconomyID()
+        ShipEntity.h:
+        cxx_OOStringFromBehaviour()
+        cxx_OOEquipmentIdentifierFromWeaponType()
+        cxx_OOWeaponTypeFromEquipmentIdentifierSloppy()
+        cxx_OOWeaponTypeFromEquipmentIdentifierStrict()
+        cxx_OOStringFromWeaponType()
+        cxx_OOWeaponTypeFromString()
+        cxx_OODisplayStringFromAlertCondition()
+
+        PlayerEntity.h:
+        cxx_OODisplayRatingStringFromKillCount()
+        cxx_KillCountToRatingAndKillString()
+        cxx_OODisplayStringFromLegalStatus()
+        cxx_OOStringFromGUIScreenID()
+        cxx_OOGUIScreenIDFromString()
+        cxx_OOGalacticHyperspaceBehaviourFromString()
+        cxx_OOStringFromGalacticHyperspaceBehaviour()
+
+        Universe.h:
+        cxx_OODisplayStringFromGovernmentID()
+        cxx_OODisplayStringFromEconomyID()
 
 */
 
 #ifdef __cplusplus
-#include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/StdLib.hpp"
 
 // C++ forms (bead oo-nts1, chunk oo-3rb.160): std::string results (never nil) and const
 // std::string & parameters (the old nil arrived as "" and matched nothing: the same defaults).
 std::string cxx_JSTypeToString(int /* ooscript::Type */ type);
 std::string cxx_CargoTypeToString(OOCargoType cargo);
-OOCargoType cxx_StringToCargoType(const std::string &string);
+OOCargoType cxx_StringToCargoType(const std::string& string);
 std::string cxx_EnergyUnitTypeToString(OOEnergyUnitType unit);
-OOEnergyUnitType cxx_StringToEnergyUnitType(const std::string &string);
+OOEnergyUnitType cxx_StringToEnergyUnitType(const std::string& string);
 std::string cxx_RouteTypeToString(OORouteType routeType);
-OORouteType cxx_StringToRouteType(const std::string &string);
+OORouteType cxx_StringToRouteType(const std::string& string);
 std::string cxx_DockingClearanceStatusToString(OODockingClearanceStatus dockingClearanceStatus);
 std::string cxx_OOStringFromGraphicsDetail(OOGraphicsDetail detail);
-OOGraphicsDetail cxx_OOGraphicsDetailFromString(const std::string &string);
+OOGraphicsDetail cxx_OOGraphicsDetailFromString(const std::string& string);
 std::string cxx_OOStringFromHDRToneMapper(OOHDRToneMapper toneMapper);
-OOHDRToneMapper cxx_OOHDRToneMapperFromString(const std::string &string);
+OOHDRToneMapper cxx_OOHDRToneMapperFromString(const std::string& string);
 std::string cxx_OOStringFromSDRToneMapper(OOSDRToneMapper toneMapper);
-OOSDRToneMapper cxx_OOSDRToneMapperFromString(const std::string &string);
+OOSDRToneMapper cxx_OOSDRToneMapperFromString(const std::string& string);
 
 // The .tbl families whose types come from OOTypes.h (chunk oo-3rb.161); the others are declared
 // beside their enums in Entity.h, ShipEntity.h and PlayerEntity.h.
 std::string cxx_OOStringFromCompassMode(OOCompassMode mode);
-OOCompassMode cxx_OOCompassModeFromString(const std::string &string);
+OOCompassMode cxx_OOCompassModeFromString(const std::string& string);
 std::string cxx_OOStringFromLongRangeChartMode(OOLongRangeChartMode chartMode);
-OOLongRangeChartMode cxx_OOLongRangeChartModeFromString(const std::string &string);
+OOLongRangeChartMode cxx_OOLongRangeChartModeFromString(const std::string& string);
 std::string cxx_OOStringFromLegalStatusReason(OOLegalStatusReason reason);
 
 // Commodity display strings (chunk oo-3rb.162). A commodity is named by its identifier string.
-std::string cxx_CommodityDisplayNameForSymbolicName(const std::string &symbolicName);
-std::string cxx_CommodityDisplayNameForCommodityArray(const oo::PList &commodityDefinition);	// an array
-std::optional<std::string> cxx_DisplayStringForMassUnit(OOMassUnit unit);	// nullopt: no description (was nil)
-std::optional<std::string> cxx_DisplayStringForMassUnitForCommodity(const std::string &commodity);
+std::string cxx_CommodityDisplayNameForSymbolicName(const std::string& symbolicName);
+std::string cxx_CommodityDisplayNameForCommodityArray(const oo::PList& commodityDefinition); // an array
+std::optional<std::string> cxx_DisplayStringForMassUnit(OOMassUnit unit); // nullopt: no description (was nil)
+std::optional<std::string> cxx_DisplayStringForMassUnitForCommodity(const std::string& commodity);
 
 // Shader settings (OOShaderSetting is OOOpenGL.h's; chunk oo-3rb.163).
 // Programmer-readable shader mode strings.
-OOShaderSetting cxx_OOShaderSettingFromString(const std::string &string);
+OOShaderSetting cxx_OOShaderSettingFromString(const std::string& string);
 std::string cxx_OOStringFromShaderSetting(OOShaderSetting setting);
 // Localized shader mode strings; nullopt: no description (was nil).
 std::optional<std::string> cxx_OODisplayStringFromShaderSetting(OOShaderSetting setting);
 #endif
-

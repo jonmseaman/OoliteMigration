@@ -27,7 +27,7 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "ooscript/JSEngine.hpp"
 #ifdef __cplusplus
 extern "C" {
@@ -39,12 +39,11 @@ void InitOOJSSun(ooscript::Context context, ooscript::Object global);
 }
 #endif
 
-
 /*	The bodies of OOSunEntity (OOJavaScriptExtensions), which the engine reaches by selector. Its
-	methods are one-line forwarders to these on the OOSunEntity facade, in OOSunEntity+ObjCBridge.mm
-	(bead oo-9ht.51), until that facade goes (oo-9ht.111; proposed ADR-0056 amendments oo-ppc,
-	oo-ykoy and oo-6ia4).
+        methods are one-line forwarders to these on the OOSunEntity facade, in OOSunEntity+ObjCBridge.mm
+        (bead oo-9ht.51), until that facade goes (oo-9ht.111; proposed ADR-0056 amendments oo-ppc,
+        oo-ykoy and oo-6ia4).
 */
 bool OOJSSunIsVisibleToScripts(void);
-void OOJSSunGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+void OOJSSunGetJSClass(ooscript::ClassDef** outClass, ooscript::Object* outPrototype);
 std::optional<std::string> OOJSSunJSClassName(void);

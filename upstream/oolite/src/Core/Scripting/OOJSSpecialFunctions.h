@@ -34,6 +34,5 @@ MA 02110-1301, USA.
 
 #include "OOJSEngineCore.h"
 
-
 void InitOOJSSpecialFunctions(ooscript::Context context, ooscript::Object global);
 oo::Ref<OOJSValue> JSSpecialFunctionsObjectWrapper(ooscript::Context context);

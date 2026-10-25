@@ -35,39 +35,36 @@ MA 02110-1301, USA.
 
 */
 
-
 #pragma once
 
 #include "Entity.h"
 #include "OOJavaScriptEngine.h"
 
-class ShipEntity;	// C++ since bead oo-9ht.144
-
+class ShipEntity; // C++ since bead oo-9ht.144
 
 // Entity (OOJavaScriptExtensions). Since bead oo-9ht.39.3 the JS object's functions take the C++
 // entity (Entity's JS glue members call them; the engine asks those members, bead oo-9ht.39.8.9).
 bool EntityJSIsVisibleToScripts(void);
 std::optional<std::string> EntityJSClassName(void);
-ooscript::Value EntityJSValueInContext(Entity *entity, ooscript::Context context);
-void EntityJSGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
-void EntityJSDeleteJSSelf(Entity *entity);
-std::optional<std::string> EntityJSDescription(Entity *entity);
+ooscript::Value EntityJSValueInContext(Entity* entity, ooscript::Context context);
+void EntityJSGetJSClass(ooscript::ClassDef** outClass, ooscript::Object* outPrototype);
+void EntityJSDeleteJSSelf(Entity* entity);
+std::optional<std::string> EntityJSDescription(Entity* entity);
 
 // The entity's answers to the class questions the engine asked its object by selector: an
 // Objective-C entity's own override answers first, a C++ entity's virtual member otherwise (bead
 // oo-9ht.39.5.1).
-bool OOJSEntityIsVisibleToScripts(Entity *entity);
-std::optional<std::string> OOJSEntityJSClassName(Entity *entity);
+bool OOJSEntityIsVisibleToScripts(Entity* entity);
+std::optional<std::string> OOJSEntityJSClassName(Entity* entity);
 // The same for the JS class and prototype, and for the JS value (the entity's own JS object; null
 // for no entity, as OOJSValueFromNativeObject() gave for nil): what the engine asked an entity's
 // object by -getJSClass:andPrototype: and -oo_jsValueInContext: (bead oo-9ht.39.8.9).
-void OOJSEntityGetJSClass(Entity *entity, ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
-ooscript::Value OOJSEntityJSValue(Entity *entity, ooscript::Context context);
+void OOJSEntityGetJSClass(Entity* entity, ooscript::ClassDef** outClass, ooscript::Object* outPrototype);
+ooscript::Value OOJSEntityJSValue(Entity* entity, ooscript::Context context);
 
 // ShipEntity (OOJavaScriptExtensions)
 bool ShipEntityJSIsVisibleToScripts(void);
-void ShipEntityJSGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+void ShipEntityJSGetJSClass(ooscript::ClassDef** outClass, ooscript::Object* outPrototype);
 std::optional<std::string> ShipEntityJSClassName(void);
-std::vector<oo::EntityHold> ShipEntityJSSubEntitiesForScript(ShipEntity *ship);
-void ShipEntityJSSetTargetForScript(ShipEntity *ship, ShipEntity *target);
-
+std::vector<oo::EntityHold> ShipEntityJSSubEntitiesForScript(ShipEntity* ship);
+void ShipEntityJSSetTargetForScript(ShipEntity* ship, ShipEntity* target);

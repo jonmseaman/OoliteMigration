@@ -27,74 +27,71 @@ MA 02110-1301, USA.
 #include "Universe.h"
 #include "oofnd/Log.hpp"
 
-
 /*	The category ShipEntity (ScriptMethods), bead oo-42dr: members of ShipEntity (ADR-0056
-	amendments oo-o89 item 4 and oo-9fwb), forwarded by the category of the same name in
-	ShipEntity+ObjCBridge.mm until bead oo-9ht.144 deleted the facade and its sends became member
-	calls.
+        amendments oo-o89 item 4 and oo-9fwb), forwarded by the category of the same name in
+        ShipEntity+ObjCBridge.mm until bead oo-9ht.144 deleted the facade and its sends became member
+        calls.
 */
 
-::ShipEntity *ShipEntity::ejectShipOfType(const std::optional<std::string> &shipKey)
+::ShipEntity* ShipEntity::ejectShipOfType(const std::optional<std::string>& shipKey)
 {
-	::ShipEntity		*item = nil;
+    ::ShipEntity* item = nil;
 
-	if (shipKey.has_value())
-	{
-		item = oo::ToShip(oo::AutoreleaseEntity((UNIVERSE != nullptr ? UNIVERSE->newShipWithName(*shipKey) : (::ShipEntity *)nil)));
-		if (item != nil)  dumpItem(item);
-	}
-	
-	return item;
+    if (shipKey.has_value()) {
+        item = oo::ToShip(oo::AutoreleaseEntity((UNIVERSE != nullptr ? UNIVERSE->newShipWithName(*shipKey) : (::ShipEntity*)nil)));
+        if (item != nil)
+            dumpItem(item);
+    }
+
+    return item;
 }
 
-
-::ShipEntity *ShipEntity::ejectShipOfRole(const std::optional<std::string> &role)
+::ShipEntity* ShipEntity::ejectShipOfRole(const std::optional<std::string>& role)
 {
-	::ShipEntity		*item = nil;
+    ::ShipEntity* item = nil;
 
-	if (role.has_value())
-	{
-		item = oo::ToShip(oo::AutoreleaseEntity((UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(*role) : (::ShipEntity *)nil)));
-		if (item != nil)  dumpItem(item);
-	}
-	
-	return item;
+    if (role.has_value()) {
+        item = oo::ToShip(oo::AutoreleaseEntity((UNIVERSE != nullptr ? UNIVERSE->newShipWithRole(*role) : (::ShipEntity*)nil)));
+        if (item != nil)
+            dumpItem(item);
+    }
+
+    return item;
 }
 
-
-std::vector<oo::EntityHold> ShipEntity::spawnShipsWithRole(const std::string &role, NSUInteger count)
+std::vector<oo::EntityHold> ShipEntity::spawnShipsWithRole(const std::string& role, NSUInteger count)
 {
-	::ShipEntity				*ship = oo::ToShip(rootShipEntity());	// FIXME: (EMMSTRAN) implement an -absolutePosition method, use that in spawnShipWithRole:near:, and use self instead of root.
-	::ShipEntity				*spawned = nil;
-	std::vector<oo::EntityHold>	result;
+    ::ShipEntity* ship = oo::ToShip(rootShipEntity()); // FIXME: (EMMSTRAN) implement an -absolutePosition method, use that in spawnShipWithRole:near:, and use self instead of root.
+    ::ShipEntity* spawned = nil;
+    std::vector<oo::EntityHold> result;
 
-	if (count == 0)  return result;
+    if (count == 0)
+        return result;
 
-	OO_LOG("script.debug.note.addShips", "Spawning {} x '{}' near {} {}", count, role, oo::EntityShortDescription(this), getUniversalID());
+    OO_LOG("script.debug.note.addShips", "Spawning {} x '{}' near {} {}", count, role, oo::EntityShortDescription(this), getUniversalID());
 
-	result.reserve(count);
+    result.reserve(count);
 
-	do
-	{
-		spawned = (UNIVERSE != nullptr ? UNIVERSE->spawnShipWithRole(role, ship) : (::ShipEntity *)nil);
-		if (spawned != nil)
-		{
-			if (spawned != nullptr)  spawned->setTemperature(randomEjectaTemperature());
-			if (isMissileFlagSet() && (spawned != nullptr ? spawned->shipInfoDictionary() : oo::PList()).get<bool>("is_submunition"))
-			{
-				if (spawned != nullptr)  spawned->setOwner(ownerEntity());	// owner()'s C++ entity (bead oo-9ht.39.23)
-				if (spawned != nullptr)  spawned->addTarget(primaryTarget());
-				if (spawned != nullptr)  spawned->setIsMissileFlag(YES);
-			}
-   			if ((spawned != nullptr ? spawned->isMine() : false))
-	  		{
-	 			if (spawned != nullptr)  spawned->setOwner(this);
-	 		}
-			result.emplace_back(spawned);
-		}
-	}
-	while (--count);
-	
-	return result;
+    do {
+        spawned = (UNIVERSE != nullptr ? UNIVERSE->spawnShipWithRole(role, ship) : (::ShipEntity*)nil);
+        if (spawned != nil) {
+            if (spawned != nullptr)
+                spawned->setTemperature(randomEjectaTemperature());
+            if (isMissileFlagSet() && (spawned != nullptr ? spawned->shipInfoDictionary() : oo::PList()).get<bool>("is_submunition")) {
+                if (spawned != nullptr)
+                    spawned->setOwner(ownerEntity()); // owner()'s C++ entity (bead oo-9ht.39.23)
+                if (spawned != nullptr)
+                    spawned->addTarget(primaryTarget());
+                if (spawned != nullptr)
+                    spawned->setIsMissileFlag(YES);
+            }
+            if ((spawned != nullptr ? spawned->isMine() : false)) {
+                if (spawned != nullptr)
+                    spawned->setOwner(this);
+            }
+            result.emplace_back(spawned);
+        }
+    } while (--count);
+
+    return result;
 }
-

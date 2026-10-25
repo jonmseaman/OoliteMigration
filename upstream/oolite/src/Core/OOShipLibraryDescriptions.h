@@ -33,32 +33,32 @@ MA 02110-1301, USA.
 // shiplibrary.plist keys, UTF-8 (Foundation sweep, proposed ADR-0043): a caller that needs an
 // Objective-C key passes oo::NSStringFrom(kOODemoShip...).
 
-static constexpr const char *kOODemoShipKey			= "ship";
-static constexpr const char *kOODemoShipName			= "name"; // set internally only
-static constexpr const char *kOODemoShipClass		= "class";
-static constexpr const char *kOODemoShipSummary		= "summary";
-static constexpr const char *kOODemoShipDescription	= "description";
-static constexpr const char *kOODemoShipShipData		= "ship_data";
-static constexpr const char *kOODemoShipSpeed		= "speed";
-static constexpr const char *kOODemoShipTurnRate		= "turn_rate";
-static constexpr const char *kOODemoShipCargo		= "cargo";
-static constexpr const char *kOODemoShipGenerator	= "generator";
-static constexpr const char *kOODemoShipShields		= "shields";
-static constexpr const char *kOODemoShipWitchspace	= "witchspace";
-static constexpr const char *kOODemoShipWeapons		= "weapons";
-static constexpr const char *kOODemoShipTurrets		= "turrets";
-static constexpr const char *kOODemoShipSize			= "size";
-static constexpr const char *kOODemoShipConditions	= "condition_script";
+static constexpr const char* kOODemoShipKey = "ship";
+static constexpr const char* kOODemoShipName = "name"; // set internally only
+static constexpr const char* kOODemoShipClass = "class";
+static constexpr const char* kOODemoShipSummary = "summary";
+static constexpr const char* kOODemoShipDescription = "description";
+static constexpr const char* kOODemoShipShipData = "ship_data";
+static constexpr const char* kOODemoShipSpeed = "speed";
+static constexpr const char* kOODemoShipTurnRate = "turn_rate";
+static constexpr const char* kOODemoShipCargo = "cargo";
+static constexpr const char* kOODemoShipGenerator = "generator";
+static constexpr const char* kOODemoShipShields = "shields";
+static constexpr const char* kOODemoShipWitchspace = "witchspace";
+static constexpr const char* kOODemoShipWeapons = "weapons";
+static constexpr const char* kOODemoShipTurrets = "turrets";
+static constexpr const char* kOODemoShipSize = "size";
+static constexpr const char* kOODemoShipConditions = "condition_script";
 
-std::string OOShipLibraryCategorySingular(const std::string &category);
-std::string OOShipLibraryCategoryPlural(const std::string &category);
+std::string OOShipLibraryCategorySingular(const std::string& category);
+std::string OOShipLibraryCategoryPlural(const std::string& category);
 
-std::string OOShipLibrarySpeed (ShipEntity *demo_ship);
-std::string OOShipLibraryTurnRate (ShipEntity *demo_ship);
-std::string OOShipLibraryCargo (ShipEntity *demo_ship);
-std::string OOShipLibraryGenerator (ShipEntity *demo_ship);
-std::string OOShipLibraryShields (ShipEntity *demo_ship);
-std::string OOShipLibraryWitchspace (ShipEntity *demo_ship);
-std::string OOShipLibraryWeapons (ShipEntity *demo_ship);
-std::string OOShipLibraryTurrets (ShipEntity *demo_ship);
-std::string OOShipLibrarySize (ShipEntity *demo_ship);
+std::string OOShipLibrarySpeed(ShipEntity* demo_ship);
+std::string OOShipLibraryTurnRate(ShipEntity* demo_ship);
+std::string OOShipLibraryCargo(ShipEntity* demo_ship);
+std::string OOShipLibraryGenerator(ShipEntity* demo_ship);
+std::string OOShipLibraryShields(ShipEntity* demo_ship);
+std::string OOShipLibraryWitchspace(ShipEntity* demo_ship);
+std::string OOShipLibraryWeapons(ShipEntity* demo_ship);
+std::string OOShipLibraryTurrets(ShipEntity* demo_ship);
+std::string OOShipLibrarySize(ShipEntity* demo_ship);

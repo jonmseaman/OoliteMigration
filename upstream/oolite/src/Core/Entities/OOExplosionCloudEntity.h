@@ -34,27 +34,25 @@ MA 02110-1301, USA.
 
 #include "oofnd/PList.hpp"
 
-
 /*	Foundation sweep (proposed ADR-0043, bead oo-8sel): the explosion settings are an oo::PList (a
-	Dict; an empty one where the settings were nil).
+        Dict; an empty one where the settings were nil).
 */
-class OOExplosionCloudEntity : public OOParticleSystem
-{
+class OOExplosionCloudEntity : public OOParticleSystem {
 public:
-	// Null where the texture is not found (the Objective-C factories answered nil).
-	static oo::Ref<OOExplosionCloudEntity> explosionCloudFromEntity(Entity *entity, const oo::PList &settings);
-	static oo::Ref<OOExplosionCloudEntity> explosionCloudFromEntity(Entity *entity, float size, const oo::PList &settings);
+    // Null where the texture is not found (the Objective-C factories answered nil).
+    static oo::Ref<OOExplosionCloudEntity> explosionCloudFromEntity(Entity* entity, const oo::PList& settings);
+    static oo::Ref<OOExplosionCloudEntity> explosionCloudFromEntity(Entity* entity, float size, const oo::PList& settings);
 
-	void update(OOTimeDelta delta_t) override;
-	OOTexture *texture() override;
+    void update(OOTimeDelta delta_t) override;
+    OOTexture* texture() override;
 
 private:
-	bool initExplosionCloudWithEntity(Entity *entity, float size, const oo::PList &settings);
+    bool initExplosionCloudWithEntity(Entity* entity, float size, const oo::PList& settings);
 
-	float				_growthRate = {};
-	OOTimeDelta			_cloudDuration = {};
-	float				_alpha = {};
-	float				_brightnessMult = {};
-	oo::Ref<OOTexture>	_texture;
-	oo::PList			_settings;
+    float _growthRate = { };
+    OOTimeDelta _cloudDuration = { };
+    float _alpha = { };
+    float _brightnessMult = { };
+    oo::Ref<OOTexture> _texture;
+    oo::PList _settings;
 };

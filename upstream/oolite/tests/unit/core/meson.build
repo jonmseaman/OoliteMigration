@@ -15,6 +15,7 @@ core_tests = {
     'test_OOJSEngineTimeManagement': ['Core/Scripting/OOJSEngineTimeManagement.cpp', 'Core/OOProfilingStopwatch.cpp', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSGuiScreenKeyDefinition': ['Core/Scripting/OOJSGuiScreenKeyDefinition.cpp', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOJSInterfaceDefinition': ['Core/Scripting/OOJSInterfaceDefinition.cpp', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
+    'test_OoliteEquipmentControlScript': ['Core/Scripting/ooscript/JSEngine_quickjs.cpp'],	# Resources/Scripts/oolite-equipment-control.js (upstream #369, bead oo-we7mm)
     'test_OOJSPopulatorDefinition': ['Core/Scripting/OOJSPopulatorDefinition.cpp', 'Core/Scripting/ooscript/JSEngine_quickjs.cpp'],
     'test_OOPListScript': ['*'],
     'test_OOScript': ['*'],

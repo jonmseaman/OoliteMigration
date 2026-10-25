@@ -29,37 +29,32 @@ SOFTWARE.
 
 #pragma once
 
-#include "OOTexture.h"
 #include "OOOpenGLExtensionManager.h"
-
+#include "OOTexture.h"
 
 // The subclass interface (the categories SubclassInterface, SubclassResponsibilities and
 // SubclassOptional) is OOTexture's own members since bead oo-9ht.99 deleted the facade.
 
-
 /*	OOGenerateTextureCacheKey()
-	cxx_OOTextureCacheKeyForSpecifier()
-	
-	Generate texture cache keys of the form used by normal file-based textures.
+        cxx_OOTextureCacheKeyForSpecifier()
+
+        Generate texture cache keys of the form used by normal file-based textures.
  */
-std::string OOGenerateTextureCacheKey(const std::optional<std::string> &directory, const std::string &name, OOTextureFlags options, float anisotropy, float lodBias);
-std::string cxx_OOTextureCacheKeyForSpecifier(const oo::PList &specifier);
+std::string OOGenerateTextureCacheKey(const std::optional<std::string>& directory, const std::string& name, OOTextureFlags options, float anisotropy, float lodBias);
+std::string cxx_OOTextureCacheKeyForSpecifier(const oo::PList& specifier);
 
-
-typedef struct OOTextureInfo
-{
-	GLfloat					anisotropyScale;
-	unsigned				anisotropyAvailable: 1,
-							clampToEdgeAvailable: 1,
-							clientStorageAvailable: 1,
-							textureLODBiasAvailable: 1,
-							rectangleTextureAvailable: 1,
-							cubeMapAvailable: 1,
-							textureMaxLevelAvailable: 1;
+typedef struct OOTextureInfo {
+    GLfloat anisotropyScale;
+    unsigned anisotropyAvailable : 1,
+        clampToEdgeAvailable : 1,
+        clientStorageAvailable : 1,
+        textureLODBiasAvailable : 1,
+        rectangleTextureAvailable : 1,
+        cubeMapAvailable : 1,
+        textureMaxLevelAvailable : 1;
 } OOTextureInfo;
 
 extern OOTextureInfo gOOTextureInfo;
-
 
 #ifndef GL_EXT_texture_filter_anisotropic
 #warning GL_EXT_texture_filter_anisotropic unavailable -- are you using an up-to-date glext.h?
@@ -75,27 +70,26 @@ extern OOTextureInfo gOOTextureInfo;
 #endif
 
 #if defined(GL_APPLE_client_storage) && !OOTEXTURE_RELOADABLE
-#define OO_GL_CLIENT_STORAGE	(1)
-#define EnableClientStorage()	OOGL(glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_TRUE))
+#define OO_GL_CLIENT_STORAGE (1)
+#define EnableClientStorage() OOGL(glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_TRUE))
 #else
-#define OO_GL_CLIENT_STORAGE	(0)
-#define EnableClientStorage()	do {} while (0)
+#define OO_GL_CLIENT_STORAGE (0)
+#define EnableClientStorage() \
+    do {                      \
+    } while (0)
 #endif
-
 
 #ifndef GL_TEXTURE_MAX_LEVEL
 #ifdef GL_TEXTURE_MAX_LEVEL_SGIS
-#define GL_TEXTURE_MAX_LEVEL	GL_TEXTURE_MAX_LEVEL_SGIS
+#define GL_TEXTURE_MAX_LEVEL GL_TEXTURE_MAX_LEVEL_SGIS
 #else
-#define GL_TEXTURE_MAX_LEVEL	0x813D
+#define GL_TEXTURE_MAX_LEVEL 0x813D
 #endif
 #endif
-
 
 #if OO_TEXTURE_CUBE_MAP
 #ifndef GL_TEXTURE_CUBE_MAP
-#define GL_TEXTURE_CUBE_MAP				GL_TEXTURE_CUBE_MAP_ARB
-#define GL_TEXTURE_CUBE_MAP_POSITIVE_X	GL_TEXTURE_CUBE_MAP_POSITIVE_X_ARB
+#define GL_TEXTURE_CUBE_MAP GL_TEXTURE_CUBE_MAP_ARB
+#define GL_TEXTURE_CUBE_MAP_POSITIVE_X GL_TEXTURE_CUBE_MAP_POSITIVE_X_ARB
 #endif
 #endif
-

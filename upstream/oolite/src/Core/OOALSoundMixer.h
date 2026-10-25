@@ -36,50 +36,45 @@ SOFTWARE.
 #ifndef OOALSOUNDMIXER_H
 #define OOALSOUNDMIXER_H
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 
 #include "oofnd/Ref.hpp"
 
 class OOSoundChannel;
 
-
-enum
-{
-	kMixerGeneralChannels		= 32
+enum {
+    kMixerGeneralChannels = 32
 };
 
-
-class OOSoundMixer : public oo::RefCounted
-{
+class OOSoundMixer : public oo::RefCounted {
 public:
-	/*	Singleton accessor (amendment oo-r7m0 item 1): the one mixer, made on first use; borrowed.
-		Null while sound cannot be set up, and then the next call asks again.
-	*/
-	static OOSoundMixer *sharedMixer();
+    /*	Singleton accessor (amendment oo-r7m0 item 1): the one mixer, made on first use; borrowed.
+            Null while sound cannot be set up, and then the next call asks again.
+    */
+    static OOSoundMixer* sharedMixer();
 
-	void update();
+    void update();
 
-	// Only to be called at app shutdown, by OOOpenALController::shutdown(). (Declared here since
-	// bead oo-r7m0: the declaration it resolved to was OOOpenALController's own -shutdown.)
-	void shutdown();
+    // Only to be called at app shutdown, by OOOpenALController::shutdown(). (Declared here since
+    // bead oo-r7m0: the declaration it resolved to was OOOpenALController's own -shutdown.)
+    void shutdown();
 
-	OOSoundChannel *popChannel();
-	void pushChannel(OOSoundChannel *channel);
+    OOSoundChannel* popChannel();
+    void pushChannel(OOSoundChannel* channel);
 
 private:
-	bool init();
+    bool init();
 
-	// _channels holds one reference to each channel the mixer made (+1 from oo::makeRef, released
-	// by shutdown(), as alloc/init and DESTROY did: the mixer is never destroyed, so no oo::Ref
-	// member, whose destructor would need the complete class in every includer); the free list is
-	// borrowed. C++ channels since bead oo-9ht.86 deleted their facade.
-	OOSoundChannel				*_channels[kMixerGeneralChannels] = {};
-	OOSoundChannel				*_freeList = {};
+    // _channels holds one reference to each channel the mixer made (+1 from oo::makeRef, released
+    // by shutdown(), as alloc/init and DESTROY did: the mixer is never destroyed, so no oo::Ref
+    // member, whose destructor would need the complete class in every includer); the free list is
+    // borrowed. C++ channels since bead oo-9ht.86 deleted their facade.
+    OOSoundChannel* _channels[kMixerGeneralChannels] = { };
+    OOSoundChannel* _freeList = { };
 
-	// (The Objective-C class's _maxChannels and _playMask, which nothing read or wrote, are not
-	// kept: -Wunused-private-field.)
-
+    // (The Objective-C class's _maxChannels and _playMask, which nothing read or wrote, are not
+    // kept: -Wunused-private-field.)
 };
 
-#endif	// OOALSOUNDMIXER_H
+#endif // OOALSOUNDMIXER_H

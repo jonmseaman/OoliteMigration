@@ -40,26 +40,24 @@ MA 02110-1301, USA.
 
 class OOJavaScriptEngine;
 
-
-class OOJavaScriptEngineMonitor
-{
+class OOJavaScriptEngineMonitor {
 public:
-	// Sent for JS errors or warnings.
-	virtual void jsEngine(::OOJavaScriptEngine *engine,
-						  ooscript::Context context,
-						  ooscript::ErrorReport *errorReport,
-						  unsigned stackSkip,
-						  bool showLocation,
-						  const std::string &message) = 0;
+    // Sent for JS errors or warnings.
+    virtual void jsEngine(::OOJavaScriptEngine* engine,
+        ooscript::Context context,
+        ooscript::ErrorReport* errorReport,
+        unsigned stackSkip,
+        bool showLocation,
+        const std::string& message) = 0;
 
-	// Sent for JS log messages. Note: messageClass is nullopt if Log() is used rather than LogWithClass().
-	virtual void jsEngine(::OOJavaScriptEngine *engine,
-						  ooscript::Context context,
-						  const std::string &message,
-						  const std::optional<std::string> &messageClass) = 0;
+    // Sent for JS log messages. Note: messageClass is nullopt if Log() is used rather than LogWithClass().
+    virtual void jsEngine(::OOJavaScriptEngine* engine,
+        ooscript::Context context,
+        const std::string& message,
+        const std::optional<std::string>& messageClass) = 0;
 
 protected:
-	~OOJavaScriptEngineMonitor() = default;	// never deleted through the interface
+    ~OOJavaScriptEngineMonitor() = default; // never deleted through the interface
 };
 
-#endif	// OOJAVASCRIPTENGINEMONITOR_H
+#endif // OOJAVASCRIPTENGINEMONITOR_H

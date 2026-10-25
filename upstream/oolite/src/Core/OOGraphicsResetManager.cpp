@@ -26,82 +26,73 @@ SOFTWARE.
 */
 
 #include "OOGraphicsResetManager.h"
-#include "OOTexture.h"
 #include "OOOpenGLExtensionManager.h"
-#include "oofnd/objc/OOException.h"
+#include "OOTexture.h"
 #include "oofnd/Log.hpp"
-
+#include "oofnd/objc/OOException.h"
 
 namespace {
 
-OOGraphicsResetManager *sSingleton = nullptr;	// +1, never released (the retained singleton)
+OOGraphicsResetManager* sSingleton = nullptr; // +1, never released (the retained singleton)
 
-}	// namespace
-
+} // namespace
 
 OOGraphicsResetManager::~OOGraphicsResetManager()
 {
-	if (sSingleton == this)  sSingleton = nullptr;
+    if (sSingleton == this)
+        sSingleton = nullptr;
 }
 
-
-OOGraphicsResetManager *OOGraphicsResetManager::sharedManager()
+OOGraphicsResetManager* OOGraphicsResetManager::sharedManager()
 {
-	if (sSingleton == nullptr)  sSingleton = oo::makeRef<OOGraphicsResetManager>().leakRef();
-	return sSingleton;
+    if (sSingleton == nullptr)
+        sSingleton = oo::makeRef<OOGraphicsResetManager>().leakRef();
+    return sSingleton;
 }
 
-
-void OOGraphicsResetManager::registerCxxClient(OOGraphicsResetClient *client)
+void OOGraphicsResetManager::registerCxxClient(OOGraphicsResetClient* client)
 {
-	if (client != nullptr)
-	{
-		cxxClients.insert(client);
-	}
+    if (client != nullptr) {
+        cxxClients.insert(client);
+    }
 }
 
-
-void OOGraphicsResetManager::unregisterCxxClient(OOGraphicsResetClient *client)
+void OOGraphicsResetManager::unregisterCxxClient(OOGraphicsResetClient* client)
 {
-	cxxClients.erase(client);
+    cxxClients.erase(client);
 }
-
 
 void OOGraphicsResetManager::resetGraphicsState()
 {
-	OOGL(glFinish());
-	
-	OO_LOG("rendering.reset.start", "{}", "Resetting graphics state.");
-	oo::log::indentIf("rendering.reset.start");
-	
-	OOOpenGLExtensionManager::sharedManager()->reset();
-	OOTexture::rebindAllTextures();
-	
-	// A copy, so a client may register or unregister during the reset (one unregistered by an
-	// earlier client is skipped). Unordered, as the Foundation set was: its order was pointer-hash order,
-	// so it already varied from run to run. (The Objective-C clients, told first, went with the
-	// protocol: bead oo-9ht.23.)
-	const std::vector<OOGraphicsResetClient *> cxxSnapshot(cxxClients.begin(), cxxClients.end());
-	for (OOGraphicsResetClient *client : cxxSnapshot)
-	{
-		if (cxxClients.find(client) == cxxClients.end())  continue;
-		try
-		{
-			client->resetGraphicsState();
-		}
-		catch (...)
-		{
-			const auto exception = oo::CurrentOOException();
-			if (!exception)  throw;	// not an OOException: it goes on up, as before
-			OO_LOG(cxx_kOOLogException, "***** EXCEPTION -- {} : {} -- ignored during graphics reset.", exception->name(), exception->reason());
-		}
-	}
-	
-	oo::log::outdentIf("rendering.reset.start");
-	OO_LOG("rendering.reset.end", "{}", "End of graphics state reset.");
+    OOGL(glFinish());
+
+    OO_LOG("rendering.reset.start", "{}", "Resetting graphics state.");
+    oo::log::indentIf("rendering.reset.start");
+
+    OOOpenGLExtensionManager::sharedManager()->reset();
+    OOTexture::rebindAllTextures();
+
+    // A copy, so a client may register or unregister during the reset (one unregistered by an
+    // earlier client is skipped). Unordered, as the Foundation set was: its order was pointer-hash order,
+    // so it already varied from run to run. (The Objective-C clients, told first, went with the
+    // protocol: bead oo-9ht.23.)
+    const std::vector<OOGraphicsResetClient*> cxxSnapshot(cxxClients.begin(), cxxClients.end());
+    for (OOGraphicsResetClient* client : cxxSnapshot) {
+        if (cxxClients.find(client) == cxxClients.end())
+            continue;
+        try {
+            client->resetGraphicsState();
+        } catch (...) {
+            const auto exception = oo::CurrentOOException();
+            if (!exception)
+                throw; // not an OOException: it goes on up, as before
+            OO_LOG(cxx_kOOLogException, "***** EXCEPTION -- {} : {} -- ignored during graphics reset.", exception->name(), exception->reason());
+        }
+    }
+
+    oo::log::outdentIf("rendering.reset.start");
+    OO_LOG("rendering.reset.end", "{}", "End of graphics state reset.");
 }
-
-
 
 // The singleton category (+allocWithZone:, and -retain/-release/-autorelease doing nothing) is
 // not translated: the one instance is made only by sharedManager() and never released (proposed

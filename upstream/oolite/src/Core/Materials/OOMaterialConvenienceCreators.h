@@ -7,7 +7,7 @@ Methods for easy creation of materials.
 C++20 since bead oo-9fwb (proposed ADR-0056): the creators are static members of
 OOMaterial.
 
- 
+
 Copyright (C) 2007-2013 Jens Ayton
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -40,7 +40,6 @@ SOFTWARE.
 #include <string>
 
 class OOColor;
-
 
 // The creators are static members of OOMaterial (materialWithName(), in OOMaterial.h), defined
 // in OOMaterialConvenienceCreators.mm since bead oo-9fwb (proposed ADR-0056 amendment oo-o89 item

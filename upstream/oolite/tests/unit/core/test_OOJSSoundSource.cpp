@@ -20,7 +20,7 @@
 	Run: bash tools/check-core-tests.sh
 */
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "oofnd/objc/OOObject.h"
 #include "OOMaths.h"
 #include "ooscript/JSEngine.hpp"

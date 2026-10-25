@@ -20,7 +20,7 @@
 	Run: bash tools/check-core-tests.sh test_OOJSConsole
 */
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOJSConsole.h"
 #include "OODebugMonitor.h"
 #include "OOOpenGLExtensionManager.h"

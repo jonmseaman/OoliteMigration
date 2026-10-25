@@ -34,8 +34,8 @@ SOFTWARE.
 #include <assert.h>
 
 #include "OOOXPVerifierStage.h"
-#include "oofnd/objc/OOException.h"
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOException.h"
 
 #if OO_OXP_VERIFIER_ENABLED
 
@@ -45,211 +45,193 @@ SOFTWARE.
 #include <cxxabi.h>
 #include <typeinfo>
 
-
 // Adding a stage to a set of stages: identity, no duplicates, null ignored.
 namespace {
 
-void AddStage(std::vector<oo::Ref<OOOXPVerifierStage>> &stages, OOOXPVerifierStage *stage)
+void AddStage(std::vector<oo::Ref<OOOXPVerifierStage>>& stages, OOOXPVerifierStage* stage)
 {
-	if (stage == nullptr)  return;
-	if (std::find(stages.begin(), stages.end(), stage) == stages.end())  stages.emplace_back(stage);
+    if (stage == nullptr)
+        return;
+    if (std::find(stages.begin(), stages.end(), stage) == stages.end())
+        stages.emplace_back(stage);
 }
 
-}	// namespace
-
+} // namespace
 
 // OOObject's -description wraps this as "<Class 0x...>{"name"}", which is what this class's own
 // -description printed. name() is a subclass's override, so it cannot be const.
 std::optional<std::string> OOOXPVerifierStage::descriptionComponents() const
 {
-	return "\"" + const_cast<OOOXPVerifierStage *>(this)->name().value_or("(null)") + "\"";
+    return "\"" + const_cast<OOOXPVerifierStage*>(this)->name().value_or("(null)") + "\"";
 }
-
 
 // What the facade's -description printed (its -cxx_description, until bead oo-9ht.4).
 std::string OOOXPVerifierStage::description() const
 {
-	return oo::str::format("<%s %s>{", className().c_str(), oo::str::pointerDescription(this).c_str()) + descriptionComponents().value_or("") + "}";
+    return oo::str::format("<%s %s>{", className().c_str(), oo::str::pointerDescription(this).c_str()) + descriptionComponents().value_or("") + "}";
 }
-
 
 // The C++ class's name (the facade's ClassName(): demangled, "cxx::" dropped).
 std::string OOOXPVerifierStage::className() const
 {
-	int status = 0;
-	char *demangled = abi::__cxa_demangle(typeid(*this).name(), nullptr, nullptr, &status);
-	std::string result = (status == 0 && demangled != nullptr) ? demangled : typeid(*this).name();
-	std::free(demangled);
-	if (result.starts_with("cxx::"))  result.erase(0, 5);
-	return result;
+    int status = 0;
+    char* demangled = abi::__cxa_demangle(typeid(*this).name(), nullptr, nullptr, &status);
+    std::string result = (status == 0 && demangled != nullptr) ? demangled : typeid(*this).name();
+    std::free(demangled);
+    if (result.starts_with("cxx::"))
+        result.erase(0, 5);
+    return result;
 }
-
 
 // The C++ verifier, borrowed (bead oo-qg71f; it was the Objective-C verifier, retained and
 // autoreleased): the verifier keeps its stages and outlives them while they run.
-OOOXPVerifier *OOOXPVerifierStage::verifier()
+OOOXPVerifier* OOOXPVerifierStage::verifier()
 {
-	return _verifier;
+    return _verifier;
 }
-
 
 bool OOOXPVerifierStage::completed()
 {
-	return _hasRun;
+    return _hasRun;
 }
-
 
 std::optional<std::string> OOOXPVerifierStage::name()
 {
-	OOLogGenericSubclassResponsibility();
-	return std::nullopt;
+    OOLogGenericSubclassResponsibility();
+    return std::nullopt;
 }
-
 
 std::optional<std::vector<std::string>> OOOXPVerifierStage::dependencies()
 {
-	return std::nullopt;
+    return std::nullopt;
 }
-
 
 std::optional<std::vector<std::string>> OOOXPVerifierStage::dependents()
 {
-	return std::nullopt;
+    return std::nullopt;
 }
-
 
 bool OOOXPVerifierStage::shouldRun()
 {
-	return true;
+    return true;
 }
-
 
 void OOOXPVerifierStage::run()
 {
-	OOLogGenericSubclassResponsibility();
+    OOLogGenericSubclassResponsibility();
 }
-
 
 // Internal (was the OOInternal category).
 
-void OOOXPVerifierStage::setVerifier(OOOXPVerifier *verifier)
+void OOOXPVerifierStage::setVerifier(OOOXPVerifier* verifier)
 {
-	_verifier = verifier;	// Not retained.
+    _verifier = verifier; // Not retained.
 }
 
-
-bool OOOXPVerifierStage::isDependentOf(OOOXPVerifierStage *stage)
+bool OOOXPVerifierStage::isDependentOf(OOOXPVerifierStage* stage)
 {
-	if (stage == nullptr)  return false;
-	
-	// Direct dependency check.
-	if (std::find(_dependencies.begin(), _dependencies.end(), stage) != _dependencies.end())  return true;
-	
-	// Recursive dependency check.
-	for (const auto &directDep : _dependencies)
-	{
-		if (directDep->isDependentOf(stage))  return true;
-	}
-	
-	return false;
+    if (stage == nullptr)
+        return false;
+
+    // Direct dependency check.
+    if (std::find(_dependencies.begin(), _dependencies.end(), stage) != _dependencies.end())
+        return true;
+
+    // Recursive dependency check.
+    for (const auto& directDep : _dependencies) {
+        if (directDep->isDependentOf(stage))
+            return true;
+    }
+
+    return false;
 }
 
-
-void OOOXPVerifierStage::registerDependency(OOOXPVerifierStage *dependency)
+void OOOXPVerifierStage::registerDependency(OOOXPVerifierStage* dependency)
 {
-	AddStage(_dependencies, dependency);
-	AddStage(_incompleteDependencies, dependency);
-	
-	if (dependency != nullptr)  dependency->registerDepedent(this);
-}
+    AddStage(_dependencies, dependency);
+    AddStage(_incompleteDependencies, dependency);
 
+    if (dependency != nullptr)
+        dependency->registerDepedent(this);
+}
 
 bool OOOXPVerifierStage::canRun()
 {
-	return _canRun;
+    return _canRun;
 }
-
 
 void OOOXPVerifierStage::performRun()
 {
-	assert(_canRun && !_hasRun);
-	
-	oo::log::pushIndent();
-	try
-	{
-		run();
-	}
-	catch (...)
-	{
-		const auto exception = oo::CurrentOOException();
-		if (!exception)  throw;	// not an OOException: it goes on up, as before
-		// %@ of a Foundation exception printed GNUstep's -description, "<ClassName: 0x...> NAME:... REASON:...";
-		// OOException has no -description, so the same layout is spelled out (proposed ADR-0037).
-		OO_LOG("verifyOXP.exception", "***** Exception while running verification stage \"{}\": <OOException: {}> NAME:{} REASON:{}", name().value_or("(null)"), oo::str::pointerDescription(exception->object()), exception->name(), exception->reason());
-	}
-	oo::log::popIndent();
-	
-	_hasRun = true;
-	_canRun = false;
-	notifyDependents();
-}
+    assert(_canRun && !_hasRun);
 
+    oo::log::pushIndent();
+    try {
+        run();
+    } catch (...) {
+        const auto exception = oo::CurrentOOException();
+        if (!exception)
+            throw; // not an OOException: it goes on up, as before
+        // %@ of a Foundation exception printed GNUstep's -description, "<ClassName: 0x...> NAME:... REASON:...";
+        // OOException has no -description, so the same layout is spelled out (proposed ADR-0037).
+        OO_LOG("verifyOXP.exception", "***** Exception while running verification stage \"{}\": <OOException: {}> NAME:{} REASON:{}", name().value_or("(null)"), oo::str::pointerDescription(exception->object()), exception->name(), exception->reason());
+    }
+    oo::log::popIndent();
+
+    _hasRun = true;
+    _canRun = false;
+    notifyDependents();
+}
 
 void OOOXPVerifierStage::noteSkipped()
 {
-	assert(_canRun && !_hasRun);
-	
-	_hasRun = true;
-	_canRun = false;
-	notifyDependents();
-}
+    assert(_canRun && !_hasRun);
 
+    _hasRun = true;
+    _canRun = false;
+    notifyDependents();
+}
 
 void OOOXPVerifierStage::dependencyRegistrationComplete()
 {
-	_canRun = _incompleteDependencies.empty();
+    _canRun = _incompleteDependencies.empty();
 }
-
 
 std::vector<oo::Ref<OOOXPVerifierStage>> OOOXPVerifierStage::resolvedDependencies()
 {
-	return _dependencies;
+    return _dependencies;
 }
-
 
 std::vector<oo::Ref<OOOXPVerifierStage>> OOOXPVerifierStage::resolvedDependents()
 {
-	return _dependents;
+    return _dependents;
 }
-
 
 // Private (was the OOPrivate category).
 
-void OOOXPVerifierStage::registerDepedent(OOOXPVerifierStage *dependent)
+void OOOXPVerifierStage::registerDepedent(OOOXPVerifierStage* dependent)
 {
-	assert(!isDependentOf(dependent));
-	
-	AddStage(_dependents, dependent);
+    assert(!isDependentOf(dependent));
+
+    AddStage(_dependents, dependent);
 }
 
-
-void OOOXPVerifierStage::dependencyCompleted(OOOXPVerifierStage *dependency)
+void OOOXPVerifierStage::dependencyCompleted(OOOXPVerifierStage* dependency)
 {
-	const auto where = std::find(_incompleteDependencies.begin(), _incompleteDependencies.end(), dependency);
-	if (where != _incompleteDependencies.end())  _incompleteDependencies.erase(where);
-	if (_incompleteDependencies.empty())  _canRun = true;
+    const auto where = std::find(_incompleteDependencies.begin(), _incompleteDependencies.end(), dependency);
+    if (where != _incompleteDependencies.end())
+        _incompleteDependencies.erase(where);
+    if (_incompleteDependencies.empty())
+        _canRun = true;
 }
-
 
 // -makeObjectsPerformSelector:withObject: over the dependents: each is told once, in the order
 // they registered.
 void OOOXPVerifierStage::notifyDependents()
 {
-	const std::vector<oo::Ref<OOOXPVerifierStage>> dependents = _dependents;
-	for (const auto &dependent : dependents)
-	{
-		dependent->dependencyCompleted(this);
-	}
+    const std::vector<oo::Ref<OOOXPVerifierStage>> dependents = _dependents;
+    for (const auto& dependent : dependents) {
+        dependent->dependencyCompleted(this);
+    }
 }
 
-#endif	//OO_OXP_VERIFIER_ENABLED
+#endif // OO_OXP_VERIFIER_ENABLED

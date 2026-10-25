@@ -27,167 +27,152 @@ MA 02110-1301, USA.
 #include "OOJSScript.h"
 #include "OOJavaScriptEngine.h"
 
-#include "ooscript/JSEngine.hpp"
 #include "oofnd/Notification.hpp"
 #include "oofnd/String.hpp"
+#include "ooscript/JSEngine.hpp"
 
 /*
-	Retargeted (bead oo-mqb) onto the ooscript façade (JSEngine.hpp), same pattern as the
-	Phase 1 exemplar OOJSVector.mm (bead oo-sdz): the two directly spelled engine calls this
-	file makes (RemoveValueRoot, RemoveObjectRoot) go through ooscript::removeValueRoot/
-	removeObjectRoot. OOJSAddGCValueRoot/OOJSAddGCObjectRoot are OOJS_* macros, not engine calls, so
-	they are out of scope for this sweep and unchanged. The instance variables are façade
-	Value/Object values, so their addresses go to the façade calls directly.
+        Retargeted (bead oo-mqb) onto the ooscript façade (JSEngine.hpp), same pattern as the
+        Phase 1 exemplar OOJSVector.mm (bead oo-sdz): the two directly spelled engine calls this
+        file makes (RemoveValueRoot, RemoveObjectRoot) go through ooscript::removeValueRoot/
+        removeObjectRoot. OOJSAddGCValueRoot/OOJSAddGCObjectRoot are OOJS_* macros, not engine calls, so
+        they are out of scope for this sweep and unchanged. The instance variables are façade
+        Value/Object values, so their addresses go to the façade calls directly.
 */
 
 namespace {
 // -caseInsensitiveCompare: as the definitions used it: a nil receiver answers
 // OOOrderedSame (a message to nil); a nil argument compares as the empty string.
-static OOComparisonResult CaseInsensitiveCompare(const std::optional<std::string> &a, const std::optional<std::string> &b)
+static OOComparisonResult CaseInsensitiveCompare(const std::optional<std::string>& a, const std::optional<std::string>& b)
 {
-	if (!a.has_value())  return OOOrderedSame;
-	int order = oo::str::caseInsensitiveCompare(*a, b.value_or(std::string()));
-	return (order < 0) ? OOOrderedAscending : ((order > 0) ? OOOrderedDescending : OOOrderedSame);
+    if (!a.has_value())
+        return OOOrderedSame;
+    int order = oo::str::caseInsensitiveCompare(*a, b.value_or(std::string()));
+    return (order < 0) ? OOOrderedAscending : ((order > 0) ? OOOrderedDescending : OOOrderedSame);
 }
 } // namespace
 
-
 /*	C++20 since bead oo-8fpc (proposed ADR-0056 amendment oo-o89): OOJSInterfaceDefinition. -init after
-	[super init] is the constructor, -dealloc the destructor; the engine, the script stack and the
-	owning script's weak reference are Objective-C and are messaged as before.
+        [super init] is the constructor, -dealloc the destructor; the engine, the script stack and the
+        owning script's weak reference are Objective-C and are messaged as before.
 */
 
-OOJSInterfaceDefinition::OOJSInterfaceDefinition() {
-	_callback = ooscript::undefinedValue();
-	_callbackThis = NULL;
+OOJSInterfaceDefinition::OOJSInterfaceDefinition()
+{
+    _callback = ooscript::undefinedValue();
+    _callbackThis = NULL;
 
-	_owningScript = OOJSScript::currentlyRunningScript();
+    _owningScript = OOJSScript::currentlyRunningScript();
 
-	oo::NotificationCenter::defaultCenter().addObserver(this, kOOJavaScriptEngineWillResetNotificationName,
-														OOJavaScriptEngine::sharedEngine(),
-														[this](const oo::Notification &) { deleteJSPointers(); });
+    oo::NotificationCenter::defaultCenter().addObserver(this, kOOJavaScriptEngineWillResetNotificationName,
+        OOJavaScriptEngine::sharedEngine(),
+        [this](const oo::Notification&) { deleteJSPointers(); });
 }
 
 void OOJSInterfaceDefinition::deleteJSPointers()
 {
 
-	ooscript::Context context = OOJSAcquireContext();
-	_callback = ooscript::undefinedValue();
-	_callbackThis = NULL;
-	ooscript::removeValueRoot((context), (&_callback));
-	ooscript::removeObjectRoot((context), &_callbackThis);
+    ooscript::Context context = OOJSAcquireContext();
+    _callback = ooscript::undefinedValue();
+    _callbackThis = NULL;
+    ooscript::removeValueRoot((context), (&_callback));
+    ooscript::removeObjectRoot((context), &_callbackThis);
 
-	OOJSRelinquishContext(context);
+    OOJSRelinquishContext(context);
 
-	oo::NotificationCenter::defaultCenter().removeObserver(this, kOOJavaScriptEngineWillResetNotificationName,
-															OOJavaScriptEngine::sharedEngine());
-
+    oo::NotificationCenter::defaultCenter().removeObserver(this, kOOJavaScriptEngineWillResetNotificationName,
+        OOJavaScriptEngine::sharedEngine());
 }
 
 OOJSInterfaceDefinition::~OOJSInterfaceDefinition()
 {
-	_owningScript = nullptr;
+    _owningScript = nullptr;
 
-	deleteJSPointers();
+    deleteJSPointers();
 }
 
 std::optional<std::string> OOJSInterfaceDefinition::title()
 {
-	return _title;
+    return _title;
 }
 
-
-void OOJSInterfaceDefinition::setTitle(const std::optional<std::string> &title)
+void OOJSInterfaceDefinition::setTitle(const std::optional<std::string>& title)
 {
-	_title = title;
+    _title = title;
 }
-
 
 std::optional<std::string> OOJSInterfaceDefinition::category()
 {
-	return _category;
+    return _category;
 }
 
-
-void OOJSInterfaceDefinition::setCategory(const std::string &category)
+void OOJSInterfaceDefinition::setCategory(const std::string& category)
 {
-	_category = category;
+    _category = category;
 }
-
 
 std::optional<std::string> OOJSInterfaceDefinition::summary()
 {
-	return _summary;
+    return _summary;
 }
 
-
-void OOJSInterfaceDefinition::setSummary(const std::string &summary)
+void OOJSInterfaceDefinition::setSummary(const std::string& summary)
 {
-	_summary = summary;
+    _summary = summary;
 }
-
 
 ooscript::Value OOJSInterfaceDefinition::callback()
 {
-	return _callback;
+    return _callback;
 }
-
 
 void OOJSInterfaceDefinition::setCallback(ooscript::Value callback)
 {
-	ooscript::Context context = OOJSAcquireContext();
-	ooscript::removeValueRoot((context), (&_callback));
-	_callback = callback;
-	OOJSAddGCValueRoot(context, &_callback, "OOJSInterfaceDefinition callback function");
-	OOJSRelinquishContext(context);
+    ooscript::Context context = OOJSAcquireContext();
+    ooscript::removeValueRoot((context), (&_callback));
+    _callback = callback;
+    OOJSAddGCValueRoot(context, &_callback, "OOJSInterfaceDefinition callback function");
+    OOJSRelinquishContext(context);
 }
-
 
 ooscript::Object OOJSInterfaceDefinition::callbackThis()
 {
-	return _callbackThis;
+    return _callbackThis;
 }
-
 
 void OOJSInterfaceDefinition::setCallbackThis(ooscript::Object callbackThis)
 {
-	ooscript::Context context = OOJSAcquireContext();
-	ooscript::removeObjectRoot((context), &_callbackThis);
-	_callbackThis = callbackThis;
-	OOJSAddGCObjectRoot(context, &_callbackThis, "OOJSInterfaceDefinition callback this");
-	OOJSRelinquishContext(context);
+    ooscript::Context context = OOJSAcquireContext();
+    ooscript::removeObjectRoot((context), &_callbackThis);
+    _callbackThis = callbackThis;
+    OOJSAddGCObjectRoot(context, &_callbackThis, "OOJSInterfaceDefinition callback this");
+    OOJSRelinquishContext(context);
 }
 
-
-void OOJSInterfaceDefinition::runCallback(const std::string &key)
+void OOJSInterfaceDefinition::runCallback(const std::string& key)
 {
-	::OOJavaScriptEngine *engine = OOJavaScriptEngine::sharedEngine();
-	ooscript::Context context = OOJSAcquireContext();		
-	ooscript::Value					rval = ooscript::undefinedValue();
+    ::OOJavaScriptEngine* engine = OOJavaScriptEngine::sharedEngine();
+    ooscript::Context context = OOJSAcquireContext();
+    ooscript::Value rval = ooscript::undefinedValue();
 
-	ooscript::Value         cKey = OOJSValueFromPList(context, oo::PList(key));
+    ooscript::Value cKey = OOJSValueFromPList(context, oo::PList(key));
 
-	const oo::WeakRef<OOJSScript> owner = _owningScript; // local copy needed
-	OOJSScript::pushScript(owner);
-	
-	engine->callJSFunction(_callback, _callbackThis, 1, &cKey, &rval);
-	
-	OOJSScript::popScript(owner.get());
+    const oo::WeakRef<OOJSScript> owner = _owningScript; // local copy needed
+    OOJSScript::pushScript(owner);
 
-	OOJSRelinquishContext(context);
+    engine->callJSFunction(_callback, _callbackThis, 1, &cKey, &rval);
+
+    OOJSScript::popScript(owner.get());
+
+    OOJSRelinquishContext(context);
 }
 
-
-OOComparisonResult OOJSInterfaceDefinition::interfaceCompare(OOJSInterfaceDefinition *other)
+OOComparisonResult OOJSInterfaceDefinition::interfaceCompare(OOJSInterfaceDefinition* other)
 {
-	OOComparisonResult byCategory = CaseInsensitiveCompare(_category, (other != nullptr) ? other->category() : std::nullopt);
-	if (byCategory == OOOrderedSame)
-	{
-		return CaseInsensitiveCompare(_title, (other != nullptr) ? other->title() : std::nullopt);
-	}
-	else
-	{
-		return byCategory;
-	}
+    OOComparisonResult byCategory = CaseInsensitiveCompare(_category, (other != nullptr) ? other->category() : std::nullopt);
+    if (byCategory == OOOrderedSame) {
+        return CaseInsensitiveCompare(_title, (other != nullptr) ? other->title() : std::nullopt);
+    } else {
+        return byCategory;
+    }
 }
-

@@ -7,22 +7,22 @@ oo-qps.31). Foundation-free: it names nothing from gnustep-base, and survives oo
 
 A class describes itself by overriding one method, and every printer wraps it:
 
-	override                              printed by                          as
-	------------------------------------  ----------------------------------  ---------------------------------
-	-cxx_descriptionComponents            -cxx_description, oo::DescriptionOf <ClassName 0xnnnnnnnn>{components}
-	                                      -cxx_oo_jsDescription (JS)          [jsClassName components]
-	-cxx_shortDescriptionComponents       -cxx_shortDescription,              <ClassName 0xnnnnnnnn>{components}
-	                                      oo::ShortDescriptionOf
-	-cxx_description (whole text)         oo::DescriptionOf                   whatever it returns
+        override                              printed by                          as
+        ------------------------------------  ----------------------------------  ---------------------------------
+        -cxx_descriptionComponents            -cxx_description, oo::DescriptionOf <ClassName 0xnnnnnnnn>{components}
+                                              -cxx_oo_jsDescription (JS)          [jsClassName components]
+        -cxx_shortDescriptionComponents       -cxx_shortDescription,              <ClassName 0xnnnnnnnn>{components}
+                                              oo::ShortDescriptionOf
+        -cxx_description (whole text)         oo::DescriptionOf                   whatever it returns
 
 Without components (nullopt, the root's default) the text is <ClassName 0xnnnnnnnn>. The pointer
 is oo::str::pointerDescription's (GNUstep's %p: the low 32 bits). A subclass that extends its
 superclass's components calls [super cxx_descriptionComponents] and appends to it.
 
-	- (std::optional<std::string>) cxx_descriptionComponents
-	{
-		return oo::str::format("%g, %g, %g, %g", rgba[0], rgba[1], rgba[2], rgba[3]);
-	}
+        - (std::optional<std::string>) cxx_descriptionComponents
+        {
+                return oo::str::format("%g, %g, %g, %g", rgba[0], rgba[1], rgba[2], rgba[3]);
+        }
 
 All four return std::optional<std::string>, so a message to nil is a valid nullopt (ADR-0043
 fact 1). Phase 3 keeps the signature as virtual std::optional<std::string>
@@ -69,33 +69,31 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OOObject.h"
 
 // extern "C++" because this header is reached from inside an extern "C" block (OOMaths.h ->
-// OOCocoa.h), as OOLogging.h is.
+// OOFoundation.h), as OOLogging.h is.
 extern "C++" {
 
-#include "oofnd/StdLib.hpp"
 #include "oofnd/PListDescription.hpp"
-
+#include "oofnd/StdLib.hpp"
 
 // (The protocol's methods were declared on the root OOObject, which went with bead oo-4aq6a.8.)
 
-
 namespace oo {
 
-// (DescriptionOf/ShortDescriptionOf/DescriptionWithComponents of an Objective-C object and the
-// OODescription protocol went with libobjc2, bead oo-dbz: the game describes no Objective-C object.)
+    // (DescriptionOf/ShortDescriptionOf/DescriptionWithComponents of an Objective-C object and the
+    // OODescription protocol went with libobjc2, bead oo-dbz: the game describes no Objective-C object.)
 
-// (oo::ObjectDescription & co., what the protocol's messages answered for an object rooted on
-// OOObject, went with OOObject, bead oo-4aq6a.8.)
+    // (oo::ObjectDescription & co., what the protocol's messages answered for an object rooted on
+    // OOObject, went with OOObject, bead oo-4aq6a.8.)
 
-// The text "%@" printed for the property list's object graph (oo::ObjectFromPList of it):
-// oo::describe (oofnd/PListDescription.hpp), GNUstep's -description byte for byte.
-inline std::string DescriptionOf(const oo::PList &plist)
-{
-	return describe(plist);
-}
+    // The text "%@" printed for the property list's object graph (oo::ObjectFromPList of it):
+    // oo::describe (oofnd/PListDescription.hpp), GNUstep's -description byte for byte.
+    inline std::string DescriptionOf(const oo::PList& plist)
+    {
+        return describe(plist);
+    }
 
-}	// namespace oo
+} // namespace oo
 
-}	// extern "C++"
+} // extern "C++"
 
-#endif	// OODESCRIPTION_H
+#endif // OODESCRIPTION_H

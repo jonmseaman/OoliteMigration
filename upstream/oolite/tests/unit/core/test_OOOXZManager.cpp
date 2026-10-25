@@ -1785,4 +1785,82 @@ OO_TEST(optionPages)
 #endif
 
 
+// The copy-URL key (upstream OoliteProject #747, bead oo-we7mm): on a pick list it copies the
+// selected pack's information URL as the manifest gives it; on the info page, the URL that page
+// showed, lowercased; with no URL, or off the list, or outside the pick states, it copies nothing.
+// The info page itself no longer copies anything.
+OO_TEST(copyUrlKey)
+{
+	SetUp();
+	{
+		StandInUniverse standIn;
+		OOOXZManager *m = Manager();
+		TestGui *gui = standIn.universe->testGui.get();
+		std::string &clipboard = standIn.universe->testGameView->clipboard;
+
+		oo::PList::Dict withURL = *Manifest("oolite.oxp.test.url", "Url", "1.0", "Ships", nullptr, nullptr, {}, -1, nullptr).getIf<oo::PList::Dict>();
+		withURL[std::string(kOOManifestInformationURL)] = oo::PList("HTTPS://Example.ORG/Pack");
+		oo::PList::Array list;
+		list.push_back(oo::PList(std::move(withURL)));
+		list.push_back(Manifest("oolite.oxp.test.nourl", "NoUrl", "1.0", "Ships", nullptr, nullptr, {}, -1, nullptr));
+		m->setFilteredList(oo::PList(std::move(list)));
+		m->_offset = 0;
+		m->_item = 0;
+		m->_interfaceShowingOXZDetail = false;
+
+		// Outside the pick states the key does nothing.
+		m->_interfaceState = OXZ_STATE_MAIN;
+		gui->selected = OXZ_GUI_ROW_LISTSTART;
+		clipboard = "untouched";
+		m->processCopyUrlKey();
+		OO_CHECK_TEXT(clipboard, "untouched");
+
+		// A pick list: the selected entry's URL, as the manifest spells it.
+		for (OXZInterfaceState state : {OXZ_STATE_PICK_INSTALL, OXZ_STATE_PICK_INSTALLED, OXZ_STATE_PICK_REMOVE})
+		{
+			m->_interfaceState = state;
+			gui->selected = OXZ_GUI_ROW_LISTSTART;
+			clipboard = "";
+			m->processCopyUrlKey();
+			OO_CHECK_TEXT(clipboard, "HTTPS://Example.ORG/Pack");
+			OO_CHECK_EQ(m->_item, 0u);
+		}
+
+		// An entry without a URL: nothing is copied, but the item is selected.
+		gui->selected = OXZ_GUI_ROW_LISTSTART + 1;
+		clipboard = "untouched";
+		m->processCopyUrlKey();
+		OO_CHECK_TEXT(clipboard, "untouched");
+		OO_CHECK_EQ(m->_item, 1u);
+
+		// Off the list: nothing.
+		gui->selected = OXZ_GUI_ROW_LISTSTART - 1;
+		m->processCopyUrlKey();
+		OO_CHECK_TEXT(clipboard, "untouched");
+		OO_CHECK_EQ(m->_item, 1u);
+
+		// The info page: showing it copies nothing; the key then copies the URL it showed, lowercased.
+		m->_interfaceState = OXZ_STATE_PICK_INSTALL;
+		m->_interfaceShowingOXZDetail = false;
+		gui->selected = OXZ_GUI_ROW_LISTSTART;
+		clipboard = "untouched";
+		m->processShowInfoKey();
+		OO_CHECK(m->_interfaceShowingOXZDetail);
+		OO_CHECK_TEXT(clipboard, "untouched");
+		OO_CHECK(m->_currentOXPURL == std::optional<std::string>("https://example.org/pack"));
+		gui->selected = OXZ_GUI_ROW_LISTSTART + 1;	// the selection does not matter on the info page
+		m->processCopyUrlKey();
+		OO_CHECK_TEXT(clipboard, "https://example.org/pack");
+
+		// An info page with no URL: nothing.
+		m->setOXPURL(std::nullopt);
+		clipboard = "untouched";
+		m->processCopyUrlKey();
+		OO_CHECK_TEXT(clipboard, "untouched");
+		m->_interfaceShowingOXZDetail = false;
+		m->_interfaceState = OXZ_STATE_MAIN;
+	}
+}
+
+
 OO_TEST_MAIN()

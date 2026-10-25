@@ -26,9 +26,8 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "ooscript/JSEngine.hpp"
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -40,11 +39,10 @@ void InitOOJSFlasher(ooscript::Context context, ooscript::Object global);
 }
 #endif
 
-
 /*	The bodies of OOFlasherEntity (OOJavaScriptExtensions), which the engine reaches by selector
-	through the root's JS members: the C++ OOFlasherEntity's overrides call these (bead
-	oo-9ht.107; proposed ADR-0056 amendments oo-ppc, oo-ykoy, oo-6ia4 and oo-9ht.107).
+        through the root's JS members: the C++ OOFlasherEntity's overrides call these (bead
+        oo-9ht.107; proposed ADR-0056 amendments oo-ppc, oo-ykoy, oo-6ia4 and oo-9ht.107).
 */
-void OOJSFlasherGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+void OOJSFlasherGetJSClass(ooscript::ClassDef** outClass, ooscript::Object* outPrototype);
 std::optional<std::string> OOJSFlasherJSClassName(void);
 bool OOJSFlasherIsVisibleToScripts(void);

@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include <stdint.h>
 
 #include "oofnd/StdLib.hpp"
@@ -35,62 +35,58 @@ MA 02110-1301, USA.
 #include <sys/sysinfo.h>
 #endif
 
-
 void OOCPUInfoInit(void);
 
-
 /*	Number of processors (whether they be individual or cores), used to select
-	number of threads to use for things like texture loading.
+        number of threads to use for things like texture loading.
 */
 NSUInteger OOCPUCount(void);
 
-
 /*
-	Returns the CPU identifier string. Currently Windows and Linux only.
+        Returns the CPU identifier string. Currently Windows and Linux only.
 */
 #if (OOLITE_WINDOWS || OOLITE_LINUX)
-std::string OOCPUDescription(void);	// UTF-8 (Foundation sweep, proposed ADR-0043)
+std::string OOCPUDescription(void); // UTF-8 (Foundation sweep, proposed ADR-0043)
 void OOCPUID(int CPUInfo[4], int InfoType);
 
 typedef struct
 {
-	unsigned long long ooPhysicalMemory;
-	unsigned long long ooAvailableMemory;
+    unsigned long long ooPhysicalMemory;
+    unsigned long long ooAvailableMemory;
 } OOMemoryStatus;
 OOMemoryStatus OOSystemMemoryStatus(void);
 #endif
 
-
 #if OOLITE_WINDOWS
-typedef BOOL (WINAPI *IW64PFP)(HANDLE, BOOL *);	// for checking for 64/32 bit system
+typedef BOOL(WINAPI* IW64PFP)(HANDLE, BOOL*); // for checking for 64/32 bit system
 BOOL is64BitSystem(void);
-std::string	operatingSystemFullVersion(void);	// UTF-8
+std::string operatingSystemFullVersion(void); // UTF-8
 #endif
 
 #include "OOCPUInfoEndian.h"
 
 /*	Set up OOLITE_NATIVE_64_BIT. This is intended for 64-bit optimizations
-	(see OOTextureScaling.m). It is not set for systems where 64-bitness may
-	be determined at runtime (such as 32-bit OS X binaries), because I can't
-	be bothered to do the set-up required to use switch to a 64-bit code path
-	at runtime while being cross-platform.
-	-- Ahruman
+        (see OOTextureScaling.m). It is not set for systems where 64-bitness may
+        be determined at runtime (such as 32-bit OS X binaries), because I can't
+        be bothered to do the set-up required to use switch to a 64-bit code path
+        at runtime while being cross-platform.
+        -- Ahruman
 */
 
 #ifndef OOLITE_NATIVE_64_BIT
 
 #ifdef _UINT64_T
 #ifdef __ppc64__
-#define OOLITE_NATIVE_64_BIT	1
+#define OOLITE_NATIVE_64_BIT 1
 #elif __amd64__
-#define OOLITE_NATIVE_64_BIT	1
+#define OOLITE_NATIVE_64_BIT 1
 #elif __x86_64__
-#define OOLITE_NATIVE_64_BIT	1
+#define OOLITE_NATIVE_64_BIT 1
 #endif
-#endif	// _UINT64_T
+#endif // _UINT64_T
 
 #ifndef OOLITE_NATIVE_64_BIT
-#define OOLITE_NATIVE_64_BIT	0
+#define OOLITE_NATIVE_64_BIT 0
 #endif
 
-#endif	// defined(OOLITE_NATIVE_64_BIT)
+#endif // defined(OOLITE_NATIVE_64_BIT)

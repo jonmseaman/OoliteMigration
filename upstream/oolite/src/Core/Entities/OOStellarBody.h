@@ -27,31 +27,27 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#include "OOCocoa.h"
-#include "oofnd/objc/OOObject.h"
-#include "OOTypes.h"
+#include "OOFoundation.h"
 #include "OOMaths.h"
+#include "OOTypes.h"
+#include "oofnd/objc/OOObject.h"
 
-
-typedef enum
-{
-	STELLAR_TYPE_SUN,
-	STELLAR_TYPE_NORMAL_PLANET,	// Terrestrial planet with atmosphere and oceans
-	STELLAR_TYPE_MOON,			// Rocky/airless planet
-	STELLAR_TYPE_MINIATURE		// Display proxy for a "normal" planet
+typedef enum {
+    STELLAR_TYPE_SUN,
+    STELLAR_TYPE_NORMAL_PLANET, // Terrestrial planet with atmosphere and oceans
+    STELLAR_TYPE_MOON, // Rocky/airless planet
+    STELLAR_TYPE_MINIATURE // Display proxy for a "normal" planet
 } OOStellarBodyType;
 
-
-#define ATMOSPHERE_DEPTH		500.0
-#define PLANET_MINIATURE_FACTOR	0.00185
-#define MAX_SUBDIVIDE			6
-
+#define ATMOSPHERE_DEPTH 500.0
+#define PLANET_MINIATURE_FACTOR 0.00185
+#define MAX_SUBDIVIDE 6
 
 /*	-radius and -planetType of a stellar body's Objective-C object (bead oo-9ht.111): the sun and the
-	planet, C++ since their facades were deleted (beads oo-9ht.111, oo-9ht.129), are asked directly
-	(their object is the root Entity's facade, which does not answer them); any other body by
-	selector, as before. Nil answers 0, as the message to nil did. Defined in OOSunEntity.mm.
+        planet, C++ since their facades were deleted (beads oo-9ht.111, oo-9ht.129), are asked directly
+        (their object is the root Entity's facade, which does not answer them); any other body by
+        selector, as before. Nil answers 0, as the message to nil did. Defined in OOSunEntity.mm.
 */
 class Entity;
-double OOStellarBodyRadius(Entity *body);	// of the C++ entity (bead oo-9ht.39.26; the object overloads went with bead oo-zwnvp)
-OOStellarBodyType OOStellarBodyPlanetType(Entity *body);	// the same (bead oo-al52f)
+double OOStellarBodyRadius(Entity* body); // of the C++ entity (bead oo-9ht.39.26; the object overloads went with bead oo-zwnvp)
+OOStellarBodyType OOStellarBodyPlanetType(Entity* body); // the same (bead oo-al52f)

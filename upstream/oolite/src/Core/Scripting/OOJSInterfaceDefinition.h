@@ -30,51 +30,48 @@ MA 02110-1301, USA.
 #ifndef OOJSINTERFACEDEFINITION_H
 #define OOJSINTERFACEDEFINITION_H
 
-#include "OOCocoa.h"
-#include "ooscript/JSEngine.hpp"
-#include "oofnd/StdLib.hpp"
+#include "OOFoundation.h"
 #include "oofnd/PList.hpp"
+#include "oofnd/StdLib.hpp"
+#include "ooscript/JSEngine.hpp"
 
+#include "oofnd/Ref.hpp"
 #include <optional>
 #include <string>
-#include "oofnd/Ref.hpp"
-#include "oofnd/Ref.hpp"
 
-class OOJSScript;	// imported by the .mm, so that a test can stand in for it (ADR-0056 amendment oo-fg7i item 5)
+class OOJSScript; // imported by the .mm, so that a test can stand in for it (ADR-0056 amendment oo-fg7i item 5)
 
-
-class OOJSInterfaceDefinition : public oo::RefCounted
-{
+class OOJSInterfaceDefinition : public oo::RefCounted {
 public:
-	// The old -init after [super init] (oo::makeRef).
-	OOJSInterfaceDefinition();
-	~OOJSInterfaceDefinition() override;
+    // The old -init after [super init] (oo::makeRef).
+    OOJSInterfaceDefinition();
+    ~OOJSInterfaceDefinition() override;
 
-	std::optional<std::string> title();	// nullopt: none (bead oo-3rb.290)
-	void setTitle(const std::optional<std::string> &title);	// bead oo-3rb.290
-	std::optional<std::string> category();
-	void setCategory(const std::string &category);
-	std::optional<std::string> summary();
-	void setSummary(const std::string &summary);
-	ooscript::Value callback();
-	void setCallback(ooscript::Value callback);
-	ooscript::Object callbackThis();
-	void setCallbackThis(ooscript::Object callbackthis);
+    std::optional<std::string> title(); // nullopt: none (bead oo-3rb.290)
+    void setTitle(const std::optional<std::string>& title); // bead oo-3rb.290
+    std::optional<std::string> category();
+    void setCategory(const std::string& category);
+    std::optional<std::string> summary();
+    void setSummary(const std::string& summary);
+    ooscript::Value callback();
+    void setCallback(ooscript::Value callback);
+    ooscript::Object callbackThis();
+    void setCallbackThis(ooscript::Object callbackthis);
 
-	void runCallback(const std::string &key);
+    void runCallback(const std::string& key);
 
-	OOComparisonResult interfaceCompare(OOJSInterfaceDefinition *other);
+    OOComparisonResult interfaceCompare(OOJSInterfaceDefinition* other);
 
 private:
-	void deleteJSPointers();
+    void deleteJSPointers();
 
-	ooscript::Value				_callback = {};
-	ooscript::Object _callbackThis = {};
-	oo::WeakRef<OOJSScript>		_owningScript;	// a weak reference (was the facade's weak reference proxy)
+    ooscript::Value _callback = { };
+    ooscript::Object _callbackThis = { };
+    oo::WeakRef<OOJSScript> _owningScript; // a weak reference (was the facade's weak reference proxy)
 
-	std::optional<std::string>	_title;		// nullopt until set (was nil)
-	std::optional<std::string>	_summary;
-	std::optional<std::string>	_category;
+    std::optional<std::string> _title; // nullopt until set (was nil)
+    std::optional<std::string> _summary;
+    std::optional<std::string> _category;
 };
 
-#endif	// OOJSINTERFACEDEFINITION_H
+#endif // OOJSINTERFACEDEFINITION_H

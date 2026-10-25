@@ -29,39 +29,36 @@ MA 02110-1301, USA.
 
 #include "Entity.h"
 
-
 /*	A converted leaf (amendment oo-bj8 item 12): global, over Entity, with no facade of its own.
-	Unconverted code makes one with quiriumCascadeFromShip() and hands it to Objective-C with
-	oo::NewEntityFacade, whose object is an Entity; OOEntityIsCascadeWeapon() asks it.
+        Unconverted code makes one with quiriumCascadeFromShip() and hands it to Objective-C with
+        oo::NewEntityFacade, whose object is an Entity; OOEntityIsCascadeWeapon() asks it.
 */
-class OOQuiriumCascadeEntity : public Entity
-{
+class OOQuiriumCascadeEntity : public Entity {
 public:
-	// +quiriumCascadeFromShip:: a new cascade where the ship is, or null for a nil ship.
-	static oo::Ref<OOQuiriumCascadeEntity> quiriumCascadeFromShip(ShipEntity *ship);
+    // +quiriumCascadeFromShip:: a new cascade where the ship is, or null for a nil ship.
+    static oo::Ref<OOQuiriumCascadeEntity> quiriumCascadeFromShip(ShipEntity* ship);
 
-	std::optional<std::string> descriptionComponents() const override;
+    std::optional<std::string> descriptionComponents() const override;
 
-	void update(OOTimeDelta delta_t) override;
-	void drawImmediate(bool immediate, bool translucent) override;
-	bool isEffect() override;
-	bool isCascadeWeapon();
-	bool canCollide() override;
-	bool checkCloseCollisionWith(Entity *other) override;
+    void update(OOTimeDelta delta_t) override;
+    void drawImmediate(bool immediate, bool translucent) override;
+    bool isEffect() override;
+    bool isCascadeWeapon();
+    bool canCollide() override;
+    bool checkCloseCollisionWith(Entity* other) override;
 
 private:
-	// -initQuiriumCascadeFromShip:'s body: false (no cascade) for a nil ship (amendment oo-novu).
-	bool initQuiriumCascadeFromShip(ShipEntity *ship);
+    // -initQuiriumCascadeFromShip:'s body: false (no cascade) for a nil ship (amendment oo-novu).
+    bool initQuiriumCascadeFromShip(ShipEntity* ship);
 
-	OOTimeDelta			_timePassed = {};
-	GLfloat				_color[4] = {};
+    OOTimeDelta _timePassed = { };
+    GLfloat _color[4] = { };
 };
-
 
 // -isCascadeWeapon of the Objective-C Entity's category, deleted (bead oo-9ht.186): false for null
 // and for every entity but a cascade, whose answer it is.
-inline bool OOEntityIsCascadeWeapon(Entity *entity)
+inline bool OOEntityIsCascadeWeapon(Entity* entity)
 {
-	OOQuiriumCascadeEntity *cascade = dynamic_cast<OOQuiriumCascadeEntity *>(entity);
-	return cascade != nullptr ? cascade->isCascadeWeapon() : false;
+    OOQuiriumCascadeEntity* cascade = dynamic_cast<OOQuiriumCascadeEntity*>(entity);
+    return cascade != nullptr ? cascade->isCascadeWeapon() : false;
 }
