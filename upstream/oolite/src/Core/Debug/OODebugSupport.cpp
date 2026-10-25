@@ -27,69 +27,61 @@ SOFTWARE.
 
 #ifdef OO_DEBUG_MONITOR_ENABLED
 
-
 #include "OODebugSupport.h"
-#include "ResourceManager.h"
+#include "GameController.h"
 #include "OODebugMonitor.h"
 #include "OODebugTCPConsoleClient.h"
-#include "GameController.h"
 #include "OOJavaScriptEngine.h"
+#include "ResourceManager.h"
 
 #include "oofnd/Log.hpp"
 #include "oofnd/PListGet.hpp"
 
-
 void OOInitDebugSupport(void)
 {
-	std::optional<std::string>	debugOXPPath;
-	oo::PList					debugSettings;
-	std::optional<std::string>	consoleHost;
-	unsigned short				consolePort = 0;
-	oo::Ref<OODebuggerInterface>	debugger;	// a C++ interface since bead oo-9ht.81
-	bool						activateDebugConsole = false;
+    std::optional<std::string> debugOXPPath;
+    oo::PList debugSettings;
+    std::optional<std::string> consoleHost;
+    unsigned short consolePort = 0;
+    oo::Ref<OODebuggerInterface> debugger; // a C++ interface since bead oo-9ht.81
+    bool activateDebugConsole = false;
 
-	// Load debug settings.
-	debugSettings = ResourceManager::dictionaryFromFilesNamed("debugConfig.plist", "Config", MERGE_BASIC, NO);
+    // Load debug settings.
+    debugSettings = ResourceManager::dictionaryFromFilesNamed("debugConfig.plist", "Config", MERGE_BASIC, NO);
 
-	// Check that the debug OXP is installed. If not, we don't enable debug support.
-	debugOXPPath = ResourceManager::pathForFileNamed("DebugOXPLocatorBeacon.magic", "nil");
-	if (debugOXPPath.has_value())
-	{
-		// The debug plug-in (Mac Contents/PlugIns/Debug.bundle) is never loaded on the platforms
-		// built (the loader answered nil everywhere), so its controller's debugger branch is gone
-		// (ADR-0056 amendment oo-9ht.91).
+    // Check that the debug OXP is installed. If not, we don't enable debug support.
+    debugOXPPath = ResourceManager::pathForFileNamed("DebugOXPLocatorBeacon.magic", "nil");
+    if (debugOXPPath.has_value()) {
+        // The debug plug-in (Mac Contents/PlugIns/Debug.bundle) is never loaded on the platforms
+        // built (the loader answered nil everywhere), so its controller's debugger branch is gone
+        // (ADR-0056 amendment oo-9ht.91).
 
-		// oo_stringForKey: a string, or a number's string value; nil for anything else.
-		const oo::PList *consoleHostValue = debugSettings.get<oo::PList>("console-host");
-		if (consoleHostValue != nullptr && (consoleHostValue->isString() || consoleHostValue->isNumber()))
-		{
-			consoleHost = debugSettings.get<std::string>("console-host");
-		}
-		consolePort = debugSettings.get<unsigned short>("console-port");
+        // oo_stringForKey: a string, or a number's string value; nil for anything else.
+        const oo::PList* consoleHostValue = debugSettings.get<oo::PList>("console-host");
+        if (consoleHostValue != nullptr && (consoleHostValue->isString() || consoleHostValue->isNumber())) {
+            consoleHost = debugSettings.get<std::string>("console-host");
+        }
+        consolePort = debugSettings.get<unsigned short>("console-port");
 
-		// Use the TCP debugger connection.
-		{
-			// The client; null when it cannot connect.
-			debugger = OODebugTCPConsoleClient::clientWithAddress(consoleHost, consolePort);
-			OODebugMonitor::sharedDebugMonitor()->setUsingPlugInController(false);
-		}
-		
-		activateDebugConsole = (debugger != nullptr);
-	}
-	
-	if (!activateDebugConsole)
-	{
-		activateDebugConsole = debugSettings.get<bool>("always-load-debug-console");
-	}
-	
-	
-	if (activateDebugConsole)
-	{
-		// Set up monitor and register debugger, if any.
-		OODebugMonitor::sharedDebugMonitor()->setDebugger(debugger.get());
-		OOJavaScriptEngine::sharedEngine()->enableDebuggerStatement();
-	}
+        // Use the TCP debugger connection.
+        {
+            // The client; null when it cannot connect.
+            debugger = OODebugTCPConsoleClient::clientWithAddress(consoleHost, consolePort);
+            OODebugMonitor::sharedDebugMonitor()->setUsingPlugInController(false);
+        }
+
+        activateDebugConsole = (debugger != nullptr);
+    }
+
+    if (!activateDebugConsole) {
+        activateDebugConsole = debugSettings.get<bool>("always-load-debug-console");
+    }
+
+    if (activateDebugConsole) {
+        // Set up monitor and register debugger, if any.
+        OODebugMonitor::sharedDebugMonitor()->setDebugger(debugger.get());
+        OOJavaScriptEngine::sharedEngine()->enableDebuggerStatement();
+    }
 }
 
-
-#endif	/* OO_DEBUG_MONITOR_ENABLED */
+#endif /* OO_DEBUG_MONITOR_ENABLED */

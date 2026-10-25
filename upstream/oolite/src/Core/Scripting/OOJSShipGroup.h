@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 #include "OOFoundation.h"
 #include "ooscript/JSEngine.hpp"
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif

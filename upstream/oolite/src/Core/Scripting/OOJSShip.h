@@ -28,8 +28,7 @@ MA 02110-1301, USA.
 
 #include "OOFoundation.h"
 #include "ooscript/JSEngine.hpp"
-class ShipEntity;	// C++ since bead oo-9ht.144
-
+class ShipEntity; // C++ since bead oo-9ht.144
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,7 +36,7 @@ extern "C" {
 
 void InitOOJSShip(ooscript::Context context, ooscript::Object global);
 
-ooscript::ClassDef *JSShipClass(void);
+ooscript::ClassDef* JSShipClass(void);
 ooscript::Object JSShipPrototype(void);
 
 #ifdef __cplusplus

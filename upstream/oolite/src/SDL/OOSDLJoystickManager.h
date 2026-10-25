@@ -43,33 +43,31 @@ MA 02110-1301, USA.
 #define OOSDLJOYSTICKMANAGER_H
 
 #include "OOFoundation.h"
-#include <SDL3/SDL_events.h>
 #include "OOJoystickManager.h"
+#include <SDL3/SDL_events.h>
 
-#include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
+#include "oofnd/StdLib.hpp"
 
-
-class OOSDLJoystickManager : public OOJoystickManager
-{
+class OOSDLJoystickManager : public OOJoystickManager {
 public:
-	OOSDLJoystickManager();		// opens the sticks SDL reports (at most MAX_STICKS)
+    OOSDLJoystickManager(); // opens the sticks SDL reports (at most MAX_STICKS)
 
-	bool handleSDLEvent(SDL_Event *evt);
-	std::optional<std::string> nameOfJoystick(NSUInteger stickNumber) override;	// nullopt: the device has no name
-	int16_t getAxisWithStick(NSUInteger stickNum, NSUInteger axisNum) override;
-	JoyAxisEvent makeJoyAxisEvent(SDL_JoyAxisEvent *sdlevt);
-	JoyButtonEvent makeJoyButtonEvent(SDL_JoyButtonEvent *sdlevt);
-	JoyHatEvent makeJoyHatEvent(SDL_JoyHatEvent *sdlevt);
-	NSInteger getJoystickIndexFromId(SDL_JoystickID joystickId);
+    bool handleSDLEvent(SDL_Event* evt);
+    std::optional<std::string> nameOfJoystick(NSUInteger stickNumber) override; // nullopt: the device has no name
+    int16_t getAxisWithStick(NSUInteger stickNum, NSUInteger axisNum) override;
+    JoyAxisEvent makeJoyAxisEvent(SDL_JoyAxisEvent* sdlevt);
+    JoyButtonEvent makeJoyButtonEvent(SDL_JoyButtonEvent* sdlevt);
+    JoyHatEvent makeJoyHatEvent(SDL_JoyHatEvent* sdlevt);
+    NSInteger getJoystickIndexFromId(SDL_JoystickID joystickId);
 
-	// Overrides of OOJoystickManager.
-	NSUInteger joystickCount() override;
+    // Overrides of OOJoystickManager.
+    NSUInteger joystickCount() override;
 
 private:
-	std::map<std::string, int, std::less<>>	joystickIdMap = {};	// "%d" of an SDL joystick id -> stick index (proposed ADR-0043)
-	SDL_Joystick		*stick[MAX_STICKS] = {};
-	int			stickCount = {};
+    std::map<std::string, int, std::less<>> joystickIdMap = { }; // "%d" of an SDL joystick id -> stick index (proposed ADR-0043)
+    SDL_Joystick* stick[MAX_STICKS] = { };
+    int stickCount = { };
 };
 
-#endif	// OOSDLJOYSTICKMANAGER_H
+#endif // OOSDLJOYSTICKMANAGER_H

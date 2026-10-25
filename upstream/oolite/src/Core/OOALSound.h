@@ -33,46 +33,44 @@ SOFTWARE.
 #define OOALSOUND_H
 
 #include "OOFoundation.h"
-#include "oofnd/objc/OOObject.h"
 #include "OOOpenALController.h"
+#include "oofnd/objc/OOObject.h"
 
-#include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
+#include "oofnd/StdLib.hpp"
 
-
-class OOSound : public oo::RefCounted
-{
+class OOSound : public oo::RefCounted {
 public:
-	OOSound();
+    OOSound();
 
-	static bool setUp();
-	static void update();
+    static bool setUp();
+    static void update();
 
-	static void setMasterVolume(float fraction);
-	static float masterVolume();
+    static void setMasterVolume(float fraction);
+    static float masterVolume();
 
-	/*	Was -cxx_initWithContentsOfFile:, a class cluster's initialiser: it answered, in place of
-		the receiver, an OOALBufferedSound for up to 1 MB of decoded data, else an
-		OOALStreamedSound (amendment oo-2en item 2). Null where it answered nil: sound not OK, no
-		decoder for the path, or the concrete sound refused.
-	*/
-	static oo::Ref<OOSound> initWithContentsOfFile(const std::optional<std::string> &path);	// nullopt: null (bead oo-3rb.292.2)
+    /*	Was -cxx_initWithContentsOfFile:, a class cluster's initialiser: it answered, in place of
+            the receiver, an OOALBufferedSound for up to 1 MB of decoded data, else an
+            OOALStreamedSound (amendment oo-2en item 2). Null where it answered nil: sound not OK, no
+            decoder for the path, or the concrete sound refused.
+    */
+    static oo::Ref<OOSound> initWithContentsOfFile(const std::optional<std::string>& path); // nullopt: null (bead oo-3rb.292.2)
 
-	virtual std::optional<std::string> name();	// nullopt: none (bead oo-3rb.289.3)
+    virtual std::optional<std::string> name(); // nullopt: none (bead oo-3rb.289.3)
 
-	static bool isSoundOK();
+    static bool isSoundOK();
 
-	virtual ALuint soundBuffer();
-	virtual bool soundIncomplete();
-	virtual void rewind();
+    virtual ALuint soundBuffer();
+    virtual bool soundIncomplete();
+    virtual void rewind();
 
-	// What "%@" prints between the braces of <Class 0x...>{...} (OODescription.h). None here, as
-	// OOObject answered.
-	virtual std::optional<std::string> descriptionComponents() const;
+    // What "%@" prints between the braces of <Class 0x...>{...} (OODescription.h). None here, as
+    // OOObject answered.
+    virtual std::optional<std::string> descriptionComponents() const;
 
-	// What "%@" printed for the sound: <ClassName 0x...>{components}, the C++ class's name, as its
-	// facade printed it until bead oo-9ht.68.
-	std::string description() const;
+    // What "%@" printed for the sound: <ClassName 0x...>{components}, the C++ class's name, as its
+    // facade printed it until bead oo-9ht.68.
+    std::string description() const;
 };
 
-#endif	// OOALSOUND_H
+#endif // OOALSOUND_H

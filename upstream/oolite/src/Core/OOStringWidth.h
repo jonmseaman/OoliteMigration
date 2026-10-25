@@ -34,8 +34,6 @@ MA 02110-1301, USA.
 
 #include <string>
 
+CGFloat cxx_OOStringWidthInEm(const std::string& text);
 
-CGFloat cxx_OOStringWidthInEm(const std::string &text);
-
-
-#endif	// INCLUDED_OOSTRINGWIDTH_h
+#endif // INCLUDED_OOSTRINGWIDTH_h

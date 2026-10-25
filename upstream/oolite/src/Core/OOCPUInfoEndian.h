@@ -28,45 +28,42 @@ MA 02110-1301, USA.
 #define INCLUDED_OOCPUINFOENDIAN_h
 
 /*	Set up OOLITE_BIG_ENDIAN and OOLITE_LITTLE_ENDIAN macros. Exactly one must
-	be non-zero. If you're porting Oolite to a middle-endian platform, you'll
-	need to work out what to do with endian-sensitive stuff -- currently, that
-	means texture loading. (The data cache automatically rejects cached data
-	of the wrong byte sex.)
+        be non-zero. If you're porting Oolite to a middle-endian platform, you'll
+        need to work out what to do with endian-sensitive stuff -- currently, that
+        means texture loading. (The data cache automatically rejects cached data
+        of the wrong byte sex.)
 */
 #if !defined(OOLITE_BIG_ENDIAN) && !defined(OOLITE_LITTLE_ENDIAN)
 
 #if __BIG_ENDIAN__
-#define OOLITE_BIG_ENDIAN		1
+#define OOLITE_BIG_ENDIAN 1
 #endif
 
 #if __LITTLE_ENDIAN__
-#define OOLITE_LITTLE_ENDIAN	1
+#define OOLITE_LITTLE_ENDIAN 1
 #endif
-
 
 #if !defined(OOLITE_BIG_ENDIAN) && !defined(OOLITE_LITTLE_ENDIAN)
 #if defined(__i386__) || defined(__amd64__) || defined(__x86_64__)
-#define OOLITE_LITTLE_ENDIAN	1
+#define OOLITE_LITTLE_ENDIAN 1
 #endif
 
-#if defined(__sgi__) || defined(__mips__) 
-#define OOLITE_BIG_ENDIAN       1 
-#endif 
+#if defined(__sgi__) || defined(__mips__)
+#define OOLITE_BIG_ENDIAN 1
+#endif
 
 // Do not assume PPC == big endian, it can be either.
 
-#endif	// inner none defined
-#endif	// outer none defined
-
+#endif // inner none defined
+#endif // outer none defined
 
 #ifndef OOLITE_BIG_ENDIAN
-#define OOLITE_BIG_ENDIAN		0
+#define OOLITE_BIG_ENDIAN 0
 #endif
 
 #ifndef OOLITE_LITTLE_ENDIAN
-#define OOLITE_LITTLE_ENDIAN	0
+#define OOLITE_LITTLE_ENDIAN 0
 #endif
-
 
 #if !OOLITE_BIG_ENDIAN && !OOLITE_LITTLE_ENDIAN
 #error Neither OOLITE_BIG_ENDIAN nor OOLITE_LITTLE_ENDIAN is defined as nonzero!
@@ -75,8 +72,8 @@ MA 02110-1301, USA.
 #undef OOLITE_LITTLE_ENDIAN
 
 // Cause errors where the macros are used
-#define OOLITE_BIG_ENDIAN		"BUG"
-#define OOLITE_LITTLE_ENDIAN	"BUG"
+#define OOLITE_BIG_ENDIAN "BUG"
+#define OOLITE_LITTLE_ENDIAN "BUG"
 #endif
 
 #endif

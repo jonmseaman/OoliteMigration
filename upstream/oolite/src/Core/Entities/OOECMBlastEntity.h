@@ -35,24 +35,22 @@ MA 02110-1301, USA.
 
 #include "Entity.h"
 
-class ShipEntity;	// C++ since bead oo-9ht.144
+class ShipEntity; // C++ since bead oo-9ht.144
 
-
-class OOECMBlastEntity : public Entity
-{
+class OOECMBlastEntity : public Entity {
 public:
-	// -initFromShip:, which answered nil for a nil ship: null then (amendment oo-novu item 1).
-	static oo::Ref<OOECMBlastEntity> initFromShip(ShipEntity *ship);
+    // -initFromShip:, which answered nil for a nil ship: null then (amendment oo-novu item 1).
+    static oo::Ref<OOECMBlastEntity> initFromShip(ShipEntity* ship);
 
-	void update(OOTimeDelta delta_t) override;
-	void drawImmediate(bool immediate, bool translucent) override;
+    void update(OOTimeDelta delta_t) override;
+    void drawImmediate(bool immediate, bool translucent) override;
 
-	bool isECMBlast();
+    bool isECMBlast();
 
 private:
-	explicit OOECMBlastEntity(ShipEntity *ship);
+    explicit OOECMBlastEntity(ShipEntity* ship);
 
-	OOTimeDelta			_nextBlast = {};
-	uint8_t		_blastsRemaining = {};
-	oo::WeakRef<Entity>	_ship;	// the ship's C++ part (bead oo-9ht.39.5.2; was its object's weak reference, never released)
+    OOTimeDelta _nextBlast = { };
+    uint8_t _blastsRemaining = { };
+    oo::WeakRef<Entity> _ship; // the ship's C++ part (bead oo-9ht.39.5.2; was its object's weak reference, never released)
 };

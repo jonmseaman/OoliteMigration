@@ -29,25 +29,23 @@ MA 02110-1301, USA.
 
 #include "PlayerEntity.h"
 
-
 /*	Bead oo-50zg (ADR-0056 amendments oo-o89 item 4 and oo-42dr): the category PlayerEntity
-	(ScriptMethods) is members of PlayerEntity, declared in PlayerEntity.h and defined in
-	PlayerEntityScriptMethods.mm. Its Objective-C interface, for the callers that remain, is the
-	category of the same name in PlayerEntity+ObjCBridge.h (deleted by bead oo-9ht.177), which PlayerEntity.h imported. This header
-	stays for the files that import it.
+        (ScriptMethods) is members of PlayerEntity, declared in PlayerEntity.h and defined in
+        PlayerEntityScriptMethods.mm. Its Objective-C interface, for the callers that remain, is the
+        category of the same name in PlayerEntity+ObjCBridge.h (deleted by bead oo-9ht.177), which PlayerEntity.h imported. This header
+        stays for the files that import it.
 */
 
-
 /*	OOGalacticCoordinatesFromInternal()
-	Given internal coordinates ranging from 0 to 255 on each axis, return
-	corresponding coordinates in user-meaningful coordinates by scaling by
-	0.4 on the X axis and 0.2 on the Y axis.
-	
-	OOInternalCoordinatesFromGalactic()
-	Inverse operation.
-	
-	For valid floating-point comparisons, it is imperative that the same
-	calculation be used consistently.
+        Given internal coordinates ranging from 0 to 255 on each axis, return
+        corresponding coordinates in user-meaningful coordinates by scaling by
+        0.4 on the X axis and 0.2 on the Y axis.
+
+        OOInternalCoordinatesFromGalactic()
+        Inverse operation.
+
+        For valid floating-point comparisons, it is imperative that the same
+        calculation be used consistently.
  */
 #ifdef __cplusplus
 extern "C" {

@@ -29,40 +29,34 @@ MA 02110-1301, USA.
 #include "PlayerEntity.h"
 
 /*	Beads oo-130j, oo-ng9h, oo-z1nv, oo-vn3o (ADR-0056 amendment oo-lmdi8): the category PlayerEntity (Scripting) is members of
-	PlayerEntity, declared in PlayerEntity.h and defined in PlayerEntityLegacyScriptEngine.mm. Its Objective-C interface,
-	for the callers that remained, was the category of the same name in PlayerEntity+ObjCBridge.h (deleted by bead oo-9ht.177),
-	which PlayerEntity.h imports. This header stays for the files that import it.
+        PlayerEntity, declared in PlayerEntity.h and defined in PlayerEntityLegacyScriptEngine.mm. Its Objective-C interface,
+        for the callers that remained, was the category of the same name in PlayerEntity+ObjCBridge.h (deleted by bead oo-9ht.177),
+        which PlayerEntity.h imports. This header stays for the files that import it.
 */
 
-#include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
-
+#include "oofnd/StdLib.hpp"
 
 class OOScript;
 
-
-typedef enum
-{
-	COMPARISON_EQUAL,
-	COMPARISON_NOTEQUAL,
-	COMPARISON_LESSTHAN,
-	COMPARISON_GREATERTHAN,
-	COMPARISON_ONEOF,
-	COMPARISON_UNDEFINED
+typedef enum {
+    COMPARISON_EQUAL,
+    COMPARISON_NOTEQUAL,
+    COMPARISON_LESSTHAN,
+    COMPARISON_GREATERTHAN,
+    COMPARISON_ONEOF,
+    COMPARISON_UNDEFINED
 } OOComparisonType;
 
+typedef enum {
+    OP_STRING,
+    OP_NUMBER,
+    OP_BOOL,
+    OP_MISSION_VAR,
+    OP_LOCAL_VAR,
+    OP_FALSE,
 
-typedef enum
-{
-	OP_STRING,
-	OP_NUMBER,
-	OP_BOOL,
-	OP_MISSION_VAR,
-	OP_LOCAL_VAR,
-	OP_FALSE,
-	
-	OP_INVALID	// Must be last.
+    OP_INVALID // Must be last.
 } OOOperationType;
-
 
 std::string cxx_OOComparisonTypeToString(OOComparisonType type);

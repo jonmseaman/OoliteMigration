@@ -29,35 +29,33 @@ MA 02110-1301, USA.
 #include "PlayerEntity.h"
 
 /*	Beads oo-ibm8 (ADR-0056 amendment oo-lmdi8): the category PlayerEntity (StickMapper) is members of
-	PlayerEntity, declared in PlayerEntity.h and defined in PlayerEntityStickMapper.mm. Its Objective-C interface,
-	for the callers that remained, was the category of the same name in PlayerEntity+ObjCBridge.h (deleted by bead oo-9ht.177),
-	which PlayerEntity.h imports. This header stays for the files that import it.
+        PlayerEntity, declared in PlayerEntity.h and defined in PlayerEntityStickMapper.mm. Its Objective-C interface,
+        for the callers that remained, was the category of the same name in PlayerEntity+ObjCBridge.h (deleted by bead oo-9ht.177),
+        which PlayerEntity.h imports. This header stays for the files that import it.
 */
 #include "GuiDisplayGen.h"
 #include "MyOpenGLView.h"
 #include "Universe.h"
 
-#include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/StdLib.hpp"
 
-#define MAX_ROWS_FUNCTIONS		12
+#define MAX_ROWS_FUNCTIONS 12
 
-#define GUI_ROW_STICKNAME		1
+#define GUI_ROW_STICKNAME 1
 // leave row 2 empty - we need it in case we have a
 // second joystick connected. Also, we need a different way
 // of listing joysticks, if we ever decide to support more
 // than the current maximum of 2 - Nikos 20151103
-#define GUI_ROW_STICKPROFILE		3
-#define GUI_ROW_HEADING			4
-#define GUI_ROW_FUNCSTART		5
-#define GUI_ROW_FUNCEND			(GUI_ROW_FUNCSTART + MAX_ROWS_FUNCTIONS - 1)
-#define GUI_ROW_INSTRUCT		18
+#define GUI_ROW_STICKPROFILE 3
+#define GUI_ROW_HEADING 4
+#define GUI_ROW_FUNCSTART 5
+#define GUI_ROW_FUNCEND (GUI_ROW_FUNCSTART + MAX_ROWS_FUNCTIONS - 1)
+#define GUI_ROW_INSTRUCT 18
 
 // Dictionary keys (of the oo::PList function entries, proposed ADR-0043 bead oo-u76k)
 #define KEY_HEADER "header"
-#define KEY_GUIDESC  "guiDesc"
+#define KEY_GUIDESC "guiDesc"
 #define KEY_ALLOWABLE "allowable"
 #define KEY_AXISFN "axisfunc"
 #define KEY_BUTTONFN "buttonfunc"
-
-

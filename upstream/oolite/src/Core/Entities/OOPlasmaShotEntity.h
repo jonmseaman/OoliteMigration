@@ -30,32 +30,30 @@ MA 02110-1301, USA.
 
 #include "OOLightParticleEntity.h"
 
-
 /*	A converted leaf (amendment oo-bj8 item 12): global, over OOLightParticleEntity, with no
-	facade of its own. ShipEntity makes one with shotWithPosition() and hands it to Objective-C
-	with oo::NewEntityFacade, whose object is an OOLightParticleEntity.
+        facade of its own. ShipEntity makes one with shotWithPosition() and hands it to Objective-C
+        with oo::NewEntityFacade, whose object is an OOLightParticleEntity.
 */
-class OOPlasmaShotEntity : public OOLightParticleEntity
-{
+class OOPlasmaShotEntity : public OOLightParticleEntity {
 public:
-	// [[OOPlasmaShotEntity alloc] initWithPosition:...]: a new shot, initialised.
-	static oo::Ref<OOPlasmaShotEntity> shotWithPosition(HPVector position,
-														Vector velocity,
-														float energy,
-														OOTimeDelta duration,
-														OOColor *color);
+    // [[OOPlasmaShotEntity alloc] initWithPosition:...]: a new shot, initialised.
+    static oo::Ref<OOPlasmaShotEntity> shotWithPosition(HPVector position,
+        Vector velocity,
+        float energy,
+        OOTimeDelta duration,
+        OOColor* color);
 
-	// -initWithPosition:...'s body, run once right after construction (amendment oo-vl43 item 2).
-	void initWithPosition(HPVector position,
-						  Vector velocity,
-						  float energy,
-						  OOTimeDelta duration,
-						  OOColor *color);
+    // -initWithPosition:...'s body, run once right after construction (amendment oo-vl43 item 2).
+    void initWithPosition(HPVector position,
+        Vector velocity,
+        float energy,
+        OOTimeDelta duration,
+        OOColor* color);
 
-	bool canCollide() override;
-	bool checkCloseCollisionWith(Entity *other) override;
-	void update(double delta_t) override;
+    bool canCollide() override;
+    bool checkCloseCollisionWith(Entity* other) override;
+    void update(double delta_t) override;
 
 private:
-	OOTimeDelta					_duration = {};
+    OOTimeDelta _duration = { };
 };

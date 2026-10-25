@@ -31,40 +31,36 @@ MA 02110-1301, USA.
 #define OOJSPOPULATORDEFINITION_H
 
 #include "OOFoundation.h"
-#include "ooscript/JSEngine.hpp"
 #include "OOMaths.h"
-#include "oofnd/Ref.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/Ref.hpp"
+#include "ooscript/JSEngine.hpp"
 
-class OOJSScript;	// imported by the .mm, so that a test can stand in for it (ADR-0056 amendment oo-fg7i item 5)
+class OOJSScript; // imported by the .mm, so that a test can stand in for it (ADR-0056 amendment oo-fg7i item 5)
 
-
-class OOJSPopulatorDefinition : public oo::RefCounted
-{
+class OOJSPopulatorDefinition : public oo::RefCounted {
 public:
-	OOJSPopulatorDefinition();
-	~OOJSPopulatorDefinition() override;
+    OOJSPopulatorDefinition();
+    ~OOJSPopulatorDefinition() override;
 
-	ooscript::Value callback();
-	void setCallback(ooscript::Value callback);
-	ooscript::Object callbackThis();
-	void setCallbackThis(ooscript::Object callbackthis);
+    ooscript::Value callback();
+    void setCallback(ooscript::Value callback);
+    ooscript::Object callbackThis();
+    void setCallbackThis(ooscript::Object callbackthis);
 
-	void runPopulatorCallback(HPVector location);
+    void runPopulatorCallback(HPVector location);
 
 private:
-	void deleteJSPointers();
+    void deleteJSPointers();
 
-	ooscript::Value				_callback = {};
-	ooscript::Object _callbackThis = {};
-	oo::WeakRef<OOJSScript>		_owningScript;	// a weak reference (was the facade's weak reference proxy)
+    ooscript::Value _callback = { };
+    ooscript::Object _callbackThis = { };
+    oo::WeakRef<OOJSScript> _owningScript; // a weak reference (was the facade's weak reference proxy)
 };
-
 
 // A PList::Object node holding the definition (strongly), as the settings' callbackObj.
 oo::PList OOJSPopulatorDefinitionToPList(oo::Ref<OOJSPopulatorDefinition> definition);
 // The definition inside such a node; nullptr for any other node.
-OOJSPopulatorDefinition *OOJSPopulatorDefinitionIn(const oo::PList &plist);
+OOJSPopulatorDefinition* OOJSPopulatorDefinitionIn(const oo::PList& plist);
 
-#endif	// OOJSPOPULATORDEFINITION_H
+#endif // OOJSPOPULATORDEFINITION_H

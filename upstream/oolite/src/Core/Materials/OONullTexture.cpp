@@ -29,60 +29,50 @@ SOFTWARE.
 #include "OOFoundation.h"
 #include "OOTextureInternal.h"
 
-
 namespace {
 
-OONullTexture *sSingleton = nullptr;
+OONullTexture* sSingleton = nullptr;
 
-}	// namespace
+} // namespace
 
-
-OONullTexture *OONullTexture::sharedNullTexture()
+OONullTexture* OONullTexture::sharedNullTexture()
 {
-	// NOTE: assumes single-threaded access.
-	if (sSingleton == nullptr)
-	{
-		sSingleton = oo::makeRef<OONullTexture>().leakRef();
-	}
+    // NOTE: assumes single-threaded access.
+    if (sSingleton == nullptr) {
+        sSingleton = oo::makeRef<OONullTexture>().leakRef();
+    }
 
-	return sSingleton;
+    return sSingleton;
 }
-
 
 void OONullTexture::apply()
 {
-	OOTexture::applyNone();
+    OOTexture::applyNone();
 }
-
 
 NSSize OONullTexture::dimensions()
 {
-	return NSZeroSize;
+    return NSZeroSize;
 }
-
 
 bool OONullTexture::isMipMapped()
 {
-	return false;
+    return false;
 }
-
 
 void OONullTexture::forceRebind()
 {
-
 }
-
 
 #ifndef NDEBUG
 std::optional<std::string> OONullTexture::name()
 {
-	return std::string("<null texture>");
+    return std::string("<null texture>");
 }
 #endif
 
-
 /*	The (Singleton) category's canonical singleton boilerplate (+allocWithZone: answering nil after
-	the first, -copyWithZone: answering self, and -retain/-release/-autorelease doing nothing) is
-	not translated: nothing but sharedNullTexture() makes the object, and the one reference it
-	keeps is never released (amendment oo-r7m0 item 1).
+        the first, -copyWithZone: answering self, and -retain/-release/-autorelease doing nothing) is
+        not translated: nothing but sharedNullTexture() makes the object, and the one reference it
+        keeps is never released (amendment oo-r7m0 item 1).
 */

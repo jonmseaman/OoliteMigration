@@ -36,8 +36,8 @@ MA 02110-1301, USA.
 #include "OOFoundation.h"
 #include "oofnd/PList.hpp"
 
-void GenerateGraphVizForAIStateMachine(const oo::PList &stateMachine, const std::string &smName);
+void GenerateGraphVizForAIStateMachine(const oo::PList& stateMachine, const std::string& smName);
 
-#endif	// DEBUG_GRAPHVIZ
+#endif // DEBUG_GRAPHVIZ
 
-#endif	// AIGRAPHVIZ_H
+#endif // AIGRAPHVIZ_H

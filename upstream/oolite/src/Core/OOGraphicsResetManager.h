@@ -40,39 +40,35 @@ SOFTWARE.
 #define OOGRAPHICSRESETMANAGER_H
 
 #include "OOFoundation.h"
-#include "oofnd/StdLib.hpp"
 #include "oofnd/Ref.hpp"
-
+#include "oofnd/StdLib.hpp"
 
 // A client (amendment oo-jpd8 item 3, added by bead oo-4jjl for OOSkyDrawable): the deleted
 // protocol OOGraphicsResetClient's method as a pure virtual. It registers with registerCxxClient().
-class OOGraphicsResetClient
-{
+class OOGraphicsResetClient {
 public:
-	virtual ~OOGraphicsResetClient() = default;
-	virtual void resetGraphicsState() = 0;
+    virtual ~OOGraphicsResetClient() = default;
+    virtual void resetGraphicsState() = 0;
 };
 
-
-class OOGraphicsResetManager : public oo::RefCounted
-{
+class OOGraphicsResetManager : public oo::RefCounted {
 public:
-	// The shared manager, made on first use; borrowed, never released (proposed ADR-0056
-	// amendment oo-r7m0).
-	static OOGraphicsResetManager *sharedManager();
+    // The shared manager, made on first use; borrowed, never released (proposed ADR-0056
+    // amendment oo-r7m0).
+    static OOGraphicsResetManager* sharedManager();
 
-	~OOGraphicsResetManager();
+    ~OOGraphicsResetManager();
 
-	// Clients are not retained; null is never registered (bead oo-9ht.23 deleted the overloads
-	// that took an Objective-C client).
-	void registerCxxClient(OOGraphicsResetClient *client);
-	void unregisterCxxClient(OOGraphicsResetClient *client);
+    // Clients are not retained; null is never registered (bead oo-9ht.23 deleted the overloads
+    // that took an Objective-C client).
+    void registerCxxClient(OOGraphicsResetClient* client);
+    void unregisterCxxClient(OOGraphicsResetClient* client);
 
-	// Forwarded to all clients, after resetting textures.
-	void resetGraphicsState();
+    // Forwarded to all clients, after resetting textures.
+    void resetGraphicsState();
 
 private:
-	std::unordered_set<OOGraphicsResetClient *>	cxxClients = {};	// not retained
+    std::unordered_set<OOGraphicsResetClient*> cxxClients = { }; // not retained
 };
 
-#endif	// OOGRAPHICSRESETMANAGER_H
+#endif // OOGRAPHICSRESETMANAGER_H

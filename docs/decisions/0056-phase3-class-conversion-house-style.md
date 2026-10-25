@@ -10117,3 +10117,50 @@ pytest and asan unchanged; the GCC `test` build compiles every target and the GC
 blessed golden (001, 001-launch-dock). No golden is re-blessed or added. Under GCC four test checks
 still fail because they pin Clang's spelling of `__PRETTY_FUNCTION__` (test_OOJSConsole,
 test_objc_assert): proposed [ADR-0064](0064-pretty-function-spelling-in-tests-under-gcc.md), for Jon.
+
+## Amendment (bead oo-we7mm): upstream OoliteProject dc55e3e05..9ee8ff22f ported into the C++ tree; the tree is clang-formatted
+
+The 2026-10-25 sync (ADR-0059; rows in `docs/UPSTREAM_DELTA.md`) brought 13 upstream commits. Each
+change to `src` is made in the converted code, behaviour-identically to upstream's:
+
+1. **#737** `OOCocoa.h`/`.cpp` are `OOFoundation.h`/`.cpp`; every include and mention follows (the
+   tests' include lines under std-2026-10-19, approval lines landed by oo-kmwzh). The Mac-only
+   crud upstream removed goes too (AppKit import, the 10.7/10.8 macros, `NSWindowStyleMask`, the
+   `OOLITE_HAVE_PROTOCOL_OPTIONAL` hack), and `GameController+FullScreen.mm` is deleted.
+2. **#740** `PlayerEntity::setLastsaveName()` writes the user default `last_savename`; a new game's
+   set-up (`setUpAndConfirmOK`) reads it back instead of resetting the name to Jameson. The AppKit
+   panels and the `OO_USE_CUSTOM_LOAD_SAVE`/`OOLITE_USE_APPKIT_LOAD_SAVE` macros go; the by-name and
+   callObjC tables are regenerated (their Mac-only rows go, the rest renumber).
+3. **#744, #747** as upstream: no dark-mode API or WINDOW_MOVED re-grab; `stringToClipboard` is
+   SDL's everywhere; `getDisplayDimensions`, `isRunningOnPrimaryDisplayDevice` and mouse grab are
+   common code; the copy-URL key (`key_oxzmanager_copyurl`) and `OOOXZManager::processCopyUrlKey`,
+   with the info page's URL kept (lowercased) in `_currentOXPURL`, a `std::optional<std::string>`
+   (nil upstream: nothing is copied).
+4. **#756** a guard that upstream turned from `!NDEBUG` into `OO_DEBUG_MONITOR_ENABLED` is turned
+   in the C++ file that holds that code, and so is every C++-only declaration, override, table row
+   (by-name, callObjC, object names; `tools/gen-callobjc-entity-table.py`'s three facade rows) and
+   helper of the same members, so that a deployment build (NDEBUG with the monitor) is consistent.
+   `#if OOLITE_DEBUG || defined(OO_DEBUG_MONITOR_ENABLED)` where upstream wrote it. Upstream's own
+   asymmetries are kept (a `!NDEBUG` caller of a monitor-only member). Non-deployment builds define
+   both, so the test build and the goldens see no change. The deployment build (upstream's CI builds
+   it since #756) compiles, links with LTO and passes `./mk.sh test deployment`; the unit-test
+   suites are not built in it (meson.build), since NDEBUG compiles out what they test.
+5. **#742** only the single `STICK_DEADZONE`; **#745** and **#758**'s `src` change do not apply
+   (selector spellings; a Foundation import the C++ header does not have).
+6. **#748, #749** the whole `src` tree is formatted with upstream's `.clang-format` (WebKit) by
+   clang-format 22, in its own commit; `tools/check-clang-format.sh` is upstream's CI check run
+   locally. Generated headers start with `// clang-format off` (their generators' `--check` compares
+   bytes). Include sorting is made safe as #748 made upstream's: headers that need another first
+   include it (`OOConcreteTexture.h`: `OOOpenGLExtensionManager.h` for `OO_TEXTURE_CUBE_MAP`;
+   `OOJSVisualEffect.h`: `OOEntityHold.h`), and the two order-dependent sequences that are not a
+   missing include are split into one-include blocks the sort cannot reorder: `OOMaths.h`'s maths
+   headers, `OOFoundation.h`'s `winsock2.h` before `windows.h`, `OOTextureInternal.h` before
+   `OOConcreteTexture.h` in OOTexture.cpp (it tests `OOTEXTURE_RELOADABLE`), and the first header of
+   OOPNGTextureLoader.h (`png.h`), MyOpenGLView+Input.cpp (`<SDL3/SDL_init.h>`) and
+   OOTextureLoader.cpp (`OOPNGTextureLoader.h`), because under Clang the first header a file reaches
+   decides whether MinGW's or the UCRT's printf/strtod family is used. The formatting is proved
+   behaviour-neutral: every game TU (228) compiled from the unformatted and from the formatted tree
+   with the test build's flags (no LTO, `-g0`, `__LINE__` pinned) gives the same code, section by
+   section, except one string length that is `__FILE__`'s own (the two trees' paths differ). Where spacing made clang see a new
+   warning (`a | b` of bools, `-Wbitwise-instead-of-logical`) the code reads every key into
+   `AnyKeyPressed({...})`, which evaluates all of them as the `|` did.

@@ -34,32 +34,27 @@ MA 02110-1301, USA.
 
 #include <exception>
 
-
 /*	The game's exception (oo::Exception since bead oo-rskgl.1, the Objective-C OOException before)
-	is reported as the @catch (id) this replaces reported it, by OOJSReportWrappedException(): its
-	reason (the -isKindOfClass:[OOException class] test is the catch clause now). Any other
-	Objective-C object was "Unidentified native exception", as anything else still is. A C++ one,
-	which that clause could not catch (the process terminated, ADR-0029 measurement 10), is
-	reported from its what() in the same words, so a raise site that becomes a C++ throw in
-	Phase 3 reads the same in JS.
+        is reported as the @catch (id) this replaces reported it, by OOJSReportWrappedException(): its
+        reason (the -isKindOfClass:[OOException class] test is the catch clause now). Any other
+        Objective-C object was "Unidentified native exception", as anything else still is. A C++ one,
+        which that clause could not catch (the process terminated, ADR-0029 measurement 10), is
+        reported from its what() in the same words, so a raise site that becomes a C++ throw in
+        Phase 3 reads the same in JS.
 */
 void OOJSReportCurrentException(ooscript::Context context)
 {
-	try
-	{
-		throw;
-	}
-	catch (const oo::Exception &exception)
-	{
-		if (!ooscript::isExceptionPending((context)))  cxx_OOJSReportError(context, "Native exception: %s", exception.reason());
-		// Else, let the pending exception propagate.
-	}
-	catch (const std::exception &exception)
-	{
-		if (!ooscript::isExceptionPending((context)))  cxx_OOJSReportError(context, "Native exception: %s", exception.what());
-	}
-	catch (...)
-	{
-		if (!ooscript::isExceptionPending((context)))  cxx_OOJSReportError(context, "Unidentified native exception");
-	}
+    try {
+        throw;
+    } catch (const oo::Exception& exception) {
+        if (!ooscript::isExceptionPending((context)))
+            cxx_OOJSReportError(context, "Native exception: %s", exception.reason());
+        // Else, let the pending exception propagate.
+    } catch (const std::exception& exception) {
+        if (!ooscript::isExceptionPending((context)))
+            cxx_OOJSReportError(context, "Native exception: %s", exception.what());
+    } catch (...) {
+        if (!ooscript::isExceptionPending((context)))
+            cxx_OOJSReportError(context, "Unidentified native exception");
+    }
 }

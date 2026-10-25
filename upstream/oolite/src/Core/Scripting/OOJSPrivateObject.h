@@ -36,54 +36,52 @@ MA 02110-1301, USA.
 #ifndef OOJSPRIVATEOBJECT_H
 #define OOJSPRIVATEOBJECT_H
 
-#include "ooscript/JSEngine.hpp"
 #include "oofnd/Ref.hpp"
+#include "ooscript/JSEngine.hpp"
 
 #include <optional>
 #include <string>
 
-
 /*	The JS glue of a C++ object, the selectors of OOObject (OOJavaScriptConversion) as virtual
-	members. A class implements it beside oo::RefCounted (class X : public Base, public
-	OOJSPrivateObject); the engine reaches it from the slot's oo::RefCounted * by dynamic_cast.
+        members. A class implements it beside oo::RefCounted (class X : public Base, public
+        OOJSPrivateObject); the engine reaches it from the slot's oo::RefCounted * by dynamic_cast.
 */
-class OOJSPrivateObject
-{
+class OOJSPrivateObject {
 public:
-	virtual ~OOJSPrivateObject() = default;
+    virtual ~OOJSPrivateObject() = default;
 
-	// -oo_jsValueInContext: the object's JS value, its wrapper made on first use.
-	virtual ooscript::Value jsValueInContext(ooscript::Context context) = 0;
+    // -oo_jsValueInContext: the object's JS value, its wrapper made on first use.
+    virtual ooscript::Value jsValueInContext(ooscript::Context context) = 0;
 
-	// -oo_clearJSSelf: the wrapper selfVal is being finalized; forget it if it is the object's.
-	virtual void clearJSSelf(ooscript::Object selfVal) = 0;
+    // -oo_clearJSSelf: the wrapper selfVal is being finalized; forget it if it is the object's.
+    virtual void clearJSSelf(ooscript::Object selfVal) = 0;
 
-	// -cxx_oo_jsDescription: what toString() answers; nullopt for "[object <JS class name>]".
-	virtual std::optional<std::string> jsDescription()  { return std::nullopt; }
+    // -cxx_oo_jsDescription: what toString() answers; nullopt for "[object <JS class name>]".
+    virtual std::optional<std::string> jsDescription() { return std::nullopt; }
 };
 
-
 // The JS value of object (its virtual jsValueInContext()); JS null for null, as for nil.
-ooscript::Value OOJSValueFromCxxObject(ooscript::Context context, OOJSPrivateObject *object);
+ooscript::Value OOJSValueFromCxxObject(ooscript::Context context, OOJSPrivateObject* object);
 
 // Puts object in jsObject's private slot with one retain, released by
 // OOJSCxxObjectWrapperFinalize(). False, with nothing retained, if the slot cannot be set.
-bool OOJSSetCxxPrivate(ooscript::Context context, ooscript::Object jsObject, oo::RefCounted *object);
+bool OOJSSetCxxPrivate(ooscript::Context context, ooscript::Object jsObject, oo::RefCounted* object);
 
 /*	DEFINE_JS_OBJECT_GETTER for a slot that holds a C++ object: false, with the engine's error
-	("Native method expected <class>, got <object>."), if object is not of requiredJSClass or a
-	subclass registered with OOJSRegisterSubclass(); else *outObject is the slot's object,
-	borrowed, or null (a prototype has none). Requires a request on context.
+        ("Native method expected <class>, got <object>."), if object is not of requiredJSClass or a
+        subclass registered with OOJSRegisterSubclass(); else *outObject is the slot's object,
+        borrowed, or null (a prototype has none). Requires a request on context.
 */
-bool OOJSGetCxxPrivateImpl(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, oo::RefCounted **outObject);
+bool OOJSGetCxxPrivateImpl(ooscript::Context context, ooscript::Object object, ooscript::ClassDef* requiredJSClass, oo::RefCounted** outObject);
 
 template <class T>
-bool OOJSGetCxxPrivate(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, T **outObject)
+bool OOJSGetCxxPrivate(ooscript::Context context, ooscript::Object object, ooscript::ClassDef* requiredJSClass, T** outObject)
 {
-	oo::RefCounted *held = nullptr;
-	if (!OOJSGetCxxPrivateImpl(context, object, requiredJSClass, &held))  return false;
-	*outObject = static_cast<T *>(held);
-	return true;
+    oo::RefCounted* held = nullptr;
+    if (!OOJSGetCxxPrivateImpl(context, object, requiredJSClass, &held))
+        return false;
+    *outObject = static_cast<T*>(held);
+    return true;
 }
 
 // The finalize hook of a JS class whose slot holds a C++ object: tells the object its wrapper is
@@ -91,9 +89,9 @@ bool OOJSGetCxxPrivate(ooscript::Context context, ooscript::Object object, ooscr
 void OOJSCxxObjectWrapperFinalize(ooscript::Context context, ooscript::Object thisObj);
 
 /*	toString() for such a class, called from a one-line native that names the class: the object's
-	jsDescription(), else "[object <JS class name>]" (also for a prototype, which has no object).
-	A `this` of another class is described as OOJSObjectWrapperToString() describes it.
+        jsDescription(), else "[object <JS class name>]" (also for a prototype, which has no object).
+        A `this` of another class is described as OOJSObjectWrapperToString() describes it.
 */
-bool OOJSCxxObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oojsArgs, ooscript::ClassDef *jsClass);
+bool OOJSCxxObjectWrapperToString(ooscript::Context context, ooscript::CallArgs& oojsArgs, ooscript::ClassDef* jsClass);
 
-#endif	// OOJSPRIVATEOBJECT_H
+#endif // OOJSPRIVATEOBJECT_H

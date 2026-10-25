@@ -37,12 +37,12 @@ SOFTWARE.
 class OOMaterial;
 
 // OOMaterial::current().leakRef(): the current material, retained by the caller; null for none.
-OOMaterial *OOMaterialRetainCurrent();
+OOMaterial* OOMaterialRetainCurrent();
 
 // OOMaterial::applyNone().
 void OOMaterialApplyNone();
 
 // Makes material current again (apply(); nothing for null) and releases the caller's reference.
-void OOMaterialApplyAndRelease(OOMaterial *material);
+void OOMaterialApplyAndRelease(OOMaterial* material);
 
-#endif	// OOMATERIALSTATE_H
+#endif // OOMATERIALSTATE_H

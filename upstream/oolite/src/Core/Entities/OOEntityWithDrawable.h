@@ -33,23 +33,21 @@ MA 02110-1301, USA.
 
 #include "Entity.h"
 
-#include "OODrawable.h"	// the drawable is held by oo::Ref (a complete type wherever the entity is destroyed)
+#include "OODrawable.h" // the drawable is held by oo::Ref (a complete type wherever the entity is destroyed)
 
-
-class OOEntityWithDrawable : public Entity
-{
+class OOEntityWithDrawable : public Entity {
 public:
-	OODrawable *getDrawable();	// borrowed
-	void setDrawable(OODrawable *drawable);
+    OODrawable* getDrawable(); // borrowed
+    void setDrawable(OODrawable* drawable);
 
-	double findCollisionRadius() override;
-	void drawImmediate(bool immediate, bool translucent) override;
+    double findCollisionRadius() override;
+    void drawImmediate(bool immediate, bool translucent) override;
 
 #ifdef OO_DEBUG_MONITOR_ENABLED
-	std::vector<oo::Ref<OOTexture>> allTextures() override;
+    std::vector<oo::Ref<OOTexture>> allTextures() override;
 #endif
 
 private:
-	// The drawable, held (an Objective-C object until bead oo-hahfg: every drawable is C++).
-	oo::Ref<OODrawable>			drawable;
+    // The drawable, held (an Objective-C object until bead oo-hahfg: every drawable is C++).
+    oo::Ref<OODrawable> drawable;
 };

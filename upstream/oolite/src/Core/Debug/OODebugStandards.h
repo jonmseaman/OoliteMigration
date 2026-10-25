@@ -34,10 +34,10 @@ SOFTWARE.
 #include "oofnd/StdLib.hpp"
 
 // Warn/exit if deprecated functionality used
-void cxx_OOStandardsDeprecated(const std::string &message);
+void cxx_OOStandardsDeprecated(const std::string& message);
 
 // Warn/exit if an OXP error is detected
-void cxx_OOStandardsError(const std::string &message);
+void cxx_OOStandardsError(const std::string& message);
 #endif
 
 #ifdef __cplusplus
@@ -55,11 +55,8 @@ void OOSetStandardsForOXPVerifierMode(void);
 }
 #endif
 
-
 /*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
-	declared before bead oo-56ct, forwarding to the cxx_ functions above, so unmigrated callers
-	compile unchanged. Callers move to the cxx_ API in their own sweep beads; the bridge goes in
-	its own bead.
+        declared before bead oo-56ct, forwarding to the cxx_ functions above, so unmigrated callers
+        compile unchanged. Callers move to the cxx_ API in their own sweep beads; the bridge goes in
+        its own bead.
 */
-
-

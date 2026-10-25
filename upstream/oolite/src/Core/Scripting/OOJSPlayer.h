@@ -30,25 +30,23 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 class PlayerEntity;
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void InitOOJSPlayer(ooscript::Context context, ooscript::Object global);
 
-ooscript::ClassDef *JSPlayerClass(void);
+ooscript::ClassDef* JSPlayerClass(void);
 ooscript::Object JSPlayerPrototype(void);
 ooscript::Object JSPlayerObject(void);
 
-
 /*	All JS functions which talk to the player entity should call
-	OOOPlayerForScripting() to ensure that the script target (for the legacy
-	system) is set correctly. Additionally, all such functions should _always_
-	call OOPlayerForScripting(), even if they end up not using it, to ensure
-	consistent state.
+        OOOPlayerForScripting() to ensure that the script target (for the legacy
+        system) is set correctly. Additionally, all such functions should _always_
+        call OOPlayerForScripting(), even if they end up not using it, to ensure
+        consistent state.
 */
-PlayerEntity *OOPlayerForScripting(void);
+PlayerEntity* OOPlayerForScripting(void);
 
 #ifdef __cplusplus
 }

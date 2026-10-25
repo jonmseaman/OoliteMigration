@@ -30,7 +30,6 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 class StationEntity;
 
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -41,10 +40,9 @@ void InitOOJSStation(ooscript::Context context, ooscript::Object global);
 }
 #endif
 
-
 /*	The bodies of StationEntity (OOJavaScriptExtensions), which the engine reaches by selector.
-	StationEntity::getJSClass and ::jsClassName call these
-	(proposed ADR-0056 amendments oo-ppc and oo-ykoy).
+        StationEntity::getJSClass and ::jsClassName call these
+        (proposed ADR-0056 amendments oo-ppc and oo-ykoy).
 */
-void OOJSStationGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
+void OOJSStationGetJSClass(ooscript::ClassDef** outClass, ooscript::Object* outPrototype);
 std::optional<std::string> OOJSStationJSClassName(void);

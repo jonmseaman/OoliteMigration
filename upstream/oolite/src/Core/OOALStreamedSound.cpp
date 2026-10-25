@@ -32,94 +32,80 @@ SOFTWARE.
 // The decoder is released by its oo::Ref.
 OOALStreamedSound::~OOALStreamedSound()
 {
-	free(_buffer);
-	_buffer = NULL;
+    free(_buffer);
+    _buffer = NULL;
 }
 
 std::optional<std::string> OOALStreamedSound::name()
 {
-	return _name;
+    return _name;
 }
-
-
 
 /*	The body of -initWithDecoder:, with self as the new sound; its [self release]; self = nil; is
-	the null it answers. The decoder is the C++ one since bead oo-9ht.82; [inDecoder retain] is the
-	oo::Ref.
+        the null it answers. The decoder is the C++ one since bead oo-9ht.82; [inDecoder retain] is the
+        oo::Ref.
 */
-oo::Ref<OOALStreamedSound> OOALStreamedSound::initWithDecoder(OOALSoundDecoder *inDecoder)
+oo::Ref<OOALStreamedSound> OOALStreamedSound::initWithDecoder(OOALSoundDecoder* inDecoder)
 {
-	bool					OK = true;
-	oo::Ref<OOALStreamedSound>	self;
-	
-	setUp();
-	if (!isSoundOK() || nullptr == inDecoder) OK = false;
-	
-	if (OK)
-	{
-		self = oo::adopt(new OOALStreamedSound);
-	}
-	
-	if (OK)
-	{
-		self->_name = inDecoder->name();
-		self->_sampleRate = inDecoder->sampleRate();
-		self->_stereo = inDecoder->isStereo();
-		self->_reachedEnd = false;
-		self->_buffer = (char *)malloc(OOAL_STREAM_CHUNK_SIZE);
-		self->decoder = oo::Ref<OOALSoundDecoder>(inDecoder);
-		self->rewind();
-	}
-	
-	if (!OK)
-	{
-		self = nullptr;
-	}
-	return self;
-}
+    bool OK = true;
+    oo::Ref<OOALStreamedSound> self;
 
+    setUp();
+    if (!isSoundOK() || nullptr == inDecoder)
+        OK = false;
+
+    if (OK) {
+        self = oo::adopt(new OOALStreamedSound);
+    }
+
+    if (OK) {
+        self->_name = inDecoder->name();
+        self->_sampleRate = inDecoder->sampleRate();
+        self->_stereo = inDecoder->isStereo();
+        self->_reachedEnd = false;
+        self->_buffer = (char*)malloc(OOAL_STREAM_CHUNK_SIZE);
+        self->decoder = oo::Ref<OOALSoundDecoder>(inDecoder);
+        self->rewind();
+    }
+
+    if (!OK) {
+        self = nullptr;
+    }
+    return self;
+}
 
 void OOALStreamedSound::rewind()
 {
-	if (decoder != nullptr)  decoder->reset();	// a message to nil did nothing
-	_reachedEnd = false;
+    if (decoder != nullptr)
+        decoder->reset(); // a message to nil did nothing
+    _reachedEnd = false;
 }
-
 
 bool OOALStreamedSound::soundIncomplete()
 {
-	return !_reachedEnd;
+    return !_reachedEnd;
 }
-
 
 ALuint OOALStreamedSound::soundBuffer()
 {
-	size_t transferred = (decoder != nullptr) ? decoder->streamToBuffer(_buffer) : 0;	// a message to nil answered 0
-	if (transferred < OOAL_STREAM_CHUNK_SIZE)
-	{
-		// otherwise keep going
-		_reachedEnd = true;
-	}
+    size_t transferred = (decoder != nullptr) ? decoder->streamToBuffer(_buffer) : 0; // a message to nil answered 0
+    if (transferred < OOAL_STREAM_CHUNK_SIZE) {
+        // otherwise keep going
+        _reachedEnd = true;
+    }
 
-	ALuint buffer;
-	ALint error;
-	OOAL(alGenBuffers(1,&buffer));
-	if ((error = alGetError()) != AL_NO_ERROR)
-	{
-		OO_LOG(kOOLogSoundLoadingError, "{}", "Could not create OpenAL buffer");
-		return 0;
-	}
-	else
-	{
-		if (!_stereo)
-		{
-			alBufferData(buffer, AL_FORMAT_MONO16, _buffer, (ALsizei)transferred, _sampleRate);
-		}
-		else
-		{
-			alBufferData(buffer, AL_FORMAT_STEREO16, _buffer, (ALsizei)transferred, _sampleRate);
-		}
-		return buffer;
-	}
+    ALuint buffer;
+    ALint error;
+    OOAL(alGenBuffers(1, &buffer));
+    if ((error = alGetError()) != AL_NO_ERROR) {
+        OO_LOG(kOOLogSoundLoadingError, "{}", "Could not create OpenAL buffer");
+        return 0;
+    } else {
+        if (!_stereo) {
+            alBufferData(buffer, AL_FORMAT_MONO16, _buffer, (ALsizei)transferred, _sampleRate);
+        } else {
+            alBufferData(buffer, AL_FORMAT_STEREO16, _buffer, (ALsizei)transferred, _sampleRate);
+        }
+        return buffer;
+    }
 }
-

@@ -26,72 +26,63 @@ MA 02110-1301, USA.
 #include "OOFullScreenController.h"
 #include "OOLogging.h"
 
-
-OOFullScreenController::OOFullScreenController(MyOpenGLView *view)
-	: _gameView(view)
+OOFullScreenController::OOFullScreenController(MyOpenGLView* view)
+    : _gameView(view)
 {
 }
 
-
-MyOpenGLView *OOFullScreenController::gameView()
+MyOpenGLView* OOFullScreenController::gameView()
 {
-	return _gameView.get();
+    return _gameView.get();
 }
-
 
 bool OOFullScreenController::inFullScreenMode()
 {
-	OOLogGenericSubclassResponsibility();
-	return NO;
+    OOLogGenericSubclassResponsibility();
+    return NO;
 }
-
 
 void OOFullScreenController::setFullScreenMode(bool /*value*/)
 {
-	OOLogGenericSubclassResponsibility();
+    OOLogGenericSubclassResponsibility();
 }
-
 
 oo::PList OOFullScreenController::displayModes()
 {
-	OOLogGenericSubclassResponsibility();
-	return oo::PList();
+    OOLogGenericSubclassResponsibility();
+    return oo::PList();
 }
-
 
 oo::PList OOFullScreenController::currentDisplayMode()
 {
-	const oo::PList modes = displayModes();
-	const oo::PList::Array *arr = modes.getIf<oo::PList::Array>();
-	if (arr == nullptr)  return oo::PList();
-	const NSUInteger idx = indexOfCurrentDisplayMode();
-	if (idx >= arr->size())  return oo::PList();
-	return (*arr)[idx];
+    const oo::PList modes = displayModes();
+    const oo::PList::Array* arr = modes.getIf<oo::PList::Array>();
+    if (arr == nullptr)
+        return oo::PList();
+    const NSUInteger idx = indexOfCurrentDisplayMode();
+    if (idx >= arr->size())
+        return oo::PList();
+    return (*arr)[idx];
 }
-
 
 NSUInteger OOFullScreenController::indexOfCurrentDisplayMode()
 {
-	OOLogGenericSubclassResponsibility();
-	return NSNotFound;
+    OOLogGenericSubclassResponsibility();
+    return NSNotFound;
 }
-
 
 bool OOFullScreenController::setDisplayWidth(NSUInteger /*width*/, NSUInteger /*height*/, NSUInteger /*refresh*/)
 {
-	OOLogGenericSubclassResponsibility();
-	return NO;
+    OOLogGenericSubclassResponsibility();
+    return NO;
 }
-
 
 oo::PList OOFullScreenController::findDisplayModeForWidth(NSUInteger /*width*/, NSUInteger /*height*/, NSUInteger /*d_refresh*/)
 {
-	OOLogGenericSubclassResponsibility();
-	return oo::PList();
+    OOLogGenericSubclassResponsibility();
+    return oo::PList();
 }
-
 
 void OOFullScreenController::noteMouseInteractionModeChangedFrom(OOMouseInteractionMode /*oldMode*/, OOMouseInteractionMode /*newMode*/)
 {
-	
 }

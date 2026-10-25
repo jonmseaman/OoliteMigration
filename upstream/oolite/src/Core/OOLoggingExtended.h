@@ -32,13 +32,10 @@ SOFTWARE.
 
 #include "OOLogging.h"
 
-
 void OOLoggingInit(void);
 void OOLoggingTerminate(void);
 
-
 void OOLogInsertMarker(void);
-
 
 // Get/set display settings. These are stored in user defaults.
 BOOL OOLogShowFunction(void);

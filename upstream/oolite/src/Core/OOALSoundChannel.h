@@ -38,9 +38,9 @@ SOFTWARE.
 #define OOALSOUNDCHANNEL_H
 
 #include "OOFoundation.h"
-#include "oofnd/objc/OOObject.h"
-#include "OOOpenALController.h"
 #include "OOMaths.h"
+#include "OOOpenALController.h"
+#include "oofnd/objc/OOObject.h"
 
 #include "oofnd/Ref.hpp"
 
@@ -48,67 +48,63 @@ SOFTWARE.
 struct OOSoundChannelTestAccess;
 class OOSoundChannel;
 
-
 /*	The channel's delegate: was the informal OOObject (OOSoundChannelDelegate) category, any object
-	answering -channel:didFinishPlayingSound: (bead oo-9ht.86). The channel holds it unretained, as
-	before; a playing sound source and the stopped-source handler implement it.
+        answering -channel:didFinishPlayingSound: (bead oo-9ht.86). The channel holds it unretained, as
+        before; a playing sound source and the stopped-source handler implement it.
 */
-class OOSoundChannelDelegate
-{
+class OOSoundChannelDelegate {
 public:
-	virtual void channel(OOSoundChannel *channel, OOSound *sound) = 0;
+    virtual void channel(OOSoundChannel* channel, OOSound* sound) = 0;
 
 protected:
-	~OOSoundChannelDelegate() = default;
+    ~OOSoundChannelDelegate() = default;
 };
 
-
-class OOSoundChannel : public oo::RefCounted
-{
+class OOSoundChannel : public oo::RefCounted {
 public:
-	/*	Was -init, which answered nil when OpenAL would not make a source: false then (amendment
-		oo-r7m0 item 2). Its maker runs it right after making the channel and drops a channel for
-		which it fails.
-	*/
-	bool init();
+    /*	Was -init, which answered nil when OpenAL would not make a source: false then (amendment
+            oo-r7m0 item 2). Its maker runs it right after making the channel and drops a channel for
+            which it fails.
+    */
+    bool init();
 
-	~OOSoundChannel() override;
+    ~OOSoundChannel() override;
 
-	void update();
+    void update();
 
-	void setDelegate(OOSoundChannelDelegate *delegate);
+    void setDelegate(OOSoundChannelDelegate* delegate);
 
-	// Unretained pointer used to maintain simple stack
-	OOSoundChannel *next();
-	void setNext(OOSoundChannel *next);
+    // Unretained pointer used to maintain simple stack
+    OOSoundChannel* next();
+    void setNext(OOSoundChannel* next);
 
-	// set sound position relative to listener
-	void setPosition(Vector vector);
-	void setGain(float gain);
-	bool playSound(OOSound *sound, bool loop);
-	void stop();
+    // set sound position relative to listener
+    void setPosition(Vector vector);
+    void setGain(float gain);
+    bool playSound(OOSound* sound, bool loop);
+    void stop();
 
-	OOSound *sound();
+    OOSound* sound();
 
 private:
-	// Was the private -hasStopped, which told the delegate that self had finished; -dealloc sent it
-	// too, so the destructor does.
-	void hasStopped();
+    // Was the private -hasStopped, which told the delegate that self had finished; -dealloc sent it
+    // too, so the destructor does.
+    void hasStopped();
 
-	bool enqueueBuffer(OOSound *sound);
-	void getNextSoundBuffer();
+    bool enqueueBuffer(OOSound* sound);
+    void getNextSoundBuffer();
 
-	OOSoundChannel				*_next = {};
-	OOSoundChannelDelegate		*_delegate = {};
-	oo::Ref<OOSound>			_sound;	// retained, as the Objective-C sound was
-	ALuint						_buffer = {};
-	ALuint						_lastBuffer = {};
-	bool						_bigSound = {};
-	ALuint						_source = {};
-	// (The Objective-C class's _playing, which nothing read or wrote, is not kept: -Wunused-private-field.)
-	bool						_loop = {};
+    OOSoundChannel* _next = { };
+    OOSoundChannelDelegate* _delegate = { };
+    oo::Ref<OOSound> _sound; // retained, as the Objective-C sound was
+    ALuint _buffer = { };
+    ALuint _lastBuffer = { };
+    bool _bigSound = { };
+    ALuint _source = { };
+    // (The Objective-C class's _playing, which nothing read or wrote, is not kept: -Wunused-private-field.)
+    bool _loop = { };
 
-	friend struct ::OOSoundChannelTestAccess;	// tests only (amendment oo-862e item 2)
+    friend struct ::OOSoundChannelTestAccess; // tests only (amendment oo-862e item 2)
 };
 
-#endif	// OOALSOUNDCHANNEL_H
+#endif // OOALSOUNDCHANNEL_H

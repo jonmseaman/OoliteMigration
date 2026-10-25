@@ -34,47 +34,43 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 
-
 /*	Foundation sweep (proposed ADR-0043, bead oo-0iq2): the used texture names are a sorted
-	std::vector (a set), checked in byte order of the name. nameForReverseDependencyForVerifier() is a shared name
-	(the other stages declare it) and, flipped with the others, returns a std::string (bead oo-3rb.274.2).
+        std::vector (a set), checked in byte order of the name. nameForReverseDependencyForVerifier() is a shared name
+        (the other stages declare it) and, flipped with the others, returns a std::string (bead oo-3rb.274.2).
 
-	C++20 since bead oo-tuq8 (proposed ADR-0056 Amendment 1, amendment oo-up4b items 2 and 6).
-	OOTextureVerifierStage is a leaf of OOFileHandlingVerifierStage; it is global and has no
-	facade, because nothing outside this file messages it (the verifier makes it from its name,
-	kCxxStages in OOOXPVerifier.mm). OOTextureHandlingStage is an intermediate class that the ship
-	data and model stages subclass; its Objective-C facade was deleted by bead oo-9ht.45 once they
-	were C++ (ADR-0056 amendment "deleting a facade"), with the verifier's -textureVerifierStage.
+        C++20 since bead oo-tuq8 (proposed ADR-0056 Amendment 1, amendment oo-up4b items 2 and 6).
+        OOTextureVerifierStage is a leaf of OOFileHandlingVerifierStage; it is global and has no
+        facade, because nothing outside this file messages it (the verifier makes it from its name,
+        kCxxStages in OOOXPVerifier.mm). OOTextureHandlingStage is an intermediate class that the ship
+        data and model stages subclass; its Objective-C facade was deleted by bead oo-9ht.45 once they
+        were C++ (ADR-0056 amendment "deleting a facade"), with the verifier's -textureVerifierStage.
 */
-class OOTextureVerifierStage : public OOFileHandlingVerifierStage
-{
+class OOTextureVerifierStage : public OOFileHandlingVerifierStage {
 public:
-	// Returns name to be used in dependents() by other stages.
-	static std::string nameForReverseDependencyForVerifier(OOOXPVerifier *verifier);	// flipped with its family (bead oo-3rb.274.2)
+    // Returns name to be used in dependents() by other stages.
+    static std::string nameForReverseDependencyForVerifier(OOOXPVerifier* verifier); // flipped with its family (bead oo-3rb.274.2)
 
-	std::optional<std::string> name() override;
-	bool shouldRun() override;
-	void run() override;
+    std::optional<std::string> name() override;
+    bool shouldRun() override;
+    void run() override;
 
-	/*	This can be called by other stages *before* the texture stage runs.
-		The context specifies where the texture is used; something like
-		"fooShip.dat" or "shipdata.plist materials dictionary for ship \"foo\"".
-		It should make sense with "Texture \"foo\" referenced in " in front of it.
-	*/
-	void textureNamed(const std::string &name, const std::string &context);	// an empty name is ignored, as nil was
+    /*	This can be called by other stages *before* the texture stage runs.
+            The context specifies where the texture is used; something like
+            "fooShip.dat" or "shipdata.plist materials dictionary for ship \"foo\"".
+            It should make sense with "Texture \"foo\" referenced in " in front of it.
+    */
+    void textureNamed(const std::string& name, const std::string& context); // an empty name is ignored, as nil was
 
 private:
-	void checkTextureNamed(const std::string &name, const std::string &folder);
+    void checkTextureNamed(const std::string& name, const std::string& folder);
 
-	std::vector<std::string>		_usedTextures = {};	// sorted, no duplicates
+    std::vector<std::string> _usedTextures = { }; // sorted, no duplicates
 };
 
-
 // Convenience base class for stages that need to run before OOTextureHandlingStage.
-class OOTextureHandlingStage : public OOFileHandlingVerifierStage
-{
+class OOTextureHandlingStage : public OOFileHandlingVerifierStage {
 public:
-	std::optional<std::vector<std::string>> dependents() override;
+    std::optional<std::vector<std::string>> dependents() override;
 };
 
 #endif

@@ -33,71 +33,59 @@ SOFTWARE.
 
 OOALBufferedSound::~OOALBufferedSound()
 {
-	free(_buffer);
-	_buffer = NULL;
+    free(_buffer);
+    _buffer = NULL;
 }
 
 std::optional<std::string> OOALBufferedSound::name()
 {
-	return _name;
+    return _name;
 }
-
-
 
 /*	The body of -initWithDecoder:, with self as the new sound; its [self release]; self = nil; is
-	the null it answers (the object is freed as the release freed it). The decoder is the C++ one
-	since bead oo-9ht.82.
+        the null it answers (the object is freed as the release freed it). The decoder is the C++ one
+        since bead oo-9ht.82.
 */
-oo::Ref<OOALBufferedSound> OOALBufferedSound::initWithDecoder(OOALSoundDecoder *inDecoder)
+oo::Ref<OOALBufferedSound> OOALBufferedSound::initWithDecoder(OOALSoundDecoder* inDecoder)
 {
-	bool					OK = true;
-	oo::Ref<OOALBufferedSound>	self;
-	
-	setUp();
-	if (!isSoundOK() || nullptr == inDecoder) OK = false;
-	
-	if (OK)
-	{
-		self = oo::adopt(new OOALBufferedSound);
-	}
-	
-	if (OK)
-	{
-		self->_name = inDecoder->name();
-		self->_sampleRate = inDecoder->sampleRate();
-		OK = inDecoder->readCreatingBuffer(&self->_buffer, &self->_size);
-		self->_stereo = inDecoder->isStereo();
-	}
-	
-	if (!OK)
-	{
-		self = nullptr;
-	}
-	return self;
-}
+    bool OK = true;
+    oo::Ref<OOALBufferedSound> self;
 
+    setUp();
+    if (!isSoundOK() || nullptr == inDecoder)
+        OK = false;
+
+    if (OK) {
+        self = oo::adopt(new OOALBufferedSound);
+    }
+
+    if (OK) {
+        self->_name = inDecoder->name();
+        self->_sampleRate = inDecoder->sampleRate();
+        OK = inDecoder->readCreatingBuffer(&self->_buffer, &self->_size);
+        self->_stereo = inDecoder->isStereo();
+    }
+
+    if (!OK) {
+        self = nullptr;
+    }
+    return self;
+}
 
 ALuint OOALBufferedSound::soundBuffer()
 {
-	ALuint buffer;
-	ALint error;
-	OOAL(alGenBuffers(1,&buffer));
-	if ((error = alGetError()) != AL_NO_ERROR)
-	{
-		OO_LOG(kOOLogSoundLoadingError, "{}", "Could not create OpenAL buffer");
-		return 0;
-	}
-	else
-	{
-		if (!_stereo)
-		{
-			alBufferData(buffer,AL_FORMAT_MONO16,_buffer,(ALsizei)_size,_sampleRate);
-		}
-		else
-		{
-			alBufferData(buffer,AL_FORMAT_STEREO16,_buffer,(ALsizei)_size,_sampleRate);
-		}
-		return buffer;
-	}
+    ALuint buffer;
+    ALint error;
+    OOAL(alGenBuffers(1, &buffer));
+    if ((error = alGetError()) != AL_NO_ERROR) {
+        OO_LOG(kOOLogSoundLoadingError, "{}", "Could not create OpenAL buffer");
+        return 0;
+    } else {
+        if (!_stereo) {
+            alBufferData(buffer, AL_FORMAT_MONO16, _buffer, (ALsizei)_size, _sampleRate);
+        } else {
+            alBufferData(buffer, AL_FORMAT_STEREO16, _buffer, (ALsizei)_size, _sampleRate);
+        }
+        return buffer;
+    }
 }
-

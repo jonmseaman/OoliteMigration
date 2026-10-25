@@ -29,8 +29,7 @@ MA 02110-1301, USA.
 
 #include "OOFoundation.h"
 #include "ooscript/JSEngine.hpp"
-class OOPlanetEntity;	// C++ since bead oo-9ht.129
-
+class OOPlanetEntity; // C++ since bead oo-9ht.129
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,12 +41,11 @@ void InitOOJSPlanet(ooscript::Context context, ooscript::Object global);
 }
 #endif
 
-
 /*	The bodies of OOPlanetEntity (OOJavaScriptExtensions), which the engine reaches through the root
-	Entity's virtual members: the C++ planet's overrides call these (bead oo-9ht.129; until then the
-	OOPlanetEntity facade forwarded to them, bead oo-9ht.92; proposed ADR-0056 amendments oo-ppc,
-	oo-ykoy, oo-6ia4 and oo-9ht.107 item 2).
+        Entity's virtual members: the C++ planet's overrides call these (bead oo-9ht.129; until then the
+        OOPlanetEntity facade forwarded to them, bead oo-9ht.92; proposed ADR-0056 amendments oo-ppc,
+        oo-ykoy, oo-6ia4 and oo-9ht.107 item 2).
 */
-bool OOJSPlanetIsVisibleToScripts(OOPlanetEntity *planet);
-void OOJSPlanetGetJSClass(ooscript::ClassDef **outClass, ooscript::Object *outPrototype);
-std::optional<std::string> OOJSPlanetJSClassName(OOPlanetEntity *planet);
+bool OOJSPlanetIsVisibleToScripts(OOPlanetEntity* planet);
+void OOJSPlanetGetJSClass(ooscript::ClassDef** outClass, ooscript::Object* outPrototype);
+std::optional<std::string> OOJSPlanetJSClassName(OOPlanetEntity* planet);

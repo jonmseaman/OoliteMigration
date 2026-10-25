@@ -14,11 +14,11 @@ names gnu_printf; Clang's printf already checks C99 and is unchanged (bead oo-1q
 #define OOFND_PRINTF_FORMAT_H
 
 #if defined(__MINGW32__) && defined(__GNUC__) && !defined(__clang__)
-#define OO_PRINTF_FORMAT(fmt, first)	__attribute__((format(gnu_printf, fmt, first)))
+#define OO_PRINTF_FORMAT(fmt, first) __attribute__((format(gnu_printf, fmt, first)))
 #elif defined(__GNUC__) || defined(__clang__)
-#define OO_PRINTF_FORMAT(fmt, first)	__attribute__((format(printf, fmt, first)))
+#define OO_PRINTF_FORMAT(fmt, first) __attribute__((format(printf, fmt, first)))
 #else
 #define OO_PRINTF_FORMAT(fmt, first)
 #endif
 
-#endif	// OOFND_PRINTF_FORMAT_H
+#endif // OOFND_PRINTF_FORMAT_H

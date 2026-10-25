@@ -28,13 +28,11 @@ SOFTWARE.
 
 */
 
-
 #pragma once
 
 #include "OOFoundation.h"
 
 #include "oofnd/StdLib.hpp"
-
 
 void OOPrintLogHeader(void);
 

@@ -25,43 +25,40 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#if defined(__cplusplus) && !defined(OO_PLAIN_CPP_UNIT)	// was __OBJC__: a game unit (an Objective-C++ unit until bead oo-dbz), not a plain C++ one
+#if defined(__cplusplus) && !defined(OO_PLAIN_CPP_UNIT) // was __OBJC__: a game unit (an Objective-C++ unit until bead oo-dbz), not a plain C++ one
 #include "OOFoundation.h"
 #else
 /*	Plain C++ translation unit (OOMouseInteractionMode.cpp, ADR-0012): only BOOL is needed, and OOFoundation.h
-	imports Foundation, which does not compile outside Objective-C.
+        imports Foundation, which does not compile outside Objective-C.
 */
-#include "oofnd/objc/OOFoundationTypes.h"	// BOOL, which <objc/runtime.h> gave until bead oo-dbz.2
+#include "oofnd/objc/OOFoundationTypes.h" // BOOL, which <objc/runtime.h> gave until bead oo-dbz.2
 #endif
 
 #include "oofnd/StdLib.hpp"
 
-
 /*
-	OOMouseInteractionMode
-	Mouse interaction states, defined in game-centric terms. The precise
-	semantics may vary across platforms.
-	
-	The primary distinction is between UI screens and flight screens. Flight
-	screens are screens 1-4 when neither docked nor paused, or the break
-	pattern screen. Every other screen is a UI screen, including screens 1-4
-	when paused in flight.
-	
-	UI screens are divided between ones with clickable controls (like the
-	star chart, outfitting screen and config screen), and ones without (like
-	the manifest screen, system data screen and pause screen).
-	
-	Flight screens have two modes, one for mouse control enabled and one for
-	mouse control disabled.
-*/
-typedef enum
-{
-	MOUSE_MODE_UI_SCREEN_NO_INTERACTION,
-	MOUSE_MODE_UI_SCREEN_WITH_INTERACTION,
-	MOUSE_MODE_FLIGHT_NO_MOUSE_CONTROL,
-	MOUSE_MODE_FLIGHT_WITH_MOUSE_CONTROL
-} OOMouseInteractionMode;
+        OOMouseInteractionMode
+        Mouse interaction states, defined in game-centric terms. The precise
+        semantics may vary across platforms.
 
+        The primary distinction is between UI screens and flight screens. Flight
+        screens are screens 1-4 when neither docked nor paused, or the break
+        pattern screen. Every other screen is a UI screen, including screens 1-4
+        when paused in flight.
+
+        UI screens are divided between ones with clickable controls (like the
+        star chart, outfitting screen and config screen), and ones without (like
+        the manifest screen, system data screen and pause screen).
+
+        Flight screens have two modes, one for mouse control enabled and one for
+        mouse control disabled.
+*/
+typedef enum {
+    MOUSE_MODE_UI_SCREEN_NO_INTERACTION,
+    MOUSE_MODE_UI_SCREEN_WITH_INTERACTION,
+    MOUSE_MODE_FLIGHT_NO_MOUSE_CONTROL,
+    MOUSE_MODE_FLIGHT_WITH_MOUSE_CONTROL
+} OOMouseInteractionMode;
 
 std::string OOStringFromMouseInteractionMode(OOMouseInteractionMode mode);
 BOOL OOMouseInteractionModeIsUIScreen(OOMouseInteractionMode mode);

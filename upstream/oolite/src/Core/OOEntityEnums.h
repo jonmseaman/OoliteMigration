@@ -32,16 +32,13 @@ MA 02110-1301, USA.
 #ifndef INCLUDED_OOENTITYENUMS_h
 #define INCLUDED_OOENTITYENUMS_h
 
-
 // From Entities/Entity.h.
 
 #define ENTRY(label, value) label = value,
 
-typedef enum OOEntityStatus
-{
-	#include "OOEntityStatus.tbl"
+typedef enum OOEntityStatus {
+#include "OOEntityStatus.tbl"
 } OOEntityStatus;
-
 
 #ifndef OO_SCANCLASS_TYPE
 #define OO_SCANCLASS_TYPE
@@ -54,62 +51,51 @@ typedef enum OOScanClass OOScanClass;
 #endif
 #endif
 
-enum OOScanClass
-{
-	#include "OOScanClass.tbl"
+enum OOScanClass {
+#include "OOScanClass.tbl"
 };
 
 #undef ENTRY
 
-
-enum
-{
-	// Values used for unknown strings.
-	kOOEntityStatusDefault		= STATUS_INACTIVE,
-	kOOScanClassDefault			= CLASS_NOT_SET
+enum {
+    // Values used for unknown strings.
+    kOOEntityStatusDefault = STATUS_INACTIVE,
+    kOOScanClassDefault = CLASS_NOT_SET
 };
-
 
 // From Entities/PlayerEntity.h.
 
 #define ENTRY(label, value) label,
 
-typedef enum
-{
-	#include "OOGUIScreenID.tbl"
+typedef enum {
+#include "OOGUIScreenID.tbl"
 } OOGUIScreenID;
 
 #define GALACTIC_HYPERSPACE_ENTRY(label, value) GALACTIC_HYPERSPACE_##label = value,
 
-typedef enum
-{
-	#include "OOGalacticHyperspaceBehaviour.tbl"
+typedef enum {
+#include "OOGalacticHyperspaceBehaviour.tbl"
 
-	GALACTIC_HYPERSPACE_MAX					= GALACTIC_HYPERSPACE_BEHAVIOUR_FIXED_COORDINATES
+    GALACTIC_HYPERSPACE_MAX = GALACTIC_HYPERSPACE_BEHAVIOUR_FIXED_COORDINATES
 } OOGalacticHyperspaceBehaviour;
 
 #undef ENTRY
 #undef GALACTIC_HYPERSPACE_ENTRY
 
-
-enum
-{
-	// Values used for unknown strings.
-	kOOGUIScreenIDDefault					= GUI_SCREEN_MAIN,
-	kOOGalacticHyperspaceBehaviourDefault	= GALACTIC_HYPERSPACE_BEHAVIOUR_UNKNOWN
+enum {
+    // Values used for unknown strings.
+    kOOGUIScreenIDDefault = GUI_SCREEN_MAIN,
+    kOOGalacticHyperspaceBehaviourDefault = GALACTIC_HYPERSPACE_BEHAVIOUR_UNKNOWN
 };
-
 
 // From Entities/ShipEntity.h.
 
-typedef enum
-{
+typedef enum {
 #define DIFF_STRING_ENTRY(label, string) label,
 #include "OOShipDamageType.tbl"
 #undef DIFF_STRING_ENTRY
 
-	kOOShipDamageTypeDefault = kOODamageTypeEnergy
+    kOOShipDamageTypeDefault = kOODamageTypeEnergy
 } OOShipDamageType;
 
-
-#endif	// INCLUDED_OOENTITYENUMS_h
+#endif // INCLUDED_OOENTITYENUMS_h
