@@ -306,10 +306,12 @@ def test_live_capture_pinned_the_camera(live_frames):
 @pytest.mark.online
 def test_live_captures_cost_what_a_game_launch_costs(live_frames):
     """An implausibly fast capture is an environment artefact, not a result: a fixed console port
-    lets a run attach to a LEFTOVER game and 'pass' in seconds. Measured warm launch on this host
-    is ~21-28 s; anything under 5 s never started a game."""
+    lets a run attach to a LEFTOVER game and 'pass' in seconds. Measured on this host 2026-10-25
+    (bead oo-1dcpm, after upstream #744 let the game quit on quit()): a capture is 4.1 s, 0.8 s of
+    it launching the game to console-ready and ~3.25 s after (launch, pose, settle, snapshot, quit),
+    which a capture attached to a leftover game would still spend. Under 3.7 s never started a game."""
     for label, shot in live_frames.items():
-        assert shot["wall_seconds"] >= 5.0, (
+        assert shot["wall_seconds"] >= 3.7, (
             "%s completed in %ss, far below the measured cost of launching this game. The capture "
             "probably attached to an already-running process rather than the one it spawned."
             % (label, shot["wall_seconds"])
