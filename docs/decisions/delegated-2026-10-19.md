@@ -72,3 +72,21 @@ bead, as usual.
   expect GCC's spelling of the same function. No check is removed or loosened, and the game does
   not change; each check still pins one exact string per compiler. Approval lines cite ADR-0064.
   Jon: "I approve you working through human decisions whenever it makes sense to unblock you."
+
+## 2026-10-25: upstream-sync test expectations (oo-p6rtw, oo-1dcpm)
+
+Both are changes std-2026-10-19 does not cover (an expected value; a check's threshold), so they
+went to Jon as `human` beads with recorded defaults. Jon, in chat 2026-10-25: "yes, apply both".
+Each has its path line in `tools/retire-test-approvals.txt`, landed on `main` before the change.
+
+- oo-p6rtw: `test_string_expander.cpp` re-captures `kKeysDigest` and `kStringsDigest` from upstream
+  #747's `descriptions.plist` (new key `oolite-keydesc-key_oxzmanager_copyurl`, four OXZ-manager help
+  strings, "URL:" to "Info URL:"), to 0xea38daecff933503 / 0x338f336558c7db67 (were
+  0x6349f869900cf779 / 0xef7448c0016ba2ed). The plist is the only input that changed: the same
+  build run against the pre-sync plist (main 56603ca31) still gives the old digests. Nothing else
+  about the check changes.
+- oo-1dcpm: `test_live_captures_cost_what_a_game_launch_costs` lowers its floor from 5 s to 3.7 s.
+  Upstream #744 lets the game quit on `quit()`, so a clean capture now measures 4.1 s (launch to
+  console-ready 0.8 s, the rest ~3.25 s). A capture attached to a leftover game skips only the
+  launch and would still spend the ~3.25 s, so the floor sits between the two and keeps failing that
+  fake. Only the floor and its docstring change.
