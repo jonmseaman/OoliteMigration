@@ -785,3 +785,8 @@
 
 # oo-1q4: GCC (UCRT64 g++) builds alongside Clang: every target, the core and oofnd suites and every blessed golden on the GCC game (ADR-0063, ADR-0064); the Clang build, its suites and goldens unchanged.
 [oo-1q4] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && bash tools/check-core-tests.sh && (cd upstream/oolite && meson test -C build/meson_test --no-rebuild --suite oofnd) && bash tools/tier-c.sh --only goldens && tools/build-windows.sh --gcc test && OO_CORE_BUILD=meson_test_gcc bash tools/check-core-tests.sh && (cd upstream/oolite && meson test -C build/meson_test_gcc --no-rebuild --suite oofnd) && OO_APP_DIR="$(cygpath -m "$PWD/upstream/oolite/build/meson_test_gcc/oolite.app")" bash tools/tier-c.sh --only goldens
+
+# oo-p6rtw: test_string_expander's digests re-captured from upstream #747's descriptions.plist (Jon approved 2026-10-25); the rest of the check unchanged.
+[oo-p6rtw] export PATH="/ucrt64/bin:$PATH"; bash tools/check-string-expander.sh && bash tools/check-sysdesc-tools.sh
+# oo-1dcpm: the live-capture time floor is 3.7 s (a clean capture 4.1 s, ~3.25 s of it after console-ready; Jon approved 2026-10-25); every frame-hash test passes on a fresh build.
+[oo-1dcpm] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && python3 -m pytest -q -p no:cacheprovider tests/golden/test_frame_hash.py
