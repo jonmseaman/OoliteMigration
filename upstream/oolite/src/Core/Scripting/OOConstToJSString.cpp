@@ -59,7 +59,9 @@ typedef struct ConstTable {
 
 #define TABLE(entries) { sizeof entries / sizeof *entries, entries }
 
+#ifndef NDEBUG
 static BOOL sInited = NO;
+#endif
 
 /*
         The interned string "UNDEFINED", returned by OOJSStringFromConstantPRIVATE()
@@ -145,13 +147,17 @@ void OOConstToJSStringInit(ooscript::Context context)
     InitTable(context, &gOOLegalStatusReasonConstTable);
     InitTable(context, &gOOLongRangeChartModeConstTable);
 
+#ifndef NDEBUG
     sInited = YES;
+#endif
 }
 
 void OOConstToJSStringDestroy(void)
 {
     OOCAssert(sInited, "OOConstToJSStringDestroy() called while not inited.");
+#ifndef NDEBUG
     sInited = NO;
+#endif
     // jsString pointers are now officially junk.
 }
 

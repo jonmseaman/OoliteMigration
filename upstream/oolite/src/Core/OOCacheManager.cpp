@@ -55,6 +55,7 @@ MA 02110-1301, USA.
 #include "OOProfilingStopwatch.h"
 #endif
 #include "oofnd/objc/OOAssert.h"
+#include <cstring>
 
 namespace {
 constexpr const char* kCacheKeyVersion = "version";

@@ -42,6 +42,7 @@ SOFTWARE.
 #include "oofnd/Defaults.hpp"
 #include "oofnd/PListGet.hpp"
 #include "oofnd/objc/OOException.h"
+#include <cstring>
 #include <stdlib.h>
 
 #include "OOTextureGenerator.h"

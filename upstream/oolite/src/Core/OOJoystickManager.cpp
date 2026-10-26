@@ -30,6 +30,7 @@ MA 02110-1301, USA.
 
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOAssert.h"
+#include <cstring>
 
 namespace {
 

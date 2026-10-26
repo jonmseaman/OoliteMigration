@@ -249,7 +249,6 @@ ooscript::Value OOJSValueFromPList(ooscript::Context context, const oo::PList &p
 
 namespace {
 std::map<ooscript::ClassDef *, int> sConverters;
-int sFinalized = 0;
 } // namespace
 
 
@@ -303,7 +302,6 @@ void OOJSObjectWrapperFinalize(ooscript::Context context, ooscript::Object objec
 	{
 		ooscript::setPrivate(context, object, nullptr);
 		native->release();
-		sFinalized++;
 	}
 }
 

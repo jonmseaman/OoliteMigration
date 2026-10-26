@@ -24,7 +24,7 @@ install_package() {
                 arch) pkg_name="base-devel" ;;
             esac ;;
 
-        "clang") pkg_name="clang lld lldb" ;;
+        "clang") pkg_name="clang lld lldb llvm" ;;  # llvm: llvm-ar, which clang.ini names
 
         "cmake") pkg_name="cmake" ;;
 

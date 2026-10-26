@@ -4005,7 +4005,6 @@ namespace {
     };
     std::unordered_map<JSContext*, FrameSnapshot>& gFrames = *new std::unordered_map<JSContext*, FrameSnapshot>;
     std::unordered_map<std::string, ScriptRep*>& gFrameScripts = *new std::unordered_map<std::string, ScriptRep*>; // one stable Script token per filename
-    DebuggerHandler gDebuggerHandler = nullptr;
 
     void snapshotFrames(JSContext* ctx)
     {
@@ -4091,7 +4090,8 @@ bool getScopeVariables(Context, Object, VariableList* out)
 }
 void destroyScopeVariables(Context, VariableList*) { }
 
-void setDebuggerHandler(Runtime, DebuggerHandler handler, void*) { gDebuggerHandler = handler; }
+// quickjs-ng has no debugger hook, so a stored handler would never be called.
+void setDebuggerHandler(Runtime, DebuggerHandler, void*) { }
 bool setFunctionCallback(Context, FunctionCallback) { return false; }
 ContextCallback setContextCallback(Runtime, ContextCallback cb)
 {

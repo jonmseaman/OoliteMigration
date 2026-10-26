@@ -88,10 +88,6 @@ namespace {
 static inline Object* OOJSFOBJP(ooscript::Object* o) { return reinterpret_cast<Object*>(o); }
 } // namespace
 
-namespace {
-static ooscript::Object sSystemPrototype;
-} // namespace
-
 // Support functions for entity search methods.
 namespace {
 static BOOL GetRelativeToAndRange(ooscript::Context context, const std::string& methodName, unsigned* ioArgc, ooscript::Value** ioArgv, Entity** outRelativeTo, double* outRange);
@@ -392,8 +388,6 @@ void InitOOJSSystem(ooscript::Context context, ooscript::Object global)
     Object proto = ooscript::initClass((context), (global), nullptr, &sSystemClass,
         OOJSUnconstructableConstruct, 0, sSystemProperties, sSystemMethods,
         nullptr, sSystemStaticMethods);
-    sSystemPrototype = (proto);
-
     // Create system object as a property of the global object.
     ooscript::defineObject((context), (global), "system", &sSystemClass, proto, OOJS_PROP_READONLY);
 }
