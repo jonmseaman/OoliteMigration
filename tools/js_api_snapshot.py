@@ -40,7 +40,7 @@ Five things here are deliberate and are the reason it looks like this:
   Recording those typeofs would make a regeneration diff against the savegame, not against the API,
   so _describe_global omits `type` from an object global's own_members. What that costs is bounded
   and measured, not assumed - see _strip_state_dependent_types, which states exactly how many
-  entries lose a type that nothing else in the document carries, and js_api_check.py, which fails
+  entries lose a type that nothing else in the document carries, and the retired js_api_check.py, which failed
   if that set ever grows beyond the pinned five.
 
 Only shapes are recorded, never values: kind, arity, descriptor flags, and - where it is a property
@@ -330,7 +330,7 @@ def _strip_state_dependent_types(members):
     type the engine never declares - it publishes no type metadata for a JS property - so the
     choice is between a session value and nothing, and nothing is the reproducible one.
 
-    js_api_check.py pins that set: if a sixth own-only data property ever appears, the check fails
+    The retired js_api_check.py pinned that set: if a sixth own-only data property appeared, the check failed
     and this comment has to be re-derived rather than silently drifting out of date again.
     """
     for entry in members.values():

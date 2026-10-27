@@ -136,10 +136,6 @@ KNOWN_SITES = {
     # printf of a captured stdout; each match is against script output of a few KB.
     "tools/merge-queue-acceptance.sh": 13,
     "tools/merge-queue-mutants.sh": 2,
-    "tools/tier-b-guardrails-proof.sh": 8,
-    "tools/tier-b-mutants.sh": 3,
-    "tools/tier-c-mutants.sh": 1,
-    "tools/oo-jou1-gate.sh": 1,
     # printf of a single short URL string.
     "tools/merge-queue.sh": 2,
     # Was 2. Bead oo-3uf8 LANDED on main as 7a80d9a and removed its --only/--skip validator

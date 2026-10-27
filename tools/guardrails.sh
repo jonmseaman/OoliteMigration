@@ -305,23 +305,8 @@ tools/guardrails-selftest|constructs the violations that prove the guard fires
 tools/deny-list.txt|is the pattern list; every line is a deny-list hit by definition
 tools/gen-stories.py|emits the verbatim prohibition block into every generated story
 oolite-dev/src/Core/Scripting/ooscript/JSEngine_quickjs.cpp|the QuickJS-ng backend of the ooscript façade (ADR-0002 step 2): the ONE translation unit whose job is to call QuickJS-ng's own JS_*-prefixed C API (JS_NewRuntime, JS_NewContext, JSRuntime, JSContext, JSValue, JS_SetOpaque, etc.). The façade header beside it is NOT exempt.
-tools/check-jsengine-facade.sh|the façade's acceptance: it greps the header for the engine names it must not contain
-tools/tier-b-guardrails-proof.sh|plants the deny-listed symbol that proves tier-b's stage 0 fires
-tools/refactor/js-stubs.sh|documents, in comments/usage text, the JS_* call-site patterns it mechanically rewrites onto the façade (bead oo-oio); it does not itself call any engine function
-tools/refactor/js_stubs.py|implements the mechanical JS_*-to-façade rewrite bead oo-oio describes; the JS_* names are pattern text (regex/docstrings), never engine calls made by this file
-tools/refactor/js-types.py|implements the mechanical SpiderMonkey-vocabulary-to-façade rewrite of bead oo-1gc.3 (seam 1.2b); every engine name in it is pattern text in a rewrite table, never a call
-tools/refactor/js-stubs-selftest.sh|acceptance test asserting js-stubs.sh removes JS_* call sites from its fixture; quotes the targeted names to check for their absence
-tools/plist-fuzz/gnustep_oracle.mm|the GNUstep reference side of the oofnd plist differential harness (bead oo-g2k, contract C1): its job is to call GNUstep's NSPropertyListSerialization, so it imports Foundation; tools/plist_fuzz.py builds it on demand as a test utility and it is never linked into the game
-tools/captures/plist-description/probe.m|the GNUstep reference side of the captured -description rows that pin oo::describe (bead oo-qps.32, ADR-0055 item 1): its job is to call gnustep-base's -description, so it imports Foundation; capture.sh builds it on demand and it is never linked into the game
-tools/captures/plist-description/capture.sh|builds and links probe.m against gnustep-base (its compile flags and gnustep-config link line are the deny-listed spellings); a capture tool, never part of the game build
 tools/check-foundation-free.sh|the Foundation census (ADR-0054/0055): its job is to find the NS* names, so its kind table and its --selftest fixtures spell them (bead oo-3rb.345); like tools/check-jsengine-facade.sh, it greps for the names it must not find and is never part of the game build
-tools/codemods/description-family.py|the -description-family codemod (ADR-0055 item 1, bead oo-qps.43): its inline self-test cases are Objective-C fixtures that must spell the Foundation string type to prove the rewrite leaves it alone (bead oo-3rb.345); pattern text and fixtures, never built into the game
-tools/codemods/key-constants.py|the key-constant codemod (bead oo-qps.42): its job is to find and rewrite Foundation-string key constants, so its regex, docstring and self-test fixtures spell the type it rewrites (bead oo-3rb.345); pattern text and fixtures, never built into the game
 oolite-dev/tests/gui/test_g8_scenario_screen_back_out.py|GUI test G8: it reads PlayerEntityLoadSave.mm and must accept either spelling of -loadPlayerFromFile:asNew:, the legacy Foundation-typed one included (Jon approved both, bead oo-3rb.332), so the legacy signature is a string it searches for, not a use (bead oo-3rb.345); a test, never part of the game build
-tools/refactor/testdata/OOJSVector.pre-retarget.m|frozen pre-retarget fixture (restored from git history) used only to prove js-stubs.sh's rewrite (bead oo-oio); never built, never linked
-tools/refactor/testdata/js-stubs-string-literal.m|regression fixture proving js-stubs.sh leaves JS_* tokens inside string literals untouched (bead oo-oio review round 2); never built, never linked
-tools/refactor/testdata/js-stubs-comment-call.m|regression fixture proving js-stubs.sh leaves JS_* call-shaped mentions inside comments untouched (bead oo-oio review round 2); never built, never linked
-tools/refactor/testdata/js-stubs-inline-decl-initclass.m|regression fixture proving js-stubs.sh's JS_InitClass rewrite handles the real inline-declaration form (a leading Type-pointer declaration before the assignment target) without corrupting the declaration (bead oo-oio review round 3); never built, never linked
 "
 
 fail=0

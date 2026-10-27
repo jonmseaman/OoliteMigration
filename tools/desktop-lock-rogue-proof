@@ -39,7 +39,7 @@
 #                               "spawns the game", exit 1.
 #  14  A PURE LOG READER        LOGS = ".../oolite.app/logs" + subprocess.run(["tail","-n","50",
 #                               LOGS+"/latest.log"]). Review 2 MEASURED exit 1 - and
-#                               tools/js_api_check.py and tests/golden/golden_run.py ALREADY hold
+#                               tools/js_api_check.py (since retired) and tests/golden/golden_run.py held
 #                               oolite.app paths for exactly this purpose, so it was a live hazard.
 #  17  a shell log reader       the same thing in shell: tail "$LOGS/latest.log"
 #

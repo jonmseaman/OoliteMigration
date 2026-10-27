@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Assert the committed JS API snapshot still describes the API the contract claims.
 #
-# Separate from tools/js-api-check.sh on purpose: that script checks the file is well-formed,
+# Separate from the retired tools/js-api-check.sh on purpose: that script checked the file is well-formed,
 # canonical and deterministic; this one pins the specific numbers and classes this bead landed, so
 # an accidental truncation or a silently emptied class fails loudly rather than passing a
 # structural check. Offline, no game build needed, runnable from the repository root.

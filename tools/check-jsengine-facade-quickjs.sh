@@ -3,7 +3,7 @@
 # the ooscript façade's QuickJS-ng backend (Context/Value/Object/ClassDef lifecycle, with
 # resolve/enumerate mapped onto JSClassExoticMethods, and private-pointer attach/retrieve).
 #
-# Complements tools/check-jsengine-facade.sh (the header's engine-neutrality and, since bead
+# Complements the retired tools/check-jsengine-facade.sh (the header's engine-neutrality and, since bead
 # oo-7wx deleted SpiderMonkey, the tree's): QuickJS-ng is the only backend.
 #
 #   1. meson configures and builds libquickjs-ng (since bead oo-7wx the only engine, so no option selects it);

@@ -79,8 +79,6 @@ no()   { printf '    FAIL  %s\n' "$*"; fail=1; }
 #   exempt: must NOT take the lock, and must say why in its own text
 LOCKED_LAUNCHERS="
 tools/js_api_snapshot.py
-tools/check-splash-off.py
-tools/oo-qwk5-probe.py
 tools/oxp_load_check.py
 tests/golden/motion/motion_probe.py
 tests/golden/motion/value_probe.py

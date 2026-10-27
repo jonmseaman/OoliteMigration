@@ -37,7 +37,7 @@ Not "a file that mentions oolite.exe" - that is a grep, and two successive revie
 
     The false positives matter as much as the misses. check-desktop-lock.sh is a SHARED GATE: a
     false positive fails an UNRELATED bead's acceptance, and that is exactly what gets a guard
-    deleted. tools/js_api_check.py and tests/golden/golden_run.py already hold oolite.app paths for
+    deleted. tools/js_api_check.py (since retired) and tests/golden/golden_run.py held oolite.app paths for
     non-launching purposes, so this was live, not hypothetical.
 
 So the two halves of the rule are:

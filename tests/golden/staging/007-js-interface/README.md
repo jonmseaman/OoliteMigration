@@ -25,8 +25,8 @@ python3 tests/golden/check_js_interface_evidence.py tests/golden/staging/007-js-
 # a fresh dump against the stored golden
 python3 tests/golden/golden_diff.py tests/golden/staging/007-js-interface/state.json /tmp/r1.json
 
-# multi-run stability, reporting MATCH/DIFFERS/REFUSED/BROKEN separately
-bash tools/oo-5k2-stability.sh 6
+# multi-run stability: run the scenario N times and golden_diff.py each dump against state.json
+# (tools/oo-5k2-stability.sh did this until it was retired on 2026-10-27; see git history)
 ```
 
 ## What is pinned
@@ -148,7 +148,7 @@ assertions that do not spawn entities, and the dump's measured content is the en
 market, the player ledger and the evidence block. The claim is "this scenario is deterministic on
 this box", not "the JS engine is deterministic".
 
-`tools/oo-5k2-stability.sh` reports **REFUSED separately from DIFFERS**, the same `rc=2` vs `rc=1`
+`tools/oo-5k2-stability.sh` (retired 2026-10-27) reported **REFUSED separately from DIFFERS**, the same `rc=2` vs `rc=1`
 distinction `golden_diff.py` is built on: "I cannot tell you" must never be mistaken for "they
 match".
 
