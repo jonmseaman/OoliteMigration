@@ -95,6 +95,7 @@ oofnd_objc_tests = [
     # test_objc_floor retired with its only subject, the OOObject root class, OOConstantString and OOObjCInstallFloor() (bead oo-4aq6a.8, std-2026-10-19)
     # test_objc_runtime retired with its only subject, oofnd/objc/OORuntime.h's libobjc2 class and selector lookups (bead oo-dbz.4, std-2026-10-19)
     'test_objc_assert',
+    'test_objc_assert_ndebug', # OOAssert.h under the deployment flavour's NDEBUG (bead oo-pdsng)
     # test_objc_ref retired with its only subject, oofnd/objc/OOObjCRef.h's reference to an Objective-C object (bead oo-dbz.4, std-2026-10-19)
     # test_objc_call_by_name retired with its only subject, src/Core/OOCallByName.mm's call on an Objective-C object (bead oo-6e1.2, std-2026-10-19)
     # test_objc_description retired with OODescription.mm's OOObject (OODescription) (bead oo-8sql7, ADR-0049; Jon approved 2026-10-19)
@@ -103,6 +104,11 @@ oofnd_objc_tests = [
 ]
 
 foreach t : oofnd_objc_tests
+    # test_objc_assert refuses NDEBUG by design (#error); test_objc_assert_ndebug is its NDEBUG twin
+    # and is built in every flavour (bead oo-pdsng).
+    if t == 'test_objc_assert' and get_option('deployment_release')
+        continue
+    endif
     exe = executable(
         'oofnd_' + t,
         t + '.cpp',

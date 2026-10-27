@@ -790,3 +790,5 @@
 [oo-p6rtw] export PATH="/ucrt64/bin:$PATH"; bash tools/check-string-expander.sh && bash tools/check-sysdesc-tools.sh
 # oo-1dcpm: the live-capture time floor is 3.7 s (a clean capture 4.1 s, ~3.25 s of it after console-ready; Jon approved 2026-10-25); every frame-hash test passes on a fresh build.
 [oo-1dcpm] export PATH="/ucrt64/bin:$PATH"; tools/build-windows.sh test && python3 -m pytest -q -p no:cacheprovider tests/golden/test_frame_hash.py
+# oo-pdsng (proposed ADR-0066): the unit suites under the deployment macros, and every blessed golden on the deployment binary.
+[oo-pdsng] export PATH="/ucrt64/bin:$PATH"; bash tools/check-deployment-tests.sh && bash tools/check-deployment-goldens.sh
