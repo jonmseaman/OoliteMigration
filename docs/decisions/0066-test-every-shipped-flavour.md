@@ -1,7 +1,7 @@
 # ADR-0066: Assertions are live in every flavour, and the shipped flavour is tested
 
-- Status: Proposed; default taken by the orchestrator under Jon's 2026-10-20 delegation
-  (docs/decisions/delegated-2026-10-19.md), bead oo-pdsng, 2026-10-27.
+- Status: Accepted (Jon, in chat 2026-10-27: "approve ADR-0066"). Proposed with its default taken
+  under Jon's 2026-10-20 delegation (docs/decisions/delegated-2026-10-19.md), bead oo-pdsng.
 - Date: 2026-10-27
 - Beads: oo-pdsng (Jon, 2026-10-26: "When I press 1 repeatedly, it is like I repeatedly undock. The
   game is kinda broken." ... "we need to run the tests against all versions of the game since
