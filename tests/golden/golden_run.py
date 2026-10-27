@@ -316,7 +316,7 @@ def _wait_until_rendering(console, settle_seconds, timeout=180):
 
 
 def run_scenario(spec, p, timeout):
-    sys.path.insert(0, os.path.join(p["repo_root"], "upstream", "oolite", "tests", "component"))
+    sys.path.insert(0, os.path.join(p["repo_root"], "oolite-dev", "tests", "component"))
     from console import DebugConsole  # noqa: E402  (path is only valid once set above)
 
     os.makedirs(p["artifact_dir"], exist_ok=True)

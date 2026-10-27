@@ -105,7 +105,7 @@ properly.
 
 ## The tests
 
-`upstream/oolite/tests/gui/`, pytest + PyAutoGUI. Every test gets a hard timeout with a forced kill,
+`oolite-dev/tests/gui/`, pytest + PyAutoGUI. Every test gets a hard timeout with a forced kill,
 so a hang fails the run instead of wedging it.
 
 | # | Test | Steps | What it catches |

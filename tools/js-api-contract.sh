@@ -15,7 +15,7 @@ python3 - "$(cygpath -m "$snapshot" 2>/dev/null || printf '%s' "$snapshot")" <<'
 import json
 import sys
 
-# Measured against upstream/oolite 1.93 by tools/js-api-snapshot.sh (which is why the file is named
+# Measured against oolite-dev 1.93 by tools/js-api-snapshot.sh (which is why the file is named
 # js-api-1.93.json). See oxp-contract/README.md for why these are not the "61" the originating
 # story guessed at, and why class_count is 27 rather than "every Oolite global with a prototype".
 EXPECTED = {

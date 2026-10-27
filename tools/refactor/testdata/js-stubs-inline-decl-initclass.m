@@ -3,7 +3,7 @@ js-stubs-inline-decl-initclass.m -- regression fixture for bead oo-oio
 (review round 3).
 
 Minimal shape modeled on the real inline-declaration JS_InitClass call
-sites in upstream/oolite/src/Core/Scripting/OOJSClock.m, OOJSMission.m
+sites in oolite-dev/src/Core/Scripting/OOJSClock.m, OOJSMission.m
 and OOJSOolite.m: `Type *name = JS_InitClass(...)`, as opposed to the
 no-declaration `sVectorPrototype = JS_InitClass(...)` shape covered by
 the OOJSVector.pre-retarget.m exemplar fixture (there, the target is

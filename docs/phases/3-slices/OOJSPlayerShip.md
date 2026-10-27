@@ -26,8 +26,8 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | `ooscript`-only accessors | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/Scripting/OOJSPlayerShip.cpp
-header: upstream/oolite/src/Core/Scripting/OOJSPlayerShip.h
+source: oolite-dev/src/Core/Scripting/OOJSPlayerShip.cpp
+header: oolite-dev/src/Core/Scripting/OOJSPlayerShip.h
 
 slice 1: init, JS extensions, property getter and contract methods
   NormalizedColorComponents()

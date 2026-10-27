@@ -49,7 +49,7 @@ echo "=== 5. python half is excluded by a shell-held lock (same path) ==="
 OO_GUI_LOCK_OWNER=shellholder $L acquire --timeout 5 >/dev/null
 py=$(python3 - <<'EOF'
 import os, sys
-sys.path.insert(0, "upstream/oolite/tests/gui")
+sys.path.insert(0, "oolite-dev/tests/gui")
 import conftest
 p = conftest._lock_path()
 print("python sees:", p)
@@ -132,7 +132,7 @@ echo "  $TRIALS trials: $winners single-winner, $doubles DOUBLE, $zero_winner no
 echo "=== 8. python fallback uses the SAME atomic reclaim (no unconditional rmtree) ==="
 py=$(python3 - <<'EOF'
 import os, sys, tempfile, time
-sys.path.insert(0, "upstream/oolite/tests/gui")
+sys.path.insert(0, "oolite-dev/tests/gui")
 import conftest
 d = os.path.join(tempfile.mkdtemp(), "l.lock")
 os.mkdir(d)

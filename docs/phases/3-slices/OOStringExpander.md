@@ -24,8 +24,8 @@ file every time, so the numbers below are only a snapshot.
 | verbatim | expander core, operators, percent escapes, helpers | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/OOStringExpander.cpp
-header: upstream/oolite/src/Core/OOStringExpander.h
+source: oolite-dev/src/Core/OOStringExpander.cpp
+header: oolite-dev/src/Core/OOStringExpander.h
 
 slice 1: functions that still message game objects or use @selector
   cxx_OOExpandDescriptionString()

@@ -3,8 +3,8 @@
 
 The root entity facade's five by-name categories (Entity (OOShipSelectorsCalledByName),
 (OOPlayerSelectorsCalledByName), (OOStationSelectorsCalledByName), (OODockSelectorsCalledByName),
-(OOVisualEffectSelectorsCalledByName) in upstream/oolite/src/Core/Entities/Entity+ObjCBridge.mm)
-become one C++ table, upstream/oolite/src/Core/Entities/OOEntityCalledByNameTable.h: a row per
+(OOVisualEffectSelectorsCalledByName) in oolite-dev/src/Core/Entities/Entity+ObjCBridge.mm)
+become one C++ table, oolite-dev/src/Core/Entities/OOEntityCalledByNameTable.h: a row per
 method, exactly the categories' names, each keeping its #if conditions, with
 
   - the applies-to flags: the name sets (IsShipSelectorCalledByName() and its siblings) that
@@ -33,7 +33,7 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SRC = ROOT / "upstream/oolite/src"
+SRC = ROOT / "oolite-dev/src"
 FACADE = SRC / "Core/Entities/Entity+ObjCBridge.mm"
 OUT = SRC / "Core/Entities/OOEntityCalledByNameTable.h"
 

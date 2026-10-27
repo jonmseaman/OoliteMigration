@@ -114,7 +114,7 @@ def check_db(path):
 def configure(source_dir, build_dir):
     """Configure with meson, VIA A SHELL - deliberately, not with a bare subprocess.
 
-    upstream/oolite/meson.build:5 runs ShellScripts/common/get_version.sh, which refuses to run
+    oolite-dev/meson.build:5 runs ShellScripts/common/get_version.sh, which refuses to run
     unless it can identify its caller as meson. On Windows it does that by walking the PARENT
     PROCESS chain through powershell (get_version.sh:7-20). Launching meson directly from
     python.exe puts an extra python in that chain and the identification fails, with the guard's

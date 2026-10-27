@@ -107,7 +107,7 @@ if [ -d /ucrt64/bin ]; then export PATH="/ucrt64/bin:$PATH"; fi
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/.." && pwd)"
-OOLITE="$REPO_ROOT/upstream/oolite"
+OOLITE="$REPO_ROOT/oolite-dev"
 PLATFORM="${OOLITE_TIER_C_PLATFORM:-windows-x64}"
 BUDGET_SECONDS="${OOLITE_TIER_C_BUDGET:-3000}"   # ADR-0057 (was 2400 s)
 
@@ -374,7 +374,7 @@ stage_tier_b() {
 # ================================================================================================
 #
 # oxp-contract/js-api-source.json is generated from the DECLARATIVE property and function tables in
-# upstream/oolite/src/**/OOJS*.m and is already load-bearing for other beads: oo-9w5 used "the
+# oolite-dev/src/**/OOJS*.m and is already load-bearing for other beads: oo-9w5 used "the
 # committed JS API snapshot" to reject a proposed scenario relying on a property that does not
 # exist, and oo-jou1 exists precisely because Ship.speed is OOJS_PROP_READONLY_CB.
 #
@@ -400,7 +400,7 @@ stage_jsapi() {
     2) sed -n '1,20p' "$log" >&2
        fail jsapi "the snapshot check REFUSED (rc=2): the fresh scrape did not satisfy its own content floors, so no comparison was possible -- a refusal is not a pass" ;;
     *) sed -n '1,30p' "$log" >&2
-       fail jsapi "the committed JS API snapshot is STALE: it does not match a fresh scrape of upstream/oolite/src (rc=$rc). Regenerate with tools/js_api_source_snapshot.py --out $(native "$JSAPI_SNAPSHOT")" ;;
+       fail jsapi "the committed JS API snapshot is STALE: it does not match a fresh scrape of oolite-dev/src (rc=$rc). Regenerate with tools/js_api_source_snapshot.py --out $(native "$JSAPI_SNAPSHOT")" ;;
   esac
   # POSITIVE EVIDENCE: the OK line carries the counts, so a snapshot that shrank to a handful of
   # classes cannot slip through on rc=0 alone.
@@ -740,7 +740,7 @@ stage_goldens() {
     || fail goldens "found $n blessed scenario(s) under $(native "$gdir"), fewer than the floor of $GOLDEN_FLOOR -- a golden stage with nothing to compare passes vacuously"
 
   # A SANITIZED APP (bead oo-tc08n): OO_APP_DIR at the asan stage's build, e.g.
-  #   OO_APP_DIR=upstream/oolite/build/meson_debug/oolite.app tools/tier-c.sh --only asan,goldens
+  #   OO_APP_DIR=oolite-dev/build/meson_debug/oolite.app tools/tier-c.sh --only asan,goldens
   # The -O0 AddressSanitizer game answers the console far more slowly than the test build (scenario
   # 001 measured "no answer to 'player.ship.docked' within 15s" with no ASan report), so the
   # console's per-command wait is raised for it; the scenarios, their dumps and the goldens are
@@ -897,7 +897,7 @@ stage_gui() {
   [ -f "$HERE/gui-tier.sh" ] \
     || fail gui "tools/gui-tier.sh is missing; the GUI tier runs in Tier C and nightly only (ADR-0017), so its absence here means it runs nowhere"
   [ -d "$OOLITE/tests/gui" ] \
-    || fail gui "upstream/oolite/tests/gui does not exist; there is no GUI tier to run and a green from this stage would be vacuous"
+    || fail gui "oolite-dev/tests/gui does not exist; there is no GUI tier to run and a green from this stage would be vacuous"
 
   # gui-tier.sh sets OO_GUI_REQUIRE=1 itself. Set it here too so that a future edit which drops it
   # from the script cannot silently turn this stage into a platform skip.

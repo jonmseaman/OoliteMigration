@@ -3,7 +3,7 @@
 This is the engine behind tools/js-api-snapshot.sh. It launches the real game (headless in the
 sense that nothing drives its window - it still OPENS one on Windows, so it takes the desktop lock;
 see `collect`), drives it over the debug console (transport:
-upstream/oolite/tests/component/console.py, ADR-0018), asks the live SpiderMonkey runtime what
+oolite-dev/tests/component/console.py, ADR-0018), asks the live SpiderMonkey runtime what
 globals and native classes exist, and writes the answer to oxp-contract/js-api-1.93.json.
 
 Five things here are deliberate and are the reason it looks like this:
@@ -62,12 +62,12 @@ _REPO = os.path.dirname(_HERE)
 # tools/ explicitly, not just as sys.path[0]: this module is also imported by the check scripts.
 if _HERE not in sys.path:
     sys.path.insert(0, _HERE)
-sys.path.insert(0, os.path.join(_REPO, "upstream", "oolite", "tests", "component"))
+sys.path.insert(0, os.path.join(_REPO, "oolite-dev", "tests", "component"))
 
 from console import ConsoleError, DebugConsole  # noqa: E402
 from desktop_lock import desktop_lock  # noqa: E402  - tools/desktop_lock.py, beside this file
 
-DEFAULT_APP_DIR = os.path.join(_REPO, "upstream", "oolite", "build", "meson_test", "oolite.app")
+DEFAULT_APP_DIR = os.path.join(_REPO, "oolite-dev", "build", "meson_test", "oolite.app")
 DEFAULT_OUTPUT = os.path.join(_REPO, "oxp-contract", "js-api-1.93.json")
 DEFAULT_PORT = 8563
 SETTLE_GAME_SECONDS = 2.0

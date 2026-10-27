@@ -18,7 +18,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$here" || exit 2
 
 N="${1:-10}"
-OO_APP_DIR="${OO_APP_DIR:-C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app}"
+OO_APP_DIR="${OO_APP_DIR:-C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app}"
 export OO_APP_DIR
 G=$(ls goldens/windows-x64/009-shaders/state.json \
        tests/golden/pending/009-shaders/state.json 2>/dev/null | head -1)

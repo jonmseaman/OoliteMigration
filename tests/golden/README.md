@@ -3,7 +3,7 @@
 One golden scenario, one **native** game process, its own console port, its own artifact directory.
 No containers ([ADR-0017](../../docs/decisions/0017-native-windows-subtree.md)); the console client
 is the component tier's, shared as [ADR-0018](../../docs/decisions/0018-component-test-tier.md)
-requires (`upstream/oolite/tests/component/console.py`).
+requires (`oolite-dev/tests/component/console.py`).
 
 ```bash
 tests/golden/run.sh 001                       # one scenario
@@ -12,9 +12,9 @@ tests/golden/run.sh 001 --check-isolation --plan-count 4   # prove 4 concurrent 
 tests/golden/run.sh --help
 ```
 
-It needs a built game: `upstream/oolite/build/meson_test/oolite.app` by default, `--app-dir` or
+It needs a built game: `oolite-dev/build/meson_test/oolite.app` by default, `--app-dir` or
 `$OO_APP_DIR` otherwise. Mesa's `opengl32.dll` and `libgallium_wgl.dll` are copied beside the
-binary **unconditionally** on every run, as `upstream/oolite/tests/run_test_fn.sh:28-33` does — a
+binary **unconditionally** on every run, as `oolite-dev/tests/run_test_fn.sh:28-33` does — a
 stale DLL from an older MSYS2 would otherwise render the goldens on a different rasteriser.
 Artifacts land in `tests/golden/artifacts/<scenario>/<run-id>/`
 (`Latest.log`, the snapshot PNG, `run.json` with the port, the game clock reading, `guiScreen` and
@@ -35,7 +35,7 @@ carried as `GOLDEN_MAX_CONCURRENCY` at the top of `run.sh` (override with
 The port is set by dropping a throwaway resource root containing `Config/debugConfig.plist` and
 naming it in `OO_ADDITIONALADDONSDIRS`, which `ResourceManager` treats as a search root
 (`OOOXZManager.m:286`). The stock Debug OXP leaves `console-host`/`console-port` commented out, so
-this always wins the merge. Same mechanism as `upstream/oolite/tests/launch_snapshot.py`.
+this always wins the merge. Same mechanism as `oolite-dev/tests/launch_snapshot.py`.
 
 ## Three rules the harness must keep
 

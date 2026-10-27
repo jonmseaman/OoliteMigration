@@ -142,7 +142,7 @@ cat >tools/rogue5_wrapper.sh <<'EOF'
 #!/usr/bin/env bash
 # A wrapper that launches the game. No python anywhere.
 set -u
-APP="${OO_APP_DIR:-upstream/oolite/build/meson_test/oolite.app}"
+APP="${OO_APP_DIR:-oolite-dev/build/meson_test/oolite.app}"
 exec "$APP/oolite.exe" --no-splash
 EOF
 expect_caught tools/rogue5_wrapper.sh "shell-wrapper launcher (.sh)"
@@ -160,7 +160,7 @@ cat >tools/rogue7_prose.py <<'EOF'
 """Notes about the game.
 
 The Windows binary is called oolite.exe and lives in oolite.app/. We never launch it here;
-this module only parses upstream/oolite/build logs and mentions "oolite" in passing.
+this module only parses oolite-dev/build logs and mentions "oolite" in passing.
 """
 import subprocess
 # subprocess.Popen(["oolite.exe"])  <- commented out on purpose, this is not a launcher
@@ -245,7 +245,7 @@ echo "=== 14. NEGATIVE CONTROL: a PURE LOG READER holding an oolite.app path ===
 # "tail"; the game path is a directory to read, never a thing to execute.
 cat >tools/rogue14_logreader.py <<'EOF'
 import subprocess
-LOGS = "upstream/oolite/build/meson_test/oolite.app/logs"
+LOGS = "oolite-dev/build/meson_test/oolite.app/logs"
 subprocess.run(["tail", "-n", "50", LOGS + "/latest.log"])
 EOF
 expect_clean tools/rogue14_logreader.py "a log reader holding .../oolite.app/logs"
@@ -272,7 +272,7 @@ echo "=== 17. NEGATIVE CONTROL: the same log reader, in shell ==="
 cat >tools/rogue17_shlog.sh <<'EOF'
 #!/usr/bin/env bash
 set -u
-LOGS="upstream/oolite/build/meson_test/oolite.app/logs"
+LOGS="oolite-dev/build/meson_test/oolite.app/logs"
 tail -n 50 "$LOGS/latest.log"
 EOF
 expect_clean tools/rogue17_shlog.sh "a shell log reader holding .../oolite.app/logs"
@@ -389,7 +389,7 @@ echo "=== 28. MATRIX shell: the same launch, plainly ==="
 cat >tools/rogue28_m_shell.sh <<'EOF'
 #!/usr/bin/env bash
 set -u
-APP="${OO_APP_DIR:-upstream/oolite/build/meson_test/oolite.app}"
+APP="${OO_APP_DIR:-oolite-dev/build/meson_test/oolite.app}"
 "$APP/oolite.exe" --no-splash
 EOF
 expect_caught tools/rogue28_m_shell.sh "MATRIX shell launcher"
@@ -418,7 +418,7 @@ expect_caught tools/rogue30_m_partial.py "MATRIX functools.partial(subprocess.Po
 echo "=== 31. MATRIX NEGATIVE python-list: the log reader ==="
 cat >tools/rogue31_n_pylist.py <<'EOF'
 import subprocess
-LOGS = "upstream/oolite/build/meson_test/oolite.app/logs"
+LOGS = "oolite-dev/build/meson_test/oolite.app/logs"
 subprocess.run(["tail", "-n", "50", LOGS + "/latest.log"])
 EOF
 expect_clean tools/rogue31_n_pylist.py "MATRIX negative python-list (log reader)"
@@ -426,7 +426,7 @@ expect_clean tools/rogue31_n_pylist.py "MATRIX negative python-list (log reader)
 echo "=== 32. MATRIX NEGATIVE python-string: the log reader as a shell command line ==="
 cat >tools/rogue32_n_pystr.py <<'EOF'
 import subprocess
-LOGS = "upstream/oolite/build/meson_test/oolite.app/logs"
+LOGS = "oolite-dev/build/meson_test/oolite.app/logs"
 subprocess.run("tail -n 50 " + LOGS + "/latest.log", shell=True)
 EOF
 expect_clean tools/rogue32_n_pystr.py "MATRIX negative python-string (log reader)"
@@ -447,7 +447,7 @@ echo "=== 34. MATRIX NEGATIVE shell/batch/powershell: the log reader in each ===
 cat >tools/rogue34_n_shell.sh <<'EOF'
 #!/usr/bin/env bash
 set -u
-LOGS="upstream/oolite/build/meson_test/oolite.app/logs"
+LOGS="oolite-dev/build/meson_test/oolite.app/logs"
 env LC_ALL=C tail -n 50 "$LOGS/latest.log"
 powershell -Command "Get-Content '$LOGS/latest.log' -Tail 50"
 EOF
@@ -512,7 +512,7 @@ echo "=== 40. HARNESS NEGATIVE: a genuine new scenario driver launching through 
 cat >tests/golden/rogue40_new_scenario.py <<'EOF'
 import os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(HERE, "..", "..", "upstream", "oolite", "tests", "component"))
+sys.path.insert(0, os.path.join(HERE, "..", "..", "oolite-dev", "tests", "component"))
 import golden_run  # noqa: E402
 from console import DebugConsole  # noqa: E402
 port = golden_run.reserve_port(HERE)

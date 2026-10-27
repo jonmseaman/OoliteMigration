@@ -64,7 +64,7 @@ sufficient**:
 ```sh
 PY=$(command -v python3 || command -v python || echo /ucrt64/bin/python3)
 "$PY" "$(cygpath -m "$PWD/tests/golden/dump/run_dump.py")" \
-  --app-dir C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app \
+  --app-dir C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app \
   --port 8563 --seed 1 --out dump.json
 ```
 

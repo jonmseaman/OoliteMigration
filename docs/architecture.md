@@ -88,7 +88,7 @@ encouraging for the third-party corpus.
 
 ## 2. Where the code stands today (measured, not estimated)
 
-All figures from `upstream/oolite` @ `942f5183f`.
+All figures from `oolite-dev` @ `942f5183f`.
 
 ### 2.1 Size
 
@@ -579,7 +579,7 @@ Per the project's convention, `origin` is the fork, `upstream` is the source of 
 | Repo | `origin` | `upstream` |
 |---|---|---|
 | `OoliteMigration` (this) | `https://github.com/jonmseaman/OoliteMigration.git` | — |
-| `upstream/oolite` (subtree) | remote `fork` = `https://github.com/jonmseaman/oolite.git`, branch `migration` | remote `upstream` = `https://github.com/OoliteProject/oolite.git` |
+| `oolite-dev` (subtree) | remote `fork` = `https://github.com/jonmseaman/oolite.git`, branch `migration` | remote `upstream` = `https://github.com/OoliteProject/oolite.git` |
 | the subtrees `oolite-tests`, `oolite-expansion-catalog` | remote `<repo>` = `https://github.com/jonmseaman/<repo>.git` | remote `<repo>-upstream` = `https://github.com/OoliteProject/<repo>.git` |
 | the remaining submodules | `https://github.com/jonmseaman/<repo>.git` in `.gitmodules` (read-only reference) | `https://github.com/OoliteProject/<repo>.git` |
 
@@ -593,8 +593,8 @@ that ignores this will be unmergeable within a year.
 
 **Recommended posture:**
 
-1. **Sync monthly, verify with goldens.** `upstream/oolite` is a subtree; the upstream-tracker task
-   runs `git subtree pull --prefix=upstream/oolite upstream master --squash` monthly, and the merge
+1. **Sync monthly, verify with goldens.** `oolite-dev` is a subtree; the upstream-tracker task
+   runs `git subtree pull --prefix=oolite-dev upstream master --squash` monthly, and the merge
    queue mirrors the converted tree to the fork's `migration` branch with `git subtree push` after
    each green batch ([ADR-0017](decisions/0017-native-windows-subtree.md)). The golden harness is
    what makes each sync verifiable rather than a leap of faith.
@@ -634,7 +634,7 @@ that ignores this will be unmergeable within a year.
 ## Appendix B — Commands used to derive the figures
 
 ```bash
-cd upstream/oolite/src
+cd oolite-dev/src
 find . -name '*.m' | xargs wc -l | tail -1              # 183,603
 find . -name '*.h' | xargs wc -l | tail -1              #  41,214
 FILES=$(find . -name '*.m' -o -name '*.h')

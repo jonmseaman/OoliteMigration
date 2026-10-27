@@ -24,7 +24,7 @@ shape, so what it measures is what the scenario will do.
 Usage (from a checkout; the app dir must be a BUILT tree, which a worktree is not):
 
     export PATH="/ucrt64/bin:$PATH" MINGW_PREFIX=/ucrt64
-    OO_APP_DIR=C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app \
+    OO_APP_DIR=C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app \
       python3 tools/oo-qwk5-probe.py --seconds 160 --spawn 'police:1,pirate:8@1' \
       --quarry police --json out.json
 
@@ -42,7 +42,7 @@ import time
 # rather than a second implementation, so a transport change cannot make the probe and the
 # scenario disagree about what they measured.
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_TIER = os.path.join(os.path.dirname(_HERE), "upstream", "oolite", "tests", "component")
+_TIER = os.path.join(os.path.dirname(_HERE), "oolite-dev", "tests", "component")
 if _TIER not in sys.path:
     sys.path.insert(0, _TIER)
 
@@ -68,7 +68,7 @@ def _js_string(value):
 
 def _default_app_dir():
     root = os.path.dirname(_HERE)
-    return os.path.join(root, "upstream", "oolite", "build", "meson_test", "oolite.app")
+    return os.path.join(root, "oolite-dev", "build", "meson_test", "oolite.app")
 
 
 def parse_spawn(text):

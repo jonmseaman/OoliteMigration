@@ -57,7 +57,7 @@ fi
 
 PY="$(command -v python3 || command -v python || echo /ucrt64/bin/python3)"
 
-DEFAULT_APP_DIR="C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app"
+DEFAULT_APP_DIR="C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app"
 APP_DIR="${OO_APP_DIR:-$DEFAULT_APP_DIR}"
 
 TIER1_JSON="$REPO_ROOT/tools/oxp-corpus/tier1.json"

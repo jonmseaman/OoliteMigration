@@ -16,7 +16,7 @@
 	    W2 OK | W2 ERR <message>                            (XML writer; not in parse-only)
 
 	and a successful write leaves <outdir>/<id>.old or <outdir>/<id>.xml. <dump> is the one-line
-	canonical form of upstream/oolite/tests/unit/oofnd/plist_dump.hpp (the unit tests pin the same
+	canonical form of oolite-dev/tests/unit/oofnd/plist_dump.hpp (the unit tests pin the same
 	text), with a non-string dictionary key written as !<dump of key>. Messages have \ and newlines
 	escaped. The harness prints only verdicts derived from this output, never the values.
 */
@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <string>
 
-// ChangeDTDIfApplicable, verbatim from upstream/oolite/src/Core/OOPListParsing.mm (the static
+// ChangeDTDIfApplicable, verbatim from oolite-dev/src/Core/OOPListParsing.mm (the static
 // function the game applies before NSPropertyListSerialization).
 static NSData *ChangeDTDIfApplicable(NSData *data)
 {

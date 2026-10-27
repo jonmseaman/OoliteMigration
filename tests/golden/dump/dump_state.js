@@ -1,7 +1,7 @@
 /* oo-gla: canonical world-state dump, installed on debugConsole.
  *
  * debugConsole is a writable JS global the console client already uses as scratch state
- * (upstream/oolite/tests/component/steps/world_steps.py:135, OODebugMonitor.m:761). Installing
+ * (oolite-dev/tests/component/steps/world_steps.py:135, OODebugMonitor.m:761). Installing
  * the dump there makes it a debug-console JS command: "debugConsole.dumpWorldState()" from any
  * console.evaluate() call, same idiom as everything else this tier already does.
  *

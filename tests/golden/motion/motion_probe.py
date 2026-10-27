@@ -39,7 +39,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
-COMPONENT_DIR = os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component")
+COMPONENT_DIR = os.path.join(REPO_ROOT, "oolite-dev", "tests", "component")
 DUMP_DIR = os.path.join(REPO_ROOT, "tests", "golden", "dump")
 
 sys.path.insert(0, COMPONENT_DIR)
@@ -370,7 +370,7 @@ def run(app_dir, port, seed, output_dir, arms, frames, tick_seconds, role="pirat
 def _main_unlocked(argv=None):
     parser = argparse.ArgumentParser()
     default_app = os.environ.get(
-        "OO_APP_DIR", os.path.join(REPO_ROOT, "upstream", "oolite", "build", "meson_test",
+        "OO_APP_DIR", os.path.join(REPO_ROOT, "oolite-dev", "build", "meson_test",
                                    "oolite.app"))
     parser.add_argument("--app-dir", default=default_app)
     parser.add_argument("--port", type=int, default=int(os.environ.get("OO_CONSOLE_PORT", "0")))

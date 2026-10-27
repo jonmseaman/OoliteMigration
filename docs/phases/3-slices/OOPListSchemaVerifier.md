@@ -20,8 +20,8 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | string filters, error builders, the other `Verify_*` | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/OXPVerifier/OOPListSchemaVerifier.cpp
-header: upstream/oolite/src/Core/OXPVerifier/OOPListSchemaVerifier.h
+source: oolite-dev/src/Core/OXPVerifier/OOPListSchemaVerifier.cpp
+header: oolite-dev/src/Core/OXPVerifier/OOPListSchemaVerifier.h
 
 slice 1: class shell, public API and the OOPrivate verification core
   @OOPListSchemaVerifier

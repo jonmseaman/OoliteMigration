@@ -4,7 +4,7 @@ Build options: OpenAL, GLSL shaders, new planets, JavaScript console support, OX
 
 Note that the contents of the log file can be adjusted by editing logcontrol.plist.
 
-03:22:28.731 [process.args]: Startup command: C:\Users\jon\OoliteMigration\upstream\oolite\build\meson_test\oolite.app\oolite.exe --no-splash -load Resources/Scenarios/oolite-standard.oolite-save 
+03:22:28.731 [process.args]: Startup command: C:\Users\jon\OoliteMigration\oolite-dev\build\meson_test\oolite.app\oolite.exe --no-splash -load Resources/Scenarios/oolite-standard.oolite-save 
 03:22:29.096 [display.mode.list.native]: Native display resolution detected: 5120 x 1392
 03:22:29.266 [display.initGL]: Trying 8-bpcc, 24-bit depth buffer
 03:22:29.568 [display.initGL]: V-Sync requested.

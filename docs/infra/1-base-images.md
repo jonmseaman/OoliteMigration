@@ -48,6 +48,6 @@ is the single change most likely to cut iteration time, more than any model choi
     strips from a shell started by another shell, so it fails only under automation.
     `/etc/profile.d/oolite-windows-env.sh` restores it via `cygpath -F` for login shells.
   - **ccache is installed but the build does not use it yet.** Meson only wraps the compiler in
-    ccache when it discovers the compiler itself; `upstream/oolite/clang.ini` names it explicitly
+    ccache when it discovers the compiler itself; `oolite-dev/clang.ini` names it explicitly
     (`c = 'clang'`), which suppresses that. Item 2 owns the fix; verify with `ccache --show-stats`,
     not by checking that ccache is installed.

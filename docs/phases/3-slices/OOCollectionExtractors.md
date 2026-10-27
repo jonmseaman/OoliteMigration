@@ -21,8 +21,8 @@ Pre-split for [Phase 3](../3-cpp-conversion.md) (bead oo-oucd). Checked by
 | 1 (fallback) | the whole file | ~710 | ~1,160 |
 
 ```slice-plan
-source: upstream/oolite/src/Core/OOCollectionExtractors.mm
-header: upstream/oolite/src/Core/OOCollectionExtractors.h
+source: oolite-dev/src/Core/OOCollectionExtractors.mm
+header: oolite-dev/src/Core/OOCollectionExtractors.h
 retired-by: oo-snzn
 
 slice 1: the whole file, only if oo-snzn has not deleted it

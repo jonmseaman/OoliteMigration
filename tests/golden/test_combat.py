@@ -311,15 +311,15 @@ def _gate_tree(tmp_path, gate_edit=None, spec_edit=None, scenario_edit=None):
     import shutil
     root = tmp_path / "t"
     (root / "tests" / "golden" / "pending" / "003-combat").mkdir(parents=True)
-    (root / "upstream" / "oolite" / "tests" / "component").mkdir(parents=True)
+    (root / "oolite-dev" / "tests" / "component").mkdir(parents=True)
     for name in ("gate_003_spec.py", "combat.py", "golden_run.py"):
         shutil.copy(os.path.join(HERE, name), root / "tests" / "golden" / name)
     shutil.copytree(os.path.join(HERE, "dump"), root / "tests" / "golden" / "dump")
     for name in os.listdir(golden_dir()):
         shutil.copy(os.path.join(golden_dir(), name),
                     root / "tests" / "golden" / "pending" / "003-combat" / name)
-    shutil.copy(os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component", "console.py"),
-                root / "upstream" / "oolite" / "tests" / "component" / "console.py")
+    shutil.copy(os.path.join(REPO_ROOT, "oolite-dev", "tests", "component", "console.py"),
+                root / "oolite-dev" / "tests" / "component" / "console.py")
 
     def edit(path, fn):
         text = path.read_text(encoding="utf-8")

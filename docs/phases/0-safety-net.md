@@ -7,7 +7,7 @@
 
 Build the verification substrate that every later phase is gated on: reproducible local builds, a
 deterministic golden harness, a JS API snapshot, the OXP corpus, the GUI smoke tier, the three-tier
-scripts, and the guardrail checks. **No production code changes** to `upstream/oolite` except
+scripts, and the guardrail checks. **No production code changes** to `oolite-dev` except
 determinism fixes that are upstreamable as plain bug fixes.
 
 Almost all of Phase 0 is seam work: nearly every item fails checks 5 and 7 of the sizing rule. It
@@ -32,7 +32,7 @@ unchecked one names the bead (or Jon's action) that closes it.
 - [x] `oxp-contract/js-api-1.93.json` committed and reproduced by Tier C — `oxp-contract/` (oo-5k2, oo-1xz); `tools/tier-c.sh` jsapi stage (oo-j4u).
 - [ ] Tier 1 / 2 / 3 OXP corpus automated (per-commit / nightly / weekly) — per-commit exists: `tools/corpus.sh tier1` in `tier-b` (oo-het), tier 2/3 runners (oo-4z6). Nothing schedules nightly or weekly: oo-1bf.11.
 - [ ] Mozilla-only-JS scan report published; a hand-audited random 50 agrees with the model at an acceptable rate — report: `tools/oxp-js-lint/corpus-report.json` (oo-ctq); the local-model pilot reports a confusion matrix (oo-l7u). **The hand audit of a random 50 is Jon's and is not recorded.**
-- [ ] PyAutoGUI G1–G4 green on Windows, run by Tier C and nightly under the desktop lock (never per bead) — G1–G11 exist under `upstream/oolite/tests/gui`; `tier-c` runs them under `tools/gui-lock` (oo-j4u). No green Tier C run can be cited today: Tier B is red on `main` (oo-1bf.13). Nightly: oo-1bf.11.
+- [ ] PyAutoGUI G1–G4 green on Windows, run by Tier C and nightly under the desktop lock (never per bead) — G1–G11 exist under `oolite-dev/tests/gui`; `tier-c` runs them under `tools/gui-lock` (oo-j4u). No green Tier C run can be cited today: Tier B is red on `main` (oo-1bf.13). Nightly: oo-1bf.11.
 - [ ] Component tier S1–S8 green on Windows, five consecutive runs with no flake; the tagged subset in Tier B, the full suite in Tier C ([0-component-tier.md](0-component-tier.md)) — S1–S8 exist; S2–S8 are smoke scenarios by [ADR-0020](../decisions/0020-component-scenarios-are-smoke-tests-for-now.md); `tier-b` runs them per commit, one run each (Jon, 2026-09-18). "Five consecutive runs" is not recorded; the Tier C run is blocked by oo-1bf.13.
 - [x] `tools/tier-a.sh` measured **< 30 s** on `OOColor.m` and `OORoleSet.m` — 6 s and 4 s warm on 2026-09-19; 15–17 s cold (oo-sp1c, "Commands" below).
 - [x] N golden game processes (N from the [I0](../infra/0-machines.md) RAM budget, at least 4) run concurrently with no port or output collision — `tests/golden/run.sh 001 --check-isolation --plan-count 4` (oo-gla, item 0.4b).
@@ -93,7 +93,7 @@ expensive to diagnose in Phase 3.
 ### 0.3 Reproduce the upstream Windows build locally
 
 No forge for now (ADR-0016): the target is `tools/build-windows.sh`, native MSYS2 UCRT64 from a
-clean clone, matching the Windows job in `upstream/oolite/.github/workflows/build-all.yaml` minus
+clean clone, matching the Windows job in `oolite-dev/.github/workflows/build-all.yaml` minus
 its per-run provisioning. Cache aggressively (`ccache`); every later phase pays the build cost on
 every run. The Linux build is a Phase 5 item ([ADR-0017](../decisions/0017-native-windows-subtree.md)).
 

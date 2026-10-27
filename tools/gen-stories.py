@@ -17,10 +17,10 @@ import argparse, importlib.util, json, os, re, subprocess, sys
 from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "upstream/oolite/src"
+SRC = ROOT / "oolite-dev/src"
 PROHIBITIONS = """## Prohibitions (verbatim in every story)
 - Do not modify anything under `goldens/`.
-- Do not modify or delete tests. If the test is wrong, stop and report. **Adding** a test is not prohibited and is expected where this unit changes observable behaviour: add a scenario under `upstream/oolite/tests/component/features/` using steps that already exist (`tests/component/README.md`). Needing a *new step* fails sizing check 5: stop and file a bead (ADR-0018).
+- Do not modify or delete tests. If the test is wrong, stop and report. **Adding** a test is not prohibited and is expected where this unit changes observable behaviour: add a scenario under `oolite-dev/tests/component/features/` using steps that already exist (`tests/component/README.md`). Needing a *new step* fails sizing check 5: stop and file a bead (ADR-0018).
 - Do not add `-Wno-*`, `#pragma` diagnostic suppressions, or unused-attributes to silence a warning.
 - Do not run `bd close`; the orchestrator's accept step does that after review.
 - Do not read expansion (OXP/OXZ) content. If the task appears to need it, stop and report.
@@ -147,11 +147,11 @@ SEAMS = [
  ("0.1a", 0, "Instrument NSDictionary/NSSet enumeration order shuffle (debug build)", "Add a debug-only shuffle of GNUstep NSDictionary/NSSet enumeration order behind an env var so order-dependent gameplay paths can be found. No behaviour change when the env var is unset.", "Debug build with OO_SHUFFLE_ENUMERATION=1 launches and reaches the main menu; without it, byte-identical behaviour to before.", [], 1),
  ("0.1b", 0, "Find and fix iteration-order-dependent gameplay paths; upstreamable", "Run the smoke test and the first scenarios under the shuffle; sort explicitly in Objective-C at every site where the outcome changes. Prime suspects: populator scripts, role selection, ship registry, equipment ordering.", "Ten consecutive shuffled runs of the smoke test produce identical Latest.log gameplay lines; each fix is a separate commit suitable for an upstream PR.", ["0.1a"], 1),
  ("0.13a", 0, "OO_RANDOM_SEED: honour an env var seed in GameController (determinism fix, upstreamable)", "src/Core/GameController.m:100 seeds RANROT from the wall clock. When OO_RANDOM_SEED is set, seed from it; otherwise unchanged. ~3 lines. Prerequisite of the component tier (0.13b) and of the goldens (0.4): neither can be deterministic without it (ADR-0018 §3).", "Two launches with OO_RANDOM_SEED=20260910 produce identical randf() sequences (log the first 5 draws under OOLog 'debug.random' in a debug build); without the variable, behaviour is unchanged.", [], 1),
- ("0.13b", 0, "Component tier seam: tests/component console client, launch fixture, step library, and S1", "Per docs/stories/S1-police-kills-pirate.md and docs/phases/0-component-tier.md: pytest + pytest-bdd under upstream/oolite/tests/component/ (console.py shared with the golden harness later, conftest.py with seed injection and hard timeout, steps/world_steps.py, features/s1_police_kills_pirate.feature, requirements.txt, README.md step catalogue). Headless, one native game process, parameterised port, OO_RANDOM_SEED set. No new native interfaces.", ["python3 -m pytest upstream/oolite/tests/component/ -x -q", "for i in 1 2 3 4 5; do python3 -m pytest upstream/oolite/tests/component/ -x -q || exit 1; done"], ["0.13a", "0.3b"], 1),
+ ("0.13b", 0, "Component tier seam: tests/component console client, launch fixture, step library, and S1", "Per docs/stories/S1-police-kills-pirate.md and docs/phases/0-component-tier.md: pytest + pytest-bdd under oolite-dev/tests/component/ (console.py shared with the golden harness later, conftest.py with seed injection and hard timeout, steps/world_steps.py, features/s1_police_kills_pirate.feature, requirements.txt, README.md step catalogue). Headless, one native game process, parameterised port, OO_RANDOM_SEED set. No new native interfaces.", ["python3 -m pytest oolite-dev/tests/component/ -x -q", "for i in 1 2 3 4 5; do python3 -m pytest oolite-dev/tests/component/ -x -q || exit 1; done"], ["0.13a", "0.3b"], 1),
  ("0.2", 0, "tools/setup-windows.sh: MSYS2 UCRT64 provisioned once (deps, Mesa opengl32.dll, ccache, python)", "Script the one-time provisioning that upstream's workflow repeats per run: ShellScripts/Windows/install_deps.sh clang, mingw-w64-ucrt-x86_64-mesa (the llvmpipe opengl32.dll the goldens use), ccache, python with pytest/pytest-bdd/pyautogui, jq. Idempotent. See docs/infra/1-base-images.md.", "Run twice on the Windows machine: the second run installs nothing; ./mk.sh build test succeeds afterwards.", [], 1),  # provisions pytest-bdd too
  ("0.3b", 0, "tools/build-windows.sh: native MSYS2 UCRT64 build from a clean clone", "Script the Windows build from a clean clone with MSYS2 provisioned by 0.2 (no setup-msys2 step); same flavours as upstream build-all.yaml; ccache on.", "tools/build-windows.sh exits 0 from a fresh clone on the Windows machine and produces the test binary.", ["0.2"], 1),
  ("0.4a", 0, "Parameterise tests/launch_snapshot.py: port, output dir, --load <save>", "Today PORT=8563 and HOST are hardcoded. Make port and artifact directory arguments/env so N instances run at once; add --load <file.oolite-save>, passed through as the game's -load argument (scenarios 013-017 load the checklist saves).", "Two instances run concurrently on different ports and both produce a screenshot; --load with a checklist save reaches the docked screen.", ["0.3b"], 1),
- ("0.4b", 0, "Golden harness runner: one scenario per native game process, Mesa llvmpipe, parameterised port", "tests/golden/run.sh <scenario>: launches one game process natively with MSYS2's Mesa opengl32.dll beside the binary (as upstream/oolite/tests/run_test_fn.sh does), drives it over the debug-console TCP channel on its own port using the component tier's console client (tests/component/console.py, ADR-0018), writes artifacts to a per-run directory. No containers (ADR-0017).", "N scenarios (N = the RAM budget in docs/infra/0-machines.md, at least 4) run concurrently on the machine with no port or output collision.", ["0.4a", "0.13b"], 1),
+ ("0.4b", 0, "Golden harness runner: one scenario per native game process, Mesa llvmpipe, parameterised port", "tests/golden/run.sh <scenario>: launches one game process natively with MSYS2's Mesa opengl32.dll beside the binary (as oolite-dev/tests/run_test_fn.sh does), drives it over the debug-console TCP channel on its own port using the component tier's console client (tests/component/console.py, ADR-0018), writes artifacts to a per-run directory. No containers (ADR-0017).", "N scenarios (N = the RAM budget in docs/infra/0-machines.md, at least 4) run concurrently on the machine with no port or output collision.", ["0.4a", "0.13b"], 1),
  ("0.4c", 0, "Canonical state dump: sorted JSON of entities, positions, velocities, AI states, market, player", "A debug-console JS command that serialises the world after N ticks to canonical sorted JSON; float fields quantised per decision 11.", "Two runs of the same scenario on the same build produce byte-identical dumps.", ["0.4b"], 1),
  ("0.4d", 0, "Frame hashes with tolerance at fixed camera positions", "Perceptual hash of rendered frames at fixed camera positions; tolerance documented; llvmpipe pinned as the rasteriser.", "Same scenario, two runs: hashes within tolerance; a deliberately moved ship changes the hash beyond tolerance.", ["0.4b"], 2),
  ("0.4e", 0, "Golden storage policy: per-platform goldens + quantised floats; -ffp-contract=off; pinned -O", "Implement decision 11: goldens/<platform>/<scenario>/ layout (windows-x64 first; macos-arm64 and linux-x64 join at Phase 5), quantisation in the dump, golden build flags pinned.", "Windows goldens for scenario 001 stored under goldens/windows-x64/; a diff tool reports zero differences between two runs after quantisation.", ["0.4c"], 1),
@@ -163,11 +163,11 @@ SEAMS = [
  ("0.6c", 0, "OXP corpus Tier 2 (~150, category coverage) and Tier 3 (all) runners", "Nightly (Tier 2) and weekly (Tier 3) load-only smoke runs with clustered error reports.", "tools/corpus.sh tier3 completes and writes a report grouping failures by first error line.", ["0.6b"], 2),
  ("0.7a", 0, "Mozilla-only-JS static scan: ESLint config + runner over the corpus", "tools/oxp-js-lint flags for each, catch-if, E4X, .quote(), toSource, uneval, let blocks, legacy getters, expression closures.", "Runs over the whole cached corpus and writes a per-expansion report; zero hits on the 31 in-tree scripts.", ["0.6a"], 1),
  ("0.7b", 0, "Expansion-scan model pilot: classify ambiguous hits with a local model, hand-audit 50", "Sandboxed (no repo mount, no secrets): local model classifies the lint's ambiguous hits; a random 50 are hand-audited and the agreement rate recorded in docs/fleet/LEARNINGS.md.", "Report published with agreement rate; sandbox verified to have no repo write access.", ["0.7a"], 3),
- ("0.8a", 0, "GUI tier: row->screen-point helper, launch/kill fixture, and G1 exit-via-mouse", "The calibration seam: upstream/oolite/tests/gui/conftest.py and test_g1_exit_via_mouse.py per docs/stories/G1-exit-via-mouse.md. Runs against a real window on the desktop and takes the GUI-tier desktop lock (tools/gui-lock, created here) while it runs.", "python3 -m pytest upstream/oolite/tests/gui/test_g1_exit_via_mouse.py -x -q passes natively on Windows with the desktop unlocked.", ["0.3b"], 1),
- ("0.9a", 0, "tools/tier-a.sh <file>: single-TU compile + clang-tidy + deny-list, under 30 s, offline", "The agent inner loop. Compile one translation unit via meson/ninja target, run clang-tidy on it, grep the deny-list; measure on OOColor.m and OORoleSet.m.", "tools/tier-a.sh upstream/oolite/src/Core/OOColor.m completes in under 30 s with the network disabled.", ["0.3b"], 1),
+ ("0.8a", 0, "GUI tier: row->screen-point helper, launch/kill fixture, and G1 exit-via-mouse", "The calibration seam: oolite-dev/tests/gui/conftest.py and test_g1_exit_via_mouse.py per docs/stories/G1-exit-via-mouse.md. Runs against a real window on the desktop and takes the GUI-tier desktop lock (tools/gui-lock, created here) while it runs.", "python3 -m pytest oolite-dev/tests/gui/test_g1_exit_via_mouse.py -x -q passes natively on Windows with the desktop unlocked.", ["0.3b"], 1),
+ ("0.9a", 0, "tools/tier-a.sh <file>: single-TU compile + clang-tidy + deny-list, under 30 s, offline", "The agent inner loop. Compile one translation unit via meson/ninja target, run clang-tidy on it, grep the deny-list; measure on OOColor.m and OORoleSet.m.", "tools/tier-a.sh oolite-dev/src/Core/OOColor.m completes in under 30 s with the network disabled.", ["0.3b"], 1),
  ("0.9b", 0, "tools/tier-b.sh: build + module tests + 3-5 fast goldens + fast component subset + Tier-1 subset, under 10 min", "Runs in a clean worktree; headless (no GUI tier); includes the tagged fast subset of the component tier (pytest -m fast under tests/component, ADR-0018); `--fast` variant for accept.sh.", "tools/tier-b.sh exits 0 on main in under 10 minutes on a warm cache.", ["0.9a", "0.4f", "0.6b"], 1),
  ("0.9c", 0, "tools/tier-c.sh: all goldens, ASan, full Tier 1, JS API snapshot, GUI tier under the desktop lock", "The merge gate, run locally (ADR-0016) in a clean worktree on Windows: full component suite (ADR-0018), all goldens, corpus, snapshot, ASan. The GUI tier runs here and nightly only, under tools/gui-lock, never per bead (ADR-0017).", "tools/tier-c.sh exits 0 on main; a deliberate use-after-free in a scratch branch is caught by ASan under MSYS2 clang, or the ADR-0017 sanitizer fallback is filed as a proposed ADR.", ["0.9b", "0.5", "0.8a"], 1),
- ("0.10", 0, "tools/merge-queue: batch Tier-B-green branches, run tier-c locally, fast-forward, bisect on red, push", "Batch-and-bisect over local branches; requeues the culprit's bead with the failure in its notes. accept.sh's base branch becomes an integration branch this promotes. After every green batch: `git push origin main` and `git subtree push --prefix=upstream/oolite fork migration` (ADR-0017); the weekly hand-push bead is closed when this lands.", "A batch of 8 branches with one bad one: the queue bisects to the culprit and merges the other 7; after a green batch origin/main and fork/migration match the local tree.", ["0.9c"], 2),
+ ("0.10", 0, "tools/merge-queue: batch Tier-B-green branches, run tier-c locally, fast-forward, bisect on red, push", "Batch-and-bisect over local branches; requeues the culprit's bead with the failure in its notes. accept.sh's base branch becomes an integration branch this promotes. After every green batch: `git push origin main` and `git subtree push --prefix=oolite-dev fork migration` (ADR-0017); the weekly hand-push bead is closed when this lands.", "A batch of 8 branches with one bad one: the queue bisects to the culprit and merges the other 7; after a green batch origin/main and fork/migration match the local tree.", ["0.9c"], 2),
  ("0.11", 0, "Guardrail checks: goldens/ protection, warning-suppression grep, deleted-test detection, deny-list", "tools/guardrails.sh run by tier-b and tier-c: fails on any change under goldens/ without a rebless approval, on new -Wno-/#pragma diagnostic, on deleted/emptied test files (including .feature files and the component step library, ADR-0018 §5), on reintroduced libgnustep-base/JS_* symbols.", "Each of the four violations, introduced in a scratch branch, fails tools/guardrails.sh with a specific message.", ["0.9b"], 1),
  ("0.12", 0, "Verify story generator output against the first real sweep (Phase 1 façade retarget)", "tools/gen-stories.py exists (v0). Once tier-a/tier-b exist, re-run with --apply and confirm the first generated bead is completable by a worker end to end through the beads-worker skill.", "One generated Phase 1 bead closed by accept.sh with no human edits to the bead text.", ["0.9b", "1.2"], 2),
  ("0.14", 0, "tools/fleet/run-story: frontier driver (claude -p --model claude-opus-5) over frontier beads", "bd ready filtered to frontier beads -> claim -> beads-worker worktree.sh -> claude -p --model claude-opus-5 with the bead body as the prompt and CLAUDE.md in scope, allow-list excluding bd close / git push / goldens -> accept.sh -> worktree cleanup. Memoryless per story; parallelism flag from docs/infra/0-machines.md. The frontier model is Claude Opus 5 by default (BEADS_FRONTIER_MODEL overrides); a bead whose metadata carries model=<id> runs on that model instead (the phase reviews use claude-fable-5-1).", "run-story given a scratch frontier bead with acceptance `test -f tools/fleet/.smoke` completes it in its own worktree and the bead is closed by accept.sh, not by the agent; `claude -p` was invoked with --model claude-opus-5 (logged).", [], 2),
@@ -308,8 +308,8 @@ def sweep_gui():
     g = {2: "Exit via keyboard (Down x5, Enter)", 3: "Exit via window close (SDL_EVENT_QUIT)", 4: "Start a game: confirm row 22 then row 3, HUD renders, exit",
          5: "Screen round-trips: Ship Library, Game Options, Expansion Manager", 6: "Window lifecycle: resize, minimise/restore, fullscreen", 7: "First run: no prefs dir, defaults created",
          8: "Scenario-screen back-out: row 22 then row 1", 9: "Post-exit hygiene assertions shared by every GUI test"}
-    return [(f"GUI test G{i}: {t}", f"Add upstream/oolite/tests/gui/test_g{i}_*.py the way test_g1_exit_via_mouse.py is written, per docs/phases/0-gui-tier.md. Runs against a real window on the desktop under the GUI-tier desktop lock.",
-             [f"python3 -m pytest upstream/oolite/tests/gui/test_g{i}_*.py -x -q"], ["0.8a"], "upstream/oolite/tests/gui/test_g1_exit_via_mouse.py", 2) for i, t in g.items()]
+    return [(f"GUI test G{i}: {t}", f"Add oolite-dev/tests/gui/test_g{i}_*.py the way test_g1_exit_via_mouse.py is written, per docs/phases/0-gui-tier.md. Runs against a real window on the desktop under the GUI-tier desktop lock.",
+             [f"python3 -m pytest oolite-dev/tests/gui/test_g{i}_*.py -x -q"], ["0.8a"], "oolite-dev/tests/gui/test_g1_exit_via_mouse.py", 2) for i, t in g.items()]
 
 # Per-scenario capability check (ADR-0020, 2026-09-18): each entry is
 # (title, what-it-would-catch-if-fully-written, seam) where `seam` is the bead id of the
@@ -344,7 +344,7 @@ def sweep_component():
         if seam is None:
             # Fully expressible today: an existing step can name this entity among several spawned,
             # or read/write a property on it, so the FULL behavioural assertion is fleet work.
-            body = (f"Add upstream/oolite/tests/component/features/s{i}_*.feature the way "
+            body = (f"Add oolite-dev/tests/component/features/s{i}_*.feature the way "
                     "s1_police_kills_pirate.feature is written (docs/stories/S1-police-kills-pirate.md, "
                     "docs/phases/0-component-tier.md), using only steps that already exist in the step "
                     f"library (tests/component/README.md). Catches: {why}. Assert 'within N ticks' and "
@@ -359,7 +359,7 @@ def sweep_component():
             body = (f"Per ADR-0020 (docs/decisions/0020-component-scenarios-are-smoke-tests-for-now.md), "
                     f"this is a SMOKE scenario for now: the full observable (\"{t}\") needs a capability "
                     f"the step library does not have yet (tracked by {seam}) and is NOT fleet work here. "
-                    f"Add upstream/oolite/tests/component/features/s{i}_*.feature the way "
+                    f"Add oolite-dev/tests/component/features/s{i}_*.feature the way "
                     "s1_police_kills_pirate.feature is written, but set the world up exactly as the "
                     "story says (load, launch, spawn the named roles, set their AIs, per ADR-0019), run "
                     "the simulation for the stated ticks, and assert ONLY what the existing step library "
@@ -371,9 +371,9 @@ def sweep_component():
         out.append((f"Component scenario S{i}: {t}", body,
                      # One run; green means done (Jon, 2026-09-18). The former single-run-plus-three-run-loop
                      # made an accept pay for four real-time game runs; flakiness is Jon's to judge by hand.
-                     [f"python3 -m pytest upstream/oolite/tests/component/ -k s{i}_ -x -q"],
+                     [f"python3 -m pytest oolite-dev/tests/component/ -k s{i}_ -x -q"],
                      ["0.13b"] if seam is None else ["0.13b", seam],
-                     "upstream/oolite/tests/component/features/s1_police_kills_pirate.feature", 2))
+                     "oolite-dev/tests/component/features/s1_police_kills_pirate.feature", 2))
     return out
 
 def sweep_js_retarget():
@@ -388,7 +388,7 @@ def sweep_js_retarget():
         if p.name in GIANT: continue
         out.append((f"Retarget JS_* calls onto the façade: {p.name}",
                     f"Move every JS_* call in {rel} ({n} lines) onto ooscript/JSEngine.hpp, SpiderMonkey still underneath. Apply tools/refactor/js-stubs.sh first, then hand-retarget the rest. Behaviour must not change.",
-                    [f"! grep -nE '\\bJS_[A-Za-z]+' {rel}", f"tools/tier-a.sh {rel}", "bash tools/guardrails.sh"], ["1.1x", "1.2"], "upstream/oolite/src/Core/Scripting/OOJSVector.m", 2 if n < 1500 else 3))
+                    [f"! grep -nE '\\bJS_[A-Za-z]+' {rel}", f"tools/tier-a.sh {rel}", "bash tools/guardrails.sh"], ["1.1x", "1.2"], "oolite-dev/src/Core/Scripting/OOJSVector.m", 2 if n < 1500 else 3))
     return out
 
 def sweep_extractors():
@@ -632,7 +632,7 @@ def sweep_convert():
         files = f"- {rel} ({n} lines)" + (f"\n- {hrel} ({hn} lines)" if hrel else "")
         what = (f"Convert the free functions in {rel} from Objective-C++ to C++20: every message send becomes a member call on the converted classes, Foundation usage is already oofnd. No class here; keep the file as .mm until Phase 4." if freefn
                 else f"Convert the class in {rel} (and {hrel or 'its header'}) from Objective-C to conservative C++20 per the recipe in docs/phases/3-cpp-conversion.md: class shell, member functions, oo::Ref, dynamic_cast where isKindOfClass: genuinely needs it. Plain-C method bodies stay verbatim.")
-        what += " If the conversion touches observable ship, AI or weapon behaviour, add a component scenario under upstream/oolite/tests/component/features/ using existing steps (ADR-0018); a missing step is a new interface, so report it rather than writing one."
+        what += " If the conversion touches observable ship, AI or weapon behaviour, add a component scenario under oolite-dev/tests/component/features/ using existing steps (ADR-0018); a missing step is a new interface, so report it rather than writing one."
         out.append((f"Convert to C++20: {p.name}", f"{what}\n\n## Files\n{files}",
                     [f"! grep -nE '@implementation|@interface|@selector|@protocol' {rel}" + (f" {hrel}" if hrel else ""), f"tools/tier-a.sh {rel}", "bash tools/guardrails.sh"], [seam], f"seam:{seam}", MODULE_ORDER[mod]))
     return out, presplit
@@ -693,7 +693,7 @@ def sweep_slices(titles=None, base=None, report=None):
         if blocking:
             report.append(f"  skipped {prel}: fails tools/check-slice-plan.py ({len(blocking)} problem(s)): {blocking[0]}"); continue
         try:
-            mod = module_of(SRC / PurePosixPath(source).relative_to("upstream/oolite/src"))
+            mod = module_of(SRC / PurePosixPath(source).relative_to("oolite-dev/src"))
         except ValueError:
             mod = "leaf"
         seam = MODULE_SEAM[mod]; exemplar = f"seam:{seam}"
@@ -723,7 +723,7 @@ def sweep_slices(titles=None, base=None, report=None):
                     "Do not edit the plan: once this slice's methods are C++ member functions its entries stop matching, which is how "
                     f"`python3 tools/check-slice-plan.py --slice-done {sid} {prel}` sees the slice is done. "
                     "If the conversion touches observable ship, AI or weapon behaviour, add a component scenario under "
-                    "upstream/oolite/tests/component/features/ using existing steps (ADR-0018); a missing step is a new interface, so report it rather than writing one.")
+                    "oolite-dev/tests/component/features/ using existing steps (ADR-0018); a missing step is a new interface, so report it rather than writing one.")
             if r.get("frontier"):   # one-unit-slices: frontier (bead oo-9ht.157): one method over the own budget
                 what += (f" This slice is one method of {r['own']} lines, over the 800-line own budget that no plan can cut: "
                          "it is a frontier story (the bead is labelled frontier), not a fleet one.")
@@ -884,11 +884,11 @@ _ST_BAR = "@implementation Bar\n- (void) draw\n{\n\t[self flush];\n}\n@end\n"
 # a mac-only group (fenced Mac code, bead oo-q9l2w) is checked but never becomes a story
 _ST_BAR += "#if OOLITE_MAC_OS_X\n@implementation Bar (Mac)\n- (void) dock\n{\n\t[self flush];\n}\n@end\n#endif\n"
 _ST_PLANS = {
-    "Foo.md": "Plan.\n```slice-plan\nsource: upstream/oolite/src/Core/Foo.mm\nheader: upstream/oolite/src/Core/Foo.h\n\n"
+    "Foo.md": "Plan.\n```slice-plan\nsource: oolite-dev/src/Core/Foo.mm\nheader: oolite-dev/src/Core/Foo.h\n\n"
               "slice 1: class shell\n  @Foo\n  helper()\nslice 2: private category\n  @Foo(Private)\nverbatim: plain C\n  *\n```\n",
-    "Bar.md": "```slice-plan\nsource: upstream/oolite/src/Core/Materials/Bar.mm\nslice a: all\n  @Bar\nmac-only: Mac\n  @Bar(Mac)\n```\n",
-    "Bad.md": "```slice-plan\nsource: upstream/oolite/src/Core/Foo.mm\nslice 1: leaves units out\n  -[Foo init]\n```\n",
-    "Gone.md": "```slice-plan\nsource: upstream/oolite/src/Core/Gone.mm\nretired-by: oo-gone\nslice 1: all\n  *\n```\n",
+    "Bar.md": "```slice-plan\nsource: oolite-dev/src/Core/Materials/Bar.mm\nslice a: all\n  @Bar\nmac-only: Mac\n  @Bar(Mac)\n```\n",
+    "Bad.md": "```slice-plan\nsource: oolite-dev/src/Core/Foo.mm\nslice 1: leaves units out\n  -[Foo init]\n```\n",
+    "Gone.md": "```slice-plan\nsource: oolite-dev/src/Core/Gone.mm\nretired-by: oo-gone\nslice 1: all\n  *\n```\n",
 }
 
 def selftest():
@@ -903,14 +903,14 @@ def selftest():
     d = Path(tempfile.mkdtemp(prefix="gen-stories-selftest-", dir=str(scratch) if scratch.is_dir() else None))
     saved = {k: g[k] for k in ("SLICE_ROOT", "PLAN_OUT", "existing_titles")}
     try:
-        core = d / "upstream/oolite/src/Core"; (core / "Materials").mkdir(parents=True)
+        core = d / "oolite-dev/src/Core"; (core / "Materials").mkdir(parents=True)
         (core / "Foo.mm").write_text(_ST_FOO); (core / "Foo.h").write_text("@interface Foo\n@end\n")
         (core / "Materials/Bar.mm").write_text(_ST_BAR)
         plans = d / SLICE_PLANS; plans.mkdir(parents=True)
         for name, text in _ST_PLANS.items(): (plans / name).write_text(text)
         pre = {"Pre-split Foo.m (21 lines) into story-sized slices": "oo-pre1"}
-        t1, t2, tb = (slice_title("upstream/oolite/src/Core/Foo.mm", "1"), slice_title("upstream/oolite/src/Core/Foo.mm", "2"),
-                      slice_title("upstream/oolite/src/Core/Materials/Bar.mm", "a"))
+        t1, t2, tb = (slice_title("oolite-dev/src/Core/Foo.mm", "1"), slice_title("oolite-dev/src/Core/Foo.mm", "2"),
+                      slice_title("oolite-dev/src/Core/Materials/Bar.mm", "a"))
 
         # 1. one story per slice of every plan that passes the checker, and nothing else
         report = []; items = sweep_slices(pre, base=d, report=report)
@@ -927,7 +927,7 @@ def selftest():
         expect("## Read budget\nReads ~" in desc and "header 2 + preamble" in desc, "read budget missing")
         expect(exemplar == "seam:3.exemplar-oocolor" and by[tb][4] == "seam:3.pattern-materials", "exemplar is not the module's pattern seam")
         expect(acc == ["python3 tools/check-slice-plan.py --slice-done 2 docs/phases/3-slices/Foo.md",
-                       "tools/tier-a.sh upstream/oolite/src/Core/Foo.mm", "bash tools/guardrails.sh"], f"acceptance {acc}")
+                       "tools/tier-a.sh oolite-dev/src/Core/Foo.mm", "bash tools/guardrails.sh"], f"acceptance {acc}")
         expect(deps == ["3.exemplar-oocolor", "oo-pre1", "title:" + t1], f"slice 2 deps {deps}")
         expect(by[t1][3] == ["3.exemplar-oocolor", "oo-pre1"], f"slice 1 deps {by[t1][3]}")
         expect(pri == MODULE_ORDER["leaf"], "priority is not the module order")

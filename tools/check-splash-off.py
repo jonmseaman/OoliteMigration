@@ -63,7 +63,7 @@ def _candidate_app_dirs():
                 seen.append(path)
 
     add(os.environ.get("OO_APP_DIR"))
-    add(os.path.join(REPO, "upstream", "oolite", "build", "meson_test", "oolite.app"))
+    add(os.path.join(REPO, "oolite-dev", "build", "meson_test", "oolite.app"))
     try:
         common = subprocess.run(
             ["git", "rev-parse", "--git-common-dir"],
@@ -79,7 +79,7 @@ def _candidate_app_dirs():
         if not os.path.isabs(common):
             common = os.path.join(REPO, common)
         main_root = os.path.dirname(os.path.abspath(common))
-        add(os.path.join(main_root, "upstream", "oolite", "build", "meson_test", "oolite.app"))
+        add(os.path.join(main_root, "oolite-dev", "build", "meson_test", "oolite.app"))
     return seen
 
 
@@ -93,7 +93,7 @@ def _find_binary():
 
 
 def _load_assertion():
-    gui = os.path.join(REPO, "upstream", "oolite", "tests", "gui")
+    gui = os.path.join(REPO, "oolite-dev", "tests", "gui")
     sys.path.insert(0, gui)
     import conftest  # noqa: E402  - located at runtime, on purpose
 

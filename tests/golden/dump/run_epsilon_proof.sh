@@ -19,7 +19,7 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
-APP_DIR="${OO_APP_DIR:-$REPO_ROOT/upstream/oolite/build/meson_test/oolite.app}"
+APP_DIR="${OO_APP_DIR:-$REPO_ROOT/oolite-dev/build/meson_test/oolite.app}"
 WORK="${TMPDIR:-${LOCALAPPDATA:-/tmp}/Temp}/oo_gla_epsilon.$$"
 mkdir -p "$WORK"
 

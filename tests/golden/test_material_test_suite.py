@@ -614,7 +614,7 @@ def test_checker_mutant_detail_level_check_removed(tmp_path, golden, tmpdump):
 # =================================================================================================
 
 def test_seed_reaches_the_game():
-    console_py = os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component", "console.py")
+    console_py = os.path.join(REPO_ROOT, "oolite-dev", "tests", "component", "console.py")
     assert os.path.isfile(console_py), "the console transport is missing at %s" % console_py
     src = open(console_py, encoding="utf-8").read()
     assert "OO_RANDOM_SEED" in src, (

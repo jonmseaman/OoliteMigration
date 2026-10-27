@@ -55,7 +55,7 @@ restore "$RUL"
 report "GREEN line 3" 3
 
 echo "=========== MUTANT 3: plant a let block in an in-tree script (line 4) ==========="
-VICTIM=upstream/oolite/Resources/Scripts/oolite-conditions.js
+VICTIM=oolite-dev/Resources/Scripts/oolite-conditions.js
 backup "$VICTIM"
 printf '\nthis.$mutant = function () { let (x = 1) { return x; } };\n' >> "$VICTIM"
 report "RED?  line 4 (in-tree zero hits)" 4

@@ -21,9 +21,9 @@
 # --all line runs nightly (tests/nightly/checks.txt [oo-tzd3n]); tools/objc-cast-scan-selftest
 # proves it fails on planted casts and passes on the legitimate look-alikes.
 #
-# Exit: 0 no finding; 1 findings (printed as `upstream/oolite/<path>:<line>:<col>: ...`);
+# Exit: 0 no finding; 1 findings (printed as `oolite-dev/<path>:<line>:<col>: ...`);
 # 2 the scan could not be run (no build directory, file not in the build, clang-query failed).
-# The build directory is upstream/oolite/build/meson_${OOLITE_TIER_A_FLAVOUR:-test}, as tier-a's.
+# The build directory is oolite-dev/build/meson_${OOLITE_TIER_A_FLAVOUR:-test}, as tier-a's.
 #
 # OOLITE_CASTSCAN_SOURCE_ONLY=1 . tools/objc-cast-scan.sh   defines castscan_tu and returns.
 
@@ -48,8 +48,8 @@ castscan_tu() {
   fi
   local hits
   hits="$(printf '%s\n' "$out" | sed -n 's/^\(.*\):\([0-9][0-9]*\):\([0-9][0-9]*\): note: "root" binds here$/\1:\2:\3/p' \
-          | sed -e 's#\\#/#g' -e 's#^.*/upstream/oolite/##' -e 's#^\(\.\./\)*##' \
-          | sed 's#^#upstream/oolite/#' | sort -u)"
+          | sed -e 's#\\#/#g' -e 's#^.*/oolite-dev/##' -e 's#^\(\.\./\)*##' \
+          | sed 's#^#oolite-dev/#' | sort -u)"
   [ -n "$hits" ] || return 0
   printf '%s: explicit cast between a C++ pointer and an Objective-C pointer (silently reinterprets; convert through oo::ToCxx/oo::ToObjC or the C++ type)\n' $hits
   return 1
@@ -75,7 +75,7 @@ fi
 export PATH="/ucrt64/bin:$PATH"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BUILD_DIR="$REPO_ROOT/upstream/oolite/build/meson_${OOLITE_TIER_A_FLAVOUR:-test}"
+BUILD_DIR="$REPO_ROOT/oolite-dev/build/meson_${OOLITE_TIER_A_FLAVOUR:-test}"
 COMPDB_READER="$REPO_ROOT/tools/tier-a-compdb.py"
 command -v clang-query >/dev/null 2>&1 || die "no clang-query on PATH (mingw-w64-ucrt-x86_64-clang-tools-extra)"
 [ -f "$BUILD_DIR/compile_commands.json" ] || die "no compile database at ${BUILD_DIR#"$REPO_ROOT"/}; build first (tools/build-windows.sh test)"
@@ -102,7 +102,7 @@ import json, os, sys
 seen = set()
 for e in json.load(open("compile_commands.json")):
     p = os.path.normpath(os.path.join(e["directory"], e["file"])).replace("\\", "/")
-    rel = p.split("/upstream/oolite/", 1)[-1]
+    rel = p.split("/oolite-dev/", 1)[-1]
     if rel.startswith(("src/", "tests/")) and rel.endswith((".m", ".mm", ".cpp")) and p not in seen:
         seen.add(p); print(p)
 ' ) >"$LIST" || die "cannot read the compile database"

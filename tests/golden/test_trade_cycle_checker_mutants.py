@@ -196,7 +196,7 @@ def _gate_env():
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join([
         HERE, os.path.join(HERE, "dump"),
-        os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component"),
+        os.path.join(REPO_ROOT, "oolite-dev", "tests", "component"),
         env.get("PYTHONPATH", "")]).rstrip(os.pathsep)
     return env
 

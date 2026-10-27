@@ -15,7 +15,7 @@ sections 1, 3, 4, 5, 10, 11 and 15, plus the per-PR definition of done from `MIG
 
 ### 1.1 The code is a power law — fan-out targets the thin part
 
-Measured across `upstream/oolite/src`, 241 `.m` files, 183,603 lines:
+Measured across `oolite-dev/src`, 241 `.m` files, 183,603 lines:
 
 | Bucket | Files | % files | Lines | % lines |
 |---|---:|---:|---:|---:|

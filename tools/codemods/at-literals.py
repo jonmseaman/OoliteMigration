@@ -43,7 +43,7 @@ EXTENSIONS = ('.h', '.m', '.mm', '.c', '.cpp', '.hpp')
 SKIP_DIR = os.path.join('src', 'oofnd')
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
-FLOOR_HEADERS = [os.path.join(REPO, 'upstream', 'oolite', 'src', 'oofnd', 'objc', name)
+FLOOR_HEADERS = [os.path.join(REPO, 'oolite-dev', 'src', 'oofnd', 'objc', name)
                  for name in ('OOObject.h', 'OOConstantString.h')]
 
 # (b) callees -> what the call becomes once its literal is plain "..." (None: callee unchanged).

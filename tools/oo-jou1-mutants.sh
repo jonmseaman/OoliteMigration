@@ -39,7 +39,7 @@ repo_native="$(native "$repo")"
 
 MOTION="$repo/tests/golden/motion"
 MOTION_NATIVE="$repo_native/tests/golden/motion"
-OOJSSHIP="$repo/upstream/oolite/src/Core/Scripting/OOJSShip.cpp"
+OOJSSHIP="$repo/oolite-dev/src/Core/Scripting/OOJSShip.cpp"
 CHECKER="$MOTION/check_settled.py"
 GREEN="$MOTION/fixtures/green-speed-arm.json"
 CONTRACT="$repo/oxp-contract/js-api-1.93.json"

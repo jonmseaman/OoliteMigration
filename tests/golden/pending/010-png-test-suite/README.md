@@ -158,7 +158,7 @@ The first baseline attempt aborted — correctly — with two reds. Those two un
 **upstream engine source** (`OOConcreteTexture.m`'s `[texture.upload]` format string and
 `logcontrol.plist`'s `$textureDebug = no` default), so that an engine refactor becomes the red
 instead of silently emptying `png_texture_uploads`. The scratch tree carried no
-`upstream/oolite/src`, so they could not pass there by construction. The fix was in the **harness**
+`oolite-dev/src`, so they could not pass there by construction. The fix was in the **harness**
 — copy exactly those two files — not in the tests. **They were not deselected**: deselecting is how
 a gate quietly loses the defence that makes it honest.
 

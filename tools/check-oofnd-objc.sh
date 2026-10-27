@@ -10,7 +10,7 @@
 #
 # No build directory, no meson, no network, like check-oofnd.sh.
 #
-#   1. inventory  every upstream/oolite/tests/unit/oofnd/test_objc_*.cpp (and any test_objc_*.mm); ZERO
+#   1. inventory  every oolite-dev/tests/unit/oofnd/test_objc_*.cpp (and any test_objc_*.mm); ZERO
 #                 is a failure, and so is one that tests/unit/oofnd/meson.build does not register;
 #   2. canary     each src/oofnd/objc/*.h compiles alone as C++ at -Wall -Wextra -Werror;
 #   3. tests      each test is built as C++ (no -fobjc-*: the game has no Objective-C unit since bead
@@ -31,7 +31,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$script_dir/.."   # repo root; paths stay RELATIVE (see check-oofnd.sh on MSYS path mangling)
 
-oo="upstream/oolite"
+oo="oolite-dev"
 src_dir="$oo/src/oofnd/objc"
 test_dir="$oo/tests/unit/oofnd"
 CXX="${CXX:-clang++}"

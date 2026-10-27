@@ -31,7 +31,7 @@ $body
 
 $ctx
 
-Read the files the bead names (they are under upstream/oolite/src) before deciding. Then answer with ONE JSON object on the last line and nothing after it:
+Read the files the bead names (they are under oolite-dev/src) before deciding. Then answer with ONE JSON object on the last line and nothing after it:
 {\"action\": \"retry|reclassify|add_dep|escalate\", \"sweep\": \"<target sweep for reclassify: convert|presplit|renames|foundation|extractors>\", \"seam\": \"<seam key for add_dep, e.g. 2.10>\", \"guidance\": \"<concrete instructions for the next attempt, for retry>\", \"reason\": \"<one sentence>\", \"generator_bug\": \"<if the task was mis-generated: what rule in tools/gen-stories.py is wrong, else empty>\"}
 Rules: retry only if a cheap model can plausibly finish with your guidance; reclassify when the file is a different kind of task than the sweep assumes; add_dep when it needs something a named seam produces first; escalate when it needs a frontier model or a human decision."
 out="$(cd "$REPO_ROOT" && printf %s "$prompt" | claude -p --model "${BEADS_FRONTIER_MODEL:-claude-opus-5}" --output-format json --max-turns "${BEADS_REEVAL_MAX_TURNS:-12}" --allowedTools "Read,Grep,Glob" --disallowedTools "Edit,Write,Bash" 2>/dev/null)" || { echo "reevaluate: claude call failed" >&2; exit 3; }

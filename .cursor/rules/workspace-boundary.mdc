@@ -34,7 +34,7 @@ Use paths **inside** the repo only:
 ```bash
 # OK — in-repo
 Write  .agent-tmp/run.sh
-Write  .worktrees/oo-foo/upstream/oolite/src/...
+Write  .worktrees/oo-foo/oolite-dev/src/...
 
 # NOT OK — prompts for permission
 Write  /tmp/foo.sh

@@ -8,7 +8,7 @@ the by-name dispatcher classifies a row by it and prints it in its "has no signa
 can use (type encoding ...)" log line. With libobjc2 gone (oo-dbz) the game is C++ and has no
 @encode, so each encoding becomes the literal clang's @encode() gave on main eae8c876d, the last
 tree built as Objective-C++: tools/type-encodings.tsv holds the measurement, and this script
-renders upstream/oolite/src/Core/OOTypeEncodings.h from it (kOOTypeEncoding<T>, one explicit
+renders oolite-dev/src/Core/OOTypeEncodings.h from it (kOOTypeEncoding<T>, one explicit
 specialisation per measured type).
 
     python3 tools/gen-type-encodings.py                   # rewrite the header
@@ -26,7 +26,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DATA = ROOT / "tools/type-encodings.tsv"
-OUT = ROOT / "upstream/oolite/src/Core/OOTypeEncodings.h"
+OUT = ROOT / "oolite-dev/src/Core/OOTypeEncodings.h"
 TAGS = {"OOObjCId": "id", "OOObjCSelector": "SEL"}
 PIECE = 100		# characters of an encoding per source line
 

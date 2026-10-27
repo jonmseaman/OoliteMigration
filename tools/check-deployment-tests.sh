@@ -12,7 +12,7 @@
 # inside one: every test-flavour suite passed and the deployment game could not launch.
 # test_objc_assert_ndebug fails on that tree (3 of 5 checks), here and in every flavour.
 #
-# Build directory: upstream/oolite/build/meson_deployment_tests, mk.sh's deployment options
+# Build directory: oolite-dev/build/meson_deployment_tests, mk.sh's deployment options
 # (-Ddeployment_release=true -Ddebug=false) with -Ddeployment_unit_tests=true and WITHOUT LTO or
 # strip: the macros are what is under test, and full-LTO test links would cost far more. The
 # LTO'd, stripped binary itself is covered by the goldens run against build/meson_deployment
@@ -29,7 +29,7 @@ if [ "${MSYSTEM:-}" != "UCRT64" ] && [ -z "${OO_DEPLOY_TESTS_REEXEC:-}" ] && [ -
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OOLITE="$REPO_ROOT/upstream/oolite"
+OOLITE="$REPO_ROOT/oolite-dev"
 BD="build/meson_deployment_tests"
 NATIVE_FILE="$REPO_ROOT/tools/meson/ccache-clang.ini"
 

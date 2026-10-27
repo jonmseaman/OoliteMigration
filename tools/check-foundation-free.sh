@@ -10,11 +10,11 @@
 #     bash tools/check-foundation-free.sh --stage source   # no exemptions (after oo-qps.4-.17)
 #     bash tools/check-foundation-free.sh --link <exe>     # PE import table names no gnustep-base
 #     bash tools/check-foundation-free.sh --selftest       # proof each check fails and passes
-#     ... --root <dir>                                     # scan <dir> instead of upstream/oolite/src
+#     ... --root <dir>                                     # scan <dir> instead of oolite-dev/src
 #     ... --paths <file-or-dir>...                         # report (and exit) on those paths only
 #     ... --kind <kind>[,<kind>]                           # report (and exit) on those kinds only
 #
-# --stage sweeps reports, per file under upstream/oolite/src minus src/oofnd (comment lines ignored;
+# --stage sweeps reports, per file under oolite-dev/src minus src/oofnd (comment lines ignored;
 # the ns and oolog scans read the line with /* ... */, a trailing // and the contents of "...", '...'
 # and @"..." removed, ADR-0054 item 2):
 #   ns        every NS[A-Z]... identifier not on the OOFoundationTypes.h allow-list below
@@ -75,7 +75,7 @@ POSTGATE_EXPANDER_LINE='^NSString [*](OOExpandDescriptionString|OOGenerateSystem
 # the harness tools/check-string-expander.sh defines it, so its lines are not in the game build (they are
 # counted in the same information-only "mac-fenced" total).
 FENCE='OOLITE_MAC_OS_X OOLITE_USE_APPKIT_LOAD_SAVE OO_EXPANDER_TEST_SURFACE'
-BUILD_FILES=(upstream/oolite/src/meson upstream/oolite/src/meson.build upstream/oolite/meson.build
+BUILD_FILES=(oolite-dev/src/meson oolite-dev/src/meson.build oolite-dev/meson.build
 	tools/setup-windows.sh)
 # The helpers OOStringBridge.h, OOFoundationBridge.h and OOPListView.h declare that the source stage
 # counts as "helper" (ADR-0055 item 9), as an ERE alternation; IsNS... is the IsNSString family.
@@ -463,12 +463,12 @@ if [ "$mode" = scan ] && [ -n "$kinds" ]; then
 fi
 # --paths: resolved against the current directory, then made relative to the scanned root.
 if [ "$mode" = scan ] && [ ${#paths[@]} -gt 0 ]; then
-	root_abs="$(realpath -e -- "${root:-$repo/upstream/oolite/src}")" || { echo "no source tree at ${root:-upstream/oolite/src}" >&2; exit 2; }
+	root_abs="$(realpath -e -- "${root:-$repo/oolite-dev/src}")" || { echo "no source tree at ${root:-oolite-dev/src}" >&2; exit 2; }
 	for p in "${paths[@]}"; do
 		pa="$(realpath -e -- "$p")" || { echo "--paths: no such file or directory: $p" >&2; exit 2; }
 		if [ "$pa" = "$root_abs" ]; then rel=.
 		elif [ "${pa#"$root_abs"/}" != "$pa" ]; then rel="${pa#"$root_abs"/}"
-		else echo "--paths: $p is not under the scanned root ${root:-upstream/oolite/src}" >&2; exit 2; fi
+		else echo "--paths: $p is not under the scanned root ${root:-oolite-dev/src}" >&2; exit 2; fi
 		scan_paths="$scan_paths${scan_paths:+$'\n'}$rel"
 	done
 fi
@@ -480,6 +480,6 @@ case "$mode" in
 		if [ -n "$root" ]; then scan "$root" "$stage"
 		else
 			cd "$repo" || exit 2
-			scan upstream/oolite/src "$stage" "${BUILD_FILES[@]}"
+			scan oolite-dev/src "$stage" "${BUILD_FILES[@]}"
 		fi ;;
 esac

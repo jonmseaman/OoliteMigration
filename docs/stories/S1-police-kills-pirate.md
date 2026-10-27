@@ -20,7 +20,7 @@ see the facts below. Do not start S1 before it lands.
 
 ## Task
 
-Add `upstream/oolite/tests/component/`: a pytest + pytest-bdd suite that launches the Objective-C
+Add `oolite-dev/tests/component/`: a pytest + pytest-bdd suite that launches the Objective-C
 build headless, drives it over the debug-console TCP channel, **loads a save and launches the player
 so the simulation actually ticks**, empties the system of ambient traffic, spawns a police ship and a
 pirate around a single locus **with their role's real AI**, runs the simulation for at most 900
@@ -28,7 +28,7 @@ ticks, and asserts that the police ship acquires the pirate as a hostile target 
 takes damage. Provide the console client, the launch fixture and the step library that S2–S8 will
 reuse.
 
-**Do it the way `upstream/oolite/tests/launch_snapshot.py` does it** for
+**Do it the way `oolite-dev/tests/launch_snapshot.py` does it** for
 the protocol framing, launch, environment and timeout handling — headless, with
 `SDL_AUDIODRIVER=dummy` and `ALSOFT_DRIVERS=null`, plus `OO_RANDOM_SEED` set for the run.
 
@@ -126,16 +126,16 @@ timeout, not hang. "Has taken damage" is `energy < maxEnergy` on the pirate (`En
 
 Touches 6:
 
-- `upstream/oolite/tests/component/console.py` (new: the debug-console
+- `oolite-dev/tests/component/console.py` (new: the debug-console
   client — framing, handshake, `perform(js)`, parameterised port. **Shared with the golden harness
   later; keep it free of component-tier assumptions.**)
-- `upstream/oolite/tests/component/conftest.py` (new: launch fixture,
+- `oolite-dev/tests/component/conftest.py` (new: launch fixture,
   seed injection, hard timeout with forced kill)
-- `upstream/oolite/tests/component/steps/world_steps.py` (new: the step
+- `oolite-dev/tests/component/steps/world_steps.py` (new: the step
   library S2–S8 reuse)
-- `upstream/oolite/tests/component/features/s1_police_kills_pirate.feature` (new)
-- `upstream/oolite/tests/component/requirements.txt` (new: `pytest`, `pytest-bdd`)
-- `upstream/oolite/tests/component/README.md` (new: the step catalogue —
+- `oolite-dev/tests/component/features/s1_police_kills_pirate.feature` (new)
+- `oolite-dev/tests/component/requirements.txt` (new: `pytest`, `pytest-bdd`)
+- `oolite-dev/tests/component/README.md` (new: the step catalogue —
   the one place a later bead looks to find out which steps already exist)
 
 Reads: `launch_snapshot.py` (230 lines), the cited property tables in `OOJSSystem.m` / `OOJSShip.m` /
@@ -146,13 +146,13 @@ Reads: `launch_snapshot.py` (230 lines), the cited property tables in `OOJSSyste
 Nonzero before (the directory does not exist), zero after:
 
 ```bash
-python3 -m pytest upstream/oolite/tests/component/ -x -q
+python3 -m pytest oolite-dev/tests/component/ -x -q
 ```
 
 Plus a flake check, because a tolerant assertion that is only usually true is worse than no test:
 
 ```bash
-for i in 1 2 3 4 5; do python3 -m pytest upstream/oolite/tests/component/ -x -q || exit 1; done
+for i in 1 2 3 4 5; do python3 -m pytest oolite-dev/tests/component/ -x -q || exit 1; done
 ```
 
 ## Prohibitions
@@ -161,7 +161,7 @@ for i in 1 2 3 4 5; do python3 -m pytest upstream/oolite/tests/component/ -x -q 
 - Do not modify or delete tests, including `tests/launch_snapshot.py`. **Adding** tests is expected;
   only modifying or deleting them is prohibited.
 - Do not add `-Wno-*`, `#pragma` diagnostic suppressions, or `[[maybe_unused]]` to silence a warning.
-- Do not add native JS properties or other new interfaces to `upstream/oolite` to make an assertion
+- Do not add native JS properties or other new interfaces to `oolite-dev` to make an assertion
   easier. Assert on what is already observable, or stop and report.
 - Do not mark this unit done; the wrapper does, via `accept`.
 - Do not read expansion (OXP/OXZ) content.

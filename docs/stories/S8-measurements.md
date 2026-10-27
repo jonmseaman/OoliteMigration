@@ -1,7 +1,7 @@
 # Bead oo-qwk5 / component scenario S8 — measurements
 
 S8 is "Destroyed ships leave `system.allShips`". Expressed with the existing step catalogue
-(`upstream/oolite/tests/component/README.md`), the only destruction mechanism available is
+(`oolite-dev/tests/component/README.md`), the only destruction mechanism available is
 *combat between spawned ships*, and the only observable is a **role count** reaching zero.
 This file records what was measured about whether that can be made reliable, with
 `tools/oo-qwk5-probe.py`, on the shared build, seed 20260910, system Lave.
@@ -114,7 +114,7 @@ add one inside a conversion story.
 
 ```bash
 export PATH="/ucrt64/bin:$PATH" MINGW_PREFIX=/ucrt64
-OO_APP_DIR=C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app \
+OO_APP_DIR=C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app \
   python3 tools/oo-qwk5-probe.py --seconds 110 --interval 6 --engage \
   --spawn 'pirate:1,police:8@1' --quarry pirate --json /tmp/r.json
 ```

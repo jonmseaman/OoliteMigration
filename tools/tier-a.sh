@@ -3,7 +3,7 @@
 # Tier A — the agent inner loop. Phase 0 item 0.9 (docs/phases/0-safety-net.md),
 # tiers defined in docs/execution-model.md §3.1.
 #
-#     tools/tier-a.sh upstream/oolite/src/Core/OOColor.m
+#     tools/tier-a.sh oolite-dev/src/Core/OOColor.m
 #
 # Four steps against ONE translation unit, offline, in under 30 seconds:
 #
@@ -148,7 +148,7 @@ if [ "$OOLITE_TIER_A_SOURCE_SEAM" != 1 ]; then
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OOLITE="$REPO_ROOT/upstream/oolite"
+OOLITE="$REPO_ROOT/oolite-dev"
 BUILD_DIR="$OOLITE/build/meson_$BUILD_FLAVOUR"
 NATIVE_FILE="$REPO_ROOT/tools/meson/ccache-clang.ini"
 DENY_LIST="$REPO_ROOT/tools/deny-list.txt"
@@ -646,7 +646,7 @@ fi
 # error in the file under test. tools/build-windows.sh:54-63 documents the trap for the SETUP
 # path and it applies verbatim here: upstream's ShellScripts/common/get_version.sh:7-27
 # refuses to run unless it can identify meson as its parent, and under the regenerate rule the
-# parent process is python.exe. After oo-ss8 touched upstream/oolite/meson.build this made
+# parent process is python.exe. After oo-ss8 touched oolite-dev/meson.build this made
 # tier-a report `FAIL (compile)` on EVERY file for ~20 hours, until build-windows.sh was
 # re-run by hand.
 #

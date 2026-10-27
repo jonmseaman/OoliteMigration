@@ -406,7 +406,7 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
  synthetic fixtures the worker built — a fixture built by the same author who wrote the regex tends
  to only exercise the shape the regex was written for.
 - **A Python heredoc storing acceptance via `bd update <id> --acceptance` MUST use a raw string, or `\b` becomes a literal backspace byte that silently corrupts the regex.** A non-raw `"...\\bJS_...\"` collapses `\b` to `\x08` before it reaches bd; `bd show --json` round-trips that same corrupted byte, so a visual read-back looks fine while accept.sh's shell parse breaks or the regex matches nothing/everything. Always build the string with `r"""..."""`, and after storing, explicitly assert `chr(8) not in acc` in the read-back check.
-- **A bead's own approved rename (e.g. `.m`->`.mm`) can leave the stored `tools/tier-b.sh --fast` line missing `OO_APP_DIR` AND pointing at the pre-rename filename — check both.** `tools/tier-b.sh --fast` needs `OO_APP_DIR` pointed at the shared local build or a fresh `accept.sh` checkout fails at `[build]` with "no oolite.exe ... point OO_APP_DIR"; separately, if you patch an existing acceptance string yourself after a worker renamed the file, respell the grep/tier-a targets to the new name too, or tier-a silently PASSes on a file that no longer exists. Fix both together, verified with `ls` in the worktree before storing: `OO_APP_DIR="${OO_APP_DIR:-<repo>/upstream/oolite/build/meson_test/oolite.app}" tools/tier-b.sh --fast`.
+- **A bead's own approved rename (e.g. `.m`->`.mm`) can leave the stored `tools/tier-b.sh --fast` line missing `OO_APP_DIR` AND pointing at the pre-rename filename — check both.** `tools/tier-b.sh --fast` needs `OO_APP_DIR` pointed at the shared local build or a fresh `accept.sh` checkout fails at `[build]` with "no oolite.exe ... point OO_APP_DIR"; separately, if you patch an existing acceptance string yourself after a worker renamed the file, respell the grep/tier-a targets to the new name too, or tier-a silently PASSes on a file that no longer exists. Fix both together, verified with `ls` in the worktree before storing: `OO_APP_DIR="${OO_APP_DIR:-<repo>/oolite-dev/build/meson_test/oolite.app}" tools/tier-b.sh --fast`.
 - **A worktree branched before a sibling bead's rename-only merge will diff as REVERTING that sibling's work when compared against current main — this is a stale-branch artifact, not sabotage.** `git diff main..HEAD` on the stale branch shows the shared file (`meson.build`, or the renamed source file) disappearing/reverting because the worktree's snapshot of main predates the sibling's merge, even though this bead's worker never touched that file. Do not block the bead: dispatch a `git merge main` continuation (same pattern as a real merge conflict) to fold in the sibling's landed rename, verify `git diff main..HEAD` now shows ONLY this bead's own change, and only re-review if the merge touched logic — a pure rename-conflict resolution can often skip a second full review round.
 - **Component-scenario nondeterminism is not confined to whichever 3 scenarios a flake bead names — treat a new scenario's failure as the same class, not a new bug.** oo-sjvz was scoped to s1/s5/s6, but s2 (trader-survival) also flaked on a later, unrelated bead's accept — same role-based-spawn nondeterminism, different scenario. Don't file a new investigation bead per newly-observed flaky scenario; log it as a widening-scope note on the existing escalated flake bead and keep retrying the blocked accept, since the fix (when it lands) will likely cover all of them.
 - **Fixing scenario nondeterminism must pin it INSIDE the existing step's Python implementation, never by editing or adding Gherkin step text.** `guardrails.sh`'s test-immutability classifier flags ANY change to a `.feature` step-text signature as "emptying" a live test unit, even a precision-adding rewrite — and adding brand-new step definitions alongside the old ones has the same problem once the `.feature` file is edited to call them. The approach that actually lands: keep every step's wording byte-for-byte identical to what already ran, and move the fix into the step's underlying Python (`world_steps.py`) — e.g. a `role -> pinned ship key` / `role -> pinned bounty` lookup dict inside `_spawn`, so a role-spawned step becomes deterministic without the `.feature` file ever mentioning a ship key. A worker fixing this class of bug should end with a `.feature` diff of **zero** and all determinism logic living in the step implementation only; if the `.feature` diff is non-empty, the fix is in the wrong layer and guardrails will likely reject it.
@@ -444,7 +444,7 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   `tools/tier-b.sh --fast` works in the worker's own worktree (which has a build) but fails with
   "no oolite.exe at .../oolite.app; point OO_APP_DIR" the moment `accept.sh` replays it in a fresh
   scratch checkout with no build of its own. Fix once per bead: `bd update <id> --acceptance` with
-  `OO_APP_DIR="${OO_APP_DIR:-<repo>/upstream/oolite/build/meson_test/oolite.app}" tools/tier-b.sh
+  `OO_APP_DIR="${OO_APP_DIR:-<repo>/oolite-dev/build/meson_test/oolite.app}" tools/tier-b.sh
   --fast` in place of the bare call — this defaults to the repo's one shared local build without
   breaking a caller that already sets `OO_APP_DIR` explicitly.
   **`--fast` NEVER rebuilds, so for a bead whose actual fix is a source/binary change (not a
@@ -567,16 +567,16 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
 - **Persistent memory is not the carry-over channel.** Anything the next attempt must know goes
   in the bead's notes, because the next attempt may run in a different session or a different agent.
 - **`tools/tier-b.sh --fast`'s default `OO_APP_DIR` points at ONE shared build at the repo root
-  (`upstream/oolite/build/meson_test/oolite.app`), and it can go missing mid-run for reasons that
+  (`oolite-dev/build/meson_test/oolite.app`), and it can go missing mid-run for reasons that
   have nothing to do with the bead being accepted.** Symptom: `accept.sh` fails fast (~20s) with
   `no oolite.exe at .../oolite.app; point OO_APP_DIR` even though the exact same bead passed tier-a
   and has a clean diff. Before treating this as a real rejection: `ls
-  upstream/oolite/build/meson_test/oolite.app/oolite.exe` at the repo root. If it is missing, do
+  oolite-dev/build/meson_test/oolite.app/oolite.exe` at the repo root. If it is missing, do
   NOT blindly `bash tools/build-windows.sh test` at the root and wait 10+ minutes — first check
   whether any live worktree already has a fresh, link-clean build (a worker that just finished
   `tools/build-windows.sh test` in its own worktree as part of verifying its own fix is the
-  fastest source): `cp -r .worktrees/<id>/upstream/oolite/build/meson_test/oolite.app
-  upstream/oolite/build/meson_test/` restores the shared build in seconds. Only fall back to a
+  fastest source): `cp -r .worktrees/<id>/oolite-dev/build/meson_test/oolite.app
+  oolite-dev/build/meson_test/` restores the shared build in seconds. Only fall back to a
   full root-level rebuild if no worktree has one. Log this as environment state in the bead's
   notes, not as an acceptance failure, and do not count it toward `stale_count`. Root cause is
   usually mundane (another concurrent accept's scratch-checkout run, or the shared build simply
@@ -662,7 +662,7 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   real rejection and do not count it toward `stale_count`.
 - **A failing GUI acceptance line is not trusted until it fails ISOLATED too (bug oo-ac3f).**
   `tools/gui-lock` (the session-scoped `desktop_lock` fixture in
-  `upstream/oolite/tests/gui/conftest.py`) already serialises every GUI-launching pytest run, so
+  `oolite-dev/tests/gui/conftest.py`) already serialises every GUI-launching pytest run, so
   two GUI processes cannot fight over the desktop at the same instant — that collision is not the
   risk. The risk is a CONCURRENT NON-GUI sibling (another tier compiling, several pytest processes
   running at once) starving the CPU of whichever process holds the lock: the GUI tier's timeouts
@@ -671,7 +671,7 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   fail with no code change at all. Observed in production: oo-6zd's acceptance line 6 returned
   rc=1 under contention with a sibling launching G5, then rc=0 seconds later run alone — same
   code, same tree, opposite verdicts. So: when a GUI-tier acceptance line (`accept.sh` runs
-  anything under `upstream/oolite/tests/gui/`) returns nonzero, re-run it once with
+  anything under `oolite-dev/tests/gui/`) returns nonzero, re-run it once with
   `tools/gui-acceptance-recheck "<line>"` before writing `accept attempt N failed` into the bead's
   notes or counting it toward `stale_count`. That script re-runs the line once the gui-lock is
   free and the sibling-load proxy is quiet (or a bounded wait elapses), and reports the gui-lock

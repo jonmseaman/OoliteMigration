@@ -125,7 +125,7 @@ DUMP_DIR = os.path.join(HERE, "dump")
 
 sys.path.insert(0, HERE)
 sys.path.insert(0, DUMP_DIR)
-sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "oolite-dev", "tests", "component"))
 
 import frame_hash  # noqa: E402
 import golden_run  # noqa: E402
@@ -1204,9 +1204,9 @@ def check_frame(grid_path, reference_path):
 
 def default_app_dir():
     for candidate in (os.environ.get("OO_APP_DIR"),
-                      os.path.join(REPO_ROOT, "upstream", "oolite", "build", "meson_test",
+                      os.path.join(REPO_ROOT, "oolite-dev", "build", "meson_test",
                                    "oolite.app"),
-                      "C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app"):
+                      "C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app"):
         if candidate and os.path.isdir(candidate):
             return golden_run._slashes(os.path.abspath(candidate))
     return None

@@ -18,7 +18,7 @@ export PATH=/ucrt64/bin:$PATH   # else the loader kills oolite.exe with 32212257
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../.." && pwd)"
-APP_DIR="${OO_APP_DIR:-C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app}"
+APP_DIR="${OO_APP_DIR:-C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app}"
 OUT="${1:-${LOCALAPPDATA:-/tmp}/Temp/oo_ss8_measure}"
 
 test -d "$APP_DIR" || { echo "no Oolite build at $APP_DIR" >&2; exit 1; }

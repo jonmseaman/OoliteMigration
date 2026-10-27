@@ -56,7 +56,7 @@ scenario that needs an exact float is a golden.
 ## The observation surface (all of it already exists)
 
 Steps send small JS strings through the existing `Perform Command` packet — exactly as
-`upstream/oolite/tests/launch_snapshot.py:156` sends `"takeSnapShot(); quit();"`.
+`oolite-dev/tests/launch_snapshot.py:156` sends `"takeSnapShot(); quit();"`.
 
 | Need | Existing JS surface |
 |---|---|
@@ -131,7 +131,7 @@ file a bead.
 
 ## The tests
 
-`upstream/oolite/tests/component/`, pytest + pytest-bdd. Every scenario gets a hard timeout with a
+`oolite-dev/tests/component/`, pytest + pytest-bdd. Every scenario gets a hard timeout with a
 forced kill, as the GUI tier does, so a hang fails the run instead of wedging it.
 
 | # | Scenario | What it catches |

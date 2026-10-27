@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # The differential regression test of OOStringExpander's engine (bead oo-3rb.61, proposed
-# ADR-0034 decision 4): compile the tree's upstream/oolite/src/Core/OOStringExpander.cpp against
-# the stubs in upstream/oolite/tests/unit/expander (Universe, PlayerEntity, ResourceManager, the
+# ADR-0034 decision 4): compile the tree's oolite-dev/src/Core/OOStringExpander.cpp against
+# the stubs in oolite-dev/tests/unit/expander (Universe, PlayerEntity, ResourceManager, the
 # JavaScript engine, the credit formatter, the collection extractors) and the real
 # legacy_random.c, run it over the shipped descriptions.plist and a generated corpus, and
 # compare FNV-1a digests captured from the original NSString engine.
@@ -27,7 +27,7 @@ if [ "${MSYSTEM:-}" != "UCRT64" ] && [ -z "${OO_EXPANDER_CHECK_REEXEC:-}" ] && [
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OOLITE="$REPO_ROOT/upstream/oolite"
+OOLITE="$REPO_ROOT/oolite-dev"
 SRC="$OOLITE/src"
 TEST_DIR="$OOLITE/tests/unit/expander"
 EXPANDER="${1:-$SRC/Core/OOStringExpander.cpp}"

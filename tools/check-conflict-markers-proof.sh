@@ -15,7 +15,7 @@ SEP=$(printf '=%.0s' 1 2 3 4 5 6 7); OURS=$(printf '<%.0s' 1 2 3 4 5 6 7); THEIR
 
 # The guard's anti-vacuity checks need a protected golden and a collected test to exist, as in
 # guardrails-selftest's fixture (whose goldens/ exemption line is dropped for the same reason).
-mkdir -p "$D/tools" "$D/goldens" "$D/tests/golden/scenarios/001" "$D/upstream/oolite/tests/component/features" || exit 1
+mkdir -p "$D/tools" "$D/goldens" "$D/tests/golden/scenarios/001" "$D/oolite-dev/tests/component/features" || exit 1
 grep -v '^goldens/|not populated yet' "$REPO/tools/guardrails.sh" > "$D/tools/guardrails.sh"
 cp "$REPO/tools/deny-list.txt" "$D/tools/" || exit 1
 cd "$D" || exit 1
@@ -26,7 +26,7 @@ printf '{}
 printf 'Feature: f
   Scenario: s
     Given a thing
-' > upstream/oolite/tests/component/features/s1.feature
+' > oolite-dev/tests/component/features/s1.feature
 printf "project('x', 'c')\n" > meson.build
 printf 'README\n%s\n' "$SEP" > readme.txt
 g init -q -b main . && g add -A && g commit -qm base || exit 1

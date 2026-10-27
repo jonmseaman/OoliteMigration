@@ -25,11 +25,11 @@ retire_test_approval_on_record() {
   return 1
 }
 
-retire_test_approval_on_record 'upstream/oolite/tests/unit/game/test_defaults_bridge.mm' \
+retire_test_approval_on_record 'oolite-dev/tests/unit/game/test_defaults_bridge.mm' \
   || { echo 'missing approval for test_defaults_bridge.mm' >&2; exit 1; }
-retire_test_approval_on_record 'upstream/oolite/tests/unit/game/meson.build' \
+retire_test_approval_on_record 'oolite-dev/tests/unit/game/meson.build' \
   || { echo 'missing approval for meson.build' >&2; exit 1; }
-retire_test_approval_on_record 'upstream/oolite/tests/unit/game/no-such.mm' \
+retire_test_approval_on_record 'oolite-dev/tests/unit/game/no-such.mm' \
   && { echo 'unexpected approval for no-such.mm' >&2; exit 1; }
 
 echo "check-retire-test-approvals: OK"

@@ -28,8 +28,8 @@ OOLITE_CASTSCAN_SOURCE_ONLY=1 . "$REPO/tools/objc-cast-scan.sh"
 TMPROOT="${TMPDIR:-${TEMP:-/tmp}}"
 SCRATCH="$(mktemp -d "$TMPROOT/oolite-castscan-selftest.XXXXXX")" || exit 2
 trap '[ -n "${SELFTEST_KEEP:-}" ] || rm -rf "$SCRATCH"' EXIT
-# Laid out as the repo is, so findings print as upstream/oolite/<path> exactly as in the tree.
-T="$SCRATCH/upstream/oolite"
+# Laid out as the repo is, so findings print as oolite-dev/<path> exactly as in the tree.
+T="$SCRATCH/oolite-dev"
 mkdir -p "$T/src/Core" "$SCRATCH/sys"
 
 fail=0; cases=0
@@ -66,7 +66,7 @@ static void f(Entity *o, ShipEntity *s, id i, cxx::Entity *c, id<OOThing> p, Cla
 EOF
 scan src/Core/planted.mm
 want="$(grep -n '// HIT' "$T/src/Core/planted.mm" | cut -d: -f1 | sort -n | tr '\n' ' ')"
-got="$(printf '%s\n' "$OUT" | sed -n 's#^upstream/oolite/src/Core/planted.mm:\([0-9]*\):.*#\1#p' | sort -n | tr '\n' ' ')"
+got="$(printf '%s\n' "$OUT" | sed -n 's#^oolite-dev/src/Core/planted.mm:\([0-9]*\):.*#\1#p' | sort -n | tr '\n' ' ')"
 [ "$RC" = 1 ] && [ "$got" = "$want" ] && [ -n "$want" ] \
   && ok "every planted C++/Objective-C cast is a finding (lines $got)" \
   || no "planted casts: rc=$RC, wanted lines [$want], got [$got]: $OUT"
@@ -106,7 +106,7 @@ sed -i 's/ProjectHeaderCast/SystemHeaderCast/' "$SCRATCH/sys/sysinl.h"
 printf '#import "inl.h"\n#import "sysinl.h"\nvoid use(Entity *o) { (void)ProjectHeaderCast(o); (void)SystemHeaderCast(o); }\n' \
   >"$T/src/Core/viaheader.mm"
 scan src/Core/viaheader.mm
-[ "$RC" = 1 ] && printf '%s\n' "$OUT" | grep -q '^upstream/oolite/src/Core/inl.h:2:' \
+[ "$RC" = 1 ] && printf '%s\n' "$OUT" | grep -q '^oolite-dev/src/Core/inl.h:2:' \
   && ! printf '%s\n' "$OUT" | grep -q 'sysinl' \
   && ok "a cast in a project header is reported at the header; a system header's is not" \
   || no "header case: rc=$RC: $OUT"

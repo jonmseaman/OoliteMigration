@@ -53,8 +53,8 @@ SCENARIO_SAVE = "oolite-standard"
 #   4. the shared build in the main checkout.
 # The directory is checked UP FRONT with a message naming the path, rather than failing deep
 # inside a capture after a game has already been spawned.
-SHARED_APP_DIR = "C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app"
-LOCAL_APP_DIR = os.path.join(REPO_ROOT, "upstream", "oolite", "build", "meson_test", "oolite.app")
+SHARED_APP_DIR = "C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app"
+LOCAL_APP_DIR = os.path.join(REPO_ROOT, "oolite-dev", "build", "meson_test", "oolite.app")
 
 LAUNCH_TIMEOUT_SECONDS = 120
 FRAME_SETTLE_SECONDS = 1.5
@@ -249,7 +249,7 @@ def capture(pose_name, out_dir, app_dir=None, keep=False):
     pose = POSES[pose_name]
     _assert_rasteriser()
 
-    sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component"))
+    sys.path.insert(0, os.path.join(REPO_ROOT, "oolite-dev", "tests", "component"))
     from console import DebugConsole  # noqa: E402
 
     out_dir = golden_run.to_native(os.path.abspath(out_dir), "out-dir")

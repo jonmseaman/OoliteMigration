@@ -33,8 +33,8 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | `IsWhitespace()`, `DebugContext()`, `RandArgument()` | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/Entities/ShipEntityAI.cpp
-header: upstream/oolite/src/Core/Entities/ShipEntityAI.h
+source: oolite-dev/src/Core/Entities/ShipEntityAI.cpp
+header: oolite-dev/src/Core/Entities/ShipEntityAI.h
 
 slice 1: AI category, OOAIPrivate (ship and station) and the station stubs
   @ShipEntity(AI)

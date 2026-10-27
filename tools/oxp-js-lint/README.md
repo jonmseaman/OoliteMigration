@@ -56,7 +56,7 @@ minimal zip reader (stored + deflate + ZIP64) because OXZ archives are zips.
 
 ```sh
 node tools/oxp-js-lint/lint.js rules                        # what is enabled
-node tools/oxp-js-lint/lint.js scan upstream/oolite/Resources/Scripts
+node tools/oxp-js-lint/lint.js scan oolite-dev/Resources/Scripts
 node tools/oxp-js-lint/lint.js corpus --progress            # whole cached corpus
 node tools/oxp-js-lint/lint.js corpus --limit 60 --out /tmp/r.json
 ```

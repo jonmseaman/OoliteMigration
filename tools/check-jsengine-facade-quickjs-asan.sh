@@ -23,7 +23,7 @@ cd "$script_dir/.."   # repo root
 #    unit test passes. This also builds the QuickJS-ng library the ASan pass below reuses.
 bash "$script_dir/check-jsengine-facade-quickjs.sh"
 
-oo="upstream/oolite"
+oo="oolite-dev"
 hdr="$oo/src/Core/Scripting/ooscript/JSEngine.hpp"
 impl="$oo/src/Core/Scripting/ooscript/JSEngine_quickjs.cpp"
 test_src="$oo/tests/unit/test_jsengine_quickjs.cpp"

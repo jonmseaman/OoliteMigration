@@ -612,8 +612,8 @@
     }
   ],
   "binary": {
-    "app_dir": "C:/Users/jon/OoliteMigration/.worktrees/oo-jou1/upstream/oolite/build/meson_test/oolite.app",
-    "exe": "C:/Users/jon/OoliteMigration/.worktrees/oo-jou1/upstream/oolite/build/meson_test/oolite.app/oolite.exe",
+    "app_dir": "C:/Users/jon/OoliteMigration/.worktrees/oo-jou1/oolite-dev/build/meson_test/oolite.app",
+    "exe": "C:/Users/jon/OoliteMigration/.worktrees/oo-jou1/oolite-dev/build/meson_test/oolite.app/oolite.exe",
     "md5": "0822893fd850ed2df30d4c5272c41d85",
     "mtime": 1789732862,
     "size": 10079232

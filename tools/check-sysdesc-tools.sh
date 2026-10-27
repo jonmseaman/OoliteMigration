@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # The regression test of the localisation tools --export-sysdesc / --compile-sysdesc (bead
-# oo-vjwp): compile the tree's upstream/oolite/src/Core/OOConvertSystemDescriptions.cpp against the
-# stubs in upstream/oolite/tests/unit/sysdesc (ResourceManager, Universe), run it over the shipped
+# oo-vjwp): compile the tree's oolite-dev/src/Core/OOConvertSystemDescriptions.cpp against the
+# stubs in oolite-dev/tests/unit/sysdesc (ResourceManager, Universe), run it over the shipped
 # descriptions.plist, and compare FNV-1a digests captured from the ported tool (oo-xh1g). See the
 # banner of tests/unit/sysdesc/test_sysdesc_tools.cpp for what is pinned and why.
 #
@@ -23,7 +23,7 @@ if [ "${MSYSTEM:-}" != "UCRT64" ] && [ -z "${OO_SYSDESC_CHECK_REEXEC:-}" ] && [ 
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OOLITE="$REPO_ROOT/upstream/oolite"
+OOLITE="$REPO_ROOT/oolite-dev"
 SRC="$OOLITE/src"
 TEST_DIR="$OOLITE/tests/unit/sysdesc"
 TOOLS="${1:-$SRC/Core/OOConvertSystemDescriptions.cpp}"

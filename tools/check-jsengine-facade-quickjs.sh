@@ -25,7 +25,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$script_dir/.."   # repo root
 
-oo="upstream/oolite"
+oo="oolite-dev"
 hdr="$oo/src/Core/Scripting/ooscript/JSEngine.hpp"
 impl="$oo/src/Core/Scripting/ooscript/JSEngine_quickjs.cpp"
 test_src="$oo/tests/unit/test_jsengine_quickjs.cpp"

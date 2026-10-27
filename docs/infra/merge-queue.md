@@ -147,7 +147,7 @@ The push cadence has **two** halves, and the queue does both or neither:
 
 ```
 git push origin main
-git subtree push --prefix=upstream/oolite fork migration
+git subtree push --prefix=oolite-dev fork migration
 ```
 
 The second mirrors the converted tree onto the fork's `migration` branch, so the fork carries the
@@ -167,7 +167,7 @@ Three design decisions worth stating:
 
 Scenario S13 proves the bead's DONE WHEN against two **bare repositories in the temp dir**: after a
 green batch `origin/main` matches local `main` *and* `fork/migration`'s **tree** equals the local
-`upstream/oolite` tree. Tree equality is the right assertion and SHA equality would be wrong — a
+`oolite-dev` tree. Tree equality is the right assertion and SHA equality would be wrong — a
 subtree split rewrites commits by construction — while "a `migration` branch exists" would be
 vacuous, since a mirror of the wrong commit satisfies it. The forge-guard arm uses a local bare repo
 whose *path* contains `github.com`: mutant M15 deletes that guard, and a real `https://github.com/…`

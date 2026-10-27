@@ -71,7 +71,7 @@ WHAT IS DELIBERATELY *NOT* ASSERTED, AND THE SEAM THAT WOULD ALLOW IT
 The interesting per-ship facts - that THIS ship's AI is the overflowing one, what its AI state is,
 how deep ITS stack is - are not observable in this tier. `Ship.AIState` is permanently 'GLOBAL'
 here, `AI -stackDepth` (AI.m:382) has no JS binding, and the component step library
-(upstream/oolite/tests/component/steps/world_steps.py) exposes only role counts and liveness: no
+(oolite-dev/tests/component/steps/world_steps.py) exposes only role counts and liveness: no
 per-ship identity and no generic property read. Those are the seam beads oo-kbqw / oo-bdl0. This
 scenario therefore attributes the overflow to the expansion through the AI FILE NAME carried in
 the engine's own log signature ('ahruman-stack-overflow-testAI.plist'), which is a name only this
@@ -108,7 +108,7 @@ DUMP_DIR = os.path.join(HERE, "dump")
 
 sys.path.insert(0, HERE)
 sys.path.insert(0, DUMP_DIR)
-sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "oolite-dev", "tests", "component"))
 
 import golden_run  # noqa: E402
 from state_dump import dump_state, ensure_launchable, start_with_retry  # noqa: E402
@@ -750,7 +750,7 @@ def gate_isolation(src_path=None):
       * no manifest.plist may be named in EXECUTABLE code - checked on the AST, because the file's
         prose explains the tolerance many times and a grep would match the explanation.
     """
-    sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component"))
+    sys.path.insert(0, os.path.join(REPO_ROOT, "oolite-dev", "tests", "component"))
     import console as console_module  # noqa: E402
 
     with open(console_module.__file__, encoding="utf-8") as handle:
@@ -854,9 +854,9 @@ def gate_isolation(src_path=None):
 
 def default_app_dir():
     for candidate in (os.environ.get("OO_APP_DIR"),
-                      os.path.join(REPO_ROOT, "upstream", "oolite", "build", "meson_test",
+                      os.path.join(REPO_ROOT, "oolite-dev", "build", "meson_test",
                                    "oolite.app"),
-                      "C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app"):
+                      "C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app"):
         if candidate and os.path.isdir(candidate):
             return golden_run._slashes(os.path.abspath(candidate))
     return None

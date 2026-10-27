@@ -105,7 +105,7 @@ gate; and a scheduled read-only Reporter running first.
 - [ ] A Hermes `/goal` session given a phase with three `fleet` beads and one `rebless` bead closes the three through `accept` and stops with the goal satisfied, never touching the `rebless` bead
 - [ ] An agent that edits `goldens/` is rejected at Tier B (Phase 0 guardrail), not by a reviewer
 - [ ] `tools/merge-queue` bisects an 8-branch batch with one bad branch and requeues the culprit's bead (Phase 0 exit item)
-- [ ] After a green batch the merge queue pushes `main` to `origin` and `git subtree push`es `upstream/oolite` to the fork's `migration` branch ([ADR-0017](../decisions/0017-native-windows-subtree.md))
+- [ ] After a green batch the merge queue pushes `main` to `origin` and `git subtree push`es `oolite-dev` to the fork's `migration` branch ([ADR-0017](../decisions/0017-native-windows-subtree.md))
 - [ ] Switching a role's endpoint URL requires only a config change
 - [ ] A full week passes with the fleet never blocked on Jon outside the `rebless` queue
 
@@ -117,4 +117,4 @@ gate; and a scheduled read-only Reporter running first.
 - 2026-09-10 — Hermes Agent `/goal` is the local-tier driver; OpenCode dropped; `accept` split out as the single path to `bd close` (ADR-0015).
 - 2026-09-10 — beads-worker skill written under `.agents/skills/`; Hermes configured for it; no CI forge (ADR-0016).
 - 2026-09-11 — Frontier re-evaluation lane: `reevaluate.sh` (Claude Code headless, read-only) sits between retry and escalation; `.hermes.md` carries the standing contract in the system prompt.
-- 2026-09-11 — Native Windows only; `upstream/oolite` is a subtree; merge queue pushes after each green batch (ADR-0017).
+- 2026-09-11 — Native Windows only; `oolite-dev` is a subtree; merge queue pushes after each green batch (ADR-0017).

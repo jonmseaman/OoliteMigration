@@ -8,7 +8,7 @@ Upstream changes to modules Phase 3 has frozen, ported by hand. The policy is
 
 ## How the freeze works
 
-- **A module is one directory** under `upstream/oolite/src` (not its subdirectories).
+- **A module is one directory** under `oolite-dev/src` (not its subdirectories).
 - **Frozen** means: the monthly `git subtree pull --squash` does not change it. The tracker pulls,
   then `tools/upstream-delta.sh --restore-frozen <pre-pull commit>` puts every frozen module back
   as it was, and each upstream commit that touched a frozen module becomes a row below and a

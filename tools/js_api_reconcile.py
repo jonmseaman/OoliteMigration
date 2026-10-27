@@ -9,7 +9,7 @@ INTERPRETER. It proves what actually resolves in a running game. It needs a buil
 and ~30 s.
 
 oxp-contract/js-api-source.json is produced by tools/js_api_source_snapshot.py by PARSING THE
-DECLARATIVE TABLES in upstream/oolite/src/**/OOJS*.m, e.g.
+DECLARATIVE TABLES in oolite-dev/src/**/OOJS*.m, e.g.
 
     { "speed",    kShip_speed,    OOJS_PROP_READONLY_CB  },
     { "velocity", kShip_velocity, OOJS_PROP_READWRITE_CB },

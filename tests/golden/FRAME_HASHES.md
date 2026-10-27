@@ -8,12 +8,12 @@ caught and ordinary rasteriser noise is not.
 python3 -m pytest tests/golden/test_frame_hash.py -m "not online" -q
 
 # online: four real launches, ~2 min; needs the SHARED build (a worktree has none)
-OO_APP_DIR=C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app \
+OO_APP_DIR=C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app \
   python3 -m pytest tests/golden/test_frame_hash.py -m online -q
 
 # re-measure the tolerance from scratch (10 launches, ~5 min)
 python3 tests/golden/calibrate.py --out-dir /tmp/cal \
-  --app-dir C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app --write
+  --app-dir C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app --write
 ```
 
 ## The tolerance is measured, not chosen

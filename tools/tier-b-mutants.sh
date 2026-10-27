@@ -212,8 +212,8 @@ stage_scratch_tree() {
     "$REPO"*) printf 'tier-b-mutants: REFUSING -- the scratch dir %s is inside the repository\n' "$SCRATCH" >&2; exit 2 ;;
   esac
   mkdir -p "$SCRATCH/upstream" "$SCRATCH/tools/meson" || exit 2
-  cp -a "$REPO/upstream/oolite" "$SCRATCH/upstream/oolite" || { printf 'tier-b-mutants: could not copy the engine tree\n' >&2; exit 2; }
-  rm -rf "$SCRATCH/upstream/oolite/build"
+  cp -a "$REPO/oolite-dev" "$SCRATCH/oolite-dev" || { printf 'tier-b-mutants: could not copy the engine tree\n' >&2; exit 2; }
+  rm -rf "$SCRATCH/oolite-dev/build"
   cp "$REPO/tools/build-windows.sh" "$SCRATCH/tools/" || exit 2
   cp "$REPO/tools/meson/ccache-clang.ini" "$SCRATCH/tools/meson/" || exit 2
   RUN_ROOT="$(mktemp -d "$tmpbase/tier-b-mutants-run-XXXXXX")" || exit 2
@@ -230,15 +230,15 @@ build_scratch() {
     printf 'tier-b-mutants: the %s build failed; full log %s\n' "$label" "$(native "$log")" >&2
     return 1
   fi
-  local bin="$SCRATCH/upstream/oolite/build/meson_test/oolite.app/oolite.exe"
+  local bin="$SCRATCH/oolite-dev/build/meson_test/oolite.app/oolite.exe"
   [ -f "$bin" ] || { printf 'tier-b-mutants: the %s build reported success but there is no oolite.exe\n' "$label" >&2; return 1; }
   # Mesa beside the binary, exactly as tier-b.sh's stage_mesa does: a freshly built oolite.app has
   # no opengl32.dll / libgallium_wgl.dll and the game cannot render without them.
   local prefix="${MINGW_PREFIX:-/ucrt64}" dll
   for dll in opengl32.dll libgallium_wgl.dll; do
-    [ -f "$prefix/bin/$dll" ] && cp -f "$prefix/bin/$dll" "$SCRATCH/upstream/oolite/build/meson_test/oolite.app/" 2>/dev/null
+    [ -f "$prefix/bin/$dll" ] && cp -f "$prefix/bin/$dll" "$SCRATCH/oolite-dev/build/meson_test/oolite.app/" 2>/dev/null
   done
-  [ -f "$SCRATCH/upstream/oolite/build/meson_test/oolite.app/libgallium_wgl.dll" ] \
+  [ -f "$SCRATCH/oolite-dev/build/meson_test/oolite.app/libgallium_wgl.dll" ] \
     || { printf 'tier-b-mutants: no libgallium_wgl.dll staged beside the %s binary; the launches would fail for an unrelated reason\n' "$label" >&2; return 1; }
   note "$(printf '%-8s build ok: %s bytes in %ss (%s)' "$label" "$(stat -c %s "$bin")" "$(( SECONDS - t0 ))" "$(grep -m1 'ccache this run' "$log" | sed 's/.*run: //')")"
   return 0
@@ -258,7 +258,7 @@ build_scratch() {
 # ------------------------------------------------------------------------------------------------
 goldens_stage() {
   local label="$1"
-  local app="$SCRATCH/upstream/oolite/build/meson_test/oolite.app"
+  local app="$SCRATCH/oolite-dev/build/meson_test/oolite.app"
   local gdir="$REPO/goldens/$PLATFORM"
   local work="$RUN_ROOT/$label"
   local transcript="$RUN_ROOT/$label.out"
@@ -366,7 +366,7 @@ plistlib.dump({'console-host': '127.0.0.1', 'console-port': int(sys.argv[2])},
 #
 # The price a market screen, a trade script and the state dump all read is whatever was last
 # written through -[OOCommodityMarket setPrice:forGood:]
-# (upstream/oolite/src/Core/OOCommodityMarket.m): every path that computes a price -- OOCommodities'
+# (oolite-dev/src/Core/OOCommodityMarket.m): every path that computes a price -- OOCommodities'
 # generatePriceForGood:/adjustPrice:byRule: for a generated market, loadStationAmounts: for a
 # restored one, StationEntity's setPrice:forCommodity: for a scripted one -- converges on that one
 # setter, and -priceForGood: reads the value straight back out. Perturbing it by ONE decicredit is
@@ -395,7 +395,7 @@ arm_market_price() {
   assert_repo_clean "before staging"
   stage_scratch_tree
 
-  local src="$SCRATCH/upstream/oolite/src/Core/OOCommodityMarket.cpp"
+  local src="$SCRATCH/oolite-dev/src/Core/OOCommodityMarket.cpp"
   [ -f "$src" ] || { printf '  RESULT: cannot find OOCommodityMarket.m in the scratch tree\n'; FAIL=$(( FAIL + 1 )); return 1; }
 
   # ---- CONTROL: the perturbation is ABSENT ------------------------------------------------------
@@ -407,7 +407,7 @@ arm_market_price() {
     # with tier-b's own stage 3. Off by default -- measured at ~19 min, almost all of it in stages
     # this arm does not judge.
     local flog="$RUN_ROOT/tier-b-full.log" frc=0 ft0=$SECONDS
-    ( cd "$REPO" && OO_APP_DIR="$(native "$SCRATCH/upstream/oolite/build/meson_test/oolite.app")" \
+    ( cd "$REPO" && OO_APP_DIR="$(native "$SCRATCH/oolite-dev/build/meson_test/oolite.app")" \
         bash "$REPO/tools/tier-b.sh" --fast ) > "$flog" 2>&1 || frc=$?
     note "full tier-b --fast (parity, unperturbed): rc=$frc wall=$(( SECONDS - ft0 ))s $(grep -c 'stage goldens ok' "$flog" || true) goldens-ok line(s)"
     grep -F 'stage goldens ok' "$flog" | sed 's/^/    | /'

@@ -21,8 +21,8 @@ file every time, so the numbers below are only a snapshot.
 | verbatim | PList helpers, string-address debug dump | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/OOShipRegistry.cpp
-header: upstream/oolite/src/Core/OOShipRegistry.h
+source: oolite-dev/src/Core/OOShipRegistry.cpp
+header: oolite-dev/src/Core/OOShipRegistry.h
 
 slice 1: class shell, lifecycle, cxx_* lookups, OOConveniences, Singleton
   @OOShipRegistry

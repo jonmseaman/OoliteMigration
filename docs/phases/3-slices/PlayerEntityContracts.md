@@ -26,8 +26,8 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | reputation dictionary / string helpers, `RepForRisk` | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/Entities/PlayerEntityContracts.cpp
-header: upstream/oolite/src/Core/Entities/PlayerEntityContracts.h
+source: oolite-dev/src/Core/Entities/PlayerEntityContracts.cpp
+header: oolite-dev/src/Core/Entities/PlayerEntityContracts.h
 
 slice 1: passenger, parcel and cargo contracts
   -[PlayerEntity cxx_processEscapePods]

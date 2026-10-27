@@ -19,7 +19,7 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
-oo="$repo/upstream/oolite"
+oo="$repo/oolite-dev"
 app="$oo/build/meson_test/oolite.app"
 work="$oo/build/bench-string-copy"
 reps=5
@@ -37,10 +37,10 @@ native() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else pri
 hook_dst="$oo/src/Core/OOBenchStringCopy.mm"
 restore() {
   rm -f "$hook_dst"
-  git -C "$repo" checkout -- upstream/oolite/src/meson.build
+  git -C "$repo" checkout -- oolite-dev/src/meson.build
 }
 [ ! -e "$hook_dst" ] || { echo "bench-string-copy: $hook_dst exists; refusing to overwrite" >&2; exit 2; }
-git -C "$repo" diff --quiet -- upstream/oolite/src/meson.build \
+git -C "$repo" diff --quiet -- oolite-dev/src/meson.build \
   || { echo "bench-string-copy: src/meson.build has local changes; refusing to patch it" >&2; exit 2; }
 
 mkdir -p "$work"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Find every file in the repository that SPAWNS THE GAME (bug oo-ccy9).
 
-    python3 tools/launcher_scan.py tools tests upstream/oolite/tests
+    python3 tools/launcher_scan.py tools tests oolite-dev/tests
 
 Prints one repo-relative path per line. tools/check-desktop-lock.sh check 2 uses it to notice a
 launcher nobody has classified as "must take the desktop lock" or "exempt, and here is why".

@@ -50,7 +50,7 @@
 # its own desktop_lock fixture. tools/gui-lock is an EXCLUSIVE mkdir mutex, so a wrapper that
 # held it around the whole tier would block those stages against their own parent for the full
 # acquire timeout and then fail -- the deadlock tools/check-desktop-lock.sh warns about for
-# tests/golden/golden_run.py and upstream/oolite/tests/component/console.py. The lock belongs to
+# tests/golden/golden_run.py and oolite-dev/tests/component/console.py. The lock belongs to
 # whoever decides how many games run at once, and inside Tier C that is Tier C.
 #
 # Same reasoning for the weekly job: tools/tier-c.sh's corpus stage runs tools/corpus.sh with no

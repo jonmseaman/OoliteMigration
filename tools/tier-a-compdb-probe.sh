@@ -9,7 +9,7 @@
 # tools/tier-a-compdb.py split that with shlex(posix=False), which does not honour \", so the
 # define was cut at the escaped quote: clang-tidy saw OO_VERSION_FULL defined as a bare
 # backslash plus a stray argument, and every CHANGED line using OO_VERSION_FULL / OO_BUILDER
-# (upstream/oolite/src/Core/OOLogHeader.mm, "unexpected '@'" at @OO_BUILDER) failed Tier A.
+# (oolite-dev/src/Core/OOLogHeader.mm, "unexpected '@'" at @OO_BUILDER) failed Tier A.
 #
 # Nothing here re-implements the reader: every case runs tools/tier-a-compdb.py itself on a
 # fixture compile database, or imports its split_windows, the way tools/tier-a-deny-probe.sh

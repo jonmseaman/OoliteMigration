@@ -77,8 +77,8 @@ push-off)
   # one call site, and it must be a `git subtree push` at the documented prefix/remote/branch.
   m="$(printf '%s\n' "$E" | grep -c 'git -C "\$REPO" subtree push')"
   [ "$m" = 1 ] || fail "the code contains $m subtree-push call sites; there must be exactly ONE"
-  printf '%s\n' "$E" | grep -q 'SUBTREE_PREFIX="${OO_MQ_SUBTREE_PREFIX:-upstream/oolite}"' \
-    || fail "the subtree prefix does not default to upstream/oolite (ADR-0017)"
+  printf '%s\n' "$E" | grep -q 'SUBTREE_PREFIX="${OO_MQ_SUBTREE_PREFIX:-oolite-dev}"' \
+    || fail "the subtree prefix does not default to oolite-dev (ADR-0017)"
   printf '%s\n' "$E" | grep -q 'SUBTREE_REMOTE="${OO_MQ_SUBTREE_REMOTE:-fork}"' \
     || fail "the mirror remote does not default to 'fork' (ADR-0017)"
   printf '%s\n' "$E" | grep -q 'SUBTREE_BRANCH="${OO_MQ_SUBTREE_BRANCH:-migration}"' \
@@ -144,7 +144,7 @@ mutants-ff|mutants-bisect|mutants-flake|mutants-admit|mutants-mirror)
 design)
   D=docs/infra/merge-queue.md
   for s in '1327' 'ceil(log2' 'INCONCLUSIVE' 'gui-lock' 'OFF by default' 'attestation' \
-           'git subtree push --prefix=upstream/oolite fork migration' 'ADR-0017'; do
+           'git subtree push --prefix=oolite-dev fork migration' 'ADR-0017'; do
     grep -q -- "$s" "$D" || fail "$D does not state '$s'"
   done
   # The measured cost table must agree with what the selftest actually observes. A document that

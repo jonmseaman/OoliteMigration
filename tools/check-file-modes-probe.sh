@@ -153,7 +153,7 @@ probe miss tools/foo.sh '    LOCAL_CMD="bash tools/foo.sh"'
 # The same swallow via a command substitution. This one is LIVE: tools/check-desktop-lock.sh
 # captures `$(python3 tools/launcher_scan.py ...)`, an interpreter invocation, and the guard
 # demanded a chmod for it.
-probe miss tools/launcher_scan.py 'spawners=$(python3 tools/launcher_scan.py tools tests upstream/oolite/tests) || fail=1'
+probe miss tools/launcher_scan.py 'spawners=$(python3 tools/launcher_scan.py tools tests oolite-dev/tests) || fail=1'
 probe miss tools/foo.py 'out=$(python3 tools/foo.py)'
 probe miss tools/foo.sh 'v=$(bash tools/foo.sh --list)'
 # ...but capturing a BARE program is still a call site.

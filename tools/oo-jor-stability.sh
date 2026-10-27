@@ -15,7 +15,7 @@ set -u
 export PATH=/ucrt64/bin:$PATH
 cd "$(dirname "$0")/.."
 PY=$(command -v python3 || echo /ucrt64/bin/python3)
-APP_DIR="${OO_APP_DIR:-C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app}"
+APP_DIR="${OO_APP_DIR:-C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app}"
 N="${1:-10}"
 W="${LOCALAPPDATA:-/tmp}/Temp/oo_jor_stability"
 rm -rf "$W"; mkdir -p "$W"

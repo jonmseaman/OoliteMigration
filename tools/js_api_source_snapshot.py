@@ -22,7 +22,7 @@ canary in check_floors now uses Ship.AI).  A snapshot that reports every propert
 cannot answer the question those beads ask.
 
 So this snapshot is generated from the declarative property/function tables in
-upstream/oolite/src/**/OOJS*.m.  It is offline (no build, no launch, ~1 s), it is exact about
+oolite-dev/src/**/OOJS*.m.  It is offline (no build, no launch, ~1 s), it is exact about
 READONLY vs READWRITE, and it records method ARITY from the same tables.  The two snapshots are
 complementary and Tier C carries both: the live one for "does the runtime really install this",
 this one for "is it writable, and what is its arity".
@@ -57,7 +57,7 @@ import sys
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.dirname(_HERE)
-SRC_ROOT = os.path.join(_REPO, "upstream", "oolite", "src")
+SRC_ROOT = os.path.join(_REPO, "oolite-dev", "src")
 
 # Floors: the counts observed on this tree. They are FLOORS, not equalities -- adding an engine
 # property must not require editing this file -- but a scrape that finds fewer has broken, and a
@@ -107,7 +107,7 @@ def _read(path):
 
 def _iter_sources(root):
     """Every .m, .mm and .cpp under src/ (the .mm units are .cpp since bead oo-dbz.5). os.walk deliberately: the repo's grep/search tooling silently returns
-    zero matches for upstream/oolite/src, so a search-tool-based scraper here would find nothing
+    zero matches for oolite-dev/src, so a search-tool-based scraper here would find nothing
     and report a clean empty snapshot."""
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames.sort()
@@ -335,7 +335,7 @@ def scrape(src_root=SRC_ROOT):
     return {
         "schema": "oolite-js-api-source/1",
         "generator": "tools/js_api_source_snapshot.py",
-        "source_root": "upstream/oolite/src",
+        "source_root": "oolite-dev/src",
         "classes": out,
         "summary": {
             "class_count": len(out),

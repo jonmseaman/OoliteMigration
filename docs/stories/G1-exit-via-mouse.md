@@ -13,7 +13,7 @@ pinned size, click start-screen row 27 (` Exit Game `) to select it, double-clic
 assert the process exits within 10 s with code 0, no crash log, and no orphaned process. Provide
 the `row → screen point` helper and the launch/kill fixture that G2–G9 will reuse.
 
-**Do it the way `/Users/jonms/OoliteMigration/upstream/oolite/tests/launch_snapshot.py` does it**
+**Do it the way `/Users/jonms/OoliteMigration/oolite-dev/tests/launch_snapshot.py` does it**
 for launch, environment, and timeout handling — but with `SDL_VIDEODRIVER` *unset* (real window),
 `SDL_AUDIODRIVER=dummy`, and `ALSOFT_DRIVERS=null`.
 
@@ -28,9 +28,9 @@ for launch, environment, and timeout handling — but with `SDL_VIDEODRIVER` *un
 
 ## Files
 
-- `upstream/oolite/tests/gui/conftest.py` (new: launch fixture, hard timeout with forced kill, `row_to_point(row)`, the desktop lock)
-- `upstream/oolite/tests/gui/test_g1_exit_via_mouse.py` (new)
-- `upstream/oolite/tests/gui/requirements.txt` (new: `pytest`, `pyautogui`)
+- `oolite-dev/tests/gui/conftest.py` (new: launch fixture, hard timeout with forced kill, `row_to_point(row)`, the desktop lock)
+- `oolite-dev/tests/gui/test_g1_exit_via_mouse.py` (new)
+- `oolite-dev/tests/gui/requirements.txt` (new: `pytest`, `pyautogui`)
 
 Reads: `tests/launch_snapshot.py` (230 lines), `GuiDisplayGen.h` header block, the two cited
 `PlayerEntity*.m` ranges. Under 1,500 lines. Writes: ~150 lines.
@@ -39,11 +39,11 @@ Reads: `tests/launch_snapshot.py` (230 lines), `GuiDisplayGen.h` header block, t
 
 ```bash
 # nonzero before (file absent), zero after; from the repo root, on the Windows desktop (ADR-0017):
-tools/gui-tier.sh upstream/oolite/tests/gui/test_g1_exit_via_mouse.py
+tools/gui-tier.sh oolite-dev/tests/gui/test_g1_exit_via_mouse.py
 ```
 
 Run the tier through `tools/gui-tier.sh`, not bare `pytest`. The runner installs
-`upstream/oolite/tests/gui/requirements.txt` (which nothing else does) and sets
+`oolite-dev/tests/gui/requirements.txt` (which nothing else does) and sets
 `OO_GUI_REQUIRE=1`, so a machine that cannot run G1 — wrong platform, or pyautogui missing —
 **fails and says what to install** instead of skipping to a green exit 0. A skip is a silent
 pass, and this command's whole job is to distinguish "G1 passed" from "G1 never ran".
@@ -59,7 +59,7 @@ covers only the pure-arithmetic tests, so `pytest -q -m offline` deselects
 tier's acceptance ever reports "N passed, 1 deselected", it is not gating G1.
 
 The command runs in `accept.sh`'s clean detached checkout, which contains the tests but not
-`build/` (gitignored, `upstream/oolite/.gitignore:25`). `conftest._default_app_dir` therefore
+`build/` (gitignored, `oolite-dev/.gitignore:25`). `conftest._default_app_dir` therefore
 falls back to the main checkout's `build/meson_test/oolite.app` via the shared git common dir, so
 the real test runs from a worktree rather than being skipped out of the gate. `--oolite-app` and
 `$OO_APP_DIR` still override.

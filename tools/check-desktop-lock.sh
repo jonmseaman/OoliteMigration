@@ -57,7 +57,7 @@
 #
 # Surveyed and found to need nothing:
 #
-#   upstream/oolite/tests/run_test_fn.sh    launches nothing itself; it shells out to
+#   oolite-dev/tests/run_test_fn.sh    launches nothing itself; it shells out to
 #                                           launch_snapshot.py, which now takes the lock, so the
 #                                           build's smoke step inherits it.
 #   tools/gui-tier.sh                       runs the GUI tier through pytest, which takes the
@@ -84,14 +84,14 @@ tools/oo-qwk5-probe.py
 tools/oxp_load_check.py
 tests/golden/motion/motion_probe.py
 tests/golden/motion/value_probe.py
-upstream/oolite/tests/launch_snapshot.py
-upstream/oolite/tests/component/conftest.py
-upstream/oolite/tests/gui/conftest.py
+oolite-dev/tests/launch_snapshot.py
+oolite-dev/tests/component/conftest.py
+oolite-dev/tests/gui/conftest.py
 "
 EXEMPT_LAUNCHERS="
 tests/golden/golden_run.py
 tests/golden/dump/run_dump.py
-upstream/oolite/tests/component/console.py
+oolite-dev/tests/component/console.py
 "
 # Exempt launchers that are HARNESSES: every spawner that is one of their members (see the header)
 # inherits the exemption. Each must also be in EXEMPT_LAUNCHERS.
@@ -131,12 +131,12 @@ done
 #     of the last ones - `cmd += [...]` is this repo's OWN house style (console.py:122).
 #   * DebugConsole(...) counts wherever it appears: its constructor's job is to spawn the game.
 #
-# Scope: tools/, tests/ and upstream/oolite/tests/ - every file that is .py/.sh/.bat/.cmd OR
+# Scope: tools/, tests/ and oolite-dev/tests/ - every file that is .py/.sh/.bat/.cmd OR
 # carries a sh/bash/python shebang (tools/gui-lock and this file have no extension). Shell files
 # get the same argv[0] rule in shell syntax, with leaders AND empty tokens stripped (so
 # `start "" "%APP%\oolite.exe"` cannot hide behind an empty title) and `-c "..."` command strings
 # re-scanned (so `bash -c "$APP/oolite.exe"` cannot hide inside a quoted argument).
-# Upstream's own packaging scripts (upstream/oolite/ShellScripts, installers/win32/RunOolite.bat)
+# Upstream's own packaging scripts (oolite-dev/ShellScripts, installers/win32/RunOolite.bat)
 # are deliberately out of scope: they ship the game to end users, they are not fleet tooling, and
 # nothing in a test run executes them.
 #
@@ -145,7 +145,7 @@ done
 
 step "2/4 no unclassified launcher"
 known="$(printf '%s %s' "$LOCKED_LAUNCHERS" "$EXEMPT_LAUNCHERS" | tr '\n' ' ')"
-spawners=$(python3 tools/launcher_scan.py tools tests upstream/oolite/tests) || fail=1
+spawners=$(python3 tools/launcher_scan.py tools tests oolite-dev/tests) || fail=1
 spawners=$(printf '%s' "$spawners" | tr -d '\r')
 members=""
 for h in $EXEMPT_HARNESSES; do
@@ -208,7 +208,7 @@ if grep -q 'gui-lock' CLAUDE.md; then
 else
 	no "CLAUDE.md does not state the desktop-lock rule"
 fi
-if grep -q 'check-desktop-lock' upstream/oolite/tests/gui/README.md; then
+if grep -q 'check-desktop-lock' oolite-dev/tests/gui/README.md; then
 	ok "the GUI tier README points at this check"
 else
 	no "the GUI tier README does not point at this check"

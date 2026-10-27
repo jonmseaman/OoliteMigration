@@ -14,7 +14,7 @@ Five beads have already been parked because a scenario was specified that could 
 S2/`oo-8wry`, S4/`oo-8c4g`, S5/`oo-on18`, S6/`oo-fjku`, S7/`oo-3roh`, and then S8/`oo-qwk5`, all on
 the same root cause. So each scenario below states which observables it needs and whether each
 exists **today**, and the gate resolves every one of those claims against artefacts in the tree:
-JS members against `oxp-contract/js-api-1.93.json`, log channels against `upstream/oolite/src`,
+JS members against `oxp-contract/js-api-1.93.json`, log channels against `oolite-dev/src`,
 harness references against the filesystem. A claim that does not resolve fails the gate by name.
 
 What is **not** available, and therefore what no scenario here may rest on:
@@ -79,7 +79,7 @@ with `rc=0` and no errors. This scenario's evidence is therefore a **differentia
 never an absence in one.
 
 **Observables, all present today**: `searchPaths.dumpAll`, `oxp.requirementMissing`,
-`startup.complete`, `oxp-standards.error` (all four resolved in `upstream/oolite/src`),
+`startup.complete`, `oxp-standards.error` (all four resolved in `oolite-dev/src`),
 `tools/oxp_deps.py::closure`, `tools/oxp_load_check.py::NOMANIFEST_RE`, `System.mainStation`,
 `Entity.isValid`. **No seam dependency.**
 
