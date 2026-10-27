@@ -76,8 +76,8 @@ only) and no longer waits on this file.
 oo-4216h (frontier), 4 oo-n8wn2 (frontier), 5 oo-uq8px, 6 oo-fz3l8, 7 oo-lmdi8.
 
 ```slice-plan
-source: upstream/oolite/src/Core/Entities/PlayerEntityControls.cpp
-header: upstream/oolite/src/Core/Entities/PlayerEntityControls.h
+source: oolite-dev/src/Core/Entities/PlayerEntityControls.cpp
+header: oolite-dev/src/Core/Entities/PlayerEntityControls.h
 one-unit-slices: frontier
 
 slice 1: control set-up, key definitions and key-press checks, the control poll, GUI up / down keys, target system, view-switch notes, the witchspace countdown

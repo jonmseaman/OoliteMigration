@@ -8,7 +8,7 @@
 # No build directory, no meson, no network: it compiles straight from the tree, so it runs from
 # a clean checkout well inside the ADR-0021 accept budget (about ten seconds per test file).
 #
-#   1. inventory  every upstream/oolite/tests/unit/oofnd/test_*.cpp but the floor's test_objc_*.cpp
+#   1. inventory  every oolite-dev/tests/unit/oofnd/test_*.cpp but the floor's test_objc_*.cpp
 #                 (check-oofnd-objc.sh's, below); ZERO tests is a failure, and
 #                 so is a test file that tests/unit/oofnd/meson.build does not register (the
 #                 `meson test --suite oofnd` wiring must not silently lag the tree);
@@ -52,7 +52,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$script_dir/.."   # repo root
 
-oo="upstream/oolite"
+oo="oolite-dev"
 src_dir="$oo/src/oofnd"
 test_dir="$oo/tests/unit/oofnd"
 CXX="${CXX:-clang++}"

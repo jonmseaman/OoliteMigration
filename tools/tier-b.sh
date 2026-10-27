@@ -21,8 +21,8 @@
 #                            golden 494 s + tools 530 s vs 216 s for the concurrent stage.
 #   2b parity     ~3 s       tier-b's environment must agree with a bare shell's verdict
 #   3 goldens     ~43 s      every blessed golden under goldens/<platform>/
-#   4 component   769-957 s  upstream/oolite/tests/component (ADR-0018) -- see BUDGET HISTORY
-#   5 smoke       ~14 s      upstream/oolite/tests/launch_snapshot.py
+#   4 component   769-957 s  oolite-dev/tests/component (ADR-0018) -- see BUDGET HISTORY
+#   5 smoke       ~14 s      oolite-dev/tests/launch_snapshot.py
 #   6 corpus      ~53 s      tools/corpus.sh tier1 --limit N  (N=3 by default)
 #
 #   TOTAL ~900-1100 s in --fast (build skipped, see below), ~1050-1250 s cold.  Budget: 1200 s.
@@ -31,7 +31,7 @@
 # per-stage estimates above without ever timing stage 4 end to end -- stage 4's own original
 # estimate in this table was "~22 s", off by a factor of ~35-40x from what it actually costs. Two
 # separate js-retarget beads (oo-45g attempt 5, escalated) measured stage_component alone -- the
-# full 8-scenario upstream/oolite/tests/component suite, one native game launch per scenario -- at
+# full 8-scenario oolite-dev/tests/component suite, one native game launch per scenario -- at
 # 769-957 s wall, which alone exceeds 600 s even when every stage passes (bead oo-a6du). There is
 # no pytest "fast" marker in tests/component to subset by (seam 0.9b assumed one would exist; it
 # never landed), and ADR-0018 sizes this tier at Tier B in full, not a subset, so shrinking what
@@ -43,7 +43,7 @@
 # run (no --fast) additionally pays the build stage (13-142 s), which is why the cold TOTAL above
 # runs higher than --fast's own budget; --fast is not required to fit a build it does not do.
 #
-# COMPONENT STAGE AND THE DESKTOP MUTEX. Stage 4 is not headless: upstream/oolite/tests/component
+# COMPONENT STAGE AND THE DESKTOP MUTEX. Stage 4 is not headless: oolite-dev/tests/component
 # /conftest.py's session-scoped `desktop_lock` fixture takes tools/gui-lock (owner "component")
 # for the whole stage, exactly like the GUI tier does, because every scenario opens a real window
 # on the real desktop (MSYS2's Mesa ships no EGL, so SDL_VIDEODRIVER=offscreen is not an option
@@ -159,7 +159,7 @@ if [ -d /ucrt64/bin ]; then export PATH="/ucrt64/bin:$PATH"; fi
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/.." && pwd)"
-OOLITE="$REPO_ROOT/upstream/oolite"
+OOLITE="$REPO_ROOT/oolite-dev"
 PLATFORM="${OOLITE_TIER_B_PLATFORM:-windows-x64}"
 BUILD_FLAVOUR="${OOLITE_TIER_B_FLAVOUR:-test}"
 BUDGET_SECONDS="${OOLITE_TIER_B_BUDGET:-1200}"
@@ -444,7 +444,7 @@ stage_foundation_free() {
 }
 
 # stage_mesa -- put MSYS2's Mesa llvmpipe beside the binary, as tests/golden/run.sh:130-139 and
-# upstream/oolite/tests/run_test_fn.sh:28-33 do.
+# oolite-dev/tests/run_test_fn.sh:28-33 do.
 #
 # THIS IS NOT COSMETIC AND IT IS NOT ONLY ABOUT RENDERING. A freshly built oolite.app does not
 # contain opengl32.dll / libgallium_wgl.dll: nothing in the build produces them, and the only
@@ -748,7 +748,7 @@ plistlib.dump({'console-host': '127.0.0.1', 'console-port': int(sys.argv[2])},
 
 stage_component() {
   local t0=$SECONDS log="$RUN_ROOT/component.log"
-  step component "upstream/oolite/tests/component"
+  step component "oolite-dev/tests/component"
   local rc=0
   ( cd "$OOLITE/tests/component" \
     && OO_APP_DIR="$(native "$APP_DIR")" \

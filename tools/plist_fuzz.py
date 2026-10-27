@@ -53,7 +53,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
-OO = REPO / "upstream" / "oolite"
+OO = REPO / "oolite-dev"
 SRC = HERE / "plist-fuzz"
 sys.path.insert(0, str(HERE))
 
@@ -61,7 +61,7 @@ sys.path.insert(0, str(HERE))
 
 # The commit that blessed this oracle (bead oo-g2k) and the game sources it links from there.
 ORACLE_COMMIT = "bd4f060b1e"
-ORACLE_DIR = "upstream/oolite/src/Core"
+ORACLE_DIR = "oolite-dev/src/Core"
 ORACLE_FILES = ("OldSchoolPropertyListWriting.h", "OldSchoolPropertyListWriting.mm",
                 "NSNumberOOExtensions.h", "NSNumberOOExtensions.mm", "OOFunctionAttributes.h")
 
@@ -438,7 +438,7 @@ def summarise(records, label: str, describe) -> tuple[dict, list[str]]:
 
 # ------------------------------------------------------------------------------------- fuzzing
 
-# Seeds: the inputs of the oofnd unit-test fixtures (upstream/oolite/tests/unit/oofnd/
+# Seeds: the inputs of the oofnd unit-test fixtures (oolite-dev/tests/unit/oofnd/
 # test_plist_*.cpp), plus the shapes the game's own data uses. No expansion content.
 SEEDS = [
     b"abc", b"a.b/c_d-e:f$g+h!#%&*?@^|~9", b"a/b//c", b"\x08\x0b\x0cabc\r\n", b"ab cd", b"'single'",

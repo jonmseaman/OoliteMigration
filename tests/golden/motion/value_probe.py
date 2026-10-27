@@ -17,7 +17,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
-sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "oolite-dev", "tests", "component"))
 sys.path.insert(0, os.path.join(REPO_ROOT, "tests", "golden", "dump"))
 sys.path.insert(0, HERE)
 
@@ -113,7 +113,7 @@ def _main_unlocked(argv=None):
     parser = argparse.ArgumentParser()
     default_app = os.environ.get(
         "OO_APP_DIR",
-        os.path.join(REPO_ROOT, "upstream", "oolite", "build", "meson_test", "oolite.app"))
+        os.path.join(REPO_ROOT, "oolite-dev", "build", "meson_test", "oolite.app"))
     parser.add_argument("--app-dir", default=default_app)
     parser.add_argument("--port", type=int, default=int(os.environ.get("OO_CONSOLE_PORT", "0")))
     parser.add_argument("--seed", type=int, default=1)

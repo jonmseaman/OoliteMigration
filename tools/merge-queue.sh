@@ -125,8 +125,8 @@ GATE="${OO_MQ_GATE:-tools/tier-c.sh}"; TIERB="${OO_MQ_TIERB:-tools/tier-b.sh}"
 DRY=0; PUSH=0; RERUN="${OO_MQ_RERUN:-1}"; VERIFY_BASE=0; JOBS=1
 MAX_CULPRITS="${OO_MQ_MAX_CULPRITS:-3}"; REQUIRE_ATTEST="${OO_MQ_REQUIRE_ATTEST:-1}"
 ATTEST_BRANCH=""; JSON_OUT=""; REMOTE="${OO_MQ_REMOTE:-origin}"
-# ADR-0017 step 7's mirror: `git subtree push --prefix=upstream/oolite fork migration`.
-SUBTREE_PREFIX="${OO_MQ_SUBTREE_PREFIX:-upstream/oolite}"
+# ADR-0017 step 7's mirror: `git subtree push --prefix=oolite-dev fork migration`.
+SUBTREE_PREFIX="${OO_MQ_SUBTREE_PREFIX:-oolite-dev}"
 SUBTREE_REMOTE="${OO_MQ_SUBTREE_REMOTE:-fork}"
 SUBTREE_BRANCH="${OO_MQ_SUBTREE_BRANCH:-migration}"
 
@@ -538,7 +538,7 @@ MIRRORED=0
 # ADR-0017 step 7, the SECOND half of the push cadence: after each Tier C green batch the queue
 # pushes $BASE to $REMOTE *and* mirrors the converted tree onto the fork's `migration` branch with
 #
-#     git subtree push --prefix=upstream/oolite fork migration
+#     git subtree push --prefix=oolite-dev fork migration
 #
 # so the fork carries the ported tree with its history grafted onto the fork's commits. It is not
 # per bead on purpose: a subtree split walks the whole history each time and a mirror gains nothing

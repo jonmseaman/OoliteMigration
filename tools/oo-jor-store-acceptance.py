@@ -3,7 +3,7 @@
 import subprocess, sys
 
 PY = 'PY=$(command -v python3 || command -v python || echo /ucrt64/bin/python3)'
-APP = 'APP_DIR="${OO_APP_DIR:-C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app}"'
+APP = 'APP_DIR="${OO_APP_DIR:-C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app}"'
 
 LINES = [
     # 1. The artefacts exist and the scenario script is importable.
@@ -32,7 +32,7 @@ LINES = [
     # 3. The seed reaches the game as OO_RANDOM_SEED, and the port is private (not the shared 8563).
     f'{PY}; "$PY" -c "'
     f'import os,sys;'
-    f'sys.path[:0]=[\'upstream/oolite/tests/component\'];'
+    f'sys.path[:0]=[\'oolite-dev/tests/component\'];'
     f'import console as C;'
     f'src=open(C.__file__,encoding=\'utf-8\').read();'
     f'sys.exit(\'FAIL: console.py does not export OO_RANDOM_SEED; the seed knob cannot reach the game\') if \'OO_RANDOM_SEED\' not in src else None;'

@@ -80,7 +80,7 @@ DUMP_DIR = os.path.join(HERE, "dump")
 
 sys.path.insert(0, HERE)
 sys.path.insert(0, DUMP_DIR)
-sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "oolite-dev", "tests", "component"))
 
 import golden_run  # noqa: E402
 from state_dump import dump_state, ensure_launchable, start_with_retry  # noqa: E402
@@ -505,9 +505,9 @@ def run(app_dir, out_path, spec, run_root, keep=False, stage=True, empty_stage=F
 
 def default_app_dir():
     for candidate in (os.environ.get("OO_APP_DIR"),
-                      os.path.join(REPO_ROOT, "upstream", "oolite", "build", "meson_test",
+                      os.path.join(REPO_ROOT, "oolite-dev", "build", "meson_test",
                                    "oolite.app"),
-                      "C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app"):
+                      "C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app"):
         if candidate and os.path.isdir(candidate):
             return golden_run._slashes(os.path.abspath(candidate))
     return None

@@ -22,7 +22,7 @@ to_native() {
   if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi
 }
 
-app="${OO_APP_DIR:-$repo/upstream/oolite/build/meson_test/oolite.app}"
+app="${OO_APP_DIR:-$repo/oolite-dev/build/meson_test/oolite.app}"
 output="$repo/oxp-contract/js-api-1.93.json"
 args=()
 while [ $# -gt 0 ]; do

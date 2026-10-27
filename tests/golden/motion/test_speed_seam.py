@@ -15,7 +15,7 @@ Two things are pinned here that the witness-replay tests cannot pin:
    asserted against the recorded witness AND, for the refusal message, against the source.
 
 NOTE ON READING ENGINE SOURCE: the repo's search tooling silently returns zero matches inside
-upstream/oolite/src, so these tests open the file directly. A test that used a repo-wide grep
+oolite-dev/src, so these tests open the file directly. A test that used a repo-wide grep
 would report "not found" for a line that is present.
 """
 
@@ -29,7 +29,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 # Engine sources are named by STEM: the migration renames .m -> .mm -> .cpp (oo-7j3t).
-sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "oolite-dev", "tests"))
 from source_paths import resolve_source  # noqa: E402
 OOJSSHIP = resolve_source("Core", "Scripting", "OOJSShip")
 VALUE_WITNESS = os.path.join(HERE, "fixtures", "value-policy.json")

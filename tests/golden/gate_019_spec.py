@@ -236,7 +236,7 @@ def check_read_where_it_acts(source):
 
 
 def check_isolation(source):
-    console_path = os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component", "console.py")
+    console_path = os.path.join(REPO_ROOT, "oolite-dev", "tests", "component", "console.py")
     if not os.path.isfile(console_path):
         refuse("no console.py at %s" % console_path)
     with open(console_path, "r", encoding="utf-8") as handle:

@@ -3,9 +3,9 @@
 # tests/golden/run.sh <scenario> [options] - run ONE golden scenario in ONE native game process.
 #
 # No containers (ADR-0017): the game runs natively on this Windows machine with MSYS2's Mesa
-# llvmpipe opengl32.dll staged beside the binary, exactly as upstream/oolite/tests/run_test_fn.sh
+# llvmpipe opengl32.dll staged beside the binary, exactly as oolite-dev/tests/run_test_fn.sh
 # does, and is driven over the debug-console TCP channel with the component tier's client
-# (upstream/oolite/tests/component/console.py, ADR-0018).
+# (oolite-dev/tests/component/console.py, ADR-0018).
 #
 # N of these run at once (N = the RAM budget in docs/infra/0-machines.md; see
 # GOLDEN_MAX_CONCURRENCY below). Three things are therefore per-run, never shared: the console
@@ -76,7 +76,7 @@ done
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 repo_root=$(cd "$script_dir/../.." && pwd)
-app_default="$repo_root/upstream/oolite/build/meson_test/oolite.app"
+app_default="$repo_root/oolite-dev/build/meson_test/oolite.app"
 
 # Parse every option carrying a PATH; everything else is forwarded verbatim. --run-dir must be
 # parsed here and not left to the catch-all: forwarded verbatim it reaches a native python as

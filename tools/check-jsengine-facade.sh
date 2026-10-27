@@ -17,7 +17,7 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-oo="$root/upstream/oolite"
+oo="$root/oolite-dev"
 hdr="$oo/src/Core/Scripting/ooscript/JSEngine.hpp"
 prefix="${MINGW_PREFIX:-/ucrt64}"
 CXX="${CXX:-clang++}"

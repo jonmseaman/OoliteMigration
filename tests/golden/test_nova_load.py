@@ -283,11 +283,11 @@ def test_gate_rejects_a_drifted_spec(knob, value, why, tmp_path):
     golden_dir = root / "tests" / "golden"
     pending = golden_dir / "pending" / SCENARIO
     pending.mkdir(parents=True)
-    (root / "upstream" / "oolite" / "tests" / "component").mkdir(parents=True)
+    (root / "oolite-dev" / "tests" / "component").mkdir(parents=True)
     shutil.copy(os.path.join(HERE, "nova_load.py"), golden_dir / "nova_load.py")
     shutil.copy(GATE, golden_dir / "gate_014_spec.py")
-    shutil.copy(os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component", "console.py"),
-                root / "upstream" / "oolite" / "tests" / "component" / "console.py")
+    shutil.copy(os.path.join(REPO_ROOT, "oolite-dev", "tests", "component", "console.py"),
+                root / "oolite-dev" / "tests" / "component" / "console.py")
     prov = provenance_path()
     assert prov, "no provenance.json; the gate cannot check knob agreement"
     shutil.copy(prov, pending / "provenance.json")
@@ -321,12 +321,12 @@ def test_gate_rejects_a_hardcoded_knob(tmp_path):
     golden_dir = root / "tests" / "golden"
     pending = golden_dir / "pending" / SCENARIO
     pending.mkdir(parents=True)
-    (root / "upstream" / "oolite" / "tests" / "component").mkdir(parents=True)
+    (root / "oolite-dev" / "tests" / "component").mkdir(parents=True)
     with open(golden_dir / "nova_load.py", "w", encoding="utf-8", newline="\n") as handle:
         handle.write(mutated)
     shutil.copy(GATE, golden_dir / "gate_014_spec.py")
-    shutil.copy(os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component", "console.py"),
-                root / "upstream" / "oolite" / "tests" / "component" / "console.py")
+    shutil.copy(os.path.join(REPO_ROOT, "oolite-dev", "tests", "component", "console.py"),
+                root / "oolite-dev" / "tests" / "component" / "console.py")
     shutil.copy(spec_path(), pending / "spec.json")
     shutil.copy(provenance_path(), pending / "provenance.json")
 

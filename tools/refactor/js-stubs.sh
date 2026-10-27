@@ -2,7 +2,7 @@
 # tools/refactor/js-stubs.sh -- mechanical JS_* -> ooscript façade rewrite
 # for the "stub / init / numeric-conversion" call-site pattern family.
 #
-# Covers, per the retarget map in upstream/oolite/src/Core/Scripting/ooscript/README.md
+# Covers, per the retarget map in oolite-dev/src/Core/Scripting/ooscript/README.md
 # and exactly as hand-retargeted in OOJSVector.mm (bead oo-sdz, the exemplar
 # for this bead):
 #

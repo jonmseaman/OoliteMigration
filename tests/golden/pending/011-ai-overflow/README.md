@@ -55,7 +55,7 @@ tolerated *exactly* — count pinned at 2, signature pinned verbatim — never m
 
 That **this specific ship's** AI stack is the deep one is not observable in this tier.
 `Ship.AIState` is permanently `GLOBAL` here, `AI -stackDepth` (AI.m:382) has no JS binding, and
-`upstream/oolite/tests/component/steps/world_steps.py` exposes only role counts and liveness — no
+`oolite-dev/tests/component/steps/world_steps.py` exposes only role counts and liveness — no
 per-ship identity, no generic property read. Those are the seam beads **oo-kbqw / oo-bdl0**.
 
 Rather than invent an observable, attribution comes from the **AI file name carried in the

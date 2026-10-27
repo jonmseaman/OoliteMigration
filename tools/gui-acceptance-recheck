@@ -2,7 +2,7 @@
 # Distinguish a genuine GUI-tier acceptance failure from desktop/CPU contention (bug oo-ac3f).
 #
 # tools/gui-lock DOES serialise GUI-launching pytest runs: the session-scoped `desktop_lock`
-# fixture (upstream/oolite/tests/gui/conftest.py) blocks in `gui-lock acquire` until it owns the
+# fixture (oolite-dev/tests/gui/conftest.py) blocks in `gui-lock acquire` until it owns the
 # desktop, so two GUI-tier processes genuinely cannot drive synthetic input at the same instant.
 # But the lock protects the DESKTOP only, not CPU or IO. A concurrent sibling that is itself
 # queued for the lock, compiling, or running another pytest tier still starves the CPU of

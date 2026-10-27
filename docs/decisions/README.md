@@ -80,5 +80,6 @@ changed* from the chain.
 | [0063](0063-gcc-flavour-and-gcc-only-diagnostics.md) | The GCC flavour (`build-windows.sh --gcc`, UCRT64 g++) and GCC-only diagnostics: fix first-party code, never silence libstdc++ false positives, oofnd without `werror` under GCC, RNG draws sequenced in Clang's order (oo-1q4, oo-r3ffn) |
 | [0064](0064-pretty-function-spelling-in-tests-under-gcc.md) | Tests that pin `__PRETTY_FUNCTION__` expect each compiler's own spelling; nothing in the game changes (oo-4d403) |
 | [0066](0066-test-every-shipped-flavour.md) | Assertions live in every flavour; unit suites under the deployment macros and goldens on the deployment binary, nightly (oo-pdsng) |
+| [0067](0067-submodules-replace-subtrees.md) | Submodules replace the subtrees: `oolite-dev` (fork `develop`) is the game, `oolite-main` (fork `master`) and `upstream/*` (OoliteProject, unmodified) are reference; beads pipeline retired (oo-s2xwp) |
 
 Template: Status · Date · Context · Decision · Consequences · History.

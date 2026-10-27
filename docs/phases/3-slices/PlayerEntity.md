@@ -166,8 +166,8 @@ Slices 3, 4, 7, 19, 20 and 21 override nothing of the ship's.
   plans), no `@implementation` left in `PlayerEntity*.mm`, and the guardrails.
 
 ```slice-plan
-source: upstream/oolite/src/Core/Entities/PlayerEntity.cpp
-header: upstream/oolite/src/Core/Entities/PlayerEntity.h
+source: oolite-dev/src/Core/Entities/PlayerEntity.cpp
+header: oolite-dev/src/Core/Entities/PlayerEntity.h
 header-decls: per-slice
 header-names: by-use
 

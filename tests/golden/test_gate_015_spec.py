@@ -56,7 +56,7 @@ def _gate_tree(tmp_path, gate_edit=None, spec_edit=None, prov_edit=None, scenari
     root = tmp_path / "t"
     staged = root / "tests" / "golden" / "pending" / SCENARIO
     staged.mkdir(parents=True)
-    (root / "upstream" / "oolite" / "tests" / "component").mkdir(parents=True)
+    (root / "oolite-dev" / "tests" / "component").mkdir(parents=True)
 
     shutil.copy(GATE, root / "tests" / "golden" / "gate_015_spec.py")
     shutil.copy(os.path.join(HERE, "trumbles_load.py"), root / "tests" / "golden" / "trumbles_load.py")
@@ -69,8 +69,8 @@ def _gate_tree(tmp_path, gate_edit=None, spec_edit=None, prov_edit=None, scenari
     spec_src = os.path.join(HERE, "scenarios", SCENARIO, "spec.json")
     if os.path.isfile(spec_src):
         shutil.copy(spec_src, staged / "spec.json")
-    shutil.copy(os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component", "console.py"),
-                root / "upstream" / "oolite" / "tests" / "component" / "console.py")
+    shutil.copy(os.path.join(REPO_ROOT, "oolite-dev", "tests", "component", "console.py"),
+                root / "oolite-dev" / "tests" / "component" / "console.py")
 
     def edit_text(path, fn):
         path.write_text(fn(path.read_text(encoding="utf-8")), encoding="utf-8", newline="\n")

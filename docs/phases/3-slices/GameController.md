@@ -63,8 +63,8 @@ recounts the file every time, so the numbers below are only a snapshot.
 | mac-only | `GameController (MacOSX)` and `SetUpSparkle()`: fenced, not converted (Phase 5) | ~330 | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/GameController.cpp
-header: upstream/oolite/src/Core/GameController.h
+source: oolite-dev/src/Core/GameController.cpp
+header: oolite-dev/src/Core/GameController.h
 
 slice 1: class shell, state and accessors
   +[GameController sharedController]

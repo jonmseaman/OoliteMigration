@@ -24,5 +24,5 @@ rm -rf "$SCRATCH"
 trap 'rm -rf "$SCRATCH"' EXIT
 
 "$PY" "$(cygpath -m "$REPO_ROOT/tests/golden/check_build_flags.py")" \
-    --configure-from "$(cygpath -m "$REPO_ROOT/upstream/oolite")" \
+    --configure-from "$(cygpath -m "$REPO_ROOT/oolite-dev")" \
     --build-dir "$(cygpath -m "$SCRATCH")"

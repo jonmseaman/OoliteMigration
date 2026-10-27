@@ -21,7 +21,7 @@ cd "$ROOT" || exit 1
 
 export PATH=/ucrt64/bin:$PATH
 PY=$(command -v python3 || command -v python || echo /ucrt64/bin/python3)
-APP_DIR="${OO_APP_DIR:-C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app}"
+APP_DIR="${OO_APP_DIR:-C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app}"
 if [ ! -d "$APP_DIR" ]; then
   echo "no Oolite build at $APP_DIR; build it first (tools/build-windows.sh test)"
   exit 1

@@ -4,7 +4,7 @@ Proposed ADR-0043 item 21 keeps a selector that more than one class or protocol 
 
 ## How the families were found
 
-`tools/check-selector-types.py`'s own parser (`scan`, `dynamic_selectors`) over `upstream/oolite/src` on phase-2 at the time of filing: every selector declared by two or more `@interface` / `@implementation` / `@protocol` containers (a class, its categories and its .mm count once) where some declaration has a Foundation value type (NSString, NSArray, NSDictionary, NSSet, NSNumber, NSData, NSMutable*, NSEnumerator, NSError, NSURL) or carries the sweep's `// shared selector` / `// called by name` marker. 108 families. Call-site files are a grep for the selector's first keyword in a message send, so a bead's file list is an estimate to check at pickup.
+`tools/check-selector-types.py`'s own parser (`scan`, `dynamic_selectors`) over `oolite-dev/src` on phase-2 at the time of filing: every selector declared by two or more `@interface` / `@implementation` / `@protocol` containers (a class, its categories and its .mm count once) where some declaration has a Foundation value type (NSString, NSArray, NSDictionary, NSSet, NSNumber, NSData, NSMutable*, NSEnumerator, NSError, NSURL) or carries the sweep's `// shared selector` / `// called by name` marker. 108 families. Call-site files are a grep for the selector's first keyword in a message send, so a bead's file list is an estimate to check at pickup.
 
 ## Beads
 

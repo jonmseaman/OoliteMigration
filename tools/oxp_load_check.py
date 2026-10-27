@@ -29,7 +29,7 @@ EXIT 87 IS THE BARE-LAUNCH BASELINE, NOT A DLL BUG.  A bare
 second or two on this box.  It is NOT 0xC0000135/STATUS_DLL_NOT_FOUND - that is
 a different failure, caused by /ucrt64/bin being absent from PATH, and it writes
 no log at all.  What makes the launch work is the software-GL environment the
-component/golden harness sets (upstream/oolite/tests/component/console.py
+component/golden harness sets (oolite-dev/tests/component/console.py
 _env): LIBGL_ALWAYS_SOFTWARE=1, GALLIUM_DRIVER=llvmpipe, SDL_AUDIODRIVER=dummy,
 ALSOFT_DRIVERS=null.  With those, `-load Resources/Scenarios/oolite-standard.
 oolite-save` runs to [startup.complete] and the process EXITS ON ITS OWN with

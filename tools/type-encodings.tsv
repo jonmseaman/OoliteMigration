@@ -2,7 +2,7 @@
 # oo-dbz.3). Measured with clang's @encode() on main eae8c876d (the last tree built as Objective-C++,
 # with libobjc2), by the probe `python3 tools/gen-type-encodings.py --probe <file.mm>` writes, compiled
 # with oolite.exe's Objective-C++ flags and run; --compare <its output> checks this file against a
-# measurement. tools/gen-type-encodings.py renders upstream/oolite/src/Core/OOTypeEncodings.h from it.
+# measurement. tools/gen-type-encodings.py renders oolite-dev/src/Core/OOTypeEncodings.h from it.
 #
 # key<TAB>measured spellings<TAB>encoding. The key is the C++ type kOOTypeEncoding<> is specialised
 # for; the measured spellings are the names the tables and tests write, every one measured, which

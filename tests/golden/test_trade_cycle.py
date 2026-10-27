@@ -190,7 +190,7 @@ class _FakeConsole:
 
 
 def _console_error(text):
-    sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component"))
+    sys.path.insert(0, os.path.join(REPO_ROOT, "oolite-dev", "tests", "component"))
     from console import ConsoleError
     return ConsoleError(text)
 

@@ -28,7 +28,7 @@ mutant() {
   rm -rf "$W"; mkdir -p "$W"
   # A file-level copy of only what the gate reads; far cheaper than cloning upstream/.
   (cd "$REPO" && tar cf - tests/golden tools upstream/oolite-tests/Checklist-files \
-      upstream/oolite/tests/component 2>/dev/null) | (cd "$W" && tar xf -)
+      oolite-dev/tests/component 2>/dev/null) | (cd "$W" && tar xf -)
   mkdir -p "$W/tests/golden/pending/013-constrictor"; cp "$ACC" "$W/tests/golden/pending/013-constrictor/acceptance.txt"
   ( cd "$W" && python3 -c "$prog" ) || { echo "MUTANT $n ($label): mutator FAILED to apply"; return; }
   # Replay the WHOLE stored acceptance block, not one hand-picked line. Judging a mutant by the

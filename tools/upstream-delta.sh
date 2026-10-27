@@ -14,7 +14,7 @@
 #     bash tools/upstream-delta.sh --file <path> --check    # check another copy (the probe uses it)
 #
 # --check fails when: the baseline is missing or not a commit id; a module directory under
-# upstream/oolite/src that holds source is not in the table (a new directory must be classified);
+# oolite-dev/src that holds source is not in the table (a new directory must be classified);
 # a row names a directory that does not exist or a status other than frozen/open; a module that
 # already holds Phase 3 work (a cxx:: class or an +ObjCBridge facade) is not frozen; a delta row
 # has a malformed commit id, an unknown status, or (to-port/ported) no bead id. Offline.
@@ -26,7 +26,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="$REPO_ROOT/upstream/oolite/src"
+SRC="$REPO_ROOT/oolite-dev/src"
 FILE="$REPO_ROOT/docs/UPSTREAM_DELTA.md"
 
 die() { printf 'upstream-delta: %s\n' "$*" >&2; exit 1; }
@@ -140,7 +140,7 @@ case "$mode" in
     ;;
   --restore-frozen)
     git -C "$REPO_ROOT" rev-parse --verify --quiet "$arg^{commit}" >/dev/null || die "not a commit: $arg"
-    mapfile -t specs < <(frozen_pathspecs "upstream/oolite/")
+    mapfile -t specs < <(frozen_pathspecs "oolite-dev/")
     # Files upstream added inside a frozen module go; everything else in it returns to $arg.
     git -C "$REPO_ROOT" diff --name-only --diff-filter=A "$arg" -- "${specs[@]}" \
       | while read -r f; do git -C "$REPO_ROOT" rm -q --cached -- "$f"; rm -f -- "$REPO_ROOT/$f"; done

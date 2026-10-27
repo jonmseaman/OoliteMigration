@@ -84,7 +84,7 @@
 #
 #   * checking the tree for "goldens/ is unmodified" is meaningless - a tree has no history;
 #   * checking the tree for a warning suppression is permanently red, because
-#     upstream/oolite/src/Core/OOCocoa.m and three other upstream files carry pre-existing
+#     oolite-dev/src/Core/OOCocoa.m and three other upstream files carry pre-existing
 #     `#pragma ... diagnostic` lines that this migration did not add and may not delete
 #     (rule 2 forbids touching them gratuitously). A tree-absolute check would therefore have
 #     to be born with an exemption list the size of the defect, which is how a guard gets
@@ -209,14 +209,14 @@
 # (meson/Makefile/GNUmakefile/.mk) missed most of the places THIS repository actually builds
 # from. Justified against `git ls-files`, not against imagination:
 #
-#   .yml/.yaml           15 tracked, including upstream/oolite/.github/workflows/build-all.yaml
-#                        and test_builds.yaml, upstream/oolite/.travis.yml and
+#   .yml/.yaml           15 tracked, including oolite-dev/.github/workflows/build-all.yaml
+#                        and test_builds.yaml, oolite-dev/.travis.yml and
 #                        installers/flatpak/space.oolite.Oolite.yaml - all of which set build
 #                        flags. This is where a -Wno- would actually be added today.
-#   meson.options        upstream/oolite/meson.options is the tree's real meson option file;
+#   meson.options        oolite-dev/meson.options is the tree's real meson option file;
 #                        only the legacy spelling meson_options.txt was matched, so the live one
 #                        was unscanned.
-#   .pbxproj             7 tracked Xcode projects under upstream/oolite/tools and
+#   .pbxproj             7 tracked Xcode projects under oolite-dev/tools and
 #                        upstream/oolite-tests; OTHER_CFLAGS lives there.
 #   .ini                 tools/meson/ccache-clang.ini is a meson cross/native file (already in
 #                        the list; kept and now documented).
@@ -233,7 +233,7 @@
 # tracked files of the newly added types: NONE contains a suppression hit, and exactly ONE
 # carries a pre-existing DENY-LIST hit -
 #
-#     upstream/oolite/installers/flatpak/space.oolite.Oolite.yaml:93
+#     oolite-dev/installers/flatpak/space.oolite.Oolite.yaml:93
 #     (the mozillajs-linux static-lib URL, matched by the JS pattern)
 #
 # which is harmless and must not be read as "the extension was paid for with a pre-existing
@@ -245,7 +245,7 @@
 #
 # DOES ANY OF THIS APPLY TO upstream/ ?
 #
-# Yes, for suppression, tests and the deny-list, and deliberately so: upstream/oolite is a git
+# Yes, for suppression, tests and the deny-list, and deliberately so: oolite-dev is a git
 # subtree of OUR fork and is the tree being migrated (CLAUDE.md, ADR-0017). It is where the
 # migration's warnings, its tests and its JS_*/GNUstep symbols all live, so exempting it would
 # exempt the entire project. Pre-existing upstream suppressions are not an obstacle because only
@@ -304,7 +304,7 @@ tools/guardrails.sh|the guard itself: this header quotes every construct it forb
 tools/guardrails-selftest|constructs the violations that prove the guard fires
 tools/deny-list.txt|is the pattern list; every line is a deny-list hit by definition
 tools/gen-stories.py|emits the verbatim prohibition block into every generated story
-upstream/oolite/src/Core/Scripting/ooscript/JSEngine_quickjs.cpp|the QuickJS-ng backend of the ooscript façade (ADR-0002 step 2): the ONE translation unit whose job is to call QuickJS-ng's own JS_*-prefixed C API (JS_NewRuntime, JS_NewContext, JSRuntime, JSContext, JSValue, JS_SetOpaque, etc.). The façade header beside it is NOT exempt.
+oolite-dev/src/Core/Scripting/ooscript/JSEngine_quickjs.cpp|the QuickJS-ng backend of the ooscript façade (ADR-0002 step 2): the ONE translation unit whose job is to call QuickJS-ng's own JS_*-prefixed C API (JS_NewRuntime, JS_NewContext, JSRuntime, JSContext, JSValue, JS_SetOpaque, etc.). The façade header beside it is NOT exempt.
 tools/check-jsengine-facade.sh|the façade's acceptance: it greps the header for the engine names it must not contain
 tools/tier-b-guardrails-proof.sh|plants the deny-listed symbol that proves tier-b's stage 0 fires
 tools/refactor/js-stubs.sh|documents, in comments/usage text, the JS_* call-site patterns it mechanically rewrites onto the façade (bead oo-oio); it does not itself call any engine function
@@ -317,7 +317,7 @@ tools/captures/plist-description/capture.sh|builds and links probe.m against gnu
 tools/check-foundation-free.sh|the Foundation census (ADR-0054/0055): its job is to find the NS* names, so its kind table and its --selftest fixtures spell them (bead oo-3rb.345); like tools/check-jsengine-facade.sh, it greps for the names it must not find and is never part of the game build
 tools/codemods/description-family.py|the -description-family codemod (ADR-0055 item 1, bead oo-qps.43): its inline self-test cases are Objective-C fixtures that must spell the Foundation string type to prove the rewrite leaves it alone (bead oo-3rb.345); pattern text and fixtures, never built into the game
 tools/codemods/key-constants.py|the key-constant codemod (bead oo-qps.42): its job is to find and rewrite Foundation-string key constants, so its regex, docstring and self-test fixtures spell the type it rewrites (bead oo-3rb.345); pattern text and fixtures, never built into the game
-upstream/oolite/tests/gui/test_g8_scenario_screen_back_out.py|GUI test G8: it reads PlayerEntityLoadSave.mm and must accept either spelling of -loadPlayerFromFile:asNew:, the legacy Foundation-typed one included (Jon approved both, bead oo-3rb.332), so the legacy signature is a string it searches for, not a use (bead oo-3rb.345); a test, never part of the game build
+oolite-dev/tests/gui/test_g8_scenario_screen_back_out.py|GUI test G8: it reads PlayerEntityLoadSave.mm and must accept either spelling of -loadPlayerFromFile:asNew:, the legacy Foundation-typed one included (Jon approved both, bead oo-3rb.332), so the legacy signature is a string it searches for, not a use (bead oo-3rb.345); a test, never part of the game build
 tools/refactor/testdata/OOJSVector.pre-retarget.m|frozen pre-retarget fixture (restored from git history) used only to prove js-stubs.sh's rewrite (bead oo-oio); never built, never linked
 tools/refactor/testdata/js-stubs-string-literal.m|regression fixture proving js-stubs.sh leaves JS_* tokens inside string literals untouched (bead oo-oio review round 2); never built, never linked
 tools/refactor/testdata/js-stubs-comment-call.m|regression fixture proving js-stubs.sh leaves JS_* call-shaped mentions inside comments untouched (bead oo-oio review round 2); never built, never linked
@@ -1258,8 +1258,8 @@ check_upstream_delta() {
 #
 # ONE git diff and one grep, no per-file forks: this must stay well inside accept's 300 s.
 # A file that legitimately holds such a line goes in MARKER_EXEMPT, with its reason:
-#   upstream/oolite/Resources/Schemata/README.txt  a plain-text heading underlined by 7 '='
-MARKER_EXEMPT="upstream/oolite/Resources/Schemata/README.txt"
+#   oolite-dev/Resources/Schemata/README.txt  a plain-text heading underlined by 7 '='
+MARKER_EXEMPT="oolite-dev/Resources/Schemata/README.txt"
 check_conflict_markers() {
   local hits more cr=$'\r'
   hits=$(git -c core.quotePath=false diff --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ \

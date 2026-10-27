@@ -1,6 +1,6 @@
 {
   "build_flags": {
-    "build_dir": "C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test",
+    "build_dir": "C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test",
     "detail": "242 of 242 translation units do NOT carry -ffp-contract=off (first: ../../src/Core/AI.m). Without it clang may fuse a*b+c into a single FMA, which rounds once instead of twice and changes the low bits of every float in the dump - exactly the cross-platform variation the golden policy exists to remove.",
     "effective_optimization_levels": {
       "-O2": 242

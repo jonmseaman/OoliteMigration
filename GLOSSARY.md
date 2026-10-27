@@ -34,7 +34,7 @@ Terms used across the roadmap, phase docs, and execution model. Agents: read thi
 | **Story** | An L3 work unit: ≤ 1,500 lines read, ≤ 400 written, ≤ 8 files, command-shaped acceptance, no new interfaces, 2–3 sentences, names an exemplar. |
 | **Sweep** | A set of replication stories generated from an inventory command against one seam's exemplar. |
 | **TCC** | macOS privacy grants (Accessibility, Screen Recording). Per-app, interactive, cannot be scripted. Why the macOS GUI tier runs on Jon's Mac. |
-| **Subtree** | `upstream/oolite` is a `git subtree` of the fork, not a submodule: one repo, one branch per bead, one merge. `git subtree push` mirrors it to the fork's `migration` branch. [ADR-0017](docs/decisions/0017-native-windows-subtree.md). |
+| **Submodule layout** | `oolite-dev` (the fork's `develop`, the game being migrated) and `oolite-main` (its `master`) are submodules of `jonmseaman/oolite`; `upstream/*` are OoliteProject's repositories, unmodified. Replaced the subtree layout on 2026-10-27. [ADR-0067](docs/decisions/0067-submodules-replace-subtrees.md). |
 | **Tier A / B / C** | In-loop (< 30 s, offline, compiler-only) / per bead branch (< 10 min, headless) / per merge batch (every supported platform, ASan, the GUI tier, everything). |
 | **Tier 1 / 2 / 3 corpus** | ~30 / ~150 / all expansions, run per-commit / nightly / weekly. Distinct from Tier A/B/C. |
 | **Verification vs. adjudication** | Verification (did behaviour change?) is decided by goldens, sanitizers, deny-lists. Adjudication (is a failed check legitimate?) is proposed by a model and decided by Jon. |

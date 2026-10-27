@@ -2,7 +2,7 @@
 """Generate callObjC()'s name table for entities (bead oo-9ht.44, ADR-0056 amendment oo-9ht.44).
 
 callObjC() on an entity dispatches through kOOJSCallEntityMethods
-(upstream/oolite/src/Core/Scripting/OOJSCallEntityMethods.h) instead of reading the Objective-C
+(oolite-dev/src/Core/Scripting/OOJSCallEntityMethods.h) instead of reading the Objective-C
 method signatures of the entity's object. The table is exactly the instance methods the root
 facade's @implementation blocks define (Entity and its categories: the forwarders, the shader,
 beacon and JS categories, the cascade's) and the rows of the by-name table
@@ -24,7 +24,7 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SRC = ROOT / "upstream/oolite/src"
+SRC = ROOT / "oolite-dev/src"
 # The root entity facade (Entity+ObjCBridge.mm) was deleted by bead oo-dpyk8 (oo-9ht.39 step 5k.4): its
 # @implementation blocks' callable methods stay callObjC() names (answered on the C++ entity by
 # OOEntityCalledByName.mm's facade rows), rendered as they were, in its order: (name, the #if

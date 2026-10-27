@@ -152,8 +152,8 @@ sends to `oo::ToObjC(this)`.
   `@implementation` left in the four `ShipEntity*.mm` files, and the guardrails.
 
 ```slice-plan
-source: upstream/oolite/src/Core/Entities/ShipEntity.cpp
-header: upstream/oolite/src/Core/Entities/ShipEntity.h
+source: oolite-dev/src/Core/Entities/ShipEntity.cpp
+header: oolite-dev/src/Core/Entities/ShipEntity.h
 header-decls: per-slice
 
 slice 1: class shell: the C++ class, the façade, the adapter and the _cxxShip-> rewrite; init, dealloc, SubEntityRelationship

@@ -198,7 +198,7 @@ def main():
 
     # The seed must actually reach the game, and the run must be isolated. Same three checks
     # scenario 001's gate makes, for the same measured reasons (beads oo-het, oo-gla).
-    console_path = os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component", "console.py")
+    console_path = os.path.join(REPO_ROOT, "oolite-dev", "tests", "component", "console.py")
     if not os.path.isfile(console_path):
         refuse("no console.py at %s" % console_path)
     with open(console_path, "r", encoding="utf-8") as handle:

@@ -27,7 +27,7 @@ fi
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/.." && pwd)"
-APP="$REPO_ROOT/upstream/oolite/build/meson_deployment/oolite.app"
+APP="$REPO_ROOT/oolite-dev/build/meson_deployment/oolite.app"
 
 die() { printf 'check-deployment-goldens: %s\n' "$*" >&2; exit 1; }
 
@@ -44,7 +44,7 @@ fi
 [ -f "$APP/oolite.exe" ] || die "no deployment binary at $APP/oolite.exe; run tools/build-windows.sh deployment"
 
 # It must really be the deployment configuration, not a test build that happens to sit there.
-grep -q -- '-DNDEBUG' "$REPO_ROOT/upstream/oolite/build/meson_deployment/build.ninja" \
+grep -q -- '-DNDEBUG' "$REPO_ROOT/oolite-dev/build/meson_deployment/build.ninja" \
   || die "build/meson_deployment does not compile with -DNDEBUG; not the deployment flavour"
 
 if [ -d /ucrt64/bin ]; then export PATH="/ucrt64/bin:$PATH"; fi

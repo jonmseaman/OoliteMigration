@@ -21,8 +21,8 @@ file every time, so the numbers below are only a snapshot.
 | verbatim | manifest/string helpers, dependency stack | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/OOOXZManager.cpp
-header: upstream/oolite/src/Core/OOOXZManager.h
+source: oolite-dev/src/Core/OOOXZManager.cpp
+header: oolite-dev/src/Core/OOOXZManager.h
 
 slice 1: class shell, paths, filters, manifests and download plumbing
   @OOOXZManager

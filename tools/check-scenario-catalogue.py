@@ -11,7 +11,7 @@ ways a design document fails are all checked here as data properties, not as pro
      docs/phases/scenario-catalogue.json and refuses anything that is not a complete record.
   2. IT SPECIFIES SOMETHING THAT CANNOT BE BUILT.  Every observable a new scenario names is
      RESOLVED against artefacts that exist today: JS members against the committed API snapshot
-     oxp-contract/js-api-1.93.json, log literals against upstream/oolite/src, harness and file
+     oxp-contract/js-api-1.93.json, log literals against oolite-dev/src, harness and file
      observables against the filesystem.  An observable that does not resolve and is not marked
      blocked with a named blocker bead fails the gate.  This is the check the fleet has paid for
      five times: S2, S4, S5, S6, S7 and S8 were each parked on an observable that did not exist.
@@ -49,7 +49,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 CATALOGUE = os.path.join(REPO, "docs", "phases", "scenario-catalogue.json")
 API_SNAPSHOT = os.path.join(REPO, "oxp-contract", "js-api-1.93.json")
-SRC_DIR = os.path.join(REPO, "upstream", "oolite", "src")
+SRC_DIR = os.path.join(REPO, "oolite-dev", "src")
 PHASE_DOC = os.path.join(REPO, "docs", "phases", "0-safety-net.md")
 DESIGN_DOC = os.path.join(REPO, "docs", "phases", "0-scenarios-18-20.md")
 BEADS = os.path.join(REPO, ".beads", "issues.jsonl")
@@ -143,7 +143,7 @@ def resolve_observable(obs, api):
     if kind == "log":
         if _log_literal_exists(expr):
             return True, None
-        return False, "no engine source under upstream/oolite/src emits the log literal %r" % expr
+        return False, "no engine source under oolite-dev/src emits the log literal %r" % expr
     if kind in ("harness", "file"):
         if _path_exists(expr):
             return True, None

@@ -26,8 +26,8 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | `DefaultsString()`, `SameMode()` | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/SDL/MyOpenGLView.cpp
-header: upstream/oolite/src/SDL/MyOpenGLView.h
+source: oolite-dev/src/SDL/MyOpenGLView.cpp
+header: oolite-dev/src/SDL/MyOpenGLView.h
 
 slice 1: window and OpenGL lifecycle, splash screen
   -[MyOpenGLView getDisplayId]

@@ -4,7 +4,7 @@
 #
 #     bash tools/tier-a-stale-probe.sh
 #
-# THE DEFECT THIS GUARDS. After bead oo-ss8 changed upstream/oolite/meson.build, the shared
+# THE DEFECT THIS GUARDS. After bead oo-ss8 changed oolite-dev/meson.build, the shared
 # build dir's build.ninja was older than it, so tier-a's ninja call first ran ninja's
 # REGENERATE_BUILD rule (`meson --internal regenerate`). Under that rule upstream's
 # ShellScripts/common/get_version.sh:7-27 cannot identify meson as its parent (it shows as

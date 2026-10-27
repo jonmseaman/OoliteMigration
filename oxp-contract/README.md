@@ -30,7 +30,7 @@ are what the bead's acceptance and CI execute: a clean checkout has no game bina
 ### What the numbers actually are
 
 The story that commissioned this file said "61 JS globals". The build disagrees, and the build
-wins. Measured against `upstream/oolite` at version 1.93:
+wins. Measured against `oolite-dev` at version 1.93:
 
 | Count | Value | What it is |
 |---|---|---|
@@ -136,7 +136,7 @@ comparison before committing it.
 
 ## `js-api-source.json`
 
-Scraped from the engine SOURCE (the property and function tables in `upstream/oolite/src`) by
+Scraped from the engine SOURCE (the property and function tables in `oolite-dev/src`) by
 `tools/js_api_source_snapshot.py --out`, byte-compared by `--check` (Tier C `jsapi`). It is
 source-derived metadata, not a behaviour record: it adds what the live snapshot cannot see
 (READONLY vs READWRITE, arity), and each method's `native` is the C++ identifier in the table,

@@ -396,9 +396,9 @@ def _gate_tree(tmp_path, spec_edit=None, prov_edit=None, gate_edit=None):
     root = tmp_path / "t"
     staged = root / "tests" / "golden" / "pending" / SCENARIO
     staged.mkdir(parents=True)
-    comp = root / "upstream" / "oolite" / "tests" / "component"
+    comp = root / "oolite-dev" / "tests" / "component"
     comp.mkdir(parents=True)
-    shutil.copy(os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component", "console.py"),
+    shutil.copy(os.path.join(REPO_ROOT, "oolite-dev", "tests", "component", "console.py"),
                 comp / "console.py")
 
     gdir = golden_dir()

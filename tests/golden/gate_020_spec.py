@@ -89,12 +89,12 @@ POLICY_QUANT_DECIMALS = 3
 EXPECTED_SYSTEM_ID = 7
 SAVE_SUFFIX = "Resources/Scenarios/oolite-standard.oolite-save"
 
-# The two stock HUD plists shipped in upstream/oolite/Resources/Config. A mode naming anything
+# The two stock HUD plists shipped in oolite-dev/Resources/Config. A mode naming anything
 # else is either an OXP HUD (not present in a clean checkout, so the scenario would silently fall
 # back) or a typo, and -switchHudTo: fails SILENTLY from JS: OOJSPlayerShip.m:921-932 discards the
 # BOOL. So an unresolvable plist name must be caught here, offline, not at run time.
 STOCK_HUD_PLISTS = ("hud.plist", "hud-small.plist")
-HUD_PLIST_DIR = os.path.join(REPO_ROOT, "upstream", "oolite", "Resources", "Config")
+HUD_PLIST_DIR = os.path.join(REPO_ROOT, "oolite-dev", "Resources", "Config")
 
 # calibration.json's tolerance, measured by bead oo-ae9 against 3-D SCENE changes. Recorded here
 # ONLY so this gate can assert that 020's own number was derived independently rather than copied.
@@ -282,7 +282,7 @@ def check_read_where_it_acts(source):
 
 
 def check_isolation(source):
-    console_path = os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component", "console.py")
+    console_path = os.path.join(REPO_ROOT, "oolite-dev", "tests", "component", "console.py")
     if not os.path.isfile(console_path):
         refuse("no console.py at %s" % console_path)
     with open(console_path, "r", encoding="utf-8") as handle:

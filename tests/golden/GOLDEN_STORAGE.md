@@ -10,7 +10,7 @@ python3 -m pytest tests/golden/test_golden_storage.py -q
 
 # do the build flags the policy claims actually reach the compiler?
 python3 tests/golden/check_build_flags.py \
-  --configure-from "$PWD/upstream/oolite" --build-dir /tmp/flagcheck
+  --configure-from "$PWD/oolite-dev" --build-dir /tmp/flagcheck
 
 # two fresh runs vs each other and vs the stored golden (2 launches, ~30s warm)
 export PATH=/ucrt64/bin:$PATH   # else the loader kills oolite.exe with 3221225781, no log
@@ -179,7 +179,7 @@ by itself a failure.
 
 ## The build flags, and why they are coupled to the quantisation
 
-Two flags are pinned in `upstream/oolite/meson.build`:
+Two flags are pinned in `oolite-dev/meson.build`:
 
 | flag | where | why |
 |---|---|---|

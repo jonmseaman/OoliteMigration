@@ -36,7 +36,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 # Engine sources are named by STEM: the migration renames .m -> .mm -> .cpp (oo-7j3t).
-sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "oolite-dev", "tests"))
 from source_paths import resolve_source  # noqa: E402
 SCENARIO = "010-png-test-suite"
 
@@ -322,7 +322,7 @@ def test_the_texture_channels_are_off_by_default_in_logcontrol():
     becomes a no-op rather than a necessity, and the docstring explaining it becomes a lie. Better
     to learn that from a red test than from a confusing green one.
     """
-    logcontrol = os.path.join(REPO_ROOT, "upstream", "oolite", "Resources", "Config",
+    logcontrol = os.path.join(REPO_ROOT, "oolite-dev", "Resources", "Config",
                               "logcontrol.plist")
     with open(logcontrol, encoding="utf-8", errors="replace") as handle:
         text = handle.read()

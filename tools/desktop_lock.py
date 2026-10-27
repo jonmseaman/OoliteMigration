@@ -2,7 +2,7 @@
 
 Why this module exists (bug oo-ccy9). ``tools/gui-lock`` is the interactive desktop's mutex, and
 until this landed only ONE caller took it: the GUI tier's ``desktop_lock`` fixture
-(upstream/oolite/tests/gui/conftest.py). Every other tool that launches the game launched it
+(oolite-dev/tests/gui/conftest.py). Every other tool that launches the game launched it
 straight onto the same desktop. On Windows that is not a theoretical overlap:
 ``SDL_VIDEODRIVER=offscreen`` is deliberately left unset here (MSYS2's Mesa ships no EGL, so the
 offscreen driver cannot create a context and the game dies during init - see
@@ -316,7 +316,7 @@ def desktop_lock(tag, timeout=None, start=None, stream=None):
 def import_from(start):
     """Import this module from a tree that does not have tools/ on sys.path.
 
-    Used by the subtree's own launchers, which live under upstream/oolite/tests/ and must keep
+    Used by the subtree's own launchers, which live under oolite-dev/tests/ and must keep
     working when that subtree is pushed to the fork on its own. Returns None when there is no
     repository around the caller, which the caller treats as "no lock to take".
     """

@@ -214,7 +214,7 @@ if want M13; then
   run_mutant M13 queue \
     '  if git -C "$REPO" subtree push --prefix="$prefix" "$remote" "$branch" >/dev/null 2>&1; then' \
     '  if true; then' \
-    "S13" "fork/migration tree == local upstream/oolite tree"
+    "S13" "fork/migration tree == local oolite-dev tree"
 fi
 if want M14; then
   printf '\n== M14 DATA: the mirror escapes the push guard and fires on an UNCONFIRMED run\n'

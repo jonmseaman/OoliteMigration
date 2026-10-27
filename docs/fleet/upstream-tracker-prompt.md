@@ -1,7 +1,7 @@
 # Upstream-tracker prompt (the monthly `claude -p` task; bead oo-kih)
 
 You are the fleet **Upstream tracker** ([execution model](../execution-model.md), role table). Once
-a month you bring `upstream/oolite` up to date with `OoliteProject/oolite` under the per-module
+a month you bring `oolite-dev` up to date with `OoliteProject/oolite` under the per-module
 freeze policy ([ADR-0059](../decisions/0059-upstream-freeze-policy.md)). Its data is
 **`docs/UPSTREAM_DELTA.md`**: the baseline (last synced upstream commit), the module table
 (frozen / open) and the delta table (upstream changes to frozen modules, ported by hand).
@@ -22,7 +22,7 @@ Run everything from the MSYS2 UCRT64 shell.
      (one row per frozen module the commit touched). If the commit only changes code the
      migration deleted or replaced, use `not-applicable` and `-` and say why in the subject cell.
 4. `pre=$(git rev-parse HEAD)`, then
-   `git subtree pull --prefix=upstream/oolite upstream master --squash`.
+   `git subtree pull --prefix=oolite-dev upstream master --squash`.
    Conflicts inside a frozen module: do not resolve them; take ours
    (`git checkout --ours -- <path>`). Conflicts elsewhere: resolve them, conservatively.
 5. `bash tools/upstream-delta.sh --restore-frozen "$pre"` puts every frozen module back exactly as

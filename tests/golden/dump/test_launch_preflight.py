@@ -44,13 +44,13 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, HERE)
-sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "oolite-dev", "tests", "component"))
 
 import state_dump  # noqa: E402
 
 APP_DIR = os.environ.get(
     "OO_APP_DIR",
-    os.path.join(REPO_ROOT, "upstream", "oolite", "build", "meson_test", "oolite.app"),
+    os.path.join(REPO_ROOT, "oolite-dev", "build", "meson_test", "oolite.app"),
 )
 
 needs_build = pytest.mark.skipif(

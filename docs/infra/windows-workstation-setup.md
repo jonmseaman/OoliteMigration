@@ -73,7 +73,7 @@ still the fastest way to reproduce the exact set: `setup-vm.ps1` then `setup-vm-
    `OO_CORE_BUILD=meson_test_gcc bash tools/check-core-tests.sh` the core tests once the test
    suite builds under GCC (bead oo-1q4, [ADR-0063](../decisions/0063-gcc-flavour-and-gcc-only-diagnostics.md)
    item 4: until then `--gcc` stops in the test suite, and `meson compile -C
-   upstream/oolite/build/meson_test_gcc post_build` builds the game alone). It is UCRT64's GCC,
+   oolite-dev/build/meson_test_gcc post_build` builds the game alone). It is UCRT64's GCC,
    not a MINGW64 environment: the phase doc's "GCC (MINGW64)" predates upstream's Windows CI
    moving to UCRT64 only, and one environment gives both compilers one set of libraries (the
    recorded default, bead oo-1q4). Under GCC, libstdc++ makes `std::vsnprintf` MinGW's C99 printf
@@ -177,7 +177,7 @@ The beads database is a local Dolt DB per machine; `bd dolt push` / `pull` sync 
 - [ ] `claude --version` works and `/login` has been done
 - [ ] `hermes --version` works; `HERMES_GIT_BASH_PATH` is MSYS2's bash
 - [ ] `bd ready` lists issues
-- [ ] `cd upstream/oolite && ./mk.sh build test` is green
+- [ ] `cd oolite-dev && ./mk.sh build test` is green
 - [ ] `python3 tests/launch_snapshot.py` runs
 - [ ] `schtasks /Query /TN "OoliteMigration Nightly"` exits 0 (the nightly Tier C task)
 - [ ] `schtasks /Query /TN "OoliteMigration Weekly Corpus"` exits 0 (the weekly Tier 3 corpus task)

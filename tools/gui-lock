@@ -8,7 +8,7 @@
 # and a CI step can all take the same lock without sharing a language.
 #
 # This script is the SINGLE SOURCE OF TRUTH for the lock path:
-# upstream/oolite/tests/gui/conftest.py::_lock_path() shells out to `tools/gui-lock path` and
+# oolite-dev/tests/gui/conftest.py::_lock_path() shells out to `tools/gui-lock path` and
 # only falls back to its own copy of the rules when there is no bash. The path is emitted in
 # native `C:/...` form via `cygpath -m`, because handing an MSYS `/c/...` path to a native
 # Windows python resolves it to `C:/c/...` (WinError 3) and would lock a different directory.

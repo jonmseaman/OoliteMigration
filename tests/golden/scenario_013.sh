@@ -27,7 +27,7 @@ set -u
 cd "$(dirname "$0")/../.." || exit 2
 export PATH=/ucrt64/bin:$PATH
 
-APP_DIR="${OO_APP_DIR:-C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app}"
+APP_DIR="${OO_APP_DIR:-C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app}"
 SCEN="tests/golden/constrictor_save.py"
 CHECKER="tests/golden/check_constrictor_evidence.py"
 SCRATCH="${LOCALAPPDATA:-$HOME}/Temp/oo_5h8e_scenario"

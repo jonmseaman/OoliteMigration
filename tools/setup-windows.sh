@@ -24,7 +24,7 @@ set -euo pipefail
 MSYS_PKGS=(dos2unix git pactoys unzip)
 
 # mingw-w64-ucrt-x86_64-* packages. mesa supplies the llvmpipe opengl32.dll the goldens copy
-# beside the binary (upstream/oolite/tests/run_test_fn.sh); ccache backs the shared compiler
+# beside the binary (oolite-dev/tests/run_test_fn.sh); ccache backs the shared compiler
 # cache; jq is required by the fleet scripts (.agents/skills/beads-worker/scripts/_lib.sh);
 # clang-tools-extra supplies clang-tidy, which tools/tier-a.sh requires (Phase 0 item 0.9) -
 # the clang package alone does not ship it, so Tier A dies on a machine provisioned without it.
@@ -60,7 +60,7 @@ WINDEPS_PKGS=(libobjc2 gnustep-make)
 
 # Pure-Python, no MSYS2 package exists. pytest-bdd drives the component tier (ADR-0018);
 # pyautogui drives the GUI tier against a real window (docs/phases/0-gui-tier.md). The GUI
-# tier's own pin is upstream/oolite/tests/gui/requirements.txt, installed by tools/gui-tier.sh
+# tier's own pin is oolite-dev/tests/gui/requirements.txt, installed by tools/gui-tier.sh
 # on every run; this list keeps a set-up-once machine from paying for that install each time.
 # Keep the two in step: a name added there belongs here.
 PIP_PKGS=(pytest-bdd pyautogui)
@@ -120,7 +120,7 @@ fi
 for c in pacman curl git; do
   command -v "$c" >/dev/null 2>&1 || die "missing command: $c"
 done
-[ -d "$REPO_ROOT/upstream/oolite" ] || die "upstream/oolite not found under $REPO_ROOT; run from a full checkout"
+[ -d "$REPO_ROOT/oolite-dev" ] || die "oolite-dev not found under $REPO_ROOT; run from a full checkout"
 
 say "MSYS2 $MSYSTEM, prefix $MINGW_PREFIX"
 
@@ -158,7 +158,7 @@ if [ ${#needed_windeps[@]} -eq 0 ]; then
   skip "oolite windows dependencies (${WINDEPS_PKGS[*]})"
 elif want "windeps: ${needed_windeps[*]}"; then
   say "installing oolite windows dependencies via upstream install_deps.sh clang (${needed_windeps[*]})"
-  "$REPO_ROOT/upstream/oolite/ShellScripts/Windows/install_deps.sh" clang
+  "$REPO_ROOT/oolite-dev/ShellScripts/Windows/install_deps.sh" clang
   for p in "${WINDEPS_PKGS[@]}"; do
     have_pkg "mingw-w64-ucrt-x86_64-$p" \
       || die "install_deps.sh finished but mingw-w64-ucrt-x86_64-$p is still missing; see https://github.com/OoliteProject/oolite_windeps_build/releases"
@@ -169,7 +169,7 @@ fi
 #
 # MSYS2's Python is marked externally-managed, so pip refuses to touch site-packages without
 # --break-system-packages. These are pure-Python and this is a dedicated build machine; a venv
-# would be invisible to upstream/oolite/tests/run_test_fn.sh, which calls bare `python3`.
+# would be invisible to oolite-dev/tests/run_test_fn.sh, which calls bare `python3`.
 
 pip_module() { echo "${1//-/_}"; }
 

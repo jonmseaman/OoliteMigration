@@ -25,8 +25,8 @@ selftest.js                                 offline Node self-test (no game buil
 `ResourceManager +loadScripts` evaluates every world script's top-level body —
 which is where this shim installs its polyfills — before
 `PlayerEntity -doWorldScriptEvent:` dispatches the first event (`startUp`) to
-*any* world script (`upstream/oolite/src/Core/ResourceManager.m`,
-`upstream/oolite/src/Core/Entities/PlayerEntity.m`). So the polyfills exist
+*any* world script (`oolite-dev/src/Core/ResourceManager.m`,
+`oolite-dev/src/Core/Entities/PlayerEntity.m`). So the polyfills exist
 before an abandoned expansion's own `startUp()` or any later handler can call
 `toSource()`/`quote()`, regardless of where in the OXP scan order this shim's
 folder happens to sit. `Config/world-scripts.plist` (a single script, no

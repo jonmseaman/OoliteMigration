@@ -6,8 +6,8 @@ file go into which conversion story ("slice"), so that each story reads under th
 budget (docs/phases/3-cpp-conversion.md, seam "Pre-splitting files > 400 lines"; docs/templates/story.md).
 The plan is the markdown file's single fenced block tagged `slice-plan`:
 
-    source: upstream/oolite/src/Core/Foo.mm      # the file being split (required)
-    header: upstream/oolite/src/Core/Foo.h       # its header; every slice reads it (optional)
+    source: oolite-dev/src/Core/Foo.mm      # the file being split (required)
+    header: oolite-dev/src/Core/Foo.h       # its header; every slice reads it (optional)
     header-decls: per-slice                      # optional (bead oo-9ht.140): a slice reads the
                                                  # header's method declarations of its own units
                                                  # only, and all the rest of the header (macros,

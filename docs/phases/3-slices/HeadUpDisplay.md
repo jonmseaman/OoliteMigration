@@ -80,8 +80,8 @@ file every time, so the numbers below are only a snapshot.
 | verbatim | plain-C helpers and string-drawing primitives | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/HeadUpDisplay.cpp
-header: upstream/oolite/src/Core/HeadUpDisplay.h
+source: oolite-dev/src/Core/HeadUpDisplay.cpp
+header: oolite-dev/src/Core/HeadUpDisplay.h
 
 slice 1: class shell: lifecycle, configuration, widgets, state and accessors
   @HeadUpDisplay

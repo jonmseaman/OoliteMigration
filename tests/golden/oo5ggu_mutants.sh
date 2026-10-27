@@ -119,7 +119,7 @@ echo "not a synthetic one."
 echo "=========================================================="
 run "D/L2 RED (shared pre-flag build dir)" RED \
     python3 tests/golden/check_build_flags.py \
-      --build-dir C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test
+      --build-dir C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test
 run "D/L2 GREEN (configured from source)" GREEN bash "$FLAGS"
 
 echo "=========================================================="
@@ -129,7 +129,7 @@ echo "'-O2' is still on every command line."
 echo "=========================================================="
 E="$TMP/nodebugfalse"
 MINGW_PREFIX=/ucrt64 MSYSTEM=UCRT64 bash -c \
-  'meson setup "$1" "$2" >/dev/null 2>&1' _ "$(cygpath -m "$E")" "$(cygpath -m "$REPO/upstream/oolite")"
+  'meson setup "$1" "$2" >/dev/null 2>&1' _ "$(cygpath -m "$E")" "$(cygpath -m "$REPO/oolite-dev")"
 run "E/L2 RED (no -Ddebug=false)" RED \
     python3 tests/golden/check_build_flags.py --build-dir "$(cygpath -m "$E")"
 

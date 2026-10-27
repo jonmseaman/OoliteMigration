@@ -24,8 +24,8 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | `oo::PList` / string helpers | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/Entities/PlayerEntityKeyMapper.cpp
-header: upstream/oolite/src/Core/Entities/PlayerEntityKeyMapper.h
+source: oolite-dev/src/Core/Entities/PlayerEntityKeyMapper.cpp
+header: oolite-dev/src/Core/Entities/PlayerEntityKeyMapper.h
 
 slice 1: key-mapper screen and the key-function list
   -[PlayerEntity initCheckingDictionary]

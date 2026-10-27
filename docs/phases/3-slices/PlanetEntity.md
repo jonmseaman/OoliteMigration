@@ -22,8 +22,8 @@ recounts the file every time, so the numbers below are only a snapshot.
 | verbatim | dictionary helpers, `baseVertexIndexForEdge()` | — | not read |
 
 ```slice-plan
-source: upstream/oolite/src/Core/Entities/PlanetEntity.mm
-header: upstream/oolite/src/Core/Entities/PlanetEntity.h
+source: oolite-dev/src/Core/Entities/PlanetEntity.mm
+header: oolite-dev/src/Core/Entities/PlanetEntity.h
 retired-by: oo-9ht.126
 
 slice 1: class shell, lifecycle, collision, update, accessors and shuttles

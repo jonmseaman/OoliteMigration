@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # The unit tests of converted game classes (Phase 3; proposed ADR-0056, exemplar bead oo-11m):
-# upstream/oolite/tests/unit/core/test_<Class>.cpp (.mm until bead oo-dbz.5), one executable each, linked from the game's own
+# oolite-dev/tests/unit/core/test_<Class>.cpp (.mm until bead oo-dbz.5), one executable each, linked from the game's own
 # objects by tests/unit/core/meson.build and run as `meson test --suite core`.
 #
 #     tools/build-windows.sh test && bash tools/check-core-tests.sh           # every class
@@ -21,7 +21,7 @@ if [ "${MSYSTEM:-}" != "UCRT64" ] && [ -z "${OO_CORE_TESTS_REEXEC:-}" ] && [ -x 
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OOLITE="$REPO_ROOT/upstream/oolite"
+OOLITE="$REPO_ROOT/oolite-dev"
 TEST_DIR="$OOLITE/tests/unit/core"
 # OO_CORE_BUILD names another build directory under build/, e.g. meson_test_gcc for the GCC build
 # (tools/build-windows.sh --gcc test; bead oo-1q4). Default: the Clang 'test' build.

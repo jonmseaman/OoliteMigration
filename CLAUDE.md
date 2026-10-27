@@ -1,8 +1,8 @@
 # Agent contract
 
 This repository plans and executes the migration of Oolite from Objective-C/GNUstep to C++23.
-`upstream/oolite` is a git subtree of the fork and is the tree being migrated; this repo holds the
-plan, the tooling, and the goldens. Everything runs natively on Windows from the MSYS2 UCRT64 shell
+`oolite-dev` is a submodule (the fork `jonmseaman/oolite`, branch `develop`) and is the tree being
+migrated; this repo holds the plan, the tooling, and the goldens ([ADR-0067](docs/decisions/0067-submodules-replace-subtrees.md)). Everything runs natively on Windows from the MSYS2 UCRT64 shell
 ([ADR-0017](docs/decisions/0017-native-windows-subtree.md)). Read [ROADMAP.md](ROADMAP.md) for where the project is, then the phase doc for the phase
 you are working in. Terms are in [GLOSSARY.md](GLOSSARY.md). The human is in four places only
 ([ADR-0013](docs/decisions/0013-decide-up-front-minimise-human.md)); everything else is yours.
@@ -63,7 +63,7 @@ tools/tier-b.sh             # one-platform build, module tests, fast goldens, Ti
 tools/tier-c.sh             # everything; run by the merge queue, not by you
 ```
 
-Upstream build today: `cd upstream/oolite && ./mk.sh build test`. Smoke test:
+Upstream build today: `cd oolite-dev && ./mk.sh build test`. Smoke test:
 `python3 tests/launch_snapshot.py`.
 
 ## Exemplars
@@ -74,9 +74,9 @@ updated as seams land:
 
 | Kind | Path |
 |---|---|
-| GUI test | `upstream/oolite/tests/gui/test_g1_exit_via_mouse.py` ([G1](docs/stories/G1-exit-via-mouse.md); G2-G9 replicate it) |
-| Component scenario | `upstream/oolite/tests/component/features/s1_police_kills_pirate.feature` (pending; [S1](docs/stories/S1-police-kills-pirate.md), [ADR-0018](docs/decisions/0018-component-test-tier.md)) |
-| Phase 3 class | `upstream/oolite/src/Core/OOColor.*`, `OOColor+ObjCBridge.*` ([ADR-0056](docs/decisions/0056-phase3-class-conversion-house-style.md)) |
+| GUI test | `oolite-dev/tests/gui/test_g1_exit_via_mouse.py` ([G1](docs/stories/G1-exit-via-mouse.md); G2-G9 replicate it) |
+| Component scenario | `oolite-dev/tests/component/features/s1_police_kills_pirate.feature` (pending; [S1](docs/stories/S1-police-kills-pirate.md), [ADR-0018](docs/decisions/0018-component-test-tier.md)) |
+| Phase 3 class | `oolite-dev/src/Core/OOColor.*`, `OOColor+ObjCBridge.*` ([ADR-0056](docs/decisions/0056-phase3-class-conversion-house-style.md)) |
 
 Runtime: you are either Claude Code launched by `tools/fleet/run-story` in a worktree (frontier
 tier), or Hermes Agent in a `/goal` loop picking from `bd ready` and working in
@@ -97,11 +97,12 @@ Only beads labelled `fleet` are yours; `frontier`, `rebless` and `proposed-adr` 
   new launcher in neither list however it is spelled (`tools/desktop-lock-rogue-proof` proves this
   against five planted rogues). A long hold is heartbeated via `tools/gui-lock refresh`, so a live
   holder is never stale-reclaimed while a crashed one still ages out.
-- `origin` = `jonmseaman/OoliteMigration`; `fork` = `jonmseaman/oolite`, which receives
-  `upstream/oolite` by `git subtree push`; `upstream` = `OoliteProject/oolite`, pulled by
-  `git subtree pull --squash` in the upstream-tracker task only.
-- `upstream/oolite`, `upstream/oolite-tests` and the expansion catalog are subtrees. The remaining
-  submodules are read-only reference, absent from worktrees; a bead must not depend on them.
+- Submodules ([ADR-0067](docs/decisions/0067-submodules-replace-subtrees.md)): `oolite-dev` =
+  `jonmseaman/oolite` `develop` (the game; commit there, then record the new commit here);
+  `oolite-main` = the same repo's `master` (reference); everything under `upstream/` is
+  OoliteProject's own, unmodified, reference only. `origin` = `jonmseaman/OoliteMigration`.
+- The beads pipeline (`accept`, `harvest`, worktrees, guardrails) predates ADR-0067 and is not
+  submodule-aware: it does not see changes inside `oolite-dev`. It is retired for now.
 - **File modes.** A script invoked as a bare program (`tools/foo`, `./foo` — including from a
   bead's acceptance line) MUST be committed `100755` and MUST start with a `#!` shebang. A file
   always invoked through an interpreter (`python3 tools/foo.py`, `bash tools/foo.sh`) MAY stay

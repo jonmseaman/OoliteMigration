@@ -53,7 +53,7 @@ import oxp_corpus as oc          # noqa: E402
 import oxp_load_check as olc     # noqa: E402
 import oxp_report as rep         # noqa: E402
 
-DEFAULT_APP_DIR = "C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app"
+DEFAULT_APP_DIR = "C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app"
 
 
 def cache_dir() -> Path:

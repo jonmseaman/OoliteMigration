@@ -29,8 +29,8 @@ recorded them, from the committed lists, and from `tools/oxp-js-lint/corpus-repo
 
 | run | build | engine |
 |---|---|---|
-| **A** | `.worktrees/oo-5pr/upstream/oolite/build/meson_test/oolite.app` (phase-1 tree, oo-7wx: SpiderMonkey removed) | QuickJS-ng |
-| **B** | `upstream/oolite/build/meson_test/oolite.app` (main tree, 2026-09-22 23:37) | QuickJS-ng as well |
+| **A** | `.worktrees/oo-5pr/oolite-dev/build/meson_test/oolite.app` (phase-1 tree, oo-7wx: SpiderMonkey removed) | QuickJS-ng |
+| **B** | `oolite-dev/build/meson_test/oolite.app` (main tree, 2026-09-22 23:37) | QuickJS-ng as well |
 
 Run B was started as a SpiderMonkey baseline and turned out not to be one. Its `libnspr4.dll` is a
 leftover. The binary has QuickJS-ng's parser messages (`expecting '%c'`) and none of SpiderMonkey

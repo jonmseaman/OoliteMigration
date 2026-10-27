@@ -7,12 +7,12 @@
 #
 # Builds probe.m against gnustep-base (gnustep-config --base-libs; MSYS2 UCRT64 shell), runs it over
 # cases.txt with TZ=UTC (an NSDate describes itself in the default time zone) and writes
-# upstream/oolite/tests/unit/oofnd/plist_description_captured.inc. Captured on GNUstep base 1.31.1.
+# oolite-dev/tests/unit/oofnd/plist_description_captured.inc. Captured on GNUstep base 1.31.1.
 # The game no longer needs gnustep-base after oo-qps.18; this script still does.
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/../../.." && pwd)"
-out="$repo/upstream/oolite/tests/unit/oofnd/plist_description_captured.inc"
+out="$repo/oolite-dev/tests/unit/oofnd/plist_description_captured.inc"
 die() { echo "capture: $*" >&2; exit 1; }
 command -v clang >/dev/null 2>&1 || die "clang is not on PATH; run from the MSYS2 UCRT64 shell"
 command -v gnustep-config >/dev/null 2>&1 || die "gnustep-config is not on PATH (gnustep-base is needed to capture)"

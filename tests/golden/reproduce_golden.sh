@@ -24,7 +24,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HERE/../.." && pwd)"
 SCENARIO="${1:-001}"
 PLATFORM="${OO_GOLDEN_PLATFORM:-windows-x64}"
-APP_DIR="${OO_APP_DIR:-C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test/oolite.app}"
+APP_DIR="${OO_APP_DIR:-C:/Users/jon/OoliteMigration/oolite-dev/build/meson_test/oolite.app}"
 GOLDEN="$REPO_ROOT/goldens/$PLATFORM/$SCENARIO/state.json"
 
 [ -d "$APP_DIR" ] || { echo "no Oolite build at $APP_DIR (set OO_APP_DIR)" >&2; exit 1; }

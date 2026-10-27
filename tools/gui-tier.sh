@@ -3,14 +3,14 @@
 # The GUI tier's runner — the one command the G1 DoD is allowed to be.
 #
 #     tools/gui-tier.sh                                  # the whole tier
-#     tools/gui-tier.sh upstream/oolite/tests/gui/test_g1_exit_via_mouse.py
+#     tools/gui-tier.sh oolite-dev/tests/gui/test_g1_exit_via_mouse.py
 #     tools/gui-tier.sh -- -k exit_via_mouse             # extra pytest args after --
 #
-# It exists because `python3 -m pytest upstream/oolite/tests/gui/... -x -q` on its own cannot
+# It exists because `python3 -m pytest oolite-dev/tests/gui/... -x -q` on its own cannot
 # tell "G1 passed" from "G1 never ran". Two things had to be true before that command meant
 # anything, and nothing in the repository made either of them true:
 #
-#   1. upstream/oolite/tests/gui/requirements.txt must actually be installed. It was installed
+#   1. oolite-dev/tests/gui/requirements.txt must actually be installed. It was installed
 #      by nothing, so the missing-pyautogui case was the *expected* case.
 #   2. The run must be on Windows with a real desktop, and must say so out loud when it is not.
 #
@@ -30,9 +30,9 @@ native() {
 }
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GUI_REL="upstream/oolite/tests/gui"
+GUI_REL="oolite-dev/tests/gui"
 REQUIREMENTS_REL="$GUI_REL/requirements.txt"
-REQUIREMENTS="$(native "$REPO_ROOT/upstream/oolite/tests/gui/requirements.txt")"
+REQUIREMENTS="$(native "$REPO_ROOT/oolite-dev/tests/gui/requirements.txt")"
 
 PYTHON="${OO_PYTHON:-python3}"
 command -v "$PYTHON" >/dev/null 2>&1 || PYTHON=python
@@ -88,7 +88,7 @@ PY
 # focus budget is a real one.
 "$PYTHON" - <<PY
 import sys
-sys.path.insert(0, r"$(native "$REPO_ROOT/upstream/oolite/tests/gui")")
+sys.path.insert(0, r"$(native "$REPO_ROOT/oolite-dev/tests/gui")")
 import time
 
 import conftest

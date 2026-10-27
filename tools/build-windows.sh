@@ -39,7 +39,7 @@ if [ "${MSYSTEM:-}" != "UCRT64" ] && [ -z "${OOLITE_BUILD_REEXEC:-}" ] && [ -x "
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OOLITE="$REPO_ROOT/upstream/oolite"
+OOLITE="$REPO_ROOT/oolite-dev"
 NATIVE_FILE="$REPO_ROOT/tools/meson/ccache-clang.ini"
 
 say() { echo "==> $*"; }
@@ -79,7 +79,7 @@ while [ $# -gt 0 ]; do
 done
 [ ${#FLAVOURS[@]} -gt 0 ] || FLAVOURS=("$DEFAULT_FLAVOUR")
 
-[ -d "$OOLITE" ] || die "upstream/oolite not found under $REPO_ROOT"
+[ -d "$OOLITE" ] || die "oolite-dev not found under $REPO_ROOT"
 [ -f "$NATIVE_FILE" ] || die "missing native file $NATIVE_FILE"
 if $GCC; then
   NATIVE_FILE="$REPO_ROOT/tools/meson/ccache-gcc.ini"

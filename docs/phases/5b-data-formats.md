@@ -31,7 +31,7 @@ and every editor, linter and language understands it.
 
 ## Today (measured 2026-10-27 on `main`)
 
-- `upstream/oolite/Resources`: 85 `.plist` files — 84 OpenStep text, 1 XML.
+- `oolite-dev/Resources`: 85 `.plist` files — 84 OpenStep text, 1 XML.
 - Parser: `oofnd` (`PListOldStyle.hpp`, `PListXML.hpp`, `PListParsing.hpp`), fuzzed against the old
   GNUstep behaviour by `tools/plist_fuzz.py` (0 unexplained divergences over 100k cases).
 - Expansions: their files override or merge with core files of the same name through
@@ -73,7 +73,7 @@ and every editor, linter and language understands it.
 
 - [ ] `oofnd` JSON5 reader: unit tests for every mapping rule above, plus the JSON5 spec's own
       conformance suite (vendored test inputs), pass on Clang and GCC.
-- [ ] Round trip: for every `.plist` under `upstream/oolite/Resources`, `plist2json5 --check` proves
+- [ ] Round trip: for every `.plist` under `oolite-dev/Resources`, `plist2json5 --check` proves
       plist → JSON5 → node tree is identical to plist → node tree (exit 0 over all 85).
 - [ ] Equivalence golden: the blessed goldens (001, 001-launch-dock) **reproduce byte-for-byte** when
       the core `Resources/` is replaced by its JSON5 conversion (a test-only resource tree; the
