@@ -1876,3 +1876,13 @@ tests/nightly/checks.txt	std-2026-10-19: oo-we7mm retire with the subject - ONLY
 # record docs/decisions/delegated-2026-10-19.md. Expected-value and floor changes, which std-2026-10-19 does not cover.
 oolite-dev/tests/unit/expander/test_string_expander.cpp	oo-p6rtw: ONLY kKeysDigest 0x6349f869900cf779 -> 0xea38daecff933503 and kStringsDigest 0xef7448c0016ba2ed -> 0x338f336558c7db67, re-captured from upstream #747's descriptions.plist (the only input that changed; the same build against the pre-sync plist still gives the old digests), and the comment recording it; no case, input, recorded line or other check changes (Jon approved 2026-10-25)
 tests/golden/test_frame_hash.py	oo-1dcpm: ONLY test_live_captures_cost_what_a_game_launch_costs's time floor 5.0 s -> 3.7 s and its docstring's measurement (upstream #744 lets the game quit on quit(), so a capture no longer always waits out the 15 s kill: a clean one now measures 4.1 s, of which ~3.25 s comes after the console is ready and would still be spent by a capture attached to a leftover game, so 3.7 s still fails such a fake); no other test or fixture changes (Jon approved 2026-10-25)
+
+# tools/ cleanup (Jon approved 2026-10-27): tests whose subject is retired with them.
+tools/test_tier_c_diff.py	tools-cleanup: subject tools/tier-c-diff.sh (SpiderMonkey vs QuickJS differential) deleted; one engine since oo-7wx (Jon approved 2026-10-27)
+tools/test_tier_c_diff_spawns.py	tools-cleanup: subject tools/tier-c-diff.sh deleted with the differential (Jon approved 2026-10-27)
+tools/test_export_auto_matcher.py	tools-cleanup: subject tools/check-beads-db-merge.sh deleted; the worker no longer merges the beads export (Jon approved 2026-10-27)
+tests/fleet/gate_mutants.py	tools-cleanup: subject tools/fleet_reporter.py deleted with the Hermes fleet; its docs/fleet and docs/infra inputs were already removed (Jon approved 2026-10-27)
+tests/fleet/mutate.py	tools-cleanup: subject tools/fleet_reporter.py deleted with the Hermes fleet (Jon approved 2026-10-27)
+tests/fleet/prove_gate_lines.sh	tools-cleanup: subject tools/fleet_reporter.py deleted with the Hermes fleet (Jon approved 2026-10-27)
+tests/fleet/test_fleet_reporter.py	tools-cleanup: subject tools/fleet_reporter.py deleted with the Hermes fleet; red since docs/fleet and docs/infra were removed (Jon approved 2026-10-27)
+tests/nightly/checks.txt	tools-cleanup: the nightly layer is retired (no scheduled runs; durable proofs move to tier-c's selftests stage) (Jon approved 2026-10-27)
