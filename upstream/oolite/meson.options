@@ -43,3 +43,7 @@ option('strip_bin', type: 'boolean', value: false, description: 'Enable strippin
 # Windows Specific Customizations
 option('pdb', type: 'boolean', value: false,
        description: 'Windows Clang builds only: Generate native .pdb debug symbol files')
+
+# Flavour coverage (bead oo-pdsng, proposed ADR-0066)
+option('deployment_unit_tests', type: 'boolean', value: false,
+       description: 'Also build the oofnd unit tests when deployment_release is set (tools/check-deployment-tests.sh; off for the shipped deployment build)')
