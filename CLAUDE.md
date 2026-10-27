@@ -2,8 +2,8 @@
 
 This repository plans and executes the migration of Oolite from Objective-C/GNUstep to C++23.
 `oolite-dev` is a submodule (the fork `jonmseaman/oolite`, branch `develop`) and is the tree being
-migrated; this repo holds the plan, the tooling, and the goldens ([ADR-0067](docs/decisions/0067-submodules-replace-subtrees.md)). Everything runs natively on Windows from the MSYS2 UCRT64 shell
-([ADR-0017](docs/decisions/0017-native-windows-subtree.md)). Read [ROADMAP.md](ROADMAP.md) for where the project is, then the phase doc for the phase
+migrated; this repo holds the plan, the tooling, and the goldens ([ADR-0067](docs/decisions/0067-submodules-replace-subtrees.md)).
+Read [ROADMAP.md](ROADMAP.md) for where the project is, then the phase doc for the phase
 you are working in. Terms are in [GLOSSARY.md](GLOSSARY.md). The human is in four places only
 ([ADR-0013](docs/decisions/0013-decide-up-front-minimise-human.md)); everything else is yours.
 

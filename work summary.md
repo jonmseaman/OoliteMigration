@@ -12,7 +12,7 @@ Worktree pollution: Each bead spawns a whole new worktree and it doesn't cleanup
 Agent healthiness: Tools like gas town know how to restart an agent if it ever gets stuck. That would be extremely useful here.
 
 
-Spider JS to QuickJS-ng: Likely, there were some expansions broken by this change. Claude said at least two expansions used spidermonkey specific JS, but I didn't investigate it at all.
+Spider JS to QuickJS-ng: Likely, there were some expansions broken by this change. Claude said at least two expansions used spidermonkey specific JS, but I didn't investigate it at all. Claude didn't document the differences or what expansions use spidermonkey only js. That would be useful when proposing this as a PR.
 
 Additional things claude forgot:
 

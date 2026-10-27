@@ -65,7 +65,6 @@
 # - linear.api_key  → use LINEAR_API_KEY env var instead
 # - github.token    → use GITHUB_TOKEN env var instead
 
-sync.remote: "git+https://github.com/jonmseaman/OoliteMigration.git"
 # Auto-export is OFF (bead oo-c4ly, 2026-09-18). With it on, every `bd update` in every worktree
 # rewrote that worktree's copy of .beads/issues.jsonl, harvest committed it onto the bead branch,
 # and every accept then conflicted with main on a file nobody wrote by hand (36 of the last 200
@@ -76,3 +75,5 @@ sync.remote: "git+https://github.com/jonmseaman/OoliteMigration.git"
 export:
     auto: false
     git-add: false
+sync:
+    remote: "git+https://github.com/jonmseaman/OoliteMigration.git"
