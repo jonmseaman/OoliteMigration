@@ -5,21 +5,23 @@ Objective-C/GNUstep to Modern C++ (C++20 during conversion, C++23 at the end), w
 while keeping all published expansions (OXP/OXZ) working unmodified.
 
 **Start here: [ROADMAP.md](ROADMAP.md).** Agents: [CLAUDE.md](CLAUDE.md).
-**Before the first fleet run on the Windows machine:** the checklist in [docs/infra/0-machines.md](docs/infra/0-machines.md)
-(keep-awake tool, MSYS2, `bd dolt pull`, Hermes and `claude` logins).
+**Setting up the Windows machine:** [tools/setup-windows.sh](tools/setup-windows.sh) — MSYS2, the
+pinned toolchain, `gh` and `git-town`, and a keep-awake tool.
 
 ## Layout
 
 | Path | What |
 |---|---|
 | `ROADMAP.md` | Phase table, infra track, decisions — the entry point |
-| `CLAUDE.md` / `GLOSSARY.md` / `.hermes.md` | Agent contracts (Claude Code; Hermes) and terms |
+| `CLAUDE.md` / `GLOSSARY.md` | The agent contract and the terms |
 | `docs/architecture.md` | Survey, target design, risks, expansion contracts |
 | `docs/execution-model.md` | Verification tiers, agent authority, story sizing |
-| `docs/phases/`, `docs/infra/`, `docs/decisions/` | Per-phase docs, infra track, ADRs |
+| `docs/phases/`, `docs/decisions/` | Per-phase docs, ADRs |
 | `tools/gen-stories.py` | Generates the beads queue from the tree |
 | `tools/check-file-modes.sh` | Guardrail: bare-program scripts are committed `100755` (see CLAUDE.md conventions) |
-| `.agents/skills/beads-worker/` | The Hermes skill that drains the queue |
+| `tools/guard/` | PATH shims: no agent closes a bead or pushes to an integration branch |
+| `tools/sync-dev.sh` / `tools/phase-pr.sh` | Record merged work; open the phase's `develop → master` PR |
+| `.claude/skills/beads-worker/` | The skill that works the queue, one bead per `/loop` iteration |
 | `oolite-dev` | **Submodule**: `jonmseaman/oolite`, branch `develop`. **The migration target**; all game work happens here |
 | `oolite-main` | Submodule: `jonmseaman/oolite`, branch `master` (what has been merged; reference only) |
 | `upstream/oolite` | Submodule: `OoliteProject/oolite`, unmodified (reference: the Objective-C original) |

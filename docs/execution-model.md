@@ -6,9 +6,6 @@ story must satisfy before a fleet can consume it. This is the stable part of the
 Where things run (machines, images, forge, fleet software) is the [infra track](infra/); why the
 hosting and framework decisions came out the way they did is in [decisions/](decisions/).
 
-**Provenance:** extracted from `AI_EXECUTION_PLAN.md` (2026-09-05/06, git history at `ee2de41`),
-sections 1, 3, 4, 5, 10, 11 and 15, plus the per-PR definition of done from `MIGRATION_PLAN.md`.
-
 ---
 
 ## 1. The measurements that shape everything
@@ -151,11 +148,11 @@ running its own full suite.
 
 ## 4. Model tiering: what runs where
 
-The frontier model is **Claude Opus 5** (`claude --model claude-opus-5`; Jon, 2026-09-11), in
-interactive sessions and in every headless frontier call (`run-story`, `reevaluate.sh`, the Reporter).
-The one exception is the **per-phase review** (`<N>.review` beads), delegated to **Claude Fable 5.1**:
-it checks that every item of the phase is really done and generates whatever work is still missing,
-and the phase's exit gate waits on it.
+The frontier model is **Claude Opus 5.5** (`claude --model claude-opus-5-5`; Jon, 2026-10-27), in
+interactive sessions and in every headless frontier call (`run-story`, `reevaluate.sh`, the Reporter),
+with no exceptions. That includes the **per-phase review** (`<N>.review` beads): it checks that every
+item of the phase is really done and generates whatever work is still missing, and the phase's exit
+gate waits on it. Do not use Opus 5 or Fable.
 
 | Work | Volume | Model tier | Why |
 |---|---|---|---|
@@ -199,7 +196,7 @@ does.
 | **Harness steward** | standing, weekly | may fix harness and tier code | **may never re-bless a golden**; reports flake rate and drift |
 | **Upstream tracker** | standing, monthly | performs the rebase, files `docs/UPSTREAM_DELTA.md` entries | any conflict inside a frozen module (architecture §6.3) |
 | **Adjudicator** (frontier) | on-demand | proposes a re-bless *with written justification* | **every re-bless, always** |
-| **Phase reviewer** (Claude Fable 5.1) | once per phase, before its exit gate | verifies every phase item is done, files missing work as new beads, may reopen itself behind them | nothing it cannot express as a bead; it never closes beads itself |
+| **Phase reviewer** (Claude Opus 5.5) | once per phase, before its exit gate | verifies every phase item is done, files missing work as new beads, may reopen itself behind them | nothing it cannot express as a bead; it never closes beads itself |
 | **Jon** | — | **re-blesses goldens** (weekly queue) · accounts, credentials, hardware, TCC grants · overrides a default decision by ADR · monthly judgement on the GUI tier's meaning ([ADR-0013](decisions/0013-decide-up-front-minimise-human.md)) | — |
 | **Merge queue** (`tools/merge-queue`) | standing | **merges to `main`** automatically when Tier C is green on the batch | a batch that fails after bisection with no culprit found |
 
@@ -274,7 +271,7 @@ that is specified at the wrong altitude.
 | **L2** Component | "`PList` + old-style **and** XML parser/writer" | ~2 weeks | ✅ — *their finest grain* |
 | **L3** Story | "Old-style plist scanner: quoted strings + `\U` escapes; `test_plist_oldstyle_strings.cpp` cases 1–14 go green" | ~half a day | ❌ **missing** |
 
-Any memoryless work loop — a **bead** run by `tools/fleet/run-story`, or a Ralph-style `prd.json` story — spawns a fresh
+Any memoryless work loop — a **bead** worked by the `beads-worker` skill, or a Ralph-style `prd.json` story — spawns a fresh
 instance per unit with **no memory of previous work** and decides "done" from acceptance criteria
 alone. It consumes L3. The phase docs provide L2.
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# guard-probe.sh: drive scripts/bin/bd (the guard shim) against a stub "real" bd and check that
+# guard-probe.sh: drive tools/guard/bd (the guard shim) against a stub "real" bd and check that
 # every close/delete path is refused (exit 77) and ordinary commands pass through (stub exit 0).
-# Offline, no database. Run: bash .agents/skills/beads-worker/scripts/guard-probe.sh
+# Offline, no database. Run: bash .claude/skills/beads-worker/scripts/guard-probe.sh
 set -u
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-shim_dir="$here/bin"
+shim_dir="$(cd "$here/../../../../tools/guard" && pwd)"
 stub_dir="$(mktemp -d)"; trap 'rm -rf "$stub_dir"' EXIT
 cat > "$stub_dir/bd" <<'EOF'
 #!/usr/bin/env bash

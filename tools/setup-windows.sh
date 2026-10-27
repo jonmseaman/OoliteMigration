@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 #
-# One-time provisioning of the Windows fleet machine.
-# Phase 0 item 0.2 (docs/phases/0-safety-net.md) - I1 item 1 (docs/infra/1-base-images.md).
-#
 # Upstream's CI reprovisions MSYS2 on every run (msys2/setup-msys2 + install_deps.sh).
 # Here the machine is provisioned once and every later build is incremental behind ccache.
 # Run from an MSYS2 UCRT64 shell:
@@ -25,7 +22,7 @@ MSYS_PKGS=(dos2unix git pactoys unzip)
 
 # mingw-w64-ucrt-x86_64-* packages. mesa supplies the llvmpipe opengl32.dll the goldens copy
 # beside the binary (oolite-dev/tests/run_test_fn.sh); ccache backs the shared compiler
-# cache; jq is required by the fleet scripts (.agents/skills/beads-worker/scripts/_lib.sh);
+# cache; jq is required by the worker scripts (.claude/skills/beads-worker/scripts/_lib.sh);
 # clang-tools-extra supplies clang-tidy, which tools/tier-a.sh requires (Phase 0 item 0.9) -
 # the clang package alone does not ship it, so Tier A dies on a machine provisioned without it.
 UCRT_PKGS=(
@@ -33,13 +30,8 @@ UCRT_PKGS=(
   espeak-ng libpng libvorbis openal pcaudiolib sdl3
   meson ninja nsis jq
   mesa ccache
-  # llvm-tools ships llvm-symbolizer, which Tier C's ASan stage REQUIRES (bead oo-j4u): without
-  # it every sanitizer frame is a bare address, and a report cannot be attributed to oolite.exe
-  # rather than to a prebuilt third-party DLL. clang alone does not provide it.
+  # llvm-tools ships llvm-symbolizer, which ASan requires.
   llvm-tools
-  # gcc builds the GCC flavour beside the Clang one (tools/build-windows.sh --gcc; bead oo-1q4,
-  # the Phase 4 exit gate's "GCC build green alongside Clang"). UCRT64's, so both compilers share
-  # one set of libraries.
   gcc
   python python-pip python-setuptools python-wheel python-pytest python-pillow
 )
@@ -47,25 +39,14 @@ UCRT_PKGS=(
 # Installed by upstream's install_deps.sh from the oolite_windeps_build releases, not from a
 # repository: the libobjc2 runtime built against clang, and gnustep-make (gnustep-config).
 #
-# NOT FOR THE GAME (bead oo-ebds4). The game, its tests and every gate stopped using these when
-# libobjc2 left the build (bead oo-dbz.5); the deny-list (CLAUDE.md rule 8) fails a build or an
-# import table that names them, and tools/check-string-expander.sh / tools/check-sysdesc-tools.sh
-# are C++ (bead oo-6e1.2). They stay for the read-only GNUstep REFERENCE tools, which compile
-# against the real GNUstep to record what the game must match: tools/captures/plist-description
-# (capture.sh needs gnustep-config and the libobjc2 runtime) and the oracle half of
-# tools/plist_fuzz.py. Both also need GNUstep Base (Foundation), which no step here installs since the game
-# dropped Foundation (oo-qps.18, ADR-0055): a reference capture installs it by hand first.
-# (SpiderMonkey left with Phase 1, bead oo-7wx.)
+# libobjc2 kept even after migration because it is needed for GNUstep reference
+# tools and for generation golden references.
 WINDEPS_PKGS=(libobjc2 gnustep-make)
 
-# Pure-Python, no MSYS2 package exists. pytest-bdd drives the component tier (ADR-0018);
-# pyautogui drives the GUI tier against a real window (docs/phases/0-gui-tier.md). The GUI
-# tier's own pin is oolite-dev/tests/gui/requirements.txt, installed by tools/gui-tier.sh
-# on every run; this list keeps a set-up-once machine from paying for that install each time.
-# Keep the two in step: a name added there belongs here.
+# GUI test drivers:
 PIP_PKGS=(pytest-bdd pyautogui)
 
-# Shared compiler cache, outside every worktree so it survives worktree removal (I1 item 2).
+# Shared compiler cache, outside every worktree so it survives worktree removal.
 CCACHE_DIR_DEFAULT="C:/ccache"
 CCACHE_MAX_SIZE="60G"
 

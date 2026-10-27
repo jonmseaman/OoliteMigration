@@ -41,7 +41,7 @@ unchecked one names the bead (or Jon's action) that closes it.
 - [ ] Reintroducing a `JS_*` or `libgnustep-base` symbol fails Tier B on the deny-list — the deny-list runs in `tier-a` and in `tools/guardrails.sh` (baseline-relative, `tools/deny-list.txt`); `tier-b` has no guardrails stage: oo-1bf.9.
 - [ ] A bead branch touching `goldens/` without an approved re-bless (Jon, weekly queue) fails Tier B — `tools/guardrails.sh` `check_goldens` + `tools/rebless-approvals.txt` (oo-5ggu exercised it); in Tier B: oo-1bf.9.
 - [x] A batch of 8 branches with one bad one: `tools/merge-queue` bisects to the culprit and requeues its bead — `tools/merge-queue.sh`, `tools/merge-queue-selftest`, `tools/merge-queue-mutants.sh` (oo-pmg).
-- [x] `accept` closes a bead only after acceptance exits 0 in a fresh clone; an agent attempting `bd close` directly is refused — the accept is `.agents/skills/beads-worker/scripts/accept.sh` (detached checkout of `main`, merge, acceptance on the merged tree, close on 0); the guard shim `scripts/bin/bd` refuses `bd close` (exit 77). 100+ phase 0 beads closed only that way. (`tools/fleet/accept` never materialised under that name; the box now names what exists.)
+- [x] A bead closes only after its acceptance commands exit 0; an agent attempting `bd close` directly is refused — the gate was `.agents/skills/beads-worker/scripts/accept.sh` (detached checkout of `main`, merge, acceptance on the merged tree, close on 0) and the guard shim refused `bd close` (exit 77). 100+ phase 0 beads closed only that way. (`tools/fleet/accept` never materialised under that name.) *Superseded 2026-10-27: acceptance now runs on the bead's branch in `oolite-dev` and the close follows Jon's merge — see [.claude/skills/beads-worker/](../../.claude/skills/beads-worker/SKILL.md).*
 - [x] `goal-check` returns 0 for a phase whose only open beads are `rebless` / `proposed-adr` / `frontier` — `scripts/goal-check.sh` excludes `review`, `rebless`, `proposed-adr`, `escalated`, and counts `frontier` only when the session takes it (`BEADS_WORKER_LABELS`); 2026-09-19: "phase 0: no open fleet frontier beads".
 - [x] `docs/templates/story.md`, `docs/stories/G1-exit-via-mouse.md`, and `tools/gen-stories` exist — all three; the generator's end-to-end check (oo-hq8) is escalated to Phase 1 by its own definition of done; its scenario sweep is hard-coded to 002–017: oo-1bf.12.
 - [x] Cross-platform golden policy (decision 11: per-platform + quantised floats) implemented **before the first golden is blessed** — `tests/golden/GOLDEN_STORAGE.md` (oo-ss8) landed before 001 was blessed.
@@ -54,7 +54,7 @@ unchecked one names the bead (or Jon's action) that closes it.
 | GUI tier helper (`row → screen point`) and G1 | `tests/gui/test_g1_exit_via_mouse.py` | Frontier agent |
 | Component tier: console client, launch fixture, step library, and S1 | `tests/component/` | Frontier agent |
 | Story template and generator (emits beads) | `docs/templates/story.md`, `tools/gen-stories` | Frontier agent |
-| Fleet scripts: `accept` (the only path to `bd close`), `goal-check`, `worktree`, `run-story` | `tools/fleet/` | Frontier agent |
+| Worker scripts: `accept` (the gate), `land` (the only path to `bd close`), `queue-check`, `branch` | `.claude/skills/beads-worker/scripts/` | Frontier agent |
 | Merge queue, batch-and-bisect | `tools/merge-queue` | Frontier agent |
 | Tier A / B / C scripts | `tools/tier-a.sh`, `tools/tier-b.sh`, `tools/tier-c.sh` | Frontier agent |
 | Expansion-scan classifier prompt + audit protocol | `tools/oxp-js-scan/` | Frontier agent |
@@ -215,10 +215,9 @@ Getting Tier A under 30 seconds is the single highest-leverage engineering task 
 `tools/merge-queue`, an in-repo script ([ADR-0014](../decisions/0014-claude-code-opencode-beads.md)):
 collect Tier-B-green branches, merge into a candidate, run `tools/tier-c.sh` locally in a clean
 worktree ([ADR-0016](../decisions/0016-no-forge-local-verification.md)), fast-forward `main` on green, bisect on red and requeue the
-culprit's bead. Companion seam: the `tools/fleet/` scripts, of which `accept` is the one that
-matters: it runs a story's acceptance in a fresh clone and alone may `bd close`, whether the driver
-is `run-story` (Claude Code) or Hermes `/goal` (local tier) ([I3](../infra/3-fleet.md),
-[ADR-0015](../decisions/0015-hermes-goal-loop.md)). Verified by the "8 branches, one bad" and
+culprit's bead. Companion seam: the worker scripts, of which `accept` is the one that
+matters: it runs a story's acceptance commands and alone decides whether the work may be proposed
+at all. Verified by the "8 branches, one bad" and
 "`accept` closes the bead" exit-gate items.
 
 ### 0.11 Guardrails (enforce the prohibitions mechanically)

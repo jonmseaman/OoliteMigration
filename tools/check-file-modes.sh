@@ -55,7 +55,7 @@
 # followed by the basename, e.g. `"$here/harvest.sh"` or
 # `"$(dirname "${BASH_SOURCE[0]}")/gc.sh"`. Those are bare-program calls with no interpreter,
 # so the exec bit is load-bearing on Linux even though the directory part is computed; the
-# whole fleet toolchain under .agents/skills/beads-worker/scripts/ is dispatched that way.
+# whole worker toolchain under .claude/skills/beads-worker/scripts/ is dispatched that way.
 # The dispatch rule keys on the basename alone, so it is only applied where the basename
 # identifies exactly one tracked file -- and when it is suppressed for an ambiguous basename
 # the suppression is ANNOUNCED (`note: ... dispatch rule suppressed`), never silent: silently

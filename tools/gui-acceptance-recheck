@@ -13,7 +13,7 @@
 # contention with a sibling launching G5, then rc=0 seconds later run alone. Same code, same
 # tree, opposite verdicts - the only variable was machine load.
 #
-# Convention (see .agents/skills/beads-worker/SKILL.md, "GUI acceptance verdicts"): a FAILING
+# Convention (see .claude/skills/beads-worker/references/pitfalls.md, GUI acceptance): a FAILING
 # GUI-tier acceptance line is not trusted as a genuine failure until it has ALSO failed ISOLATED -
 # no sibling holding or queued for tools/gui-lock, no elevated GUI/compile-ish process count. This
 # script automates exactly that recheck and reports the gui-lock and load state around both runs,

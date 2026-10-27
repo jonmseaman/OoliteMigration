@@ -1,4 +1,8 @@
-
+- [ ] Claude session: `claude --resume 70616f81-52a4-4a4f-aeea-852af193d1b9`
+- [ ] Should only do a new branch per-epic
+- [ ] Review tools/install-scheduled-tasks.ps1
+      Are scheduled tasks used? I don't like that. Also, what about the script that creates the initial beads?
+- [ ] Cleanup the beads database. Only the incomplete are needed.
 - [ ] Do a write up of this project to send to upstream.
 	- Include why I did this.
 	- How I did this.

@@ -27,8 +27,8 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
-# shellcheck source=../.agents/skills/beads-worker/scripts/_lib.sh
-source "$root/.agents/skills/beads-worker/scripts/_lib.sh"
+# shellcheck source=../.claude/skills/beads-worker/scripts/_lib.sh
+source "$root/.claude/skills/beads-worker/scripts/_lib.sh"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 step() { echo "== $*"; }

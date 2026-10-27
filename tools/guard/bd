@@ -1,18 +1,22 @@
 #!/usr/bin/env bash
-# Guard shim: put this directory first on PATH before starting an agent. Unless BEADS_ACCEPT=1 (set
-# only by scripts/accept.sh), it refuses every way bd 1.3.0 can close or remove a bead:
+# Guard shim for `bd`. .claude/settings.json puts this directory first on PATH, and
+# scripts/preflight.sh asserts it is actually there before a tick runs — Claude Code has no
+# "export PATH before you start" ritual, so the shim is proved, not assumed.
+# Unless BEADS_ACCEPT=1 (set only by scripts/accept.sh), it refuses every way bd 1.3.0 can close
+# or remove a bead (CLAUDE.md hard rule 4: the agent that implemented a bead never closes it):
 #   close / done, todo done, epic close-eligible, duplicate, supersede, gate resolve,
 #   update to status closed, batch scripts with a close line or an update status=closed line,
 #   and the destructive delete / prune / purge / gc / flatten / import.
 # The subcommand is found after any global flags (bd --json close x is refused too).
-# Everything else passes through to the real bd. Probe: scripts/guard-probe.sh.
+# Everything else passes through to the real bd.
+# Probe: bash .claude/skills/beads-worker/scripts/guard-probe.sh
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 p="$(echo "$PATH" | tr ':' '\n' | grep -vx "$here" | paste -sd: -)"
 real="$(PATH="$p" command -v bd || true)"
 [ -n "$real" ] || { echo "bd guard: real bd not found on PATH" >&2; exit 127; }
 
 refuse() {
-  echo "bd guard: refusing 'bd $*'. Beads are closed only by scripts/accept.sh after acceptance passes." >&2
+  echo "bd guard: refusing 'bd $*'. Beads are closed only by beads-worker accept.sh after the bead's acceptance commands pass." >&2
   exit 77
 }
 closed_status() { case "$1" in closed|CLOSED|Closed) return 0;; esac; return 1; }

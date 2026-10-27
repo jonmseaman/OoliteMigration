@@ -32,3 +32,6 @@ tierb*.log
 
 /.fleet-progress.*
 /notes/.obsidian/
+
+# Beads / Dolt files (added by bd init)
+*.gate.lock*

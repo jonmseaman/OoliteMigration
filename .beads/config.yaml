@@ -77,3 +77,6 @@ export:
     git-add: false
 sync:
     remote: "git+https://github.com/jonmseaman/OoliteMigration.git"
+# NO `repos:` block to prevent `bd init` from pointing at ~/.beads-planning.
+routing:
+    mode: maintainer

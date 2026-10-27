@@ -23,7 +23,7 @@
 #    ScheduledTasks module), and schtasks was chosen because it is what was verified to work
 #    UNELEVATED for a per-user task: /Create rc=0, /Query rc=0, /Delete rc=0, and /Query on a
 #    deleted task rc=1. The account the fleet runs as is not an administrator
-#    (docs/infra/windows-workstation-setup.md, "Deviations on Jon's desktop"), so a registration
+#    (tools/setup-windows.sh, "Deviations on Jon's desktop"), so a registration
 #    path needing elevation would simply not run here.
 #
 # 2. IDEMPOTENT BY /F, not by a pre-check. `schtasks /Create /F` replaces an existing task of
@@ -39,12 +39,12 @@
 #    context (tools/check-desktop-lock.sh). A task registered with /RU SYSTEM or with stored
 #    credentials runs in session 0, where there is no interactive desktop, and every GUI test
 #    would fail or, worse, silently skip. The machine is documented to stay logged in and
-#    unlocked for exactly this reason (docs/phases/0-gui-tier.md, docs/infra/0-machines.md).
+#    unlocked for exactly this reason (docs/phases/0-gui-tier.md, tools/setup-windows.sh).
 #
 # 4. THE BASH INVOCATION IS THE ONE tools/setup-windows.sh DOCUMENTS, and nothing more. MSYS2 on
 #    this machine is the scoop package under C:\Users\jon\scoop\apps\msys2\current, not
 #    C:\msys64 (windows-workstation-setup.md again), so the path is DISCOVERED, never hardcoded:
-#    HERMES_GIT_BASH_PATH, then MSYS2_BASH, then a short list of known roots, and the script dies
+#    MSYS2_BASH_PATH, then MSYS2_BASH, then a short list of known roots, and the script dies
 #    naming what it looked for rather than registering a task that cannot run. The command is
 #    `bash.exe -lc "<repo>/tools/nightly.sh <job>"` -- a LOGIN shell, which is what sources
 #    /etc/profile.d/oolite-windows-env.sh (the USERPROFILE/LOCALAPPDATA shim setup-windows.sh
@@ -79,7 +79,7 @@ $ErrorActionPreference = 'Stop'
 
 # Write-Output inside a function is appended to its return value, so a helper that logs and
 # returns a path returns an ARRAY and every later binding fails with "Cannot convert
-# System.Object[]" -- the trap recorded in docs/infra/windows-workstation-setup.md. Log with
+# System.Object[]" -- the trap recorded in tools/setup-windows.sh. Log with
 # Write-Host only.
 function Say  { param([string] $m) Write-Host "install-scheduled-tasks: $m" }
 function Fail { param([string] $m) Write-Host "install-scheduled-tasks: $m" -ForegroundColor Red; exit 1 }
@@ -120,7 +120,7 @@ if (-not (Test-Path $runner)) {
 
 if (-not $BashPath) {
     $candidates = @()
-    if ($env:HERMES_GIT_BASH_PATH) { $candidates += $env:HERMES_GIT_BASH_PATH }
+    if ($env:MSYS2_BASH_PATH) { $candidates += $env:MSYS2_BASH_PATH }
     if ($env:MSYS2_BASH)           { $candidates += $env:MSYS2_BASH }
     $candidates += @(
         (Join-Path $env:USERPROFILE 'scoop\apps\msys2\current\usr\bin\bash.exe'),
@@ -130,15 +130,15 @@ if (-not $BashPath) {
     $BashPath = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
 }
 if (-not $BashPath -or -not (Test-Path $BashPath)) {
-    Fail ("no MSYS2 bash.exe found. Looked at HERMES_GIT_BASH_PATH, MSYS2_BASH, " +
+    Fail ("no MSYS2 bash.exe found. Looked at MSYS2_BASH_PATH, MSYS2_BASH, " +
           "$env:USERPROFILE\scoop\apps\msys2\current\usr\bin\bash.exe, C:\msys64 and C:\tools\msys64. " +
-          "Pass -BashPath, and see docs/infra/windows-workstation-setup.md")
+          "Pass -BashPath, and see tools/setup-windows.sh")
 }
 # Git Bash cannot see ccache, clang or anything else from pacman -- the first trap in the
 # workstation runbook. Say so loudly rather than registering a task that fails every night.
 if ($BashPath -match 'Program Files\\Git' -or $BashPath -match 'scoop\\apps\\git\\') {
     Fail ("$BashPath is Git Bash, not MSYS2. It cannot see the pacman toolchain, so the tier " +
-          "would fail or silently use the wrong compiler (docs/infra/windows-workstation-setup.md). " +
+          "would fail or silently use the wrong compiler (tools/setup-windows.sh). " +
           "Point -BashPath at MSYS2's usr\bin\bash.exe")
 }
 

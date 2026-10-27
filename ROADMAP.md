@@ -13,8 +13,8 @@ Decided 2026-09-10: every open decision taken by default ([ADR-0013](docs/decisi
 
 **Migration track** — Phases 0–6, the work on the game. Sequential, except 1 ∥ 2. Everything
 through Phase 4 runs natively on one Windows x86-64 machine; macOS and Linux join at Phase 5.
-**Infra track** — I0–I5, the machine, its provisioning, the fleet, the metrics and the Hermes
-runbook that let AI agents do the migration track. It gates Phase 0's exit and the first fleet sweep, and is worked in parallel.
+**Infra track** — the machine, its provisioning, the worker and the metrics that let AI agents do
+the migration track. It gates Phase 0's exit and the first sweep, and is worked in parallel.
 
 Hardware and setup are infra items, not a migration phase: the agent host, build host, and
 verification host are separate concerns, and the phase numbers stay stable.
@@ -43,14 +43,14 @@ on their own (a maintained JS engine, no GNUstep) whether or not the conversion 
 
 | Item | Name | Doc | Gates | Status |
 |---|---|---|---|---|
-| I0 | The machine and its checklist | [0-machines.md](docs/infra/0-machines.md) | Phase 0 entry | not started |
-| I1 | Provisioning and caches | [1-base-images.md](docs/infra/1-base-images.md) | Phase 0 items 0.2, 0.9 | not started |
-| I2 | Forge and CI runners | [2-forge-and-runners.md](docs/infra/2-forge-and-runners.md) | — | **deferred** (ADR-0016): local verification only |
-| I3 | Fleet (Claude Code, Hermes `/goal`, beads, the fleet scripts) | [3-fleet.md](docs/infra/3-fleet.md) · [5-hermes-goal.md](docs/infra/5-hermes-goal.md) | first sweep | skill written (`.agents/skills/beads-worker`); Hermes configured; tier scripts pending |
-| I4 | Metrics | [4-metrics.md](docs/infra/4-metrics.md) | I3 step 1 | not started |
-| I5 | Hermes runbook | [5-hermes-goal.md](docs/infra/5-hermes-goal.md) | first sweep | written; redo the setup on the Windows machine |
+| I0 | The machine and its checklist | [tools/setup-windows.sh](tools/setup-windows.sh) | Phase 0 entry | script written |
+| I1 | Provisioning and caches | [tools/setup-windows.sh](tools/setup-windows.sh) | Phase 0 items 0.2, 0.9 | script written |
+| I2 | Forge and CI runners | — | — | **deferred** (ADR-0016): local verification only |
+| I3 | The worker (Claude Code `/loop`, beads, the guard shims) | [.claude/skills/beads-worker/](.claude/skills/beads-worker/SKILL.md) | first sweep | skill, scripts and guards written; canaries pending |
+| I4 | Metrics | — | I3 step 1 | not started |
+| I5 | ~~Hermes runbook~~ | — | — | **dropped**: Hermes is no longer used; the worker is a Claude Code skill |
 
-Setting up a Windows machine from scratch: [docs/infra/windows-workstation-setup.md](docs/infra/windows-workstation-setup.md) — pinned versions, the steps, and the traps, written during the Azure VM bring-up.
+Setting up a Windows machine from scratch: [tools/setup-windows.sh](tools/setup-windows.sh) — pinned versions, the steps, and the traps, written during the Azure VM bring-up.
 
 ## Reference
 
@@ -86,21 +86,21 @@ where the number points.
 | 12 | `clang-refactor` for ~40% of JS sites, fleet for the rest | [Phase 1](docs/phases/1-js-engine.md) |
 | 13 | Existing C is reused, never rewritten; `oomath` is a rename | [ADR-0012](docs/decisions/0012-c-stays-c.md) |
 | 14 | Merges to `main` are automatic when the bead's acceptance block passes inside a five-minute budget; Tier C runs nightly and at phase end, not per merge; Jon's only in-loop gate is re-blessing goldens | ADR-0013, [ADR-0021](docs/decisions/0021-fast-gate-at-merge-full-gate-nightly.md) |
-| 15 | Claude Code with **Claude Opus 5** is the frontier runtime (the per-phase review beads run on **Claude Fable 5.1**); Hermes Agent `/goal` drives local-model sweeps against on-prem endpoints; beads is the queue; `accept`, `merge-queue`, `run-story` are in-repo scripts. No Gas Town / Gas City | [ADR-0014](docs/decisions/0014-claude-code-opencode-beads.md), [ADR-0015](docs/decisions/0015-hermes-goal-loop.md) |
+| 15 | Claude Code with **Claude Opus 5** is the runtime: the `beads-worker` skill under `/loop`, one bead per iteration, beads as the queue, `git town propose` for the bead's pull request. Hermes and the `tools/fleet` drivers are retired; ADR-0015 is superseded | [ADR-0014](docs/decisions/0014-claude-code-opencode-beads.md), [ADR-0067](docs/decisions/0067-submodules-replace-subtrees.md) |
 | 16 | ~~`upstream/oolite` is a git subtree of the fork~~ replaced 2026-10-27: `oolite-dev` (fork `develop`) and `oolite-main` (fork `master`) are submodules, `upstream/*` are OoliteProject's own; the GUI tier runs in Tier C and nightly, never per bead | [ADR-0017](docs/decisions/0017-native-windows-subtree.md), [ADR-0067](docs/decisions/0067-submodules-replace-subtrees.md) |
 
 ## Where Jon is
 
 Exactly four places ([ADR-0013](docs/decisions/0013-decide-up-front-minimise-human.md)): the
 weekly re-bless queue; accounts, credentials, hardware and TCC grants (including the one-time
-[machine checklist](docs/infra/0-machines.md)); overriding a default decision by ADR; a monthly
+[machine checklist](tools/setup-windows.sh)); overriding a default decision by ADR; a monthly
 judgement on whether the GUI tier still means something. Everything else, including every seam
 and every merge, is an agent's job.
 
 ## Conventions
 
 - Phase docs follow [templates/phase.md](docs/templates/phase.md). Status logs are append-only and
-  dated. Record what the fleet could not do and a human did; that feeds `docs/fleet/FLEET_FAILURES.md`.
+  dated. Record what the worker could not do and a human did.
 - Decisions are ADRs. Do not edit a decision in place; supersede it. An agent that needs a human
   decision files a proposed ADR with a default and proceeds on the default.
 - Agent-facing docs have a token budget: `CLAUDE.md` ≤ 1k words, a phase doc ≤ 3k.
