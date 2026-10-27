@@ -133,11 +133,6 @@ def test_guardrails_has_no_piped_grep_q():
 # buffer.  They are left alone because they belong to other beads' files and a drive-by rewrite of
 # a gate script is worse than a documented, ratcheted allowance.
 KNOWN_SITES = {
-    # printf of a captured stdout; each match is against script output of a few KB.
-    "tools/merge-queue-acceptance.sh": 13,
-    "tools/merge-queue-mutants.sh": 2,
-    # printf of a single short URL string.
-    "tools/merge-queue.sh": 2,
     # Was 2. Bead oo-3uf8 LANDED on main as 7a80d9a and removed its --only/--skip validator
     # (`all_stage_names | grep -qx`) -- the one instance in this class PROVEN to break in
     # production. Do not go looking for it; it no longer exists. The single survivor is

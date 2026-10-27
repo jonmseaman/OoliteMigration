@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Guard shim for `git`. First on PATH via .claude/settings.json.
+# Guard shim for `git`. Must be first on PATH, set by the shell that launches claude:
+#   PATH="<repo>/tools/guard:$PATH" claude
+# settings.json `env` cannot do it (values are copied literally, ${PATH} is not expanded), and
+# ~/.bashrc must not do it either: the push refusal below would then hit every repo on the box.
 #
 # Work reaches develop through a pull request you merge, never through an agent's push
 # (CLAUDE.md hard rule 5). A bead's branch does have to reach the fork, though: that is what

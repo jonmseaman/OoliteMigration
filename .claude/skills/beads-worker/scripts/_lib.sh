@@ -15,7 +15,7 @@ real_bd() { PATH="$(_unguarded_path)" command bd "$@"; }
 real_git() { PATH="$(_unguarded_path)" command git "$@"; }
 # The UCRT64 jq writes CRLF. Every value that reaches a shell variable goes through nocr, or ids
 # carry a trailing \r, `bd show` is handed a bead that cannot exist, and `set -e` kills the script
-# with no output at all. (Same trap as tools/check-beads-db-merge.sh's `tr -d '\r'`.) Stripping
+# with no output at all. Stripping
 # literal CR is safe for JSON: a real carriage return inside a string is encoded as \r, two
 # characters, not a literal one.
 nocr() { tr -d '\r'; }
@@ -57,30 +57,6 @@ dev_clean() { [ -z "$(real_git -C "$DEV" status --porcelain 2>/dev/null)" ]; }
 # Git Town's main branch inside oolite-dev: the branch bead branches are appended to and propose
 # against. Configured by preflight.sh; `develop` unless someone changed it.
 dev_main() { real_git -C "$DEV" config --get git-town.main-branch || echo develop; }
-# The bead DB export (.beads/*.jsonl) is bookkeeping regenerated from Dolt, never the record of
-# truth: every note, status and field reaches the JSONL through `bd`, which writes Dolt first. A
-# merge conflict in that file therefore carries nothing a fresh `bd export` does not already have.
-# resolve_beads_db_conflict <checkout> finishes a half-done merge whose ONLY conflicts are
-# .beads/*.jsonl by taking the base side and staging it. Returns 1 and leaves the merge untouched
-# if any other path conflicts: a real conflict in bead work is still a human's to resolve.
-# The worker no longer merges anything, so nothing here calls this; it survives because
-# tools/check-beads-db-merge.sh is the control that proves the rule, and because a branch cut
-# before 2026-10-07 can still carry a tracked export.
-resolve_beads_db_conflict() {
-  local co="$1" conflicts other p
-  conflicts="$(real_git -C "$co" diff --name-only --diff-filter=U 2>/dev/null)"
-  [ -n "$conflicts" ] || return 1
-  other="$(printf '%s\n' "$conflicts" | grep -vE '^\.beads/[^/]+\.jsonl$' || true)"
-  [ -z "$other" ] || return 1
-  while IFS= read -r p; do
-    [ -n "$p" ] || continue
-    real_git -C "$co" checkout --ours -- "$p" 2>/dev/null || return 1
-    real_git -C "$co" add -- "$p" || return 1
-  done <<EOF
-$conflicts
-EOF
-  [ -z "$(real_git -C "$co" diff --name-only --diff-filter=U 2>/dev/null)" ]
-}
 # feature/MMDD-slug, the branch name for a bead. The slug comes from the bead's title so a branch
 # and its pull request are readable without looking the id up.
 bead_branch_name() {

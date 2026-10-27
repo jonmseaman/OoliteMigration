@@ -80,7 +80,7 @@ where the number points.
 | 6 | Legacy AI and plist scripting ported faithfully | ADR-0013, [Phase 3](docs/phases/3-cpp-conversion.md) |
 | 7 | MinGW-clang; revisit only at the Phase 6 upgrade | ADR-0013 |
 | 8 | Self-hosted Mac runner from Phase 5; Jon grants TCC once | ADR-0013, [Phase 5](docs/phases/5-apple-silicon.md) |
-| 9 | No CI/CD forge for now; Tier B/C run locally, merge queue calls `tools/tier-c.sh` directly. ADR-0008's Forgejo-mirror plan is deferred, not reversed | [ADR-0016](docs/decisions/0016-no-forge-local-verification.md), [ADR-0008](docs/decisions/0008-forge-and-runners.md) |
+| 9 | No CI/CD forge for now; Tier B (PR gate) and Tier C (phase gate) run locally, with no scheduled runs ([ADR-0068](docs/decisions/0068-no-scheduled-runs-tier-c-is-the-phase-gate.md)). ADR-0008's Forgejo-mirror plan is deferred, not reversed | [ADR-0016](docs/decisions/0016-no-forge-local-verification.md), [ADR-0008](docs/decisions/0008-forge-and-runners.md) |
 | 10 | One Windows machine, everything native; no WSL2; Windows is the only verified platform until Phase 5 | [ADR-0010](docs/decisions/0010-single-windows-machine.md), [ADR-0017](docs/decisions/0017-native-windows-subtree.md) |
 | 11 | Per-platform goldens **and** quantised floats; `-ffp-contract=off`; pinned `-O` | ADR-0013, [Phase 0](docs/phases/0-safety-net.md) |
 | 12 | `clang-refactor` for ~40% of JS sites, fleet for the rest | [Phase 1](docs/phases/1-js-engine.md) |

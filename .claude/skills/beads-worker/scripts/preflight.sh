@@ -20,7 +20,9 @@ rc=0
 bd close oo-preflight-no-such-bead >/dev/null 2>&1 || rc=$?
 [ "$rc" -eq 77 ] || die "the bd guard shim is not first on PATH ('bd close' exited $rc, expected 77).
 Nothing is stopping an agent closing its own bead (CLAUDE.md hard rule 4).
-Fix .claude/settings.json so it prepends $REPO_ROOT/tools/guard to PATH, then start a new session."
+Relaunch claude with the shim first on PATH (settings.json cannot do this - env values are
+copied literally, so \${PATH} is NOT expanded):
+    PATH=\"$REPO_ROOT/tools/guard:\$PATH\" claude"
 
 [ -e "$DEV/.git" ] || die "oolite-dev is not checked out; run: git submodule update --init"
 # Local config only: oolite-dev is the game fork and carries no git-town.toml of its own, so these

@@ -18,7 +18,7 @@
 # alone, as it leaves alone Core Foundation bridging and the runtime's objc_object.
 #
 # Wired into tools/tier-a.sh as step 4 (per file, ~3 s even on ShipEntity.mm); the whole-tree
-# --all line runs nightly (tests/nightly/checks.txt [oo-tzd3n]); tools/objc-cast-scan-selftest
+# --all line runs in tools/tier-c.sh's selftests stage; tools/objc-cast-scan-selftest
 # proves it fails on planted casts and passes on the legitimate look-alikes.
 #
 # Exit: 0 no finding; 1 findings (printed as `oolite-dev/<path>:<line>:<col>: ...`);

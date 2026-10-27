@@ -38,7 +38,7 @@ TIER_C = TOOLS / "tier-c.sh"
 # The stages tier-c.sh declares. Kept as a literal so a table someone quietly narrowed does not
 # also narrow this test's own expectations -- test_every_declared_stage_is_covered_here ties the
 # two together and fails if they drift.
-STAGES = ["tier-b", "jsapi", "asan", "goldens", "corpus", "gui", "fleetdata"]
+STAGES = ["tier-b", "jsapi", "asan", "goldens", "corpus", "gui", "unit", "deployment", "selftests"]
 
 
 def tier_c(*args: str) -> subprocess.CompletedProcess:

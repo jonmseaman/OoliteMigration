@@ -103,7 +103,7 @@ seconds.
 |---|---|---|---|---|
 | **A — in-loop** | every agent edit | Compile the single TU; `clang-tidy`; symbol deny-list grep; that module's unit tests | **< 30 s** | none needed — it's seconds |
 | **B — per candidate PR** | agent believes it's done | Full build, **one** platform; module tests; 3–5 fast golden scenarios; Tier-1 OXP subset | **< 10 min** | local, one game process per scenario, headless; no CI ([ADR-0016](decisions/0016-no-forge-local-verification.md)) |
-| **C — per merge batch** | merge queue | Every supported platform (Windows until Phase 5); all 20 goldens; ASan; full Tier-1; JS API snapshot; PyAutoGUI tier under the desktop lock (also nightly; never per bead, [ADR-0017](decisions/0017-native-windows-subtree.md)) | 30–90 min | batched — see §3.3 |
+| **C — per phase** | phase end, before the phase PR ([ADR-0068](decisions/0068-no-scheduled-runs-tier-c-is-the-phase-gate.md)) | Every supported platform (Windows until Phase 5); all 20 goldens; ASan; full Tier-1; JS API snapshot; PyAutoGUI tier under the desktop lock (never per bead, [ADR-0017](decisions/0017-native-windows-subtree.md)); the C++ unit suites, the deployment flavour and the guards' self-tests | 30–90 min | batched — see §3.3 |
 
 Tier A is what an agent iterates against. If Tier A is slow, everything else is irrelevant, because
 the agent's inner loop dominates wall-clock. **Getting Tier A under 30 seconds is the single highest-
@@ -198,7 +198,6 @@ does.
 | **Adjudicator** (frontier) | on-demand | proposes a re-bless *with written justification* | **every re-bless, always** |
 | **Phase reviewer** (Claude Opus 5.5) | once per phase, before its exit gate | verifies every phase item is done, files missing work as new beads, may reopen itself behind them | nothing it cannot express as a bead; it never closes beads itself |
 | **Jon** | — | **re-blesses goldens** (weekly queue) · accounts, credentials, hardware, TCC grants · overrides a default decision by ADR · monthly judgement on the GUI tier's meaning ([ADR-0013](decisions/0013-decide-up-front-minimise-human.md)) | — |
-| **Merge queue** (`tools/merge-queue`) | standing | **merges to `main`** automatically when Tier C is green on the batch | a batch that fails after bisection with no culprit found |
 
 Four notes on this table:
 

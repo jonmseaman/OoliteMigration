@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-# Guard shim for `bd`. .claude/settings.json puts this directory first on PATH, and
-# scripts/preflight.sh asserts it is actually there before a tick runs — Claude Code has no
-# "export PATH before you start" ritual, so the shim is proved, not assumed.
+# Guard shim for `bd`. This directory must be FIRST on PATH, which only the shell that launches
+# claude can do: settings.json `env` copies values literally, so ${PATH} is not expanded there.
+#   PATH="<repo>/tools/guard:$PATH" claude
+# scripts/preflight.sh asserts the shim is really there before a tick runs, so it is proved,
+# not assumed. Do NOT prepend this directory in ~/.bashrc: the git shim refuses any push whose
+# origin is not the game fork, which would block pushes in every other repo on the machine.
 # Unless BEADS_ACCEPT=1 (set only by scripts/accept.sh), it refuses every way bd 1.3.0 can close
 # or remove a bead (CLAUDE.md hard rule 4: the agent that implemented a bead never closes it):
 #   close / done, todo done, epic close-eligible, duplicate, supersede, gate resolve,

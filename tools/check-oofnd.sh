@@ -42,7 +42,7 @@
 #                  "PASS (memoised: <hash>, green at <time>): <that run's summary>" and exits 0.
 #                  The cache is ${XDG_CACHE_HOME:-$HOME/.cache}/oolite/check-oofnd/<hash>, written
 #                  only after a fully green real run. OO_CHECK_OOFND_NO_MEMO=1 forces a real run
-#                  (tests/nightly/checks.txt does, so the memo never hides a flake from the night).
+#                  (use it when a flake must not hide behind a cached green).
 #
 # Runs from anywhere in the MSYS2 UCRT64 shell. Paths are deliberately kept RELATIVE to the
 # repo root (see tools/check-jsengine-facade-quickjs.sh: absolute C:/... arguments get

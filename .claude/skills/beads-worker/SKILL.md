@@ -73,8 +73,8 @@ work is part of the work.
 
 The block is one command per line, each run in its own `bash -o pipefail -c` from the **repo root**
 (so acceptance lines spell the submodule out: `cd oolite-dev && ./mk.sh build test`). The whole
-block shares a five-minute budget (ADR-0021); a slow proof belongs in `tests/nightly/checks.txt`,
-not in a bigger budget. A line must be proven to **fail** on unfixed code, not merely to pass on
+block shares a five-minute budget (ADR-0021); a slow proof belongs in one of `tools/tier-c.sh`'s
+stage lists (ADR-0068), not in a bigger budget. A line must be proven to **fail** on unfixed code, not merely to pass on
 fixed code — see `references/pitfalls.md`.
 
 ## When something is wrong with the task

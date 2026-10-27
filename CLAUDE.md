@@ -62,7 +62,7 @@ tools/guardrails.sh         # the four hard rules above, enforced against this c
 tools/guardrails-selftest   # proof the guardrails fail on a real violation of each rule
 tools/tier-a.sh <file>      # single-TU compile, clang-tidy, deny-list, module tests; < 30 s, offline
 tools/tier-b.sh             # one-platform build, module tests, fast goldens, Tier-1 subset; < 10 min
-tools/tier-c.sh             # everything; run by the merge queue, not by you
+tools/tier-c.sh             # the phase gate: everything; run at phase end (ADR-0068)
 ```
 
 Upstream build today: `cd oolite-dev && ./mk.sh build test`. Smoke test:

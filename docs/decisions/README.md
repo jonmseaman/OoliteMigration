@@ -81,5 +81,6 @@ changed* from the chain.
 | [0064](0064-pretty-function-spelling-in-tests-under-gcc.md) | Tests that pin `__PRETTY_FUNCTION__` expect each compiler's own spelling; nothing in the game changes (oo-4d403) |
 | [0066](0066-test-every-shipped-flavour.md) | Assertions live in every flavour; unit suites under the deployment macros and goldens on the deployment binary, nightly (oo-pdsng) |
 | [0067](0067-submodules-replace-subtrees.md) | Submodules replace the subtrees: `oolite-dev` (fork `develop`) is the game, `oolite-main` (fork `master`) and `upstream/*` (OoliteProject, unmodified) are reference; beads pipeline retired (oo-s2xwp) |
+| [0068](0068-no-scheduled-runs-tier-c-is-the-phase-gate.md) | No scheduled runs: the nightly layer, merge queue and fleet reporter are retired; Tier A is the edit loop, Tier B the PR gate, Tier C the phase gate with `unit`, `deployment` and `selftests` stages |
 
 Template: Status · Date · Context · Decision · Consequences · History.

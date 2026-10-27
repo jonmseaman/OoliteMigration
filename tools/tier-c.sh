@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Tier C -- the MERGE gate. Phase 0 item 0.9c (docs/phases/0-safety-net.md), bead oo-j4u.
+# Tier C -- the PHASE gate (run at phase end, before a phase PR). Phase 0 item 0.9c (docs/phases/0-safety-net.md), bead oo-j4u.
 # Tiers are defined in docs/execution-model.md §3.1; Tier B (tools/tier-b.sh) is the per-commit
 # gate this one composes with rather than duplicates.
 #
@@ -9,11 +9,6 @@
 #     tools/tier-c.sh --only a,b,c       # a comma-separated subset of stage names
 #     tools/tier-c.sh --skip asan        # run everything except these
 #     tools/tier-c.sh --dry-run          # resolve and print the plan, run no stage
-#     tools/tier-c.sh --backend=<sm|quickjs>  # point the goldens/corpus/gui stages at the named
-#                                        # backend's pre-built app dir (bead oo-2t6) instead of
-#                                        # the plain meson_test build. Combine with tools/tier-c-
-#                                        # diff.sh, which runs this once per backend and diffs the
-#                                        # two backends' golden dumps and corpus verdicts.
 #
 # ================================================================================================
 # WHAT THIS RUNS, AND WHAT IT COSTS.  THE ARITHMETIC CAME FIRST AND SHAPED THE DESIGN.
@@ -30,10 +25,18 @@
 #   3 goldens      ~90-300 s  EVERY blessed + staged + pending scenario, not just the fast ones
 #   4 corpus       ~11-13 min full Tier 1: 36 groups (30 catalogue + 6 test-oxps) at 17-22 s
 #   5 gui          ~120 s    the PyAutoGUI tier, which takes the desktop EXCLUSIVELY (ADR-0017)
-#   6 fleetdata    ~5 s      the ONE test tier-b deliberately deselects, run here where it matters
+#   6 unit         C++ unit suites tier-b does not run: core classes, oofnd, expander, sysdesc,
+#                            the QuickJS-ng facade backend
+#   7 deployment   the oofnd suite and the blessed goldens under the shipped flavour (ADR-0066)
+#   8 selftests    the guards' and harnesses' own proofs that they can fail (guardrails, file
+#                            modes, desktop lock, gui-lock, tier-a probes, upstream delta, cast
+#                            scan) and the generated-table and JS API contract checks
+#
+#   Stages 6-8 replaced tests/nightly/checks.txt and the scheduled nightly runner (2026-10-27).
+#   There are no scheduled runs: a durable proof runs here, at phase end, or nowhere.
 #
 #   PROJECTED TOTAL, honestly summed:
-#     tier-b 165-295 + jsapi 1 + asan 135 + goldens 90-300 + corpus 660-790 + gui 120 + fleet 5
+#     tier-b 165-295 + jsapi 1 + asan 135 + goldens 90-300 + corpus 660-790 + gui 120
 #     =  1176 s (19.6 min) best case  ..  1646 s (27.4 min) worst case.
 #
 # Budget is 3000 s (50 min). That is deliberate: Tier C runs on a MERGE, not on a commit, so the
@@ -75,7 +78,8 @@
 #   goldens    a COUNT of scenarios against a floor, each producing a dump golden_diff rates 0.
 #   corpus     the number of groups PASSing must equal the number requested; the run must be the
 #              FULL list, not a subset, and the count is read from corpus.sh's own report.
-#   fleetdata  a pytest count, not an exit code.
+#   unit, deployment, selftests  each listed command's exit status; every command runs even
+#              after a failure, so one red proof does not hide the others.
 
 set -u -o pipefail
 
@@ -125,8 +129,10 @@ jsapi\t2\tJS API snapshot regenerated from engine source and byte-compared
 asan\t135\tAddressSanitizer build of the engine, plus a real launch of it
 goldens\t200\tevery golden scenario: blessed, staged and pending
 corpus\t700\tthe FULL Tier 1 corpus (36 groups), not tier-b's 3-group subset
-gui\t120\tthe PyAutoGUI tier, serialised on tools/gui-lock (here and nightly only)
-fleetdata\t5\tthe fleet-report test tier-b deliberately deselects"
+gui\t120\tthe PyAutoGUI tier, serialised on tools/gui-lock
+unit\t300\tC++ unit suites tier-b does not run (core, oofnd, expander, sysdesc, quickjs)
+deployment\t400\tthe oofnd suite and blessed goldens under the shipped deployment flavour
+selftests\t600\tthe guards and harnesses proving they can fail; generated-table and API checks"
 
 # --- Floors --------------------------------------------------------------------------------------
 #
@@ -134,15 +140,9 @@ fleetdata\t5\tthe fleet-report test tier-b deliberately deselects"
 # fewer FAILS. Floors, not equalities: adding a scenario must not require editing this file.
 GOLDEN_FLOOR="${OOLITE_TIER_C_GOLDEN_FLOOR:-2}"
 CORPUS_FLOOR="${OOLITE_TIER_C_CORPUS_FLOOR:-36}"
-FLEET_TEST_FLOOR="${OOLITE_TIER_C_FLEET_FLOOR:-1}"
 GUI_TEST_FLOOR="${OOLITE_TIER_C_GUI_FLOOR:-1}"
 JSAPI_SNAPSHOT="$REPO_ROOT/oxp-contract/js-api-source.json"
 ASAN_SUPPRESSIONS="${OOLITE_TIER_C_ASAN_SUPPRESSIONS:-$HERE/asan-suppressions.txt}"
-
-# The ONE test tier-b deselects, with its reason (tools/tier-b.sh:149-156): it asserts the
-# committed docs/fleet/REPORT-<date>.md still agrees with the LIVE beads database, so it goes red
-# whenever anyone files or closes a bead -- unacceptable per-commit, actionable on a merge.
-FLEET_TEST="tests/fleet/test_fleet_reporter.py::test_the_committed_report_exists_and_passes_its_own_check"
 
 # --- Output ---------------------------------------------------------------------------------------
 
@@ -164,7 +164,7 @@ fail() {
 
 # --- Arguments -------------------------------------------------------------------------------------
 
-LIST=0; DRY=0; ONLY=""; SKIP=""; BACKEND=""
+LIST=0; DRY=0; ONLY=""; SKIP=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --list)    LIST=1 ;;
@@ -173,26 +173,11 @@ while [ $# -gt 0 ]; do
     --only=*)  ONLY="${1#--only=}" ;;
     --skip)    SKIP="${2:?--skip needs a comma-separated stage list}"; shift ;;
     --skip=*)  SKIP="${1#--skip=}" ;;
-    --backend) BACKEND="${2:?--backend needs sm or quickjs}"; shift ;;
-    --backend=*) BACKEND="${1#--backend=}" ;;
     -h|--help) sed -n '2,20p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) die "unknown argument '$1' (try --help)" ;;
   esac
   shift
 done
-
-# --backend=<sm|quickjs> (bead oo-2t6). Normalise the two accepted spellings for each engine
-# ('sm'/'spidermonkey', 'quickjs'/'quickjs-ng') to the meson option value, so a typo is a FATAL
-# usage error rather than a silent fall-through to the default app dir (which would make a
-# "quickjs" run quietly re-check the SpiderMonkey build and report a meaningless match).
-BACKEND_LABEL=""
-if [ -n "$BACKEND" ]; then
-  case "$BACKEND" in
-    sm|spidermonkey) BACKEND_LABEL="spidermonkey" ;;
-    quickjs|quickjs-ng) BACKEND_LABEL="quickjs" ;;
-    *) die "unknown --backend '$BACKEND' (expected 'sm' or 'quickjs')" ;;
-  esac
-fi
 
 all_stage_names() { printf '%b\n' "$STAGES" | while IFS=$'\t' read -r n c d; do [ -n "$n" ] && printf '%s\n' "$n"; done; }
 
@@ -271,7 +256,6 @@ done
 if [ "$DRY" = 1 ]; then
   printf 'tier-c: plan (%d stage(s)): %s\n' "${#SELECTED[@]}" "${SELECTED[*]}"
   printf 'tier-c: budget %ss, platform %s, repo %s\n' "$BUDGET_SECONDS" "$PLATFORM" "$REPO_NATIVE"
-  [ -n "$BACKEND_LABEL" ] && printf 'tier-c: backend %s\n' "$BACKEND_LABEL"
   exit 0
 fi
 
@@ -286,25 +270,7 @@ command -v cygpath >/dev/null 2>&1 || die "no cygpath on PATH; this is not an MS
 # FRESH worktree with NO BUILD DIRECTORY (bead oo-1xz); a line that needs the game must say where
 # the game is, in both places.
 #
-# --backend picks the meson flavour directory each backend is built into (bead oo-2t6): the
-# QuickJS-ng backend build lives at build/meson_test_quickjs (a SEPARATE build directory from the
-# plain SpiderMonkey build at build/meson_test, so choosing one never overwrites the other and the
-# differential runner can hold both at once). OO_APP_DIR still wins outright when set, exactly as
-# it does with no --backend, so a caller pointing this at an ad-hoc build is never overridden.
-#
-# Since bead oo-7wx the tree has one engine, QuickJS-ng, built into the ordinary
-# build/meson_test. A SpiderMonkey build exists only if someone builds a pre-oo-7wx tree into
-# build/meson_test_spidermonkey (or points OO_APP_DIR at one) for a historical differential run;
-# otherwise --backend=sm fails at the app-dir check below, loudly, rather than re-checking the
-# QuickJS build under the wrong name.
-if [ -n "$BACKEND_LABEL" ]; then
-  case "$BACKEND_LABEL" in
-    spidermonkey) DEFAULT_APP_DIR="$OOLITE/build/meson_test_spidermonkey/oolite.app" ;;
-    quickjs)       DEFAULT_APP_DIR="$OOLITE/build/meson_test/oolite.app" ;;
-  esac
-else
-  DEFAULT_APP_DIR="$OOLITE/build/meson_test/oolite.app"
-fi
+DEFAULT_APP_DIR="$OOLITE/build/meson_test/oolite.app"
 APP_DIR="${OO_APP_DIR:-$DEFAULT_APP_DIR}"
 
 RUN_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/tier-c-$$-XXXXXX")" || die "cannot create a run root"
@@ -332,7 +298,6 @@ printf '==> tier-c (%s, budget %ss, %d stage(s): %s)\n' \
 detail "repo      $REPO_NATIVE"
 detail "run root  $RUN_ROOT_NATIVE"
 detail "app dir   $(native "$APP_DIR")"
-[ -n "$BACKEND_LABEL" ] && detail "backend   $BACKEND_LABEL"
 
 # ================================================================================================
 # STAGE tier-b -- THE WHOLE PER-COMMIT GATE
@@ -882,7 +847,7 @@ stage_corpus() {
 # STAGE gui -- THE PYAUTOGUI TIER, UNDER THE DESKTOP LOCK
 # ================================================================================================
 #
-# ADR-0017: the GUI tier runs HERE and nightly only, never per bead, because it drives a real
+# ADR-0017: the GUI tier runs HERE only, never per bead, because it drives a real
 # window with synthetic OS input events and therefore takes the interactive desktop EXCLUSIVELY.
 # Two GUI runs at once steal each other's focus and each other's clicks.
 #
@@ -895,7 +860,7 @@ stage_gui() {
   local t0=$SECONDS log="$RUN_ROOT/gui.log" rc=0
   step gui "tools/gui-tier.sh (serialised on tools/gui-lock)"
   [ -f "$HERE/gui-tier.sh" ] \
-    || fail gui "tools/gui-tier.sh is missing; the GUI tier runs in Tier C and nightly only (ADR-0017), so its absence here means it runs nowhere"
+    || fail gui "tools/gui-tier.sh is missing; the GUI tier runs in Tier C only (ADR-0017), so its absence here means it runs nowhere"
   [ -d "$OOLITE/tests/gui" ] \
     || fail gui "oolite-dev/tests/gui does not exist; there is no GUI tier to run and a green from this stage would be vacuous"
 
@@ -922,29 +887,60 @@ stage_gui() {
 }
 
 # ================================================================================================
-# STAGE fleetdata -- THE TEST TIER B DESELECTS
+# STAGES unit, deployment, selftests -- THE PROOFS NOTHING ELSE RUNS
 # ================================================================================================
 #
-# tools/tier-b.sh:149-156 deliberately deselects ONE test, with its reason recorded: it asserts the
-# committed docs/fleet/REPORT-<date>.md still agrees with the LIVE beads database, so it goes red
-# whenever anyone files or closes a bead. That is intolerable per-commit and exactly right on a
-# merge, where a stale committed report IS actionable. Running it here is what stops that
-# deselection from being a permanent hole.
-stage_fleetdata() {
-  local t0=$SECONDS log="$RUN_ROOT/fleetdata.log" rc=0
-  step fleetdata "$FLEET_TEST (deselected by tier-b, run here)"
-  [ -f "$REPO_ROOT/tests/fleet/test_fleet_reporter.py" ] \
-    || fail fleetdata "tests/fleet/test_fleet_reporter.py does not exist; the test tier-b deselects has moved or been deleted, so tier-b's deselection is now a permanent hole -- repoint this stage rather than dropping it"
-  ( cd "$REPO_ROOT" && "$PY" -m pytest "$FLEET_TEST" -q -p no:cacheprovider ) > "$log" 2>&1 || rc=$?
-  local passed
-  passed="$(grep -oE '[0-9]+ passed' "$log" | tail -1 | grep -oE '[0-9]+' || echo 0)"
-  [ "$rc" -eq 0 ] || { tail -25 "$log" >&2
-    fail fleetdata "the deselected fleet-report test failed (rc=$rc, $passed passed): the committed docs/fleet/REPORT-*.md no longer agrees with the beads database. Regenerate it; $(native "$log")"; }
-  # A pytest run that selected NOTHING (a renamed node id) exits 5, but one that deselected
-  # everything can exit 0. The count is the evidence.
-  [ "${passed:-0}" -ge "$FLEET_TEST_FLOOR" ] \
-    || fail fleetdata "the fleet-report test collected ${passed:-0} passing test(s), fewer than the floor of $FLEET_TEST_FLOOR -- the node id no longer resolves and this stage tested nothing"
-  detail "$passed test(s) passed in $(( SECONDS - t0 ))s"
+# These replaced tests/nightly/checks.txt (2026-10-27). Each is a fixed list of commands run from
+# the repository root; every command runs even after a failure, so one red proof does not hide
+# the others, and the stage fails if any did. Each command's own output goes to the stage log.
+run_list() {  # run_list <stage> <command>...
+  local stage="$1"; shift
+  local t0=$SECONDS log="$RUN_ROOT/$stage.log" n=0 cmd rc
+  local bad=()
+  step "$stage" "$# command(s)"
+  for cmd in "$@"; do
+    n=$(( n + 1 )); rc=0
+    printf '\n### %s\n' "$cmd" >> "$log"
+    ( cd "$REPO_ROOT" && bash -o pipefail -c "$cmd" ) >> "$log" 2>&1 || rc=$?
+    if [ "$rc" -eq 0 ]; then detail "ok    $cmd"; else detail "FAIL  $cmd (rc=$rc)"; bad+=("$cmd"); fi
+  done
+  [ "${#bad[@]}" -eq 0 ] \
+    || fail "$stage" "${#bad[@]} of $n command(s) failed: ${bad[*]}; $(native "$log")"
+  detail "$n command(s) passed in $(( SECONDS - t0 ))s"
+}
+
+stage_unit() {
+  run_list unit \
+    "tools/build-windows.sh test && bash tools/check-core-tests.sh" \
+    "bash tools/check-oofnd.sh" \
+    "bash tools/check-string-expander.sh" \
+    "bash tools/check-sysdesc-tools.sh" \
+    "bash tools/check-jsengine-facade-quickjs.sh"
+}
+
+stage_deployment() {
+  run_list deployment \
+    "bash tools/check-deployment-tests.sh" \
+    "bash tools/check-deployment-goldens.sh"
+}
+
+stage_selftests() {
+  run_list selftests \
+    "tools/guardrails-selftest" \
+    "bash tools/check-file-modes.sh" \
+    "bash tools/check-file-modes-probe.sh" \
+    "bash tools/check-desktop-lock.sh" \
+    "tools/desktop-lock-rogue-proof" \
+    "tools/desktop-lock-selftest" \
+    "tools/gui-lock-selftest" \
+    "tools/gui-lock-liveness-selftest" \
+    "tools/objc-cast-scan-selftest" \
+    "bash tools/upstream-delta-probe.sh" \
+    "bash tools/tier-a-deny-probe.sh" \
+    "bash tools/tier-a-stale-probe.sh" \
+    "bash tools/tier-a-tidy-probe.sh" \
+    "python3 tools/gen-callobjc-entity-table.py --check" \
+    "bash tools/js-api-contract.sh"
 }
 
 # ================================================================================================
@@ -958,7 +954,9 @@ for st in "${SELECTED[@]}"; do
     goldens)   stage_goldens ;;
     corpus)    stage_corpus ;;
     gui)       stage_gui ;;
-    fleetdata) stage_fleetdata ;;
+    unit)      stage_unit ;;
+    deployment) stage_deployment ;;
+    selftests) stage_selftests ;;
     *) die "internal: no runner for stage '$st'" ;;
   esac
   RAN=$(( RAN + 1 ))

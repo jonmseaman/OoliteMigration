@@ -36,7 +36,7 @@ status=0
 ran=0
 # The whole block shares ONE budget (ADR-0021: the gate is about five minutes). Each line gets what
 # is left of it; a line that runs out exits 124 and the note names the budget, so the fix is to
-# move the slow proof into tests/nightly/checks.txt, not to raise the number.
+# move the slow proof into a tools/tier-c.sh stage list (ADR-0068), not to raise the number.
 budget="${BEADS_ACCEPT_BUDGET:-300}"
 deadline=$(( $(date +%s) + budget ))
 if command -v timeout >/dev/null 2>&1; then TIMEOUT_BIN=timeout
@@ -60,7 +60,7 @@ while IFS= read -r cmd; do
   if [ "$rc" -ne 0 ]; then
     status=$rc
     if [ "$over_budget" -eq 1 ]; then
-      echo "[exit $status] ACCEPTANCE BUDGET EXCEEDED: the whole block must finish within BEADS_ACCEPT_BUDGET=${budget}s (ADR-0021, the five-minute gate). Move the slow proof (stability sweeps, mutant sweeps, repeated launches) into tests/nightly/checks.txt, where the nightly and phase-end runs execute it, and keep a fast proof here. Do not raise the budget." >>"$log"
+      echo "[exit $status] ACCEPTANCE BUDGET EXCEEDED: the whole block must finish within BEADS_ACCEPT_BUDGET=${budget}s (ADR-0021, the five-minute gate). Move the slow proof (stability sweeps, mutant sweeps, repeated launches) into a tools/tier-c.sh stage list (unit, deployment or selftests; ADR-0068), where the phase gate runs it, and keep a fast proof here. Do not raise the budget." >>"$log"
     else
       echo "[exit $status]" >>"$log"
     fi

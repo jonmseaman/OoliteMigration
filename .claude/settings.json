@@ -1,4 +1,49 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(bd show:*)",
+      "Bash(bd list:*)",
+      "Bash(bd ready:*)",
+      "Bash(bd blocked:*)",
+      "Bash(bd stats:*)",
+      "Bash(bd search:*)",
+      "Bash(bd memories:*)",
+      "Bash(bd human list:*)",
+      "Bash(bd prime:*)",
+      "Bash(bd dolt pull:*)",
+      "Bash(bash .claude/skills/beads-worker/scripts/preflight.sh:*)",
+      "Bash(bash .claude/skills/beads-worker/scripts/land.sh:*)",
+      "Bash(bash .claude/skills/beads-worker/scripts/queue-check.sh:*)",
+      "Bash(bash .claude/skills/beads-worker/scripts/next-bead.sh:*)",
+      "Bash(bash .claude/skills/beads-worker/scripts/context.sh:*)",
+      "Bash(bash .claude/skills/beads-worker/scripts/branch.sh:*)",
+      "Bash(bash .claude/skills/beads-worker/scripts/accept.sh:*)",
+      "Bash(bash .claude/skills/beads-worker/scripts/park.sh:*)",
+      "Bash(bash .claude/skills/beads-worker/scripts/guard-probe.sh:*)",
+      "Bash(bash .claude/skills/beads-worker/scripts/guard-probe-git.sh:*)",
+      "Bash(bash tools/guardrails.sh:*)",
+      "Bash(bash tools/check-file-modes.sh:*)",
+      "Bash(bash tools/tier-a.sh:*)",
+      "Bash(bash tools/tier-b.sh:*)",
+      "Bash(git -C oolite-dev status:*)",
+      "Bash(git -C oolite-dev diff:*)",
+      "Bash(git -C oolite-dev log:*)",
+      "Bash(git -C oolite-dev show:*)",
+      "Bash(git -C oolite-dev add:*)",
+      "Bash(git -C oolite-dev commit:*)",
+      "Bash(git -C oolite-dev checkout:*)",
+      "Bash(git -C oolite-dev branch:*)",
+      "Bash(git -C oolite-dev rev-parse:*)",
+      "Bash(git -C oolite-dev ls-files:*)"
+    ],
+    "deny": [
+      "Bash(bd close:*)",
+      "Bash(git push:*)",
+      "Bash(git -C oolite-dev push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr merge:*)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {

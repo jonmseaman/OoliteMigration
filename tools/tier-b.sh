@@ -189,17 +189,7 @@ case "$TEST_FLOOR_BUMP" in ''|*[!0-9]*) TEST_FLOOR_BUMP=0 ;; esac
 # suite<TAB>floor -- the offline module tests. tests/golden is run with -m "not online": the
 # online marker launches a real game and is what stage 3 is for.
 TEST_SUITES="tests/golden	69	-m|not online
-tools	86	
-tests/fleet	23	"
-
-# ONE deliberately deselected test, named, with its reason. It is NOT a test this gate may not
-# survive: it asserts that the committed docs/fleet/REPORT-<date>.md still agrees with the LIVE
-# beads database, so it goes red whenever anyone files or closes a bead -- i.e. it fails for
-# reasons that have nothing to do with the commit under test, which is precisely the property
-# that gets a per-commit gate switched off. It runs in Tier C, where a data-staleness failure is
-# actionable. Recorded here rather than silently dropped, and the suite's floor (23) is the count
-# with this one already excluded, so nothing else can vanish unnoticed behind it.
-TESTS_DESELECT="tests/fleet/test_fleet_reporter.py::test_the_committed_report_exists_and_passes_its_own_check"
+tools	86	"
 
 # How many concurrent pytest processes each suite is split into (bead oo-3rb.331). The offline
 # suites grew ~30x after this gate was sized (tests/golden 1068 tests / ~218 s, tools ~135 s,
@@ -534,7 +524,6 @@ stage_tests() {
     suite_names+=("$suite"); suite_floors+=("$(( floor + TEST_FLOOR_BUMP ))")
     local args=()
     [ -n "$extra" ] && IFS='|' read -r -a args <<< "$extra"
-    [ "$suite" = "tests/fleet" ] && args+=(--deselect "$TESTS_DESELECT")
     n="$(test_shards_for "$suite")"
     for (( k = 0; k < n; k++ )); do
       log="$RUN_ROOT/pytest-$(echo "$suite" | tr '/' '_').shard${k}of${n}.log"

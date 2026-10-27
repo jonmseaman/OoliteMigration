@@ -20,7 +20,7 @@ Terms used across the roadmap, phase docs, and execution model. Agents: read thi
 | **Harness steward** | Standing role that owns the safety net's integrity: flake rate, drift. May fix harness code; may never re-bless. |
 | **I0–I5** | Infra-track items: the machine, provisioning, forge (deferred), the worker, metrics. Folded into [ROADMAP.md](ROADMAP.md)'s infra track. |
 | **L0–L3** | Grain levels: phase / plan item / component / story. The fleet consumes L3. |
-| **Merge queue, batch-and-bisect** | Tier C runs once over a batch of Tier-B-green bead branches; on failure, bisects to the culprit. `tools/merge-queue`, an in-repo script. |
+| **Merge queue, batch-and-bisect** | Retired ([ADR-0068](docs/decisions/0068-no-scheduled-runs-tier-c-is-the-phase-gate.md)): work lands as a pull request Jon merges, and Tier C is the phase gate. |
 | **`oofnd`** | The in-tree C++20 Foundation replacement (String, PList, Ref, FileSystem, Defaults, Logging). |
 | **`oo::Ref<T>` / `WeakRef<T>`** | Intrusive refcounting mirroring ObjC retain/release. Not `shared_ptr`. [ADR-0003](docs/decisions/0003-intrusive-refcount.md). |
 | **OXP / OXZ** | Oolite expansion pack, unpacked directory / zipped. Data + JS + assets; never native code. |

@@ -39,14 +39,14 @@ SNAPSHOT = HERE.parent / "oxp-contract" / "js-api-source.json"
 # The composition Tier C is REQUIRED to have. This is the check that makes "someone quietly deleted
 # the asan stage because it was slow" a red line rather than a faster gate. Order matters: tier-b
 # first so a cheap failure is found before a 13-minute corpus run.
-REQUIRED_STAGES = ["tier-b", "jsapi", "asan", "goldens", "corpus", "gui", "fleetdata"]
+REQUIRED_STAGES = ["tier-b", "jsapi", "asan", "goldens", "corpus", "gui", "unit", "deployment",
+                   "selftests"]
 
 # Floors that must not be weakened. Each value is the MINIMUM the committed tier may declare; a
 # smaller number means a dead run could satisfy it. Keyed by the shell variable's default.
 FLOOR_MINIMA = {
     "GOLDEN_FLOOR": 2,
     "CORPUS_FLOOR": 36,
-    "FLEET_TEST_FLOOR": 1,
     "GUI_TEST_FLOOR": 1,
 }
 
@@ -112,10 +112,10 @@ REQUIRED_GUARDS = [
     ("corpus pass==checked",
      r"group\(s\) reported PASS",
      "a run where every group was checked and none passed must not be green"),
-    ("fleetdata count floor",
-     "collected",
-     "a pytest node id that no longer resolves can deselect everything and still exit 0; the "
-     "passed-count is the evidence"),
+    ("listed proofs all run",
+     r"every command runs even\s+after a failure",
+     "a stage that stopped at its first red proof would hide every later one, which is what "
+     "tests/nightly/checks.txt's one-line-per-proof runner existed to prevent"),
     ("gui skip-is-failure",
      r"a skip is a failure",
      "the GUI tier's whole anti-vacuity property is OO_GUI_REQUIRE=1 turning a platform skip into "

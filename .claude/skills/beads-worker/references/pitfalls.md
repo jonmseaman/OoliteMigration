@@ -12,8 +12,7 @@ still holds, read "worktree" as "oolite-dev checkout" and "orchestrator" as "you
   that leaves `jq` and becomes a shell variable must go through `tr -d '\r'` (`nocr` in `_lib.sh`).
   Measured 2026-10-27: `land.sh` read ids as `oo-1db.6\r`, handed that to `bd show`, got nothing,
   and `set -e` killed the script **with no output whatsoever** — it looked exactly like "there is
-  nothing to land" rather than like a failure. The same trap is called out in
-  `tools/check-beads-db-merge.sh`. Suspect it whenever a script that loops over `jq` output does
+  nothing to land" rather than like a failure. Suspect it whenever a script that loops over `jq` output does
   nothing at all and exits nonzero: run it under `bash -x` and look for `$'…\r'` in the trace.
 - **`bd unclaim` and `bd update --claim` must agree about the actor.** The worker claims as
   `worker_actor` (the outer worktree's directory name), but `bd`'s default actor is
