@@ -115,6 +115,43 @@ never as an object key (`{ yield: 1 }`) or a property (`o.yield`). `fixtures/cle
 near-misses; mutation-proof.sh mutants 6 and 7 blind the detector and break the generator-frame
 check respectively.
 
+## The compat set (ADR-0069 layer 2, 2026-10-27)
+
+The nine rules above are pinned by the oo-ctq acceptance block. So the expansion compatibility
+scan adds a **second, separate** set rather than growing this one. The compat set covers code that
+QuickJS-ng parses but runs differently, plus `for each`. It reuses the same masking. Severities come
+from what the game's QuickJS-ng actually does (`tools/oxp-js-parse/engine-probe.c`).
+
+| file | role |
+| --- | --- |
+| `compat-rules.js` | eight detectors: `for-each`, `removed-api`, `polyfill-approx`, `readonly-native-write`, `strict-only`, `fn-tostring`, `error-message`, `global-enum`. Each hit has a severity (BREAKS / CHANGED / INFO) and a `what` drawn from a fixed vocabulary (API or contract names, never source text) |
+| `compat.js` | runner: `scan <dir>` (exit 1 on BREAKS), `corpus` → `compat-report.json`, `rules` |
+| `fixtures-compat/` + `expected.json` | one positive fixture per rule, an ambiguous-receiver fixture, and a clean fixture of near-misses. Every hit is pinned as `[rule, severity, line]` |
+| `compat-selftest.js` | exact fixture results; clean.js's near-misses fire with masking off; the read-only table is read from `oxp-contract/js-api-1.93.json`; every rule is exercised |
+| `compat-mutation-proof.sh` | seven mutants, each of which must turn the selftest red |
+
+```sh
+node tools/oxp-js-lint/compat-selftest.js
+bash tools/oxp-js-lint/compat-mutation-proof.sh
+node tools/oxp-js-lint/compat.js scan <unpacked expansion>
+node tools/oxp-js-lint/compat.js corpus
+```
+
+Two choices keep it honest about what text can and cannot show:
+
+- **`readonly-native-write`** fires only through a receiver whose class is known: `player`,
+  `player.ship`, `this.ship`, `system`, `system.mainStation`/`mainPlanet`/`sun`, or `clock`. Names
+  like `count`, `price` and `status` are read-only on Oolite classes but common as expansions' own
+  fields.
+- **`removed-api`** treats `caller`/`arity` as CHANGED only on a declared function or
+  `arguments.callee`, and `fileName`/`lineNumber` only on a caught error. Elsewhere they are INFO
+  ("may be an own field").
+
+The corpus report (`lint.js corpus`, `compat.js corpus`) never stores a source snippet. Only
+`scan` mode prints one, for a file you are checking locally.
+
+Results are in [docs/phases/1-expansion-scan-report.md](../../docs/phases/1-expansion-scan-report.md).
+
 ## Known limits
 
 * Template literals are masked whole, including `${...}` holes, so a banned

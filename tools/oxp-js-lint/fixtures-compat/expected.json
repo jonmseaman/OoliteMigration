@@ -1,0 +1,14 @@
+{
+ "_comment": "Every compat finding each fixture must produce, exactly: [rule, severity, line]. clean.js must produce none.",
+ "clean.js": [],
+ "error-message.js": [["error-message", "CHANGED", 6], ["error-message", "CHANGED", 7]],
+ "fn-tostring.js": [["fn-tostring", "CHANGED", 5], ["fn-tostring", "CHANGED", 5]],
+ "for-each.js": [["for-each", "BREAKS", 5]],
+ "global-enum.js": [["global-enum", "INFO", 5], ["global-enum", "INFO", 6]],
+ "polyfill-approx.js": [["polyfill-approx", "CHANGED", 5], ["polyfill-approx", "CHANGED", 6], ["polyfill-approx", "CHANGED", 7], ["polyfill-approx", "INFO", 8]],
+ "readonly-native-write.js": [["readonly-native-write", "CHANGED", 4], ["readonly-native-write", "CHANGED", 5], ["readonly-native-write", "CHANGED", 6]],
+ "removed-api-ambiguous.js": [["removed-api", "INFO", 4], ["removed-api", "INFO", 4]],
+ "removed-api.js": [["removed-api", "BREAKS", 5], ["removed-api", "BREAKS", 6], ["removed-api", "BREAKS", 7], ["removed-api", "BREAKS", 8], ["removed-api", "CHANGED", 9], ["removed-api", "CHANGED", 10], ["removed-api", "CHANGED", 11]],
+ "strict-only-sloppy.js": [["strict-only", "INFO", 2], ["strict-only", "INFO", 3]],
+ "strict-only.js": [["strict-only", "BREAKS", 4]]
+}

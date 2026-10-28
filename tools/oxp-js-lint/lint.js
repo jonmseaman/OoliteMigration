@@ -214,7 +214,8 @@ function scanCorpus(opts) {
         rec.js_files++;
         totals.js_files++;
         for (const f of scanText(text, ENABLED)) {
-          rec.findings.push({ file: m.name, rule: f.rule, line: f.line, column: f.column, snippet: f.snippet });
+          // no snippet: the corpus report is committed, and expansion source never is (ADR-0069)
+          rec.findings.push({ file: m.name, rule: f.rule, line: f.line, column: f.column });
           rec.counts[f.rule] = (rec.counts[f.rule] || 0) + 1;
           byRule[f.rule]++;
           totals.findings++;
@@ -333,4 +334,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { scanCorpus, zipEntries, readMember, blobPath, main };
+module.exports = { scanCorpus, zipEntries, readMember, blobPath, decode, defaultCacheDir, expansionName, main };

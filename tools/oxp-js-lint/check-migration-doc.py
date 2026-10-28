@@ -51,4 +51,41 @@ for r, sec in by_rule.items():
     if not has_lint_ref:
         sys.exit(f"rule {r}: missing a lint-rule reference")
 
+# ADR-0069 layer 2: the compat set gets the same treatment, pointing at compat-rules.js.
+compat_js = root / "tools" / "oxp-js-lint" / "compat-rules.js"
+if not compat_js.is_file():
+    sys.exit("tools/oxp-js-lint/compat-rules.js (compat rule source) missing")
+compat_src = compat_js.read_text(encoding="utf-8")
+COMPAT_RULES = [
+    "for-each", "removed-api", "polyfill-approx", "readonly-native-write",
+    "strict-only", "fn-tostring", "error-message", "global-enum",
+]
+implemented = re.findall(r'^  "?([a-z0-9-]+)"?: \{$', compat_src, flags=re.M)
+if sorted(implemented) != sorted(COMPAT_RULES):
+    sys.exit(f"compat-rules.js implements {sorted(implemented)}, this check expects {sorted(COMPAT_RULES)}")
+for r in COMPAT_RULES:
+    sec = next((s for s in sections[1:] if s.startswith("`" + r + "`")), None)
+    if sec is None:
+        sys.exit(f"doc is missing a section for compat rule {r}")
+    if "**Replacement" not in sec:
+        sys.exit(f"compat rule {r}: missing a replacement entry")
+    if not ("**Lint rule:**" in sec and "compat-rules.js" in sec):
+        sys.exit(f"compat rule {r}: missing a reference to compat-rules.js")
+
+# Every rule id, and syntax-other (the parse layer's unexplained failure), has the anchor the
+# per-expansion notes link to; and every rule the notes use resolves.
+anchors = set(re.findall(r'<a id="rule-([a-z0-9-]+)"></a>', text))
+missing_anchor = [r for r in RULES + COMPAT_RULES + ["syntax-other"] if r not in anchors]
+if missing_anchor:
+    sys.exit(f"doc is missing #rule- anchors for: {missing_anchor}")
+notes_file = root / "tools" / "oxp-scan" / "expansion-notes.json"
+if notes_file.is_file():
+    import json
+    used = {f["rule"] for e in json.loads(notes_file.read_text(encoding="utf-8"))["expansions"] for f in e["findings"]}
+    dangling = sorted(used - anchors)
+    if dangling:
+        sys.exit(f"expansion notes link rules with no section in the guide: {dangling}")
+
 print(f"OK: {len(by_rule)}/{len(RULES)} constructs each link a replacement and a lint rule")
+print(f"OK: {len(COMPAT_RULES)} compat rules each link a replacement and compat-rules.js; "
+      f"{len(anchors)} #rule- anchors cover every rule the notes use")

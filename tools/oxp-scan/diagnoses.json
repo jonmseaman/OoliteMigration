@@ -1,0 +1,41 @@
+{
+ "_comment": "Reviewed diagnoses that refine a deterministic finding (ADR-0069). Each was reached without reading expansion source: from engine messages, bracket positions computed by code over masked text, and tools/oxp-js-lint/probe.js's redacted view. notes.py applies an entry to every finding of the expansion (url) and file whose rule matches, and whose line matches when line is given. class: content-defect = fails on every engine, not a migration regression; own-field = the expansion's own data field, not the removed API; likely-real = the removed API, probably used as SpiderMonkey meant it.",
+ "diagnoses": [
+  {
+   "url": "https://wiki.alioth.net/img_auth.php/3/3e/Defence_Rider_Drones.oxz",
+   "file": "Scripts/police_call_AI.js", "line": 195, "rule": "syntax-other",
+   "class": "content-defect",
+   "note": "Bracket imbalance: the ')' at 195:3 closes a '{' opened at 7:29, so a '}' is missing. No engine compiles this file; the script never loaded on SpiderMonkey 1.93 either."
+  },
+  {
+   "url": "https://wiki.alioth.net/img_auth.php/f/f7/Neutralizer.oxz",
+   "file": "Scripts/npc-npb.js", "line": 112, "rule": "syntax-other",
+   "class": "content-defect",
+   "note": "Bracket imbalance: the 'if (' at 112:6 is never closed (the condition is missing a ')'). No engine compiles this file; the script never loaded on SpiderMonkey 1.93 either."
+  },
+  {
+   "url": "https://wiki.alioth.net/img_auth.php/e/ee/Oolite.oxp.cholmondely.hints.0.0.94.oxz",
+   "file": "Scripts/Hints_GNN.js", "line": 71, "rule": "syntax-other",
+   "class": "content-defect",
+   "note": "Assignment to a string literal (\"...\" = \"...\";), an early error on every engine. The file reads like key = value data written as JavaScript; it never loaded on SpiderMonkey 1.93 either."
+  },
+  {
+   "url": "https://wiki.alioth.net/img_auth.php/8/82/Library_1.10.5.oxz",
+   "file": "Scripts/Lib_Animator.js", "rule": "removed-api",
+   "class": "own-field",
+   "note": "'caller' here is a key of the expansion's own options object, copied from an argument's field of the same name; it is not Function.caller. Unaffected."
+  },
+  {
+   "url": "https://wiki.alioth.net/img_auth.php/2/24/Cag.station_options.oxz",
+   "file": "Scripts/cagsdebug.js", "rule": "removed-api",
+   "class": "likely-real",
+   "note": "A debug helper walks the call stack (var caller = f.caller, from a variable). Function.caller is undefined on QuickJS-ng, so the walk stops at once: debug output loses its call chain. Gameplay is unaffected."
+  },
+  {
+   "url": "https://wiki.alioth.net/img_auth.php/d/d2/Telescope_2.1.4.oxz",
+   "file": "Scripts/telescope_debug.js", "rule": "removed-api",
+   "class": "likely-real",
+   "note": "The same debug stack-walking helper as Cag.station_options' cagsdebug.js. Debug output only."
+  }
+ ]
+}

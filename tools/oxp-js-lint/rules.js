@@ -388,3 +388,5 @@ function scanText(src, enabled = RULE_NAMES) {
 }
 
 module.exports = { DETECTORS, RULE_NAMES, mask, scanText };
+// Shared with compat-rules.js (ADR-0069 layer 2), which builds on the same masking.
+module.exports.helpers = { lineStarts, posOf, matchParen, nextNonSpace, prevNonSpace, byRegex };
