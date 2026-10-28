@@ -11,8 +11,21 @@ from the game's own engine, from code reading the cached archives, or from
 | 1. Parse with the game's QuickJS-ng | `tools/oxp-js-parse` | **done 2026-10-27** (below) |
 | Engine API ground truth | `tools/oxp-js-parse/engine-probe.c` | **done 2026-10-27** (below) |
 | 2. Rules for code that parses but behaves differently | `tools/oxp-js-lint` compat set | **done 2026-10-27** (below) |
-| 3. Sandboxed model review | `tools/oxp-scan` | not started (needs the cost spike first) |
-| Notes per expansion, migration guide | `tools/oxp-scan/notes.py`, `docs/EXPANSION_MIGRATION.md` | not started |
+| Notes per expansion | `tools/oxp-scan/notes.py` → [docs/expansions/](../expansions/README.md) | **done 2026-10-27** (layers 1 and 2) |
+| Migration guide | [docs/EXPANSION_MIGRATION.md](../EXPANSION_MIGRATION.md) | **rewritten 2026-10-27** |
+| 3. Sandboxed model review | `tools/oxp-scan` | **deferred** (Jon, 2026-10-27: investigate further later if needed) |
+
+**Where the results are:**
+
+- [docs/expansions/README.md](../expansions/README.md) indexes all 818 expansions;
+- one page per expansion with a finding (13);
+- `tools/oxp-scan/expansion-notes.json` holds the machine-readable notes;
+- the [migration guide](../EXPANSION_MIGRATION.md) has one anchored section per rule.
+
+Regenerate with `python3 tools/oxp-scan/notes.py` after re-running the reports. `--check` fails
+when the committed notes do not match the reports. `tools/oxp-scan/diagnoses.json` holds the
+reviewed judgements: three content defects, one own-field false positive and two debug-only stack
+walkers. Each was reached from engine messages, positions and `probe.js`'s redacted view.
 
 ## Layer 1: what fails to compile (2026-10-27, quickjs-0.16.2)
 
