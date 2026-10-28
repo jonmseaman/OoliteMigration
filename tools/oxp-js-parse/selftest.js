@@ -41,12 +41,15 @@ for (const n of names) {
   if (got[0].line !== want.line) fail(`${n}: line ${got[0].line}, expected ${want.line}`);
 }
 
-// A CRLF copy must fail at the same lines: the host reads bytes, not text.
-const crlf = files.map((f) => ({ name: f.name, text: f.text.replace(/\n/g, "\r\n") }));
+// LF and CRLF copies must fail at the same lines: the host reads bytes, not text. (The fixtures
+// themselves are LF or CRLF depending on core.autocrlf, so normalise before converting.)
+const lf = files.map((f) => ({ name: f.name, text: f.text.replace(/\r\n/g, "\n") }));
+const crlf = lf.map((f) => ({ name: f.name, text: f.text.replace(/\n/g, "\r\n") }));
+const lfFailures = parseFiles(bin, lf);
 const crlfFailures = parseFiles(bin, crlf);
-if (JSON.stringify(crlfFailures.map((f) => [f.file, f.mode, f.line])) !==
-    JSON.stringify(failures.map((f) => [f.file, f.mode, f.line]))) {
-  fail("CRLF line endings change the result");
+const shape = (list) => JSON.stringify(list.map((f) => [f.file, f.mode, f.line]));
+if (shape(lfFailures) !== shape(failures) || shape(crlfFailures) !== shape(failures)) {
+  fail("line endings change the result");
 }
 
 // The CLI exits 1 on a breaking fixture and 0 on the clean one.

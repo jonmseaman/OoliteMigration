@@ -9,7 +9,7 @@
  *   node tools/oxp-js-parse/run.js corpus [--cache-dir D] [--manifest M] [--out F]
  *                                         [--limit N] [--progress]
  *       Parse every .js member of every cached expansion and write parse-report.json.
- *       Reads the oxp-cache only (tools/oxp_corpus.py fills it); never the network.
+ *       Reads the oxp-cache only (`python3 tools/oxp_corpus.py fetch` fills it); never the network.
  *
  * Each file is compiled twice by the host (parse.c, built with build.sh from the game's pinned
  * QuickJS-ng):
