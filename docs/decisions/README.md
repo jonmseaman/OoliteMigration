@@ -82,5 +82,6 @@ changed* from the chain.
 | [0066](0066-test-every-shipped-flavour.md) | Assertions live in every flavour; unit suites under the deployment macros and goldens on the deployment binary, nightly (oo-pdsng) |
 | [0067](0067-submodules-replace-subtrees.md) | Submodules replace the subtrees: `oolite-dev` (fork `develop`) is the game, `oolite-main` (fork `master`) and `upstream/*` (OoliteProject, unmodified) are reference; beads pipeline retired (oo-s2xwp) |
 | [0068](0068-no-scheduled-runs-tier-c-is-the-phase-gate.md) | No scheduled runs: the nightly layer, merge queue and fleet reporter are retired; Tier A is the edit loop, Tier B the PR gate, Tier C the phase gate with `unit`, `deployment` and `selftests` stages |
+| [0069](0069-expansion-compatibility-scan.md) | Scan all 818 catalogued expansions for QuickJS-ng incompatibilities: parse with the game's own QuickJS-ng, deterministic rules, then a sandboxed model review; notes per expansion, no expansion code in the repo; divergences documented, not emulated | Proposed — default in effect |
 
 Template: Status · Date · Context · Decision · Consequences · History.
