@@ -1,45 +1,106 @@
+## Macros for profiling?
+
+Are these needed, or would a normally profiler run work instead?
+Why were these created?
+
+```cpp
+void DockEntity::initDockDefaults() {
+  OOJS_PROFILE_ENTER
+
+  allow_docking = YES;
+  disallowed_docking_collides = NO;
+  allow_launching = YES;
+  virtual_dock = NO;
+
+  OOJS_PROFILE_EXIT_VOID
+}
+```
+
+## If C++?
+
+Are these still needed
+
+`OODebugTCPConsoleProtocol.h`
+
+```cpp
+#if defined(__cplusplus)
+
+```
+
+`OOJSEngineNativeWrappers.h`
+
+```cpp
+#ifdef __cplusplus
+#ifndef OOJS_EXTERN_C
+#define OOJS_EXTERN_C extern "C"
+#endif
+#else
+#ifndef OOJS_EXTERN_C
+#define OOJS_EXTERN_C
+#endif
+#endif
+```
+
+## Windows only code
+
+```cpp
+
+#if OOLITE_WINDOWS
+typedef SOCKET OOSocket;
+typedef int OOSocketLength;
+...
+```
+
+Ideally would not have windows-only code like this.
+I'd rather have this moved to a library where there is one implementation per platform.
+
+
+## Ugly enum code:
+
+```cpp
+typedef enum {
+  GUI_ALIGN_LEFT,
+  GUI_ALIGN_RIGHT,
+  GUI_ALIGN_CENTER
+} OOGUIAlignment;
+
+typedef enum {
+  GUI_BACKGROUND_SPECIAL_NONE,
+  GUI_BACKGROUND_SPECIAL_CUSTOM,
+  GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_SHORTEST,
+  GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_QUICKEST,
+  GUI_BACKGROUND_SPECIAL_SHORT,
+  GUI_BACKGROUND_SPECIAL_SHORT_ANA_SHORTEST,
+  GUI_BACKGROUND_SPECIAL_SHORT_ANA_QUICKEST,
+  GUI_BACKGROUND_SPECIAL_LONG,
+  GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST,
+  GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST
+} OOGUIBackgroundSpecial;
+```
+
+
+## Macros instead of constants
+
+```cpp
+#define GUI_MAX_ROWS 64
+#define GUI_MAX_COLUMNS 40
+#define MAIN_GUI_PIXEL_HEIGHT 480
+#define MAIN_GUI_PIXEL_WIDTH 480
+#define MAIN_GUI_ROW_HEIGHT 16
+#define MAIN_GUI_ROW_WIDTH 16
+#define MAIN_GUI_PIXEL_ROW_START 40
+```
 ## AI-driven behavior analysis before and after
 Compare the Objective-C code and the C++ code for behavior discrepancies.
 This should also be driven through playtests etc.
 
-## `tools/` folder needs serious cleanup
-## tests/nightly/checks.txt
-This needs some cleanup. Not sure we need a nightly, just need a proper acceptance test suite.
-## beads-worker needs update to assume a claude code instance working through beads.
-
-Should also do a pull request to github to merge a phase/branch to the master branch.
-## hermes no longer in use
-.hermes.md
-We don't use this. This should be in AGENTS.md or CLAUDE.md
-I'm working with claude now, no hermes agents.
-
-
-## Create Windows setup/clion install guide
-
-Instruction to setup the clion build, .run files, etc.
-## Clean up references to beads
-
-There are many references to beads.
-
-Example:
-tests/unit/core/test_OOWaypointEntity.cpp
-```cpp
-/*  test_OOWaypointEntity.mm  
-    Unit tests for OOWaypointEntity (src/Core/Entities/OOWaypointEntity.h), the scripted beacon    waypoints: bead oo-zsid, a leaf of the Entities seam with a facade (proposed ADR-0056,    amendments oo-bj8 item 12 and oo-0mxi).
-    ...
-*/
-```
-
-I would rather not reference the beads or the ADRs in the new code. The comments should just be good comments that describe that the file is for like normal comments. No history lesson is needed.
 
 ## Component tests organization
 
 - `tests/unit` --> Unit tests should normally go alongside the files they test.
 - `tests/component`
 	- feature folder files should be moved up one with step definitions in subfolders or a different folder alongside.
-## `oolite.exe.manifest`
-`src/SDL/OOResourcesWin/oolite.exe.manifest`
-Should this file include windows 11?
+
 
 ## GnuStep macros
 
@@ -75,5 +136,4 @@ Cons: I don't like the license boilerplate at the beginning.
 There are a ton of macros. Some are debug only, some are windows only.
 I'm not a huge fan of macros. I'd like to go through and see if these should be replaced in some cases.
 
-## Typescript instead of js extensions
-Thing about making typescript instead of javascript expansions. This could be cool.
+
