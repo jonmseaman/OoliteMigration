@@ -74,7 +74,7 @@ function parseTexts(bin, texts) {
     chunks.push(Buffer.from(String(b.length) + "\n", "ascii"), b);
   }
   const r = spawnSync(bin, [], { input: Buffer.concat(chunks), maxBuffer: 64 * 1024 * 1024 });
-  if (r.error) throw new Error("cannot run " + bin + ": " + r.error.message + " (run tools/oxp-js-parse/build.sh)");
+  if (r.error) throw new Error("cannot run " + bin + ": " + r.error.message + " (run: bash tools/oxp-js-parse/build.sh)");
   if (r.status !== 0) throw new Error("oxp-js-parse host exited " + r.status + ": " + String(r.stderr).trim());
   const lines = String(r.stdout).split("\n").filter((l) => l.length);
   if (lines.length !== texts.length) {
