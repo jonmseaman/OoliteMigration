@@ -37,9 +37,9 @@ Patterns that recur across files. Each instance is also recorded in its own file
 *Final. ✔ = verified by the coordinator against both sources; unmarked = auditor finding with cited lines, not independently re-read.*
 
 ### High
-- ✔ **NPC subentity flashers and exhaust plumes are never updated.** `ShipEntity::update` calls `update()` only on subentities that cast to `ShipEntity` (`oo::ToShip`). Upstream sent `-update:` to every subentity. As a result, `OOFlasherEntity` lights don't animate and `OOExhaustPlumeEntity` trails don't track on NPC and demo ships. Affects all three loops: upstream `ShipEntity.m:2113,2382,2469` ↔ port `ShipEntity.cpp:2500,2773,2866`. [details](entities-ship.md#shipentity)
+- ✅ **FIXED** (all three loops now update every subentity; test `updateReachesNonShipSubentities` in `tests/unit/core/test_ShipEntity.cpp`). ✔ **NPC subentity flashers and exhaust plumes are never updated.** `ShipEntity::update` calls `update()` only on subentities that cast to `ShipEntity` (`oo::ToShip`). Upstream sent `-update:` to every subentity. As a result, `OOFlasherEntity` lights don't animate and `OOExhaustPlumeEntity` trails don't track on NPC and demo ships. Affects all three loops: upstream `ShipEntity.m:2113,2382,2469` ↔ port `ShipEntity.cpp:2500,2773,2866`. [details](entities-ship.md#shipentity)
 
-- ✔ **JS `delete` on native-backed properties is a no-op.** The QuickJS bridge's `ExDeleteProperty` (`ooscript/JSEngine_quickjs.cpp:1599-1604`) calls the class `delProperty` hook only when the object has an own slot for the name; SpiderMonkey always called it. Effects:
+- ✅ **FIXED** (`ExDeleteProperty` now runs the class `delProperty` hook when there is no own slot; tests: `Vault` in `tests/unit/test_jsengine_quickjs.cpp` and `deletingAVariableTheScriptNeverSet` in `tests/unit/core/test_OOJSMissionVariables.cpp`). `test_OOJSConsole` `theSettingsAreTheMonitorsConfiguration` now expects the delete to reach the monitor, as upstream did (updated at Jon's direction). ✔ **JS `delete` on native-backed properties is a no-op.** The QuickJS bridge's `ExDeleteProperty` (`ooscript/JSEngine_quickjs.cpp:1599-1604`) calls the class `delProperty` hook only when the object has an own slot for the name; SpiderMonkey always called it. Effects:
   - `delete missionVariables.x` returns true but leaves the variable when it came from a save or a legacy script, and the stale value is re-saved;
   - `delete systemInfo.x` no longer clears the OXP_DYNAMIC layer;
   - `delete manifest.<good>` succeeds silently.
@@ -78,8 +78,8 @@ Other low findings are recorded per file. The bulk falls into three groups:
 
 These are proposals, not filed beads. Each would want a test that fails before the fix and passes after it.
 
-1. Update every subentity in `ShipEntity::update` (all three loops), not only `ShipEntity` ones.
-2. In `ExDeleteProperty`, call the class `delProperty` hook even when no own slot exists. Add a unit test for deleting a mission variable loaded from a save.
+1. ~~Update every subentity in `ShipEntity::update`.~~ Done.
+2. ~~Call the class `delProperty` hook in `ExDeleteProperty` with no own slot.~~ Done.
 3. Pass SpiderMonkey-equivalent error numbers through `invokeReporter`, or map QuickJS error kinds onto `javascript-errors.plist` classes.
 4. Add a `Defaults::get<T>(key, fallback)` with `oo_*ForKey:defaultValue:` semantics and replace the ~15 `isNull() ? … : xForKey()` sites.
 5. Widen the main-loop and AI/legacy catch sites to `std::exception` (log and continue), or replace the `.at()` and negative-size call sites that can throw.
