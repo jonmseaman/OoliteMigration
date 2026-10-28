@@ -41,10 +41,14 @@ WANT_DIR="$(wrap_of "$WRAP_ROOT")"
 
 CC="${CC:-clang}"
 mkdir -p "$(dirname "$OUT")"
-"$CC" -std=gnu11 -O2 -ffp-contract=off \
-  -D_GNU_SOURCE -DQUICKJS_NG_BUILD -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0601 \
-  -I"$SRC" \
-  "$HERE/parse.c" "$SRC/quickjs.c" "$SRC/libregexp.c" "$SRC/libunicode.c" "$SRC/dtoa.c" \
-  -lm -o "$OUT"
+build() {   # build <main.c> <output>
+  "$CC" -std=gnu11 -O2 -ffp-contract=off \
+    -D_GNU_SOURCE -DQUICKJS_NG_BUILD -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0601 \
+    -I"$SRC" \
+    "$1" "$SRC/quickjs.c" "$SRC/libregexp.c" "$SRC/libunicode.c" "$SRC/dtoa.c" \
+    -lm -o "$2"
+}
+build "$HERE/parse.c" "$OUT"
+build "$HERE/engine-probe.c" "$(dirname "$OUT")/engine-probe.exe"
 printf '%s\n' "$WANT_DIR" > "$OUT.version"
 printf '%s\n' "$OUT"
