@@ -1,13 +1,13 @@
 {
- "_comment": "What the game's QuickJS-ng does with each fixture. mode: plain = fails as shipped (BREAKS); strict-only = parses as shipped, fails under the '\"use strict\";' prefix; null = parses both ways. line is the file's own line.",
- "catch-if.js": {"mode": "plain", "line": 5},
+ "_comment": "What the game's QuickJS-ng does with each fixture. mode: plain = fails as shipped (BREAKS); strict-only = parses as shipped, fails under the '\"use strict\";' prefix; null = parses both ways. line is the file's own line. rule is the detector that attributes the failure (rules.js, then compat-rules.js); syntax-other means no detector explains it.",
+ "catch-if.js": {"mode": "plain", "line": 5, "rule": "catch-if"},
  "clean.js": null,
- "const-redeclare.js": {"mode": "plain", "line": 4},
- "duplicate-param.js": {"mode": "strict-only", "line": 2},
- "e4x.js": {"mode": "plain", "line": 3},
- "expression-closure.js": {"mode": "plain", "line": 3},
- "for-each.js": {"mode": "plain", "line": 5},
- "legacy-generator.js": {"mode": "plain", "line": 5},
- "legacy-octal.js": {"mode": "strict-only", "line": 2},
- "let-block.js": {"mode": "plain", "line": 4}
+ "const-redeclare.js": {"mode": "plain", "line": 4, "rule": "syntax-other"},
+ "duplicate-param.js": {"mode": "strict-only", "line": 2, "rule": "strict-only"},
+ "e4x.js": {"mode": "plain", "line": 3, "rule": "e4x"},
+ "expression-closure.js": {"mode": "plain", "line": 3, "rule": "expression-closure"},
+ "for-each.js": {"mode": "plain", "line": 5, "rule": "for-each"},
+ "legacy-generator.js": {"mode": "plain", "line": 5, "rule": "legacy-generator"},
+ "legacy-octal.js": {"mode": "strict-only", "line": 2, "rule": "strict-only"},
+ "let-block.js": {"mode": "plain", "line": 4, "rule": "let-block"}
 }

@@ -12,7 +12,7 @@
   "legacy-generator"
  ],
  "cache_dir": "C:\\Users\\jon\\AppData\\Local\\OoliteMigration\\oxp-cache",
- "manifest": "C:\\Users\\jon\\OoliteMigration\\.worktrees\\oo-1gc.16\\tools\\oxp-corpus\\manifest.json",
+ "manifest": "C:\\Users\\jon\\OoliteMigration\\.worktrees\\expansion-scan\\tools\\oxp-corpus\\manifest.json",
  "expansions": [
   {
    "url": "https://cim.sotl.org.uk/games/files/oolite/CameraDrones_1.4.oxz",
@@ -3841,22 +3841,19 @@
      "file": "Scripts/Lib_Main.js",
      "rule": "to-source",
      "line": 496,
-     "column": 50,
-     "snippet": "if (typeof str === 'object' && str) str = str.toSource();"
+     "column": 50
     },
     {
      "file": "Scripts/lib_test.js",
      "rule": "to-source",
      "line": 63,
-     "column": 25,
-     "snippet": "if(145!==this.shipDied.toSource().length+this.shipRemoved.toSource().length) worldScripts.Lib_Main._lib.$entCstPatched = true;"
+     "column": 25
     },
     {
      "file": "Scripts/lib_test.js",
      "rule": "to-source",
      "line": 63,
-     "column": 60,
-     "snippet": "if(145!==this.shipDied.toSource().length+this.shipRemoved.toSource().length) worldScripts.Lib_Main._lib.$entCstPatched = true;"
+     "column": 60
     }
    ],
    "counts": {
@@ -5152,15 +5149,13 @@
      "file": "Resources/PhraseGen.js",
      "rule": "legacy-accessor",
      "line": 70,
-     "column": 11,
-     "snippet": "if(typeof(__defineGetter__)!==\"undefined\") clock.__defineGetter__(\"days\",function(){return(Date.parse(\"1 1 1970 00:34:44 GMT\")+25);});"
+     "column": 11
     },
     {
      "file": "Resources/PhraseGen.js",
      "rule": "legacy-accessor",
      "line": 70,
-     "column": 50,
-     "snippet": "if(typeof(__defineGetter__)!==\"undefined\") clock.__defineGetter__(\"days\",function(){return(Date.parse(\"1 1 1970 00:34:44 GMT\")+25);});"
+     "column": 50
     }
    ],
    "counts": {
@@ -5610,8 +5605,7 @@
      "file": "Scripts/wildShips_tembo.js",
      "rule": "legacy-generator",
      "line": 16,
-     "column": 73,
-     "snippet": "subs.items = function(){for (let loop = 0; loop < this.length; loop++) yield this[loop];}"
+     "column": 73
     }
    ],
    "counts": {
@@ -7024,8 +7018,7 @@
      "file": "Scripts/aquatics_congerPods.js",
      "rule": "legacy-generator",
      "line": 17,
-     "column": 61,
-     "snippet": "e.items = function(){for (let i = 0; i < this.length; i++) yield this[i];}"
+     "column": 61
     }
    ],
    "counts": {
@@ -7196,15 +7189,13 @@
      "file": "Scripts/bweed-kestrelfalcon-falcon.js",
      "rule": "legacy-generator",
      "line": 16,
-     "column": 60,
-     "snippet": "e.items= function(){for (let i = 0; i < this.length; i++) yield this[i];}"
+     "column": 60
     },
     {
      "file": "Scripts/bweed-kestrelfalcon-kestrel.js",
      "rule": "legacy-generator",
      "line": 14,
-     "column": 60,
-     "snippet": "e.items= function(){for (var i = 0; i < this.length; i++) yield this[i];}"
+     "column": 60
     }
    ],
    "counts": {
@@ -7475,5 +7466,5 @@
   "expression-closure": 0,
   "legacy-generator": 4
  },
- "wall_seconds": 6.7
+ "wall_seconds": 3.6
 }

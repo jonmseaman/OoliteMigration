@@ -20,7 +20,8 @@
  *     unless a player or the verifier turns it on). Recorded only when plain parses and strict
  *     does not ("strict-only"), with the line shifted back to the file's own numbering.
  *
- * A failure is attributed to a rule by the oxp-js-lint detector that fires on the same line, so
+ * A failure is attributed to a rule by the oxp-js-lint detector (rules.js, then compat-rules.js)
+ * that fires on the same line, so
  * rules.js stays the one vocabulary. A failure no detector explains is "syntax-other": a gap in
  * the guide, never a silent pass.
  *
@@ -34,6 +35,7 @@ const { spawnSync } = require("child_process");
 
 const lint = require("../oxp-js-lint/lint");
 const { scanText, RULE_NAMES } = require("../oxp-js-lint/rules");
+const { scanCompat } = require("../oxp-js-lint/compat-rules");
 
 const HERE = __dirname;
 const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -91,7 +93,9 @@ function parseTexts(bin, texts) {
 /** The rule that explains a parse failure: a detector firing on the failing line. */
 function attribute(text, line) {
   const hits = scanText(text, RULE_NAMES).filter((f) => f.line === line);
-  return hits.length ? hits[0].rule : "syntax-other";
+  if (hits.length) return hits[0].rule;
+  const compat = scanCompat(text).filter((f) => f.line === line);
+  return compat.length ? compat[0].rule : "syntax-other";
 }
 
 /**

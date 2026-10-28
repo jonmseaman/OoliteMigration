@@ -10,7 +10,7 @@ from the game's own engine, from code reading the cached archives, or from
 |---|---|---|
 | 1. Parse with the game's QuickJS-ng | `tools/oxp-js-parse` | **done 2026-10-27** (below) |
 | Engine API ground truth | `tools/oxp-js-parse/engine-probe.c` | **done 2026-10-27** (below) |
-| 2. Rules for code that parses but behaves differently | `tools/oxp-js-lint` compat set | in progress |
+| 2. Rules for code that parses but behaves differently | `tools/oxp-js-lint` compat set | **done 2026-10-27** (below) |
 | 3. Sandboxed model review | `tools/oxp-scan` | not started (needs the cost spike first) |
 | Notes per expansion, migration guide | `tools/oxp-scan/notes.py`, `docs/EXPANSION_MIGRATION.md` | not started |
 
@@ -88,3 +88,58 @@ Each case is evaluated in a **bare** QuickJS-ng context: no Oolite globals, and 
 These rows set the severities of the layer-2 `removed-api`, `polyfill-approx`, `fn-tostring`,
 `error-message` and `global-enum` rules. They also fix two places where the guide was wrong
 (`Iterator`, legacy accessors). The guide is corrected in the migration-guide step.
+
+## Layer 2: code that parses but behaves differently (2026-10-27)
+
+**Command:** `node tools/oxp-js-lint/compat.js corpus`, output in `tools/oxp-js-lint/compat-report.json`.
+These are eight new detectors in a separate compat set, over the same masked text as the nine
+Mozilla-only rules. The nine are unchanged, because the oo-ctq acceptance block pins them. Each
+hit has a severity taken from the engine ground truth above, and a `what` drawn from a fixed
+vocabulary of API and contract names. The tests are `compat-selftest.js` and
+`compat-mutation-proof.sh` (7 mutants, all killed).
+
+**Corpus:** 818 expansions, 1,997 `.js` members, 4.3 s. There are 71 findings in 6 expansions, and
+**none is BREAKS**. Worst finding per expansion: 4 CHANGED, 2 INFO, 812 with nothing.
+
+| Rule | What | Severity | Hits | Expansions | What happens |
+|---|---|---|---:|---|---|
+| `readonly-native-write` | `player.ship.extraCargo`, `.fuelChargeRate`, `.renovationMultiplier` | CHANGED | 35 | redspear.equipment_by_ship_class (`shipclassequip-grade.js`, `-hull.js`, `-tech.js`) | The contract makes these read-only, so the writes never took effect on either engine. The files use function-level `"use strict"`. On SpiderMonkey the first write threw `TypeError` and aborted the handler. On QuickJS-ng every write is ignored and the handler runs to the end. Control flow changes, and the intended effect is still lost. |
+| `readonly-native-write` | `this.ship.alertCondition` | CHANGED | 3 | Stealth 2.2 (`stealth_base.js`), TCAT 2.1 (`TCAT_base.js`, `TCAT_bugStation.js`) | Same mechanism. The files are strict at file level: SpiderMonkey threw, QuickJS-ng ignores the write. |
+| `polyfill-approx` | `toSource` | CHANGED | 3 | Library 1.10.5 (`Lib_Main.js`, `lib_test.js`) | Works through the game's built-in polyfill (ADR-0023). The output text differs from SpiderMonkey's. Already known (oo-1gc.6). |
+| `global-enum` | `Object.keys(global)` | INFO | 1 | Library 1.10.5 | Sees `Map`, `Promise`, `globalThis` and other names SpiderMonkey 1.8.5 did not have. EXPANSION_MIGRATION.md already notes this for a namespace-pollution check. |
+| `removed-api` | `caller` | INFO | 29 | Cag.station_options (`cagsdebug.js`), Telescope 2.1.4 (`telescope_debug.js`), Library 1.10.5 (`Lib_Animator.js`) | Two kinds, told apart with `probe.js`'s redacted view. In Library, `opts.caller` is the expansion's own option field, which is fine. In the two debug scripts, `var caller = x.caller` reads from a variable inside a stack-walking helper. That is probably a real `Function.caller` read: it is `undefined` on QuickJS-ng, so the walker stops at once. Debug output only. |
+
+**No hits:** `for-each`, `strict-only` (`arguments.callee`, legacy octal, duplicate parameters,
+`with`), `fn-tostring`, `error-message`, and every throwing `removed-api` construct (`watch`,
+`Iterator()`, `StopIteration`, `toLocaleFormat`, `__noSuchMethod__`).
+
+**Layer 1 attribution.** The parse layer now also asks the compat detectors which rule explains a
+failure. The parse fixtures for `for each`, legacy octal and duplicate parameters are now named
+instead of `syntax-other`. In the corpus the three `syntax-other` failures stay, correctly: they
+are the grammar errors above.
+
+### Summary after layers 1 and 2
+
+| Expansion | Finding | Severity |
+|---|---|---|
+| Wild_ships, Aquatics, Kestrel_Falcon | legacy generators: the script does not compile | **BREAKS** (engine) |
+| Defence_Rider_Drones, Neutralizer, Hints | grammar errors: the script does not compile on any engine | content defect, not a regression |
+| redspear.equipment_by_ship_class, Stealth, TCAT | read-only writes: SpiderMonkey threw, QuickJS-ng ignores | CHANGED |
+| Library | `toSource` output text; global enumeration; own `caller` field | CHANGED / INFO |
+| Cag.station_options, Telescope | debug stack walker reads `Function.caller` | INFO (debug only) |
+
+The other 806 expansions have no finding from either deterministic layer. Layer 3 (the
+sandboxed model review) looks for what text rules cannot see, for example dependence on sort
+stability, enumeration order or `Date` parsing.
+
+### Found along the way
+
+- **The oo-ctq acceptance line 4 is red on the main checkout, before this work.** It requires zero
+  hits from the nine Mozilla-only rules over `oolite-dev/Resources/Scripts`. ADR-0023 put
+  `toSource()`/`uneval()` polyfills into `oolite-global-prefix.js`, and they call themselves, so
+  line 4 now reports 3 hits there (lines 310, 327, 359). It was not changed here (rule 2). The fix is
+  either an allowance for the polyfill's own definitions or a new acceptance line. That decision
+  belongs with the bead.
+- `lint.js corpus` used to store a source `snippet` with each finding in the committed
+  `corpus-report.json`. That conflicts with ADR-0069 (no expansion code in the repo). The corpus
+  report now omits it, and `scan` mode on local files still prints it.

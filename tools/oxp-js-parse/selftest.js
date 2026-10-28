@@ -39,6 +39,7 @@ for (const n of names) {
   if (got.length !== 1) { fail(`${n}: expected one ${want.mode} failure, got ${got.length}`); continue; }
   if (got[0].mode !== want.mode) fail(`${n}: mode ${got[0].mode}, expected ${want.mode}`);
   if (got[0].line !== want.line) fail(`${n}: line ${got[0].line}, expected ${want.line}`);
+  if (got[0].rule !== want.rule) fail(`${n}: attributed to ${got[0].rule}, expected ${want.rule}`);
 }
 
 // LF and CRLF copies must fail at the same lines: the host reads bytes, not text. (The fixtures
