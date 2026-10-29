@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# The bead's gate, and the only thing that opens its pull request. Called by the loop, never by the
-# agent that wrote the code (CLAUDE.md hard rule 3 — the guard shim in tools/guard refuses `bd
-# close` outright, and this script does not close anything either).
+# The bead's gate. Called by the loop, never by the agent that wrote the code (CLAUDE.md hard rule
+# 3: this script does not close anything, and neither does the agent).
 #
-# The work is already committed on the bead's feature branch in oolite-dev. This script runs the
-# bead's acceptance commands and, only if every one exits 0, runs `git town propose` to open a pull
-# request against develop and marks the bead `proposed`. The bead stays OPEN: it closes when you
-# merge that pull request and a later tick notices (land.sh).
+# The work is already committed on the epic's branch in oolite-dev (branch.sh put it there). This
+# script runs the bead's acceptance commands and, only if every one exits 0, squashes the bead's
+# commits since `base_commit` into ONE commit `<id>: <title>` and labels the bead `committed`.
+# Nothing is pushed and no pull request is opened: the bead stays OPEN until Jon merges the epic's
+# branch into develop and land.sh notices.
 #
 # Acceptance runs with cwd = the OUTER repo root, not oolite-dev: acceptance lines spell the
 # submodule explicitly (`cd oolite-dev && tests/run.sh unit`).
 #
-# Exit 0 = acceptance passed, pull request open · 1 = rejected, new information · 2 = rejected, stale.
+# Exit 0 = acceptance passed, bead committed · 1 = rejected, new information · 2 = rejected, stale.
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 id="${1:?usage: accept.sh <bead>}"
 
@@ -19,25 +19,34 @@ id="${1:?usage: accept.sh <bead>}"
 dev_clean || die "oolite-dev has uncommitted changes; commit them before accepting $id:
 $(real_git -C "$DEV" status --short | head -20)"
 branch="$(dev_branch)"
-main="$(dev_main)"
-[ "$branch" != "$main" ] || die "oolite-dev is on $main; a bead's work belongs on its own branch (run branch.sh $id)"
-if [ "$(real_git -C "$DEV" rev-list --count "$main..$branch")" -eq 0 ]; then
+epic="$(epic_of "$id")"
+[ -n "$epic" ] || die "bead $id has no parent epic; attach it with: bd update $id --parent <epic>"
+want="$(epic_branch "$epic")"
+[ "$branch" = "$want" ] || die "oolite-dev is on $branch but $id belongs to $want (run branch.sh $id)"
+base="$(bead_json "$id" | jq -r '.metadata.base_commit // empty')"
+[ -n "$base" ] || die "bead $id has no base_commit; run branch.sh $id before implementing it"
+real_git -C "$DEV" merge-base --is-ancestor "$base" HEAD \
+  || die "base_commit $base of $id is not an ancestor of $branch; the branch was rewritten under the bead"
+if [ "$(real_git -C "$DEV" rev-list --count "$base..HEAD")" -eq 0 ]; then
   attempts="$(( $(bead_attempts "$id") + 1 ))"
   real_bd update "$id" --set-metadata "attempts=$attempts" --append-notes \
-    "accept attempt $attempts on $(date -u +%FT%TZ): $branch has no commits beyond $main. The worker committed nothing." -q >&2
+    "accept attempt $attempts on $(date -u +%FT%TZ): $branch has no commits since the bead started ($base). The worker committed nothing." -q >&2
   echo "rejected $id (attempt $attempts): nothing committed on $branch"; exit 1
 fi
 
 acceptance="$(bead_acceptance "$id")"
-[ -n "$acceptance" ] || die "bead $id has no acceptance commands; refusing to propose without a gate"
+[ -n "$acceptance" ] || die "bead $id has no acceptance commands; refusing to commit without a gate"
 log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 status=0
 ran=0
-# The whole block shares ONE budget (about five minutes). Each line gets what is left of it; a line
-# that runs out exits 124 and the note names the budget, so the fix is a faster proof, not a
-# bigger number.
+# The whole block shares ONE budget: 300 s by default (BEADS_ACCEPT_BUDGET), or the bead's own
+# metadata.accept_budget when its proof is a full build and test run. Either is capped at 1800 s.
+# Each line gets what is left of it; a line that runs out exits 124 and the note names the budget.
 budget="${BEADS_ACCEPT_BUDGET:-300}"
+bead_budget="$(bead_json "$id" | jq -r '.metadata.accept_budget // empty')"
+case "$bead_budget" in ''|*[!0-9]*) ;; *) budget="$bead_budget";; esac
+[ "$budget" -le 1800 ] || budget=1800
 deadline=$(( $(date +%s) + budget ))
 if command -v timeout >/dev/null 2>&1; then TIMEOUT_BIN=timeout
 elif command -v gtimeout >/dev/null 2>&1; then TIMEOUT_BIN=gtimeout
@@ -60,7 +69,7 @@ while IFS= read -r cmd; do
   if [ "$rc" -ne 0 ]; then
     status=$rc
     if [ "$over_budget" -eq 1 ]; then
-      echo "[exit $status] ACCEPTANCE BUDGET EXCEEDED: the whole block must finish within BEADS_ACCEPT_BUDGET=${budget}s. Replace slow proofs (stability sweeps, repeated launches) with a fast one, or split the bead. Do not raise the budget." >>"$log"
+      echo "[exit $status] ACCEPTANCE BUDGET EXCEEDED: the whole block must finish within ${budget}s (default 300; a bead whose proof is a full build and test run sets metadata accept_budget, ceiling 1800). Replace slow proofs (stability sweeps, repeated launches) with a fast one, or set accept_budget if the proof is a build." >>"$log"
     else
       echo "[exit $status]" >>"$log"
     fi
@@ -72,21 +81,22 @@ done <<<"$acceptance"
 
 attempts="$(bead_attempts "$id")"
 if [ "$status" -eq 0 ]; then
-  # Open the pull request, or reuse the one this bead already has (a retried bead keeps its PR and
-  # `git town propose` would fail on a second call).
-  pr="$(bead_json "$id" | jq -r '.metadata.pr // empty')"
-  if [ -z "$pr" ]; then
-    ( cd "$DEV" && git town propose ) >&2 || die "acceptance passed but 'git town propose' failed for $id; the branch $branch is intact, nothing was lost"
-    pr="$(real_git -C "$DEV" config --get "branch.$branch.git-town-proposal-url" 2>/dev/null || true)"
-    [ -n "$pr" ] || pr="$(cd "$DEV" && gh pr view "$branch" --json url -q .url 2>/dev/null || true)"
-    real_bd update "$id" --set-metadata "pr=$pr" -q >&2 || true
-  else
-    ( cd "$DEV" && git push ) >&2 || true
-  fi
-  real_bd label add "$id" proposed >/dev/null 2>&1 || real_bd tag "$id" proposed >/dev/null 2>&1 || true
-  real_bd update "$id" --set-metadata "dev_commit=$(real_git -C "$DEV" rev-parse HEAD)" \
-    --append-notes "acceptance passed on $(date -u +%FT%TZ); proposed as ${pr:-<pull request>}. Awaiting review and merge." -q >&2
-  echo "proposed $id: $branch → $main  ${pr:-}"
+  # One commit per bead. Only this bead's own, unpublished commits (base..HEAD) are rewritten.
+  # Co-Authored-By trailers from the squashed commits are kept.
+  title="$(bead_field "$id" '.title')"
+  trailers="$(real_git -C "$DEV" log --format=%B "$base..HEAD" | grep -E '^Co-Authored-By:' | sort -u || true)"
+  msg="$id: $title"
+  [ -z "$trailers" ] || msg="$msg
+
+$trailers"
+  real_git -C "$DEV" reset -q --soft "$base"
+  real_git -C "$DEV" commit -q -m "$msg" >&2 \
+    || die "acceptance passed but committing $id failed; the squashed changes are staged in oolite-dev, nothing was lost"
+  commit="$(real_git -C "$DEV" rev-parse HEAD)"
+  real_bd label add "$id" committed >/dev/null 2>&1 || real_bd tag "$id" committed >/dev/null 2>&1 || true
+  real_bd update "$id" --set-metadata "dev_commit=$commit" \
+    --append-notes "acceptance passed on $(date -u +%FT%TZ); committed as ${commit:0:12} on $branch. Closes when Jon merges $branch into $(dev_main)." -q >&2
+  echo "committed $id: ${commit:0:12} on $branch"
   exit 0
 fi
 

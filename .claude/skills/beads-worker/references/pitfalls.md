@@ -28,10 +28,16 @@ Things that cost a previous run real time. Read the one that matches what you ar
 - **`bd unclaim` and `bd update --claim` must use the same actor.** The worker claims as
   `worker_actor`; `bd`'s default is `git user.name`, so a bare `bd unclaim` is refused. Pass
   `--actor "$(worker_actor)"`.
-- **`bd close` is refused, for you too.** A bead closes only when `land.sh` sees its pull request
-  merged. If `preflight.sh` says the guard shim is not on PATH, stop and tell the user. Calling the
-  real `bd` by absolute path bypasses the shim, including `bd update --status closed`: never do that
-  for any reason. A duplicate gets a note pointing at the real bead and stays open.
+- **`bd close` is refused, for you too.** A bead closes only when `land.sh` sees its epic's branch
+  merged into `develop`. `bd update --status closed` is the same act: never do that for any reason.
+  A duplicate gets a note pointing at the real bead and stays open.
+- **Every bead needs a parent epic.** `branch.sh` and `accept.sh` stop with "has no parent epic"
+  otherwise. Attach it with `bd update <id> --parent <epic>`.
+- **One commit per bead is made by `accept.sh`, not by you.** Commit as often as you like during the
+  tick; after the gate passes the script squashes everything since `base_commit` into
+  `<id>: <title>`. Do not rebase, amend or reset yourself.
+- **A parked bead's commits are reverted, not dropped.** `park.sh` adds revert commits on the epic
+  branch so later beads still build; history is never rewritten.
 - **`bd update --acceptance` / `--append-notes` change bead data, not the git tree.** They need no
   commit, and fixing a bead's gate is not the same act as editing the tree it judges.
 - **Check for an existing bead before filing one** (`bd list --json`, grep the symptom). Concurrent

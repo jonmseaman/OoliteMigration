@@ -11,12 +11,10 @@ the tree or is quoted verbatim below.
 
 ## Files
 
-Touches ≤ 8:
+The files or area this unit touches, or the pattern and the tool for a tree-wide sweep:
 
 - `/abs/path/one`
 - `/abs/path/two`
-
-Reads ≤ ~1,500 lines. Writes ≤ ~400 lines.
 
 ## Acceptance (run by the wrapper, never by the agent)
 
@@ -33,8 +31,8 @@ Add `tests/run.sh component -k <scenario>` when the unit changes observable beha
 
 - Do not modify or delete tests. If the test is wrong, stop and report. **Adding** a test is not
   prohibited and is expected where this unit changes observable behaviour: add a scenario to
-  `tests/component/features/` using steps that already exist. Needing a *new step* fails sizing
-  check 5 — stop and file a bead.
+  `tests/component/features/` using steps that already exist. Needing a *new step* fails readiness
+  check 3 — stop and file a bead.
 - Do not add `-Wno-*`, `#pragma` diagnostic suppressions, or `[[maybe_unused]]` to silence a warning.
 - Do not mark this unit done. The wrapper does that after running the acceptance commands.
 - Do not read expansion (OXP/OXZ) content. If the task appears to need it, stop and report.
@@ -45,14 +43,15 @@ Add `tests/run.sh component -k <scenario>` when the unit changes observable beha
 The one channel that survives between iterations (the bead's notes, `bd update <id> --notes`). Write here what the next
 iteration must know: what was tried, what failed, what is half-done.
 
-## Sizing check
+## Readiness check
 
 | # | Check | ✓ |
 |---:|---|---|
-| 1 | Reads ≤ ~1,500 lines | |
-| 2 | Writes ≤ ~400 lines | |
-| 3 | ≤ 8 files | |
-| 4 | ≥ 1 command-shaped acceptance criterion | |
-| 5 | Zero new interfaces | |
-| 6 | Describable in 2–3 sentences | |
-| 7 | Names a worked exemplar | |
+| 1 | One tick's work (no line or file cap; sized by pattern or area) | |
+| 2 | ≥ 1 command-shaped acceptance criterion | |
+| 3 | Zero new interfaces, or each quoted verbatim | |
+| 4 | Describable in 2–3 sentences | |
+| 5 | Names a worked exemplar | |
+
+Acceptance budget: 300 s by default; set `accept_budget` in the bead's metadata (up to 1,800 s)
+when the proof is a full build and test run.

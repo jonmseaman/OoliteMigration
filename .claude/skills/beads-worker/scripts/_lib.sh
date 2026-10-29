@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
 # Shared helpers for the beads-worker scripts. Source, do not execute.
 set -euo pipefail
-# `git rev-parse --show-toplevel` prints a Windows-style path under MSYS (C:/Users/...), which
-# never matches the POSIX-style entries in PATH. Round-trip it through `cd`/`pwd` so the guard
-# directory can actually be stripped below; without this, real_bd would re-enter the shim.
+# `git rev-parse --show-toplevel` prints a Windows-style path under MSYS (C:/Users/...); round-trip
+# it through `cd`/`pwd` so REPO_ROOT is a POSIX path that composes with the rest of the script.
 REPO_ROOT="$(cd "$(git rev-parse --show-toplevel)" && pwd)"
 DEV="$REPO_ROOT/oolite-dev"
 die() { echo "beads-worker: $*" >&2; exit "${2:-1}"; }
 need() { for c in "$@"; do command -v "$c" >/dev/null 2>&1 || die "missing command: $c" 2; done; }
 need bd git jq
-# Real bd and git, bypassing the guard shims in tools/guard.
-_unguarded_path() { echo "$PATH" | tr ':' '\n' | grep -vx "$REPO_ROOT/tools/guard" | paste -sd: -; }
-real_bd() { PATH="$(_unguarded_path)" command bd "$@"; }
-real_git() { PATH="$(_unguarded_path)" command git "$@"; }
+# Thin wrappers kept so every caller reads the same; there is no shim to bypass.
+real_bd() { command bd "$@"; }
+real_git() { command git "$@"; }
 # The UCRT64 jq writes CRLF. Every value that reaches a shell variable goes through nocr, or ids
 # carry a trailing \r, `bd show` is handed a bead that cannot exist, and `set -e` kills the script
 # with no output at all. Stripping
@@ -31,10 +29,13 @@ bead_acceptance() {
   printf '%s\n' "$acc"
 }
 bead_attempts() { bead_json "$1" | jq -r '(.metadata.attempts // "0") | tonumber'; }
-# Beads for a human are never the worker's. Everything else is selected by the caller's selector,
-# which is passed through to `bd list` verbatim: the old fleet/frontier tier split is gone.
-BEADS_WORKER_EXCLUDE="${BEADS_WORKER_EXCLUDE:-rebless proposed-adr}"
-# worker_list <bd list flags...>: one JSON array of matching beads, minus the human-only labels.
+bead_has_label() { [ "$(bead_json "$1" | jq -r --arg l "$2" '(.labels // []) | index($l) | if . == null then "no" else "yes" end' | nocr)" = yes ]; }
+# bead_actor <bead>: who holds the bead (bd refuses to close a bead as anyone else), else this worker.
+bead_actor() { local a; a="$(bead_field "$1" '.assignee')"; echo "${a:-$(worker_actor)}"; }
+# Beads for a human or an interactive session are never the worker's. Everything else is selected
+# by the caller's selector, which is passed through to `bd list` verbatim.
+BEADS_WORKER_EXCLUDE="${BEADS_WORKER_EXCLUDE:-rebless proposed-adr design}"
+# worker_list <bd list flags...>: one JSON array of matching beads, minus the excluded labels.
 worker_list() {
   real_bd list "$@" --json -n 0 2>/dev/null \
     | jq -c --arg ex "$BEADS_WORKER_EXCLUDE" '
@@ -54,15 +55,46 @@ dev_branch() {
   echo "$b"
 }
 dev_clean() { [ -z "$(real_git -C "$DEV" status --porcelain 2>/dev/null)" ]; }
-# Git Town's main branch inside oolite-dev: the branch bead branches are appended to and propose
-# against. Configured by preflight.sh; `develop` unless someone changed it.
-dev_main() { real_git -C "$DEV" config --get git-town.main-branch || echo develop; }
-# feature/MMDD-slug, the branch name for a bead. The slug comes from the bead's title so a branch
-# and its pull request are readable without looking the id up.
-bead_branch_name() {
-  local id="$1" title slug
-  title="$(bead_field "$id" '.title')"
-  slug="$(printf %s "$title" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' | cut -c1-40 | sed -E 's/-+$//')"
-  [ -n "$slug" ] || slug="$(printf %s "$id" | tr '[:upper:]' '[:lower:]')"
-  echo "feature/$(date +%m%d)-$slug"
+# The branch epic branches start from and are merged into by Jon.
+dev_main() { echo "${OOLITE_DEV_MAIN:-develop}"; }
+# slugify <text>: lower-case, hyphen-separated, at most 40 characters.
+slugify() {
+  printf %s "$1" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' | cut -c1-40 | sed -E 's/-+$//'
+}
+# epic_of <bead>: the id of the epic a bead belongs to. Walks `parent` upward and returns the first
+# ancestor whose type is epic; failing that the topmost parent; empty when the bead has no parent.
+epic_of() {
+  local id="$1" p="" top="" i=0
+  while [ "$i" -lt 8 ]; do
+    p="$(bead_field "$id" '.parent')"
+    [ -n "$p" ] || break
+    top="$p"
+    [ "$(bead_field "$p" '.issue_type')" = "epic" ] && { echo "$p"; return 0; }
+    id="$p"; i=$((i + 1))
+  done
+  echo "$top"
+}
+# epic_branch <epic>: the branch every bead of the epic commits on. Recorded on the epic by
+# branch.sh the first time; before that, epic/<slug of its title> (or of its id).
+epic_branch() {
+  local epic="$1" b slug
+  b="$(bead_json "$epic" | jq -r '.metadata.branch // empty')"
+  if [ -z "$b" ]; then
+    slug="$(slugify "$(bead_field "$epic" '.title')")"
+    [ -n "$slug" ] || slug="$(slugify "$epic")"
+    b="epic/$slug"
+  fi
+  echo "$b"
+}
+# epic_merged <branch>: success when Jon has merged the branch into the main branch in oolite-dev,
+# by merge commit or fast-forward (ancestor) or by rebase (every commit has a patch-equivalent on
+# main). A squash merge is not detectable; Jon closes those beads himself.
+epic_merged() {
+  local b="$1" m cherry
+  m="$(dev_main)"
+  real_git -C "$DEV" show-ref --verify --quiet "refs/heads/$b" || return 1
+  real_git -C "$DEV" merge-base --is-ancestor "$b" "$m" && return 0
+  cherry="$(real_git -C "$DEV" cherry "$m" "$b" 2>/dev/null || true)"
+  [ -n "$cherry" ] || return 1
+  ! printf '%s\n' "$cherry" | grep -q '^+'
 }

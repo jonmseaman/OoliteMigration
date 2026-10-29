@@ -29,14 +29,22 @@ tier1`) is run by hand when a change could affect what expansions see.
 
 Work is tracked as beads (`bd ready`, `bd show <id>`). A bead is ready to hand to an agent when:
 
-1. it needs ≤ ~1,500 lines read, ≤ ~400 written, ≤ 8 files touched;
+1. it is one tick's work: one coherent change a worker can finish and prove in a single iteration.
+   There is no line or file cap. Size a bead by pattern (a tool-driven sweep over the whole tree is
+   one bead; name the tool, e.g. a clang-tidy check with `--fix`) or by area (a directory or
+   subsystem), not by file count;
 2. it has an acceptance command that exits nonzero before the change and zero after;
 3. it adds no new interfaces (or quotes them verbatim);
 4. it fits in 2–3 sentences;
 5. it names an existing file to copy the style from.
 
 If a bead fails 1, 3 or 4, split it. If only 2 fails, write the test first as its own bead. If only
-3 and 5 fail, it is design work: do it in an interactive session, not in the loop.
+3 and 5 fail, it is design work: label it `design` and do it in an interactive session, not in the
+loop.
+
+Acceptance has a time budget: 300 s for the whole block by default. A bead whose proof is a full
+build and test run sets `accept_budget` in its metadata
+(`bd update <id> --set-metadata accept_budget=900`), up to 1,800 s.
 
 Template: [templates/story.md](templates/story.md). The bead's notes are the only state that
 survives between agent iterations.
@@ -47,13 +55,16 @@ survives between agent iterations.
 2. Clean at `-Wall -Wextra` on Clang and GCC; no new warnings.
 3. ASan clean where the change touches memory ownership.
 4. No `libgnustep-base` or `JS_*` symbols (`git grep -nE 'JS_[A-Za-z_]+|gnustep'` over the files you changed).
-5. A pull request into `oolite-dev`'s `develop` via `git town propose`. The bead closes when Jon
-   merges it (`.claude/skills/beads-worker/scripts/land.sh` reads the merge back); the implementing
-   agent never closes it.
+5. The bead is one commit (`<id>: <title>`) on its epic's branch, labelled `committed` by
+   `accept.sh`. It closes when Jon merges that branch into `develop`
+   (`.claude/skills/beads-worker/scripts/land.sh` sees the merge); the implementing agent never
+   closes it.
 
 ## Repo mechanics
 
-- Branch in `oolite-dev` with `git town append`; push only that feature branch.
+- All beads of an epic commit on one branch in `oolite-dev` (`epic/<slug>`, created by
+  `branch.sh` from `develop`). The worker never pushes; Jon merges the branch into `develop`
+  locally and pushes it.
 - Scripts called as bare programs are committed `100755` with a shebang; check with
   `git ls-files -s`, never `test -x`.
 - Vendored code (`src/Core/MiniZip/`, `src/SDL/stb_image_write.h`) is not edited to satisfy the
