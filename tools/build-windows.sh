@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 #
 # Build Oolite natively on Windows from a clean clone.
-# Phase 0 item 0.3 (docs/phases/0-safety-net.md).
 #
 # This is upstream's Windows CI job (.github/workflows/build-all.yaml) minus its per-run
 # provisioning: no msys2/setup-msys2, no install_deps.sh. The machine is provisioned once by

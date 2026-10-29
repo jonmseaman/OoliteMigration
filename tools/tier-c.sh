@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Tier C -- the PHASE gate (run at phase end, before a phase PR). Phase 0 item 0.9c (docs/phases/0-safety-net.md), bead oo-j4u.
-# Tiers are defined in docs/execution-model.md §3.1; Tier B (tools/tier-b.sh) is the per-commit
+# Tier C -- the PHASE gate (run at phase end, before a phase PR).
+# Tiers are defined in docs/workflow.md; Tier B (tools/tier-b.sh) is the per-commit
 # gate this one composes with rather than duplicates.
 #
 #     tools/tier-c.sh                    # everything

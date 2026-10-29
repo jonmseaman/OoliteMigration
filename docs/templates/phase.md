@@ -19,10 +19,10 @@ Two or three sentences. What is true when this phase is done that was not true b
 ## Seams (human / frontier work)
 
 The design decisions that must exist before any sweep can start. Each one fails checks 5 and 7 of
-the [sizing rule](../execution-model.md#82-the-seven-check-sizing-rule). Name the exemplar path each
+the [sizing rule](../workflow.md#a-unit-of-work-a-bead). Name the exemplar path each
 seam produces.
 
-| Seam | Produces (exemplar path) | Owner (a frontier agent unless it is one of Jon's four, ADR-0013) |
+| Seam | Produces (exemplar path) | Owner |
 |---|---|---|
 
 ## Sweeps (fleet work)
@@ -30,8 +30,7 @@ seam produces.
 | Sweep | Unit | Inventory command | Exemplar | Est. stories | Ordering |
 |---|---|---|---|---:|---|
 
-Stories are generated from the inventory by `tools/gen-stories` (Phase 0 deliverable), never
-hand-authored, using [templates/story.md](story.md).
+One bead per unit, written from the inventory using [templates/story.md](story.md).
 
 ## Work items
 
@@ -39,12 +38,12 @@ Numbered `N.1`, `N.2`, … in dependency order. Each is a seam, a sweep, or a on
 
 ## Commands
 
-The Tier A / B / C commands for this phase's work, once they exist. Until then: "not yet available,
-see Phase 0 item 0.9".
+The Tier A / B / C commands for this phase's work ([workflow.md](../workflow.md)).
 
-## Open decisions
+## Decisions
 
-Link to roadmap decision numbers. All are decided by default (ADR-0013); note here only if this phase would override one, as a proposed ADR.
+Decisions this phase takes, each with its default and the reason, dated. There is no separate ADR
+folder.
 
 ## Status log
 

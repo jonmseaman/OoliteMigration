@@ -126,7 +126,7 @@ for.
 
 The runtime snapshot of the QuickJS-ng build, captured with `tools/js-api-snapshot.sh --output
 oxp-contract/js-api-quickjs.json` when Phase 1 closed (bead oo-1gc.10), and the QuickJS-era
-baseline that [ADR-0024](../docs/decisions/0024-js-api-gate-is-the-oolite-surface.md) names.
+baseline that ADR-0024 names.
 `js-api-1.93.json` stays the contract: `tools/js_api_surface_compare.py oxp-contract/js-api-1.93.json
 oxp-contract/js-api-quickjs.json` must report 0 differences in the Oolite API surface (it did: 140
 globals, 86 Oolite, 54 ECMAScript, 39 native classes; the 72 additions are ECMAScript built-ins

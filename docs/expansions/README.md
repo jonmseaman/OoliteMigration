@@ -1,11 +1,11 @@
 # Expansion notes: QuickJS-ng compatibility, layers 1 and 2
 
-Every catalogued expansion (818) was checked by the scan of [ADR-0069](../decisions/0069-expansion-compatibility-scan.md):
+Every catalogued expansion (818) was checked by the scan of the [compatibility scan](scan-report.md):
 
 - **layer 1**: parsed by the game's own QuickJS-ng;
 - **layer 2**: checked by the compat rules and the nine Mozilla-only rules.
 
-How to fix each finding is in the [migration guide](../EXPANSION_MIGRATION.md). How the scan was run is in the [scan report](../phases/1-expansion-scan-report.md). The machine-readable notes are in [`tools/oxp-scan/expansion-notes.json`](../../tools/oxp-scan/expansion-notes.json).
+How to fix each finding is in the [migration guide](../EXPANSION_MIGRATION.md). How the scan was run is in the [scan report](scan-report.md). The machine-readable notes are in [`tools/oxp-scan/expansion-notes.json`](../../tools/oxp-scan/expansion-notes.json).
 
 | Status | Meaning | Expansions |
 |---|---|---:|

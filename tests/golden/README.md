@@ -1,8 +1,8 @@
 # Golden harness runner
 
 One golden scenario, one **native** game process, its own console port, its own artifact directory.
-No containers ([ADR-0017](../../docs/decisions/0017-native-windows-subtree.md)); the console client
-is the component tier's, shared as [ADR-0018](../../docs/decisions/0018-component-test-tier.md)
+No containers (ADR-0017); the console client
+is the component tier's, shared as ADR-0018
 requires (`oolite-dev/tests/component/console.py`).
 
 ```bash
@@ -22,7 +22,7 @@ the wall time). The directory is git-ignored.
 
 ## Running N at once
 
-`N` is the RAM budget row in [`docs/infra/0-machines.md`](../../docs/infra/0-machines.md) and is
+`N` is the RAM budget row in `docs/infra/0-machines.md` and is
 carried as `GOLDEN_MAX_CONCURRENCY` at the top of `run.sh` (override with
 `OO_GOLDEN_MAX_CONCURRENCY`). Just start N invocations; nothing is shared:
 

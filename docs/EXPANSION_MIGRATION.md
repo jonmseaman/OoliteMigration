@@ -2,9 +2,9 @@
 
 **Audience:** anyone updating an expansion's JavaScript for the C++ Oolite: an author, or a
 maintainer working through the [per-expansion notes](expansions/README.md). **Status:** Phase 1
-deliverable ([ADR-0002](decisions/0002-quickjs-ng.md)). Rewritten 2026-10-27 from the expansion
-compatibility scan ([ADR-0069](decisions/0069-expansion-compatibility-scan.md),
-[report](phases/1-expansion-scan-report.md)).
+deliverable (ADR-0002). Rewritten 2026-10-27 from the expansion
+compatibility scan (ADR-0069,
+[report](expansions/scan-report.md)).
 
 Oolite's C++ port replaces the patched SpiderMonkey 1.8.5 engine (Firefox 4, 2011) with QuickJS-ng
 (ES2023) behind a façade (`ooscript/JSEngine.hpp`). The goldens and the OXP corpus hold contracts
@@ -213,7 +213,7 @@ only).
 
 ## Kept through the game's polyfills (CHANGED)
 
-[ADR-0023](decisions/0023-built-in-mozilla-compat-polyfills.md) has `oolite-global-prefix.js`
+ADR-0023 has `oolite-global-prefix.js`
 install these before any script runs. **They work**, but their output is the polyfill's
 best-effort text, not SpiderMonkey's exact source reflection. Code that only logs the result is
 fine. Code that compares or parses it may change.
@@ -358,14 +358,14 @@ as unexpected. **Found in the corpus:** Library (`Lib_Main.js`), INFO.
   oo-1gc.15 made this match SpiderMonkey for Oolite's own calls. It can still differ when one ship's
   function is called directly from another ship's handler. Use `this.name` and it never matters.
 - **Sort stability, `for...in` order over dictionaries the game hands over** (they now arrive in
-  key order, [ADR-0051](decisions/0051-js-native-values-as-plist.md)), **`Math.random` sequences and
+  key order, ADR-0051), **`Math.random` sequences and
   `Date` string formats** may differ. No text rule can see whether a script depends on them. The
   behavioural differential (the next pass in ADR-0069) measures them.
 
 ## Load-time content defects (bead oo-1gc.11)
 
 Bead oo-1gc.11 loaded all 813 catalogue expansions on QuickJS-ng, each one solo
-([report](phases/1-corpus-tier23-report.md)). The failures below come from code the engine swap did
+(report). The failures below come from code the engine swap did
 not touch: the data loaders, Oolite's own argument checks, or the expansion's own messages. They
 fail the same way on 1.93 with SpiderMonkey. Authors should still fix them.
 
@@ -381,7 +381,7 @@ fail the same way on 1.93 with SpiderMonkey. Authors should still fix them.
 | E8 | `TypeError: could not delete property`, from a strict-mode `for (var k in this) ... delete this[k]` that spares only `name` and `version` | A world script object carries `oolite_manifest_identifier`, which Oolite defines read-only and permanent, on SpiderMonkey as well. A strict `delete` of it threw there too. Skip it in the loop, as RobertTodd.Taranis and Wildeblood.Untrumbled do. The loop runs on the missing-dependency path, so the error appears when the expansion is installed without its companions. (bead oo-1gc.14) | Svengali.Snoopers (Tier 2) |
 | E9 | `ReferenceError: X is not defined` for a name nothing declares, in strict code | The name was never a variable on any engine. UK_Eliter.InterstellarTweaks calls a method of one of its own `this.$...` objects without the object (`method(...)` for `this.$obj.method(...)`). The other three use an undeclared `for (k in obj)` loop variable in a `"use strict"` file or function (Taranis and Untrumbled on their missing-dependency path). Add the object, or declare the variable with `var`. (bead oo-1gc.15) | UK_Eliter.InterstellarTweaks (Tier 2), Norby.Towbar (Tier 2), RobertTodd.Taranis, Wildeblood.Untrumbled |
 | E10 | `TypeError: not an object` at the top level of a world script, which is then dropped | Strict code creates a property on a string: a `reduce()` callback returns the key instead of the accumulator. SpiderMonkey 1.8.5 ignored the write silently, so the result was already wrong there. See [`strict-only`](#rule-strict-only). (bead oo-1gc.16) | Alnivel.RoutePlanner |
-| E11 | `shipData.load.error: the shipdata.plist entry "<x>-carrier" has unresolved subentities <ship keys>`, each followed by `oxp-standards.error: Bad subentity definition found`, although every named key exists in core `shipdata.plist` | A **visual effect** (`effectdata.plist`) names **ship** keys as subentities. The loader resolves an effect's subentities only among effects, so the effect is dropped. The message says "shipdata.plist" because one routine serves both passes. Turning on `effectData.load.progress` shows which pass logged it. Define the entry in `shipdata.plist` if it needs ship subentities, or name only effect keys. Identical on SpiderMonkey 1.93. Tier 1 reports it as KNOWN through `tools/oxp-corpus/known-content-failures.json` ([ADR-0047](decisions/0047-corpus-known-content-failures.md), bead oo-1gc.7). | Norby.Carriers (Tier 1) |
+| E11 | `shipData.load.error: the shipdata.plist entry "<x>-carrier" has unresolved subentities <ship keys>`, each followed by `oxp-standards.error: Bad subentity definition found`, although every named key exists in core `shipdata.plist` | A **visual effect** (`effectdata.plist`) names **ship** keys as subentities. The loader resolves an effect's subentities only among effects, so the effect is dropped. The message says "shipdata.plist" because one routine serves both passes. Turning on `effectData.load.progress` shows which pass logged it. Define the entry in `shipdata.plist` if it needs ship subentities, or name only effect keys. Identical on SpiderMonkey 1.93. Tier 1 reports it as KNOWN through `tools/oxp-corpus/known-content-failures.json` (ADR-0047, bead oo-1gc.7). | Norby.Carriers (Tier 1) |
 
 Beads oo-1gc.13 to oo-1gc.16 settled 13 further JavaScript exceptions from that run without reading
 expansion content:

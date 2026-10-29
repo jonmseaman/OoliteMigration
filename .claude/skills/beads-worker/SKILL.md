@@ -73,8 +73,8 @@ work is part of the work.
 
 The block is one command per line, each run in its own `bash -o pipefail -c` from the **repo root**
 (so acceptance lines spell the submodule out: `cd oolite-dev && ./mk.sh build test`). The whole
-block shares a five-minute budget (ADR-0021); a slow proof belongs in one of `tools/tier-c.sh`'s
-stage lists (ADR-0068), not in a bigger budget. A line must be proven to **fail** on unfixed code, not merely to pass on
+block shares a five-minute budget; a slow proof belongs in one of `tools/tier-c.sh`'s
+stage lists, not in a bigger budget. A line must be proven to **fail** on unfixed code, not merely to pass on
 fixed code — see `references/pitfalls.md`.
 
 ## When something is wrong with the task
@@ -85,8 +85,9 @@ You are the frontier model: when a bead is wrong, say so rather than forcing it 
   wrong. Park it with that reason (hard rule 9).
 - The bead needs a capability that does not exist yet — that is a dependency, not a retry. File or
   find the seam bead, `bd dep add <id> <seam>`, release the claim, and move on.
-- A decision is missing — write a proposed ADR under `docs/decisions/` with a recommended default
-  and proceed on it. Never wait (hard rule 10).
+- A decision is missing — take the conservative default, record it with its reason in the bead's
+  notes (and the phase doc's Decisions section if it outlives the bead), and proceed. Never wait
+  (hard rule 10).
 
 ## Phase end
 

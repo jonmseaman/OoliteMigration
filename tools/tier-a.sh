@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Tier A — the agent inner loop. Phase 0 item 0.9 (docs/phases/0-safety-net.md),
-# tiers defined in docs/execution-model.md §3.1.
+# Tier A — the agent inner loop.
+# Tiers are defined in docs/workflow.md.
 #
 #     tools/tier-a.sh oolite-dev/src/Core/OOColor.m
 #

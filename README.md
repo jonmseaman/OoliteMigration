@@ -12,12 +12,9 @@ pinned toolchain, `gh` and `git-town`, and a keep-awake tool.
 
 | Path | What |
 |---|---|
-| `ROADMAP.md` | Phase table, infra track, decisions — the entry point |
+| `ROADMAP.md` | Status and phase table — the entry point |
 | `CLAUDE.md` / `GLOSSARY.md` | The agent contract and the terms |
-| `docs/architecture.md` | Survey, target design, risks, expansion contracts |
-| `docs/execution-model.md` | Verification tiers, agent authority, story sizing |
-| `docs/phases/`, `docs/decisions/` | Per-phase docs, ADRs |
-| `tools/gen-stories.py` | Generates the beads queue from the tree |
+| `docs/` | Current state, workflow, phase docs, parity audit, expansion guide ([index](docs/README.md)) |
 | `tools/check-file-modes.sh` | Guardrail: bare-program scripts are committed `100755` (see CLAUDE.md conventions) |
 | `tools/guard/` | PATH shims: no agent closes a bead or pushes to an integration branch |
 | `tools/sync-dev.sh` / `tools/phase-pr.sh` | Record merged work; open the phase's `develop → master` PR |
@@ -32,8 +29,7 @@ pinned toolchain, `gh` and `git-town`, and a keep-awake tool.
 | `upstream/oolite-mac-components` | Submodule: `OoliteProject/oolite-mac-components`; historical macOS Cocoa components (Phase 5 reference) |
 
 Everything under `upstream/` is OoliteProject's own and unmodified; only `jonmseaman/oolite`
-carries changes ([ADR-0067](docs/decisions/0067-submodules-replace-subtrees.md), which replaces
-ADR-0017's subtree decision).
+carries changes.
 
 ## Remotes
 

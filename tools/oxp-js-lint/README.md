@@ -150,7 +150,7 @@ Two choices keep it honest about what text can and cannot show:
 The corpus report (`lint.js corpus`, `compat.js corpus`) never stores a source snippet. Only
 `scan` mode prints one, for a file you are checking locally.
 
-Results are in [docs/phases/1-expansion-scan-report.md](../../docs/phases/1-expansion-scan-report.md).
+Results are in [docs/expansions/scan-report.md](../../docs/expansions/scan-report.md).
 
 ## Known limits
 

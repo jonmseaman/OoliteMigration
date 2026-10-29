@@ -15,14 +15,14 @@ is it safe to make design changes. Low fan-out: these are design changes by defi
 
 Per sub-project; each is its own mini-phase with goldens as the gate:
 
-- **C++23 upgrade** ([ADR-0011](../decisions/0011-cpp20-then-cpp23.md)): `-std=c++23` on all
+- **C++23 upgrade** (ADR-0011): `-std=c++23` on all
   three toolchains at their pinned minimums; `oo::Expected` → `std::expected`; adopt `std::print`,
   deducing `this`, C++23 ranges adaptors per the architecture §3.2 table. Mechanical first, then
   idiomatic.
 
-- Renderer → GL 3.3 Core (or SDL3 GPU). See [ADR-0004](../decisions/0004-legacy-gl-until-phase-6.md).
+- Renderer → GL 3.3 Core (or SDL3 GPU). See ADR-0004.
 - Value semantics for leaf *classes* (`OOColor`, `OORoleSet`, …; the math types are already C
-  structs, [ADR-0012](../decisions/0012-c-stays-c.md)); `unique_ptr` for exclusive ownership;
+  structs, ADR-0012); `unique_ptr` for exclusive ownership;
   shrink `Ref` usage to the entity graph where it belongs.
 - Break up `Universe`: separate scene graph, simulation, and presentation.
 - `std::expected` error paths replacing out-parameter + `BOOL` returns.

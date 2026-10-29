@@ -1,4 +1,16 @@
-# Expansion compatibility scan: results ([ADR-0069](../decisions/0069-expansion-compatibility-scan.md))
+# Expansion compatibility scan: results
+
+**Ground rules of the scan** (Jon, 2026-10-27):
+
+- Scan all 818 catalogued expansions; record notes per expansion and write the migration guide.
+  Updating the expansions themselves comes later and is Jon's call.
+- Engine differences are documented, not emulated: no new polyfills.
+- No expansion code enters any repo. Findings carry file, line, rule, severity and the engine's
+  message (≤ 160 chars); archives and extracts stay in the out-of-repo cache
+  (`%LOCALAPPDATA%/OoliteMigration/oxp-scan/`).
+- Programs read the code; a model may read it only in a sandbox with no repo, network or secrets.
+- The later behavioural differential uses the official 1.93.1.16 release as its SpiderMonkey
+  reference.
 
 This is the record of the first pass over all 818 catalogued expansions. Jon asked for it on
 2026-10-27: scan the code for QuickJS-ng incompatibilities, write notes per expansion, then write
@@ -11,13 +23,13 @@ from the game's own engine, from code reading the cached archives, or from
 | 1. Parse with the game's QuickJS-ng | `tools/oxp-js-parse` | **done 2026-10-27** (below) |
 | Engine API ground truth | `tools/oxp-js-parse/engine-probe.c` | **done 2026-10-27** (below) |
 | 2. Rules for code that parses but behaves differently | `tools/oxp-js-lint` compat set | **done 2026-10-27** (below) |
-| Notes per expansion | `tools/oxp-scan/notes.py` → [docs/expansions/](../expansions/README.md) | **done 2026-10-27** (layers 1 and 2) |
+| Notes per expansion | `tools/oxp-scan/notes.py` → [docs/expansions/](README.md) | **done 2026-10-27** (layers 1 and 2) |
 | Migration guide | [docs/EXPANSION_MIGRATION.md](../EXPANSION_MIGRATION.md) | **rewritten 2026-10-27** |
 | 3. Sandboxed model review | `tools/oxp-scan` | **deferred** (Jon, 2026-10-27: investigate further later if needed) |
 
 **Where the results are:**
 
-- [docs/expansions/README.md](../expansions/README.md) indexes all 818 expansions;
+- [docs/expansions/README.md](README.md) indexes all 818 expansions;
 - one page per expansion with a finding (13);
 - `tools/oxp-scan/expansion-notes.json` holds the machine-readable notes;
 - the [migration guide](../EXPANSION_MIGRATION.md) has one anchored section per rule.
@@ -154,5 +166,5 @@ stability, enumeration order or `Date` parsing.
   either an allowance for the polyfill's own definitions or a new acceptance line. That decision
   belongs with the bead.
 - `lint.js corpus` used to store a source `snippet` with each finding in the committed
-  `corpus-report.json`. That conflicts with ADR-0069 (no expansion code in the repo). The corpus
+  `corpus-report.json`. That conflicts with the no-expansion-code rule above. The corpus
   report now omits it, and `scan` mode on local files still prints it.

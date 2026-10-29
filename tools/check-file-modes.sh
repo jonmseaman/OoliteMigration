@@ -615,7 +615,7 @@ if [ "$LIST_ONLY" = 1 ]; then
 fi
 
 if [ "$fail" -ne 0 ]; then
-	note "FAILED - see docs/decisions or CLAUDE.md 'Repo conventions' for the shebang/mode rule"
+	note "FAILED - see CLAUDE.md 'Repo conventions' for the shebang/mode rule"
 	exit 1
 fi
 echo "check-file-modes: OK - every bare-program script is 100755, nothing is 100755 without a shebang"

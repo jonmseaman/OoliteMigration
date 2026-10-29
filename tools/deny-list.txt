@@ -1,4 +1,4 @@
-# Tier A / B symbol deny-list (docs/execution-model.md §7.5, docs/phases/0-safety-net.md 0.11).
+# Tier A / B symbol deny-list (docs/workflow.md).
 #
 # One extended-regular-expression per line; blank lines and #-comments ignored.
 # A pattern that must match a literal '#' has to start with the bracket form '[#]', or the

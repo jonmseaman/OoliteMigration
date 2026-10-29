@@ -3,7 +3,7 @@
 #
 # The PyAutoGUI tier drives a real window with synthetic OS input events, so it takes the
 # interactive desktop exclusively: two GUI tests running at once would steal each other's
-# focus and each other's clicks (docs/phases/0-gui-tier.md, "Platform notes"). This is that
+# focus and each other's clicks. This is that
 # exclusion, and it is deliberately a plain mkdir lock so that a shell script, a pytest run
 # and a CI step can all take the same lock without sharing a language.
 #

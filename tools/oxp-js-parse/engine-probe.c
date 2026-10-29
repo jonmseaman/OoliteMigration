@@ -3,7 +3,7 @@
  *
  * Evaluates each case in a bare QuickJS-ng context (no Oolite globals, no oolite-global-prefix.js
  * polyfills) and prints the result. Built by build.sh beside oxp-js-parse.exe. Results are recorded
- * in docs/phases/1-expansion-scan-report.md; they are the ground truth for the removed-api and
+ * in docs/expansions/scan-report.md; they are the ground truth for the removed-api and
  * legacy-accessor entries in docs/EXPANSION_MIGRATION.md.
  */
 #include <stdio.h>

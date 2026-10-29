@@ -1,9 +1,9 @@
 # Upstream delta
 
 Upstream changes to modules Phase 3 has frozen, ported by hand. The policy is
-[architecture §6.3](architecture.md) item 5, made concrete by
-[proposed ADR-0059](decisions/0059-upstream-freeze-policy.md); the monthly
-[upstream-tracker task](fleet/upstream-tracker-prompt.md) is the only writer of the delta table.
+architecture §6.3 item 5, made concrete by
+proposed ADR-0059; the monthly
+upstream-tracker task is the only writer of the delta table.
 `bash tools/upstream-delta.sh --check` proves this file well formed and the policy in force.
 
 ## How the freeze works

@@ -6,7 +6,7 @@ for expansions whose authors are unreachable and cannot update their scripts
 for QuickJS-ng — the "to-source" and "quote-method" removals documented in
 [`docs/EXPANSION_MIGRATION.md`](../../docs/EXPANSION_MIGRATION.md). It is the
 interim relief promised there and in
-[`docs/architecture.md` §5.3](../../docs/architecture.md#53-what-expansion-authors-will-need-to-change-the-guide),
+`docs/architecture.md` §5.3,
 item 2.
 
 ## Layout

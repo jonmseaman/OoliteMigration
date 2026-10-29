@@ -9,7 +9,7 @@
  * string or comment is never flagged.
  *
  * Every hit has a severity, taken from what the game's QuickJS-ng actually does
- * (tools/oxp-js-parse/engine-probe.c; docs/phases/1-expansion-scan-report.md):
+ * (tools/oxp-js-parse/engine-probe.c; docs/expansions/scan-report.md):
  *   BREAKS  - the script fails to compile, or the line throws;
  *   CHANGED - it runs, with a different result (usually a silent undefined);
  *   INFO    - worth a look; breaks only in a mode players do not run by default.

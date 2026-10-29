@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Tier B -- the PER-COMMIT gate. Phase 0 item 0.9b (docs/phases/0-safety-net.md),
-# tiers defined in docs/execution-model.md §3.1.
+# Tier B -- the PER-COMMIT gate.
+# Tiers are defined in docs/workflow.md.
 #
 #     tools/tier-b.sh                 # everything, including the build
 #     tools/tier-b.sh --fast          # accept.sh variant: NO build (see --fast below)

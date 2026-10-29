@@ -5,8 +5,8 @@
 > in-tree fixture loads while emitting exactly its two standards errors.
 
 Filed by bead `oo-1bf.5`, specified in
-[`docs/phases/scenario-catalogue.json`](../../../../docs/phases/scenario-catalogue.json) and argued
-in [`docs/phases/0-scenarios-18-20.md`](../../../../docs/phases/0-scenarios-18-20.md).
+`docs/phases/scenario-catalogue.json` and argued
+in `docs/phases/0-scenarios-18-20.md`.
 Harness: [`tests/golden/expansion_closure.py`](../../expansion_closure.py).
 
 ## What this exercises that nothing else does

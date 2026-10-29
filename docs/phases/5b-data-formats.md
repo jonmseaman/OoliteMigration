@@ -1,9 +1,9 @@
 # Phase 5b — Data formats: JSON5 beside property lists
 
 **Status:** PROPOSED — awaiting Jon's approval (nothing here is started; no beads exist) ·
-**Est.:** 1–2 eng-months · **Depends on:** [Phase 4](4-remove-objc-runtime.md) ·
+**Est.:** 1–2 eng-months · **Depends on:** [Phase 4p](4p-upstream-polish.md) ·
 **Runs in parallel with:** [Phase 5](5-apple-silicon.md) (this work needs no Mac) ·
-**Decision record:** [ADR-0065](../decisions/0065-json5-beside-plists.md) (proposed)
+**Decision record:** ADR-0065 (proposed)
 
 ## Goal
 

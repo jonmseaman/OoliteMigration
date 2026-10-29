@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Guardrails — the four hard rules of CLAUDE.md, mechanically enforced (bead oo-ptc,
-# docs/phases/0-safety-net.md item 0.11). Run by tools/tier-b.sh and tools/tier-c.sh, and
+# Guardrails — the hard rules of CLAUDE.md, mechanically enforced.
+# Run by tools/tier-b.sh and tools/tier-c.sh, and
 # runnable on its own:
 #
 #     tools/guardrails.sh                      # check this change against its base

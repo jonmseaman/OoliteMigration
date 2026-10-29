@@ -2,7 +2,7 @@
 
 Where goldens live, at what precision they are stored, and which build flags they are only valid
 under. Implemented by bead `oo-ss8`; decision 11 is
-[ADR-0013](../../docs/decisions/0013-decide-up-front-minimise-human.md) item 11.
+ADR-0013 item 11.
 
 ```bash
 # offline: the whole falsifiability suite, no game, no build, ~2.5s
@@ -31,7 +31,7 @@ goldens/<platform>/<scenario>/provenance.json   what produced it
 ```
 
 `windows-x64` exists now. `macos-arm64` and `linux-x64` join at Phase 5, which is the first time
-this policy is exercised across platforms ([ADR-0009](../../docs/decisions/0009-apple-silicon-after-runtime-removal.md),
+this policy is exercised across platforms (ADR-0009,
 [Phase 5](../../docs/phases/5-apple-silicon.md)).
 
 The platform is a **directory**, not a filename suffix, and the platform key is deliberately coarse
