@@ -38,7 +38,7 @@ Numbered `N.1`, `N.2`, … in dependency order. Each is a seam, a sweep, or a on
 
 ## Commands
 
-The Tier A / B / C commands for this phase's work ([workflow.md](../workflow.md)).
+The build and test commands for this phase's work ([workflow.md](../workflow.md)).
 
 ## Decisions
 

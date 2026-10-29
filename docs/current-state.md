@@ -9,20 +9,21 @@ What Oolite is **now**, after Phases 0–4. For how it got here, see
 Oolite builds and runs as a plain C++20 program on Windows x64. There is no Objective-C (no `.m`,
 no libobjc, no `-fobjc-*`), no GNUstep (`libgnustep-base` is replaced by `oofnd`), and no
 SpiderMonkey (replaced by QuickJS-ng behind a small façade). It builds with Clang and with GCC;
-both pass the unit suites and replay the blessed goldens. macOS and Linux do not build yet
+both pass the unit suites. macOS and Linux do not build yet
 (Phase 5).
 
 ## Repositories
 
 | Path | What | Branch |
 |---|---|---|
-| `.` (this repo) | plan, tools, goldens, tests that drive the game | `main` |
+| `.` (this repo) | plan, notes, expansion corpus tooling, the beads skill | `main` |
 | `oolite-dev/` | submodule: the game being changed (`jonmseaman/oolite`) | `develop` |
 | `oolite-main/` | submodule: the same fork's `master`, for reference | `master` |
 | `upstream/*` | OoliteProject's own repos, unmodified, reference only | — |
 
-Work reaches `oolite-dev`'s `develop` through pull requests Jon merges. `bash tools/sync-dev.sh`
-records the merged `oolite-dev` commit here; `bash tools/phase-pr.sh` opens `develop → master`.
+Work reaches `oolite-dev`'s `develop` through pull requests Jon merges. The merged `oolite-dev`
+commit is recorded here at phase end (see the beads-worker skill), and `develop → master` is a
+pull request on the fork.
 
 ## Source layout (`oolite-dev/src`)
 
@@ -50,29 +51,29 @@ QuickJS-ng is a meson subproject pinned in `oolite-dev/subprojects/quickjs-ng.wr
 
 ## Builds
 
+Run from `oolite-dev`, in an MSYS2 UCRT64 shell (`tools/setup-windows.sh` installs it):
+
 | Flavour | Command | Notes |
 |---|---|---|
-| Clang (MSYS2 UCRT64) | `tools/build-windows.sh test` | the primary build; ASan via Tier C |
-| GCC (UCRT64 g++) | `tools/build-windows.sh --gcc test` | must stay green beside Clang |
-| Upstream-style | `cd oolite-dev && ./mk.sh build test` | |
+| Clang | `./mk.sh build test` | the primary build |
+| GCC | `./mk.sh build test --native-file=gcc.ini` | must stay green beside Clang |
 
-`-ffp-contract=off` and a pinned `-O` keep floating point reproducible for the goldens.
-`-Wall -Wextra` is clean. The gate skips exactly two vendored paths, `src/Core/MiniZip/` and
+`-ffp-contract=off` and a pinned `-O` keep floating point reproducible. `-Wall -Wextra` is clean.
+The warning gate skips exactly two vendored paths, `src/Core/MiniZip/` and
 `src/SDL/stb_image_write.h`; their warnings still print, and no other path may be added.
 
 ## Tests
 
 | Kind | Where | What it decides |
 |---|---|---|
-| Unit | `oolite-dev/tests/unit/` (core ~175 files, `oofnd` ~40) | class behaviour; `oofnd` also under ASan |
-| Goldens | `tests/golden/`, blessed outputs in `goldens/windows-x64/` | a seeded headless run dumps canonical JSON state; any diff fails. Only `001` and `001-launch-dock` are blessed; 002–020 are built and waiting for Jon (`tests/golden/pending/`) |
+| Unit | `oolite-dev/tests/unit/` (core ~175 files, `oofnd` ~40) | class behaviour |
 | Component (BDD) | `oolite-dev/tests/component/` | pytest-bdd scenarios drive a real game over the debug console; tolerant invariants |
-| GUI | `oolite-dev/tests/gui/` | PyAutoGUI drives the real window (G1–G11). Takes `tools/gui-lock` |
-| JS API snapshot | `tools/js-api-snapshot.sh` | the 1.93 scripting surface; drift fails |
-| Expansion corpus | `tools/oxp_tier1.py`, `tools/oxp_tier23.py` | load-tests published expansions; known content failures in `tools/oxp-corpus/known-content-failures.json` |
-| Guardrails | `tools/guardrails.sh` | hard rules (goldens untouched, no silenced warnings, deny-list, …) |
+| GUI | `oolite-dev/tests/gui/` | PyAutoGUI drives the real window (G1–G11) |
+| Smoke | `oolite-dev/tests/launch_snapshot.py` | the game launches and renders |
+| JS API contract | `oxp-contract/js-api-1.93.json` | the 1.93 scripting surface expansions are written against |
+| Expansion corpus | `tools/corpus.sh`, `tools/oxp-corpus/` | load-tests published expansions; known content failures in `tools/oxp-corpus/known-content-failures.json` |
 
-The tiers that bundle these are in [workflow.md](workflow.md).
+`oolite-dev/tests/run.sh` runs the first four. How to use them is in [workflow.md](workflow.md).
 
 ## Known differences from upstream 1.93
 

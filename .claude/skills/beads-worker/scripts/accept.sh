@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The bead's gate, and the only thing that opens its pull request. Called by the loop, never by the
-# agent that wrote the code (CLAUDE.md hard rule 4 — the guard shim in tools/guard refuses `bd
+# agent that wrote the code (CLAUDE.md hard rule 3 — the guard shim in tools/guard refuses `bd
 # close` outright, and this script does not close anything either).
 #
 # The work is already committed on the bead's feature branch in oolite-dev. This script runs the
@@ -8,8 +8,8 @@
 # request against develop and marks the bead `proposed`. The bead stays OPEN: it closes when you
 # merge that pull request and a later tick notices (land.sh).
 #
-# Acceptance runs with cwd = the OUTER repo root, not oolite-dev: acceptance lines call tools/… in
-# this repo and spell the submodule explicitly (`cd oolite-dev && ./mk.sh build test`).
+# Acceptance runs with cwd = the OUTER repo root, not oolite-dev: acceptance lines spell the
+# submodule explicitly (`cd oolite-dev && tests/run.sh unit`).
 #
 # Exit 0 = acceptance passed, pull request open · 1 = rejected, new information · 2 = rejected, stale.
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
@@ -34,9 +34,9 @@ log="$(mktemp)"
 trap 'rm -f "$log"' EXIT
 status=0
 ran=0
-# The whole block shares ONE budget (ADR-0021: the gate is about five minutes). Each line gets what
-# is left of it; a line that runs out exits 124 and the note names the budget, so the fix is to
-# move the slow proof into a tools/tier-c.sh stage list (ADR-0068), not to raise the number.
+# The whole block shares ONE budget (about five minutes). Each line gets what is left of it; a line
+# that runs out exits 124 and the note names the budget, so the fix is a faster proof, not a
+# bigger number.
 budget="${BEADS_ACCEPT_BUDGET:-300}"
 deadline=$(( $(date +%s) + budget ))
 if command -v timeout >/dev/null 2>&1; then TIMEOUT_BIN=timeout
@@ -60,7 +60,7 @@ while IFS= read -r cmd; do
   if [ "$rc" -ne 0 ]; then
     status=$rc
     if [ "$over_budget" -eq 1 ]; then
-      echo "[exit $status] ACCEPTANCE BUDGET EXCEEDED: the whole block must finish within BEADS_ACCEPT_BUDGET=${budget}s (ADR-0021, the five-minute gate). Move the slow proof (stability sweeps, mutant sweeps, repeated launches) into a tools/tier-c.sh stage list (unit, deployment or selftests; ADR-0068), where the phase gate runs it, and keep a fast proof here. Do not raise the budget." >>"$log"
+      echo "[exit $status] ACCEPTANCE BUDGET EXCEEDED: the whole block must finish within BEADS_ACCEPT_BUDGET=${budget}s. Replace slow proofs (stability sweeps, repeated launches) with a fast one, or split the bead. Do not raise the budget." >>"$log"
     else
       echo "[exit $status]" >>"$log"
     fi

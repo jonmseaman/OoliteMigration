@@ -23,15 +23,14 @@ Reads ≤ ~1,500 lines. Writes ≤ ~400 lines.
 Each must exit nonzero before the change and zero after:
 
 ```bash
-tools/tier-a.sh <file>
-meson test -C build --suite <suite>
+cd oolite-dev && ./mk.sh build test
+cd oolite-dev && tests/run.sh unit
 ```
 
-Plus the standard Tier-B set when the wrapper promotes the branch.
+Add `tests/run.sh component -k <scenario>` when the unit changes observable behaviour.
 
 ## Prohibitions (verbatim in every story)
 
-- Do not modify anything under `goldens/`.
 - Do not modify or delete tests. If the test is wrong, stop and report. **Adding** a test is not
   prohibited and is expected where this unit changes observable behaviour: add a scenario to
   `tests/component/features/` using steps that already exist. Needing a *new step* fails sizing
@@ -39,7 +38,7 @@ Plus the standard Tier-B set when the wrapper promotes the branch.
 - Do not add `-Wno-*`, `#pragma` diagnostic suppressions, or `[[maybe_unused]]` to silence a warning.
 - Do not mark this unit done. The wrapper does that after running the acceptance commands.
 - Do not read expansion (OXP/OXZ) content. If the task appears to need it, stop and report.
-- Commit only to the worktree branch you were given. Never push to `main`.
+- Commit only to the branch you were given. Never push to `develop`, `master` or `main`.
 
 ## Carry-over
 

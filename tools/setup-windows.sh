@@ -20,11 +20,10 @@ set -euo pipefail
 
 MSYS_PKGS=(dos2unix git pactoys unzip)
 
-# mingw-w64-ucrt-x86_64-* packages. mesa supplies the llvmpipe opengl32.dll the goldens copy
+# mingw-w64-ucrt-x86_64-* packages. mesa supplies the llvmpipe opengl32.dll the tests copy
 # beside the binary (oolite-dev/tests/run_test_fn.sh); ccache backs the shared compiler
 # cache; jq is required by the worker scripts (.claude/skills/beads-worker/scripts/_lib.sh);
-# clang-tools-extra supplies clang-tidy, which tools/tier-a.sh requires (Phase 0 item 0.9) -
-# the clang package alone does not ship it, so Tier A dies on a machine provisioned without it.
+# clang-tools-extra supplies clang-tidy; the clang package alone does not ship it.
 UCRT_PKGS=(
   binutils clang clang-tools-extra lld
   espeak-ng libpng libvorbis openal pcaudiolib sdl3
@@ -166,7 +165,7 @@ fi
 # --- 5. Mesa llvmpipe driver ------------------------------------------------------------------
 #
 # run_test_fn.sh copies $MINGW_PREFIX/bin/opengl32.dll beside the binary. Nothing to install here
-# beyond the mesa package; assert it landed, because a silent absence means the goldens fall back
+# beyond the mesa package; assert it landed, because a silent absence means the tests fall back
 # to whatever GL the desktop offers and stop being reproducible.
 
 if [ -f "$MINGW_PREFIX/bin/opengl32.dll" ]; then
@@ -174,7 +173,7 @@ if [ -f "$MINGW_PREFIX/bin/opengl32.dll" ]; then
 elif $CHECK_ONLY; then
   want "mesa opengl32.dll at $MINGW_PREFIX/bin/opengl32.dll" || true
 else
-  die "mesa is installed but $MINGW_PREFIX/bin/opengl32.dll is absent; the goldens have no software GL"
+  die "mesa is installed but $MINGW_PREFIX/bin/opengl32.dll is absent; the tests have no software GL"
 fi
 
 # --- 6. Windows environment for MSYS2 shells --------------------------------------------------

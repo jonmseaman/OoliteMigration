@@ -12,14 +12,14 @@ upstream-tracker task is the only writer of the delta table.
 - **Frozen** means: the monthly `git subtree pull --squash` does not change it. The tracker pulls,
   then `tools/upstream-delta.sh --restore-frozen <pre-pull commit>` puts every frozen module back
   as it was, and each upstream commit that touched a frozen module becomes a row below and a
-  `fleet` bead that ports it by hand into the converted code (goldens decide whether the port is
+  `fleet` bead that ports it by hand into the converted code (the tests decide whether the port is
   right, as for any bead).
 - **Open** means: the pull's merge is taken as is; the tracker resolves its conflicts in the
   sync commit, under the same gates as any bead.
 - A module is frozen the moment it holds Phase 3 work (a `cxx::` class or an `+ObjCBridge`
   facade). `--check` fails when such a module is still open, and when a new source directory is
   not in the table, so a conversion that starts a module cannot forget to freeze it:
-  `tools/guardrails.sh` runs `--check` on every change (bead oo-9ht.70). Freezing is
+  run `--check` before a pull request that adds a source directory. Freezing is
   one-way until Phase 6.
 - Migration-owned directories (no upstream counterpart: `oofnd`, `Core/Scripting/ooscript`) are
   listed frozen; upstream never touches them, so they cost nothing.
@@ -104,6 +104,6 @@ deleted or replaced; say why in the subject cell).
 
 Outside the frozen modules the 2026-10-25 sync took upstream as merged: #369
 (`oolite-equipment-control.js`, pinned by test_OoliteEquipmentControlScript), #747's key and
-descriptions, #751's clang-format job (replicated locally by `tools/check-clang-format.sh`),
+descriptions, #751's clang-format job (CI runs it on the fork),
 #756's scripts and options, #758/#765's GNUstep pins and package lists (unused by the C++ build on
 Windows and Linux; the Windows list also gains `icu`, which oofnd needs).

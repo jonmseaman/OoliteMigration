@@ -4,7 +4,7 @@
 
 ## Goal
 
-Only now, with a pure C++20 codebase running on all three platforms and a working golden harness,
+Only now, with a pure C++20 codebase running on all three platforms with the test suites green,
 is it safe to make design changes. Low fan-out: these are design changes by definition.
 
 ## Entry gate
@@ -13,7 +13,7 @@ is it safe to make design changes. Low fan-out: these are design changes by defi
 
 ## Exit gate
 
-Per sub-project; each is its own mini-phase with goldens as the gate:
+Per sub-project; each is its own mini-phase with the test suites as the gate:
 
 - **C++23 upgrade** (ADR-0011): `-std=c++23` on all
   three toolchains at their pinned minimums; `oo::Expected` → `std::expected`; adopt `std::print`,

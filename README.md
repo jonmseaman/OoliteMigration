@@ -15,14 +15,14 @@ pinned toolchain, `gh` and `git-town`, and a keep-awake tool.
 | `ROADMAP.md` | Status and phase table — the entry point |
 | `CLAUDE.md` / `GLOSSARY.md` | The agent contract and the terms |
 | `docs/` | Current state, workflow, phase docs, parity audit, expansion guide ([index](docs/README.md)) |
-| `tools/check-file-modes.sh` | Guardrail: bare-program scripts are committed `100755` (see CLAUDE.md conventions) |
+| `tools/` | Windows setup, expansion corpus runners, upstream-delta tracker, cross files |
+| `oxp-contract/` | The 1.93 JS API snapshot expansions are written against |
 | `tools/guard/` | PATH shims: no agent closes a bead or pushes to an integration branch |
-| `tools/sync-dev.sh` / `tools/phase-pr.sh` | Record merged work; open the phase's `develop → master` PR |
 | `.claude/skills/beads-worker/` | The skill that works the queue, one bead per `/loop` iteration |
 | `oolite-dev` | **Submodule**: `jonmseaman/oolite`, branch `develop`. **The migration target**; all game work happens here |
 | `oolite-main` | Submodule: `jonmseaman/oolite`, branch `master` (what has been merged; reference only) |
 | `upstream/oolite` | Submodule: `OoliteProject/oolite`, unmodified (reference: the Objective-C original) |
-| `upstream/oolite-tests` | Submodule: `OoliteProject/oolite-tests`; test OXPs and the release-checklist save files (golden scenarios 13–17) |
+| `upstream/oolite-tests` | Submodule: `OoliteProject/oolite-tests`; test OXPs and the release-checklist save files |
 | `upstream/oolite-expansion-catalog` | Submodule: `OoliteProject/oolite-expansion-catalog`; expansion URL list, source for the OXP corpus |
 | `upstream/spidermonkey-ff4` | Submodule: `OoliteProject/spidermonkey-ff4`; the patched SpiderMonkey 1.8.5 Oolite embedded (reference only) |
 | `upstream/oolite-debug-console` | Submodule: `OoliteProject/oolite-debug-console`; TCP debug console (protocol reference) |
@@ -57,7 +57,7 @@ record the new commit here:
 
 ```bash
 cd oolite-dev && git checkout develop
-# ...edit, build (./mk.sh build test), commit...
+# ...edit, build (./mk.sh build test), test (tests/run.sh unit), commit...
 git push origin develop
 cd .. && git add oolite-dev && git commit -m "oolite-dev: <what changed>"
 ```

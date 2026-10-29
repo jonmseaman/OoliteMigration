@@ -5,26 +5,25 @@ detail behind them.
 
 ## Tools decide correctness, not models
 
-Whether behaviour changed is decided by the goldens, the unit/component/GUI suites, the JS API
-snapshot, the expansion corpus, ASan, the symbol deny-list and `-Wall -Wextra`. A model (or a
-reviewer) may propose and explain; it never declares a change correct. A failing golden is either
-a bug to fix or a diff to justify — and **only Jon re-blesses a golden**.
+Whether behaviour changed is decided by the unit, component and GUI suites, the JS API contract in
+`oxp-contract/`, the expansion corpus, sanitizers, and `-Wall -Wextra`. A model (or a reviewer) may
+propose and explain; it never declares a change correct.
 
-## The three tiers
+## Running the tests
 
-| Tier | When | Command | Budget | Content |
-|---|---|---|---|---|
-| A | every edit | `tools/tier-a.sh <file>` | < 30 s | compile the one TU, clang-tidy, deny-list, that module's tests |
-| B | before a PR | `tools/tier-b.sh` | < 10 min | full Clang build, module tests, fast goldens, Tier-1 corpus subset |
-| C | end of a phase, before the phase PR | `tools/tier-c.sh` | 30–90 min | everything: all goldens, ASan, full Tier-1 corpus, JS API snapshot, GUI tier, unit suites, deployment flavour, guard self-tests |
+Everything lives in `oolite-dev/tests`, driven by `tests/run.sh` (see [CLAUDE.md](../CLAUDE.md)
+for the commands):
 
-There are no scheduled or nightly runs. A slow check a change wants kept goes into a Tier C stage,
-not into a bigger per-change budget. The full expansion corpus (`bash tools/corpus.sh tier3`) is
-run by hand when wanted.
+| Suite | What it decides | Cost |
+|---|---|---|
+| `unit` | class behaviour (`oofnd`, `core`, headers); meson | seconds |
+| `component` | pytest-bdd scenarios against a real game over the debug console | minutes |
+| `gui` | PyAutoGUI against the real window | minutes; one at a time |
+| `smoke` | the game launches and renders | seconds |
 
-**Every shipped flavour is tested:** Clang, GCC (`tools/build-windows.sh --gcc test`) and the
-deployment build (LTO, stripped: `tools/check-deployment-tests.sh`,
-`tools/check-deployment-goldens.sh`).
+Before a pull request run `unit` and whatever `component` scenarios touch your change. Before a
+phase pull request run `all`, on Clang and on GCC. The expansion corpus (`bash tools/corpus.sh
+tier1`) is run by hand when a change could affect what expansions see.
 
 ## A unit of work (a bead)
 
@@ -44,21 +43,19 @@ survives between agent iterations.
 
 ## Done, for one bead
 
-1. Its acceptance command passes; Tier B passes.
-2. Goldens reproduce (or a re-bless is proposed with a justification and left for Jon).
-3. Clean at `-Wall -Wextra` on Clang and GCC; no new warnings.
-4. ASan clean where the change touches memory ownership.
-5. No `libgnustep-base` or `JS_*` symbols (deny-list).
-6. A pull request into `oolite-dev`'s `develop` via `git town propose`. The bead closes when Jon
+1. Its acceptance commands pass, and `tests/run.sh unit` passes.
+2. Clean at `-Wall -Wextra` on Clang and GCC; no new warnings.
+3. ASan clean where the change touches memory ownership.
+4. No `libgnustep-base` or `JS_*` symbols (`git grep -nE 'JS_[A-Za-z_]+|gnustep'` over the files you changed).
+5. A pull request into `oolite-dev`'s `develop` via `git town propose`. The bead closes when Jon
    merges it (`.claude/skills/beads-worker/scripts/land.sh` reads the merge back); the implementing
    agent never closes it.
 
 ## Repo mechanics
 
 - Branch in `oolite-dev` with `git town append`; push only that feature branch.
-- Anything that launches the game on the desktop takes `tools/gui-lock` (`tools/desktop_lock.py`).
-- Scripts called as bare programs are committed `100755` with a shebang
-  (`tools/check-file-modes.sh`); check with `git ls-files -s`, never `test -x`.
+- Scripts called as bare programs are committed `100755` with a shebang; check with
+  `git ls-files -s`, never `test -x`.
 - Vendored code (`src/Core/MiniZip/`, `src/SDL/stb_image_write.h`) is not edited to satisfy the
   warning gate; the gate skips exactly those two paths.
 - Upstream changes to a frozen module are ported by hand and recorded in

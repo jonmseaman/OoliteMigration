@@ -7,7 +7,7 @@ compatibility scan (ADR-0069,
 [report](expansions/scan-report.md)).
 
 Oolite's C++ port replaces the patched SpiderMonkey 1.8.5 engine (Firefox 4, 2011) with QuickJS-ng
-(ES2023) behind a façade (`ooscript/JSEngine.hpp`). The goldens and the OXP corpus hold contracts
+(ES2023) behind a façade (`ooscript/JSEngine.hpp`). The tests, the JS API contract and the OXP corpus hold contracts
 C1, C2, C4, C5 and C6 constant: save format, script discovery, the world-model API, rendering and
 sound. **What changes is C3, the JavaScript language level.** It changes in three ways, and each
 rule below says which applies:
@@ -419,5 +419,4 @@ An expansion that uses them needs this engine, so raise its `required_oolite_ver
 | [`tools/oxp-js-lint/`](../tools/oxp-js-lint/README.md) | `rules.js` (the nine Mozilla-only detectors, `lint.js`) and `compat-rules.js` (the compat set, `compat.js`), both with fixtures and self-tests |
 | [`tools/oxp-scan/`](../tools/oxp-scan/notes.py) | `notes.py` builds the [per-expansion notes](expansions/README.md) from the reports; `diagnoses.json` holds the reviewed diagnoses |
 | `tools/oxp-js-lint/probe.js` | a redacted view of one line of a corpus script, for triage without reading it |
-| `tools/oxp-compat-shim/` | the standalone shim OXP, now redundant with the built-in polyfills (ADR-0023) |
-| `tools/deny-list.txt` | the C/C++ deny-list for the engine's own code. It is not for authors. |
+| `tools/oxp-compat-shim/` | removed: the polyfills are built into `Resources/Scripts/oolite-global-prefix.js` |

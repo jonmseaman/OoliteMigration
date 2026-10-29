@@ -16,9 +16,6 @@ __pycache__/
 # Agent session scratch (scripts, logs); never commit
 .agent-tmp/
 
-# Golden harness run artifacts (tests/golden/run.sh); one directory per run
-tests/golden/artifacts/
-
 # orchestrator scratch: per-bead worker briefs and claimed-batch records (regenerated each turn)
 .batch.jsonl
 .fleet-briefs/

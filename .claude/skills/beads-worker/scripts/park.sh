@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Park a bead the loop cannot finish: label it for Jon's inbox (`bd human list`), record why, and
 # release the claim so it stops being handed back. The loop then picks up the next bead — it never
-# waits for a human (CLAUDE.md hard rule 10).
+# waits for a human (CLAUDE.md hard rule 9).
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 id="${1:?usage: park.sh <bead> \"<why>\"}"
 why="${2:?usage: park.sh <bead> \"<why>\"}"

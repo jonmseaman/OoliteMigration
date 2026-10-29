@@ -20,7 +20,7 @@ next tick: land.sh sees the merge  →  bead closes
 
 **You never close a bead and you never merge anything.** A bead closes only when Jon has merged its
 pull request — `land.sh` reads that from GitHub. The guard shim on PATH refuses `bd close` outright
-(CLAUDE.md hard rule 4), and refuses any push that would write `develop`, `master` or `main`.
+(CLAUDE.md hard rule 3), and refuses any push that would write `develop`, `master` or `main`.
 
 Run with the selector Jon gives you, passed straight through to `bd list`:
 
@@ -49,8 +49,7 @@ All script paths are relative to `.claude/skills/beads-worker/`. Run them with `
    for the bead. Prints the branch. A retried bead returns to its existing branch instead.
 7. **Implement the bead** in `oolite-dev`, on that branch. Follow the story: ≤ 1,500 lines read,
    ≤ 400 written, ≤ 8 files, no new interfaces, and do it the way the exemplar does it. Obey every
-   hard rule in `CLAUDE.md` — above all, never touch `goldens/`, never weaken a test, never silence
-   a warning. **Commit on the bead's branch**, with the bead id in the subject.
+   hard rule in `CLAUDE.md` — above all, never weaken a test and never silence a warning. **Commit on the bead's branch**, with the bead id in the subject.
 8. **`scripts/accept.sh <id>`** — runs the bead's stored acceptance commands and, only if every one
    exits 0, opens the pull request and marks the bead `proposed`.
    - **exit 0** — proposed. Say which pull request, and end the tick.
@@ -60,7 +59,7 @@ All script paths are relative to `.claude/skills/beads-worker/`. Run them with `
    - **exit 2** — the same failure several times running. Stop retrying. Re-read the bead against
      the code: usually the *task* is wrong, not the implementation. Fix the bead
      (`bd update <id> --acceptance` / `--description`), or `scripts/park.sh <id> "<why>"` to put it
-     in Jon's inbox and move on. Never wait for him (hard rule 10).
+     in Jon's inbox and move on. Never wait for him (hard rule 9).
 9. **End the tick** with one line per bead touched and the `queue-check.sh` output, so the next
    iteration starts from evidence rather than memory.
 
@@ -72,43 +71,56 @@ real commands (`bd update <id> --acceptance`) before you implement: deciding wha
 work is part of the work.
 
 The block is one command per line, each run in its own `bash -o pipefail -c` from the **repo root**
-(so acceptance lines spell the submodule out: `cd oolite-dev && ./mk.sh build test`). The whole
-block shares a five-minute budget; a slow proof belongs in one of `tools/tier-c.sh`'s
-stage lists, not in a bigger budget. A line must be proven to **fail** on unfixed code, not merely to pass on
+(so acceptance lines spell the submodule out). The whole block shares a five-minute budget
+(`BEADS_ACCEPT_BUDGET`). A line must be proven to **fail** on unfixed code, not merely to pass on
 fixed code — see `references/pitfalls.md`.
+
+The game's own commands, all run from `oolite-dev`:
+
+```
+./mk.sh build test                 # build (Clang on Windows via MSYS2 UCRT64)
+tests/run.sh unit                  # meson suites: oofnd, core, headers
+tests/run.sh component [-k name]   # Gherkin scenarios over the debug console
+tests/run.sh gui                   # real window; one at a time, hands off the mouse
+tests/run.sh smoke                 # launch and snapshot
+```
+
+A typical block: `cd oolite-dev && ./mk.sh build test` then `cd oolite-dev && tests/run.sh unit`
+(plus `component -k <name>` when the bead touches behaviour).
 
 ## When something is wrong with the task
 
 You are the frontier model: when a bead is wrong, say so rather than forcing it through.
 
-- The story asks you to rewrite C that already compiles, or to touch `goldens/` — the story is
-  wrong. Park it with that reason (hard rule 9).
+- The story asks you to rewrite C that already compiles — the story is wrong. Park it with that
+  reason (hard rule 8).
 - The bead needs a capability that does not exist yet — that is a dependency, not a retry. File or
   find the seam bead, `bd dep add <id> <seam>`, release the claim, and move on.
 - A decision is missing — take the conservative default, record it with its reason in the bead's
   notes (and the phase doc's Decisions section if it outlives the bead), and proceed. Never wait
-  (hard rule 10).
+  (hard rule 9).
 
 ## Phase end
 
 When Jon says a phase is done, everything in it has already been reviewed and merged one pull
-request at a time. What is left is the phase gate:
+request at a time. What is left:
 
 1. `scripts/queue-check.sh <selector>` is green and nothing is awaiting review.
-2. `bash tools/sync-dev.sh` — pull the merged work into `develop` and record the new `oolite-dev`
-   commit in this repo. The tick never touches that pointer; this is the only thing that moves it.
+2. Bring `oolite-dev` up to date (`git -C oolite-dev checkout develop && git -C oolite-dev pull`)
+   and record the new commit here (`git add oolite-dev`, commit). The tick never touches that
+   pointer; only this step moves it.
 3. Review the whole phase: `git -C oolite-dev diff master...develop`, against the phase doc's exit
    criteria. Dispatch a subagent for this — a fresh reader catches what the author cannot. Use
    `references/reviewer-prompt.md`. File every finding as a bead labelled `review-finding`; an open
    one blocks the pull request.
-4. `bash tools/phase-pr.sh --selector "<selector>"` — opens `develop → master` on the game fork.
-   Add `--dry-run` first to see exactly what it would do.
+4. Run `cd oolite-dev && tests/run.sh all`, then open `develop → master` on the game fork with
+   `gh pr create --repo jonmseaman/oolite --base master --head develop`. Jon merges it.
 
 ## Pitfalls
 
 `references/pitfalls.md` is what previous runs learned the expensive way: orphaned `oolite.exe`
-poisoning a launch, `OO_APP_DIR`, acceptance lines that silently cannot fail, MSYS2 PATH traps,
-goldens refusals that mean a real regression. Read the section matching what you are about to do.
+poisoning a launch, acceptance lines that silently cannot fail, MSYS2 PATH traps. Read the section
+matching what you are about to do.
 
 Add to it when a tick teaches something the next bead would otherwise rediscover. Keep it specific
 and keep the evidence: a pitfall nobody can check becomes folklore.

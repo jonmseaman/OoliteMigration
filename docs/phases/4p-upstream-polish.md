@@ -14,7 +14,7 @@ Inputs: `notes/Phase 4 Writeup.md` (draft write-up and open items),
 
 ## Exit gate
 
-- [ ] `tools/tier-c.sh` green on Clang and GCC.
+- [ ] `tests/run.sh all` green on Clang and GCC.
 - [ ] Every high and medium ❌ in [parity/README.md](../parity/README.md) is fixed (with a test) or
       moved to ⚠️ with a reason.
 - [ ] `grep -rnE "ADR-[0-9]{4}|\boo-[0-9a-z]{3,}\b" oolite-dev/src` finds no migration bookkeeping
@@ -22,7 +22,6 @@ Inputs: `notes/Phase 4 Writeup.md` (draft write-up and open items),
 - [ ] `grep -rn GNUSTEP oolite-dev/src oolite-dev/meson.build` finds only code that still needs it
       (or nothing).
 - [ ] The write-up is final and sent upstream — Jon.
-- [ ] Goldens 002–020 blessed, or the write-up says why not — Jon.
 
 ## Work items
 

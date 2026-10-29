@@ -2,7 +2,7 @@
 # Close every proposed bead whose pull request you have merged. Run at the START of each tick, so
 # the queue drains as you review rather than only when the loop next looks.
 #
-# This is the only script that closes a bead (CLAUDE.md hard rule 4): the evidence is a merged pull
+# This is the only script that closes a bead (CLAUDE.md hard rule 3): the evidence is a merged pull
 # request on the game fork, which the worker cannot fake — it has no write access to develop.
 # A pull request you CLOSED without merging sends the bead back to the queue with its branch
 # intact, so the next tick can read the review and try again.

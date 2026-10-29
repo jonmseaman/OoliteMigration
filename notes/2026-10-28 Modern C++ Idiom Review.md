@@ -12,6 +12,18 @@ The newer layers (`oofnd/*.hpp`, `Core/Scripting/ooscript/`) are mostly idiomati
 
 ---
 
+## Decisions (Jon, chat 2026-10-28)
+
+Scope, from the inline comments above:
+- **In:** 1.1, 1.2, 1.3, 1.4 (all), 2.2 (all: no `malloc`/`calloc`/`realloc`/`free`; `unique_ptr`/`shared_ptr`/std containers), 2.3 (most: no C strings; address out-parameters; leave `goto` unless the refactor is simple; leave the control-state globals in `PlayerEntityControls.cpp` because they match upstream), 2.4 (use the standard library wherever possible), 2.5 (bugs), 2.6 (tooling).
+- **Out:** 2.1 (class design stays close to upstream to keep merges easy). Also out: `EntityFilterPredicate` (the `void*` callback). Everything else Jon named stays in, including `UNIVERSE`/`PLAYER`, `oo::Ref`, `OOCache`.
+- **Self-containment:** `oolite-dev` must not reference the planning repo. Tests run through `./mk.sh test test` and `tests/run.sh`. The outer desktop-lock lookup is **dropped** from `oolite-dev` tests (not replaced).
+- **Structure:** two epics. Epic A (Phase 4p): self-containment, the 2.5 bugs, tooling, warnings already at zero hits. Epic B (Phase 6, gated on the 4p exit): the sweeps and structural work.
+- **Bead size:** keep the CLAUDE.md rule (≤ 8 files, ≤ ~400 lines written). Expect a few hundred beads in epic B; generate them from per-check file lists with a script.
+- **Open:** `.clang-tidy` and `.editorconfig` contents (to discuss).
+
+---
+
 ## 1. Your four areas, quantified
 
 ### 1.1 Enums and typedefs
@@ -187,7 +199,7 @@ The newer layers (`oofnd/*.hpp`, `Core/Scripting/ooscript/`) are mostly idiomati
 - No sanitizer options in the build files; no `.clang-tidy`, no `.editorconfig`. `.clang-format` is Google style.
 - 263 `.h` files, at least 172 of which contain C++ (`class`/`template`/`namespace`), plus 28 `.hpp`. Pick one extension.
 - CI runs clang-format and a launch smoke test. It does not run the unit tests, clang-tidy or sanitizers; `.travis.yml` is stale Xcode/Objective-C.
-- Meson and the build reference files that do not exist: `tools/check-oofnd.sh`, `tools/check-core-tests.sh`, `tools/check-deployment-tests.sh`, `tools/asan-suppressions.txt`, `tests/golden/check_build_flags.py`. `build/meson_debug/compile_commands.json` is stale (lists four deleted `.c` sources). There is no root `compile_commands.json`.
+- **Revised 2026-10-28 (Jon): `oolite-dev` must not reference the planning repo at all.** The first draft called `tools/check-oofnd.sh`, `tools/check-core-tests.sh`, `tools/check-deployment-tests.sh`, `tools/asan-suppressions.txt` and `tests/golden/check_build_flags.py` "missing". They exist, but only in the planning repo (`OoliteMigration/tools`, `OoliteMigration/tests/golden`). `oolite-dev` should be self-contained, and its tests run through `./mk.sh test test` and `tests/run.sh`. About 88 references in 26 files (meson files, `meson.options`, `tests/launch_snapshot.py`, `tests/gui/conftest.py`, `tests/component/{conftest,console}.py`) point outward. Most are comments (`tools/check-*.sh`, `tests/golden/...`, `docs/phases/...`, `docs/stories/...`). Two are functional: `tests/launch_snapshot.py` (~`:1265`) and `tests/component/conftest.py` (~`:22`) look for `tools/desktop_lock` and `tools/gui-lock` in the outer repository, and `tests/gui/conftest.py` (~`:1495`) does the same. `build/meson_debug/compile_commands.json` is stale (lists four deleted `.c` sources). There is no root `compile_commands.json`.
 - `project(['c','cpp'])` is still C-enabled (needed for QuickJS). `tools/` still has 10 `.m`/`.c` files.
 - Tests: 174 core + 40 oofnd unit tests on a bespoke 111-line harness (`oo_test.hpp`), built only on Windows; plus 31 pytest component/GUI tests.
 

@@ -25,12 +25,12 @@ source hygiene, and the write-up for the Oolite maintainers. `bd ready` lists wh
 | [CLAUDE.md](CLAUDE.md) | Agent contract: hard rules, commands, exemplars |
 | [docs/README.md](docs/README.md) | Index of the docs, and what to read for which task |
 | [docs/current-state.md](docs/current-state.md) | What the code is now: layout, builds, tests, known differences |
-| [docs/workflow.md](docs/workflow.md) | Tiers A/B/C, bead sizing, definition of done |
+| [docs/workflow.md](docs/workflow.md) | Running the tests, bead sizing, definition of done |
 | [GLOSSARY.md](GLOSSARY.md) | Terms |
 | [tools/setup-windows.sh](tools/setup-windows.sh) | Setting up the Windows machine from scratch |
 
 ## Where Jon is
 
-Re-blessing goldens; accounts, credentials, hardware and macOS TCC/signing grants; merging pull
+Accounts, credentials, hardware and macOS TCC/signing grants; merging pull
 requests; and any decision he wants to override. Everything else is an agent's job, and an agent
 that needs a decision takes the conservative default and records it.

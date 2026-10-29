@@ -20,7 +20,6 @@ No fleet.
 ## Entry gate
 
 - [ ] Phase 4 exit gate green (no `.mm`, no `-fobjc-*`, GCC and Clang both green)
-- [ ] Cross-platform golden policy (decision 11) implemented on Windows; this phase is its first cross-platform exercise
 - [ ] TCC grants and signing identity held on the Mac (I0); a Linux build environment reachable
 - [ ] Legacy OpenGL 2.1 context still available on the target macOS version, **or** the Phase 6
   renderer work has been pulled forward (ADR-0004)
@@ -28,12 +27,12 @@ No fleet.
 ## Exit gate
 
 - [ ] `meson` builds `aarch64-apple-darwin` from a `macos` branch in `src/meson/` with Apple Clang
-- [ ] Goldens reproduce on macOS **under the cross-platform policy** (per-platform goldens, or quantised dumps)
+- [ ] `tests/run.sh unit` and `component` pass on macOS
 - [ ] Tier-1 OXP corpus green on macOS
 - [ ] PyAutoGUI G1–G9 green on the Mac (this is the proof it is an application, not a binary that links)
 - [ ] Signed, notarised `.app` launches on a clean Mac with no prior config (G7)
-- [ ] Linux x64 builds and reproduces the goldens under the policy
-- [ ] macOS arm64 and Linux x64 added to Tier C; three-platform definition of done in force from here on
+- [ ] Linux x64 builds and passes `tests/run.sh unit` and `component`
+- [ ] macOS arm64 and Linux x64 added to the definition of done in `docs/workflow.md`
 
 ## Seams
 
@@ -47,21 +46,19 @@ Everything here is a seam; there are no sweeps.
 3. Port the residual `SDL/` platform code; consult `upstream/oolite-mac-components` for the
    historical Cocoa dock-tile, document-type, and importer bits (for behaviour, not for code: those
    components are Objective-C and are not coming back).
-4. Add macOS arm64 and Linux x64 to Tier C (the Mac natively; Linux in a container or on a rented
-   box; restore upstream's `build-linux.sh` flow), running the same goldens **and, on the Mac, the
-   PyAutoGUI GUI tier (0-gui-tier.md)** — the latter is the actual proof that this
-   is a working macOS application rather than a binary that links.
+4. Run `tests/run.sh all` on macOS arm64 (natively) and Linux x64 (in a container or on a rented
+   box; restore upstream's `build-linux.sh` flow). On the Mac the PyAutoGUI GUI tier is the actual
+   proof that this is a working macOS application rather than a binary that links.
 5. Fix whatever arm64 shakes out: alignment, `long` width assumptions, FMA-sensitive float paths
-   that the golden policy tolerates but that are actually bugs.
+   (the build pins `-ffp-contract=off`).
 
 ## Commands
 
-From Phase 0; Tier C gains the macOS and Linux legs.
+`./mk.sh build test` and `tests/run.sh` from `oolite-dev`, on each platform.
 
 ## Open decisions
 
 - **8** — decided: the macOS legs run on Jon's Mac; Jon grants the TCC prompts once (ADR-0013).
-- **11** — cross-platform goldens (owned by Phase 0, implemented by Phase 4's exit, consumed here).
 - **5** — renderer; only if Apple has removed legacy GL.
 
 ## Status log

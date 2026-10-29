@@ -75,9 +75,8 @@ and every editor, linter and language understands it.
       conformance suite (vendored test inputs), pass on Clang and GCC.
 - [ ] Round trip: for every `.plist` under `oolite-dev/Resources`, `plist2json5 --check` proves
       plist → JSON5 → node tree is identical to plist → node tree (exit 0 over all 85).
-- [ ] Equivalence golden: the blessed goldens (001, 001-launch-dock) **reproduce byte-for-byte** when
-      the core `Resources/` is replaced by its JSON5 conversion (a test-only resource tree; the
-      shipped tree is unchanged).
+- [ ] Equivalence: the component scenarios pass unchanged when the core `Resources/` is replaced by
+      its JSON5 conversion (a test-only resource tree; the shipped tree is unchanged).
 - [ ] Mixed-format merge: a test expansion that ships `shipdata-overrides.json5` beside a core
       `shipdata.plist` produces the same merged node tree as the plist-only equivalent.
 - [ ] Fuzz: `tools/plist_fuzz.py` gains a JSON5 mode (random node trees → JSON5 → parse → equal),
@@ -97,14 +96,14 @@ and every editor, linter and language understands it.
 ## Sweeps (fleet work)
 
 None required. If Jon later chooses to migrate the core `Resources/`, it is one generated sweep
-(one story per file, 85 stories) whose acceptance is `plist2json5 --check` plus the goldens.
+(one story per file, 85 stories) whose acceptance is `plist2json5 --check` plus the component scenarios.
 
 ## Work items
 
 1. **5b.1** JSON5 reader (seam) — conformance suite, mapping-rule tests, fuzz mode.
 2. **5b.2** JSON5 writer + `tools/plist2json5` with `--check`; round-trip all core plists.
 3. **5b.3** Resource-manager lookup for `<name>.json5`, both-present rule, mixed-format merge test.
-4. **5b.4** Equivalence golden run over a JSON5-converted resource tree (test-only).
+4. **5b.4** Component scenarios over a JSON5-converted resource tree (test-only).
 5. **5b.5** Docs: `EXPANSION_MIGRATION.md` section; OXZ manifest note (`manifest.json5` accepted).
 6. **5b.6** (optional, Jon's call) migrate core `Resources/` to JSON5.
 
@@ -114,7 +113,7 @@ None required. If Jon later chooses to migrate the core `Resources/`, it is one 
 - **Upstream divergence.** Upstream Oolite has no JSON5 support; expansions that use `.json5` won't
   load on upstream builds. Expansion authors must be told (docs, verifier warning) — the OXP
   verifier gains a note "uses JSON5: requires Oolite ≥ <version>".
-- **Semantics drift in typed scalars.** Covered by the mapping-rule tests and the equivalence golden.
+- **Semantics drift in typed scalars.** Covered by the mapping-rule tests and the equivalence run.
 
 ## Open decisions (all have defaults; see ADR-0065)
 

@@ -3,7 +3,7 @@
 #   1. the beads database answers;
 #   2. the guard shim is actually first on PATH, so `bd close` cannot be run by hand. Claude Code
 #      has no "export PATH before you start" ritual the way Hermes did, so this is ASSERTED rather
-#      than assumed: if settings.json ever stops delivering it, hard rule 4 is honour-system only;
+#      than assumed: if settings.json ever stops delivering it, hard rule 3 is honour-system only;
 #   3. oolite-dev is checked out, clean, and knows that `develop` is its Git Town main branch, so
 #      `git town append` stacks bead branches on develop and `git town propose` targets it.
 # A dirty submodule means a previous tick died mid-bead — a human decides what to keep.
@@ -19,7 +19,7 @@ fi
 rc=0
 bd close oo-preflight-no-such-bead >/dev/null 2>&1 || rc=$?
 [ "$rc" -eq 77 ] || die "the bd guard shim is not first on PATH ('bd close' exited $rc, expected 77).
-Nothing is stopping an agent closing its own bead (CLAUDE.md hard rule 4).
+Nothing is stopping an agent closing its own bead (CLAUDE.md hard rule 3).
 Relaunch claude with the shim first on PATH (settings.json cannot do this - env values are
 copied literally, so \${PATH} is NOT expanded):
     PATH=\"$REPO_ROOT/tools/guard:\$PATH\" claude"
