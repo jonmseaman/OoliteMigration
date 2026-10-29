@@ -1,3 +1,7 @@
+## Oolite JS tests
+
+Look at OoliteProject/oolite#776 for javascript based tests.
+I like this design because javascript is already used. I could adopt it. It is already an open pull request.
 ## Typescript instead of js extensions
 Thing about making typescript instead of javascript expansions. This could be cool.
 

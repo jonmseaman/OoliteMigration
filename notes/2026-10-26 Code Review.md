@@ -1,3 +1,9 @@
+## OOFoundation.h?
+oolite-dev/src/Core/OOFoundation.h
+
+Is this still needed? This file should be reviewed. Some it is obsolete I think.
+
+
 ## Macros for profiling?
 
 Are these needed, or would a normally profiler run work instead?
@@ -40,6 +46,10 @@ Are these still needed
 #endif
 #endif
 ```
+
+I guess these exist because some code is stil compiled as C instead of C++.
+That is what I told Claude to do, but it is now dirtying up the code base.
+
 
 ## Windows only code
 
