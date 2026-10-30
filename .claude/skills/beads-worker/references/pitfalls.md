@@ -12,6 +12,12 @@ Things that cost a previous run real time. Read the one that matches what you ar
   inherits the calling shell; a desktop-launched terminal has no MSYS2 prefix, so lines calling
   `python3` die with `[exit 127]` on correct work. An exit 127 is an environment defect, not a
   verdict: fix PATH and re-run before it is written into the notes or counted as stale.
+- **`./mk.sh build test` needs a real MSYS2 login shell, not just `/ucrt64/bin` on PATH.**
+  `ShellScripts/common/get_version.sh` checks that meson is its parent process using
+  `MINGW_PREFIX` and `powershell.exe`; from a plain Git Bash it exits 1 with "Parent process is ,
+  Bash parent is ." and meson reports `get_version.sh failed with status 1`. Run the whole gate as
+  `MSYSTEM=UCRT64 /c/Users/jon/scoop/apps/msys2/current/usr/bin/bash.exe -l -c 'cd <repo root> && bash .claude/skills/beads-worker/scripts/accept.sh <id>'`.
+  Three failed attempts on oo-7hk.1 were this, not the code.
 - **Orphaned `oolite.exe` poisons game-launching lines.** A game started through a test subprocess
   is not always killed when its parent ends; it keeps the console port and handles on the app dir.
   Symptoms: `TimeoutExpired`, `ConsoleError: no answer`, `Device or resource busy`, with a long

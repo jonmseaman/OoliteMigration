@@ -85,7 +85,12 @@ if [ "$status" -eq 0 ]; then
   # Co-Authored-By trailers from the squashed commits are kept.
   title="$(bead_field "$id" '.title')"
   trailers="$(real_git -C "$DEV" log --format=%B "$base..HEAD" | grep -E '^Co-Authored-By:' | sort -u || true)"
+  # The worker's own descriptions (commit bodies, trailers aside) carry into the squashed commit.
+  body="$(real_git -C "$DEV" log --reverse --format=%b "$base..HEAD" | grep -v -E '^Co-Authored-By:' | cat -s || true)"
   msg="$id: $title"
+  [ -z "$body" ] || msg="$msg
+
+$body"
   [ -z "$trailers" ] || msg="$msg
 
 $trailers"

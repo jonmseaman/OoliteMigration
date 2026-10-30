@@ -22,35 +22,6 @@ void DockEntity::initDockDefaults() {
 }
 ```
 
-## If C++?
-
-Are these still needed
-
-`OODebugTCPConsoleProtocol.h`
-
-```cpp
-#if defined(__cplusplus)
-
-```
-
-`OOJSEngineNativeWrappers.h`
-
-```cpp
-#ifdef __cplusplus
-#ifndef OOJS_EXTERN_C
-#define OOJS_EXTERN_C extern "C"
-#endif
-#else
-#ifndef OOJS_EXTERN_C
-#define OOJS_EXTERN_C
-#endif
-#endif
-```
-
-I guess these exist because some code is stil compiled as C instead of C++.
-That is what I told Claude to do, but it is now dirtying up the code base.
-
-
 ## Windows only code
 
 ```cpp

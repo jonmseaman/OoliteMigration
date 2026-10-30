@@ -19,7 +19,7 @@ Scope, from the inline comments above:
 - **Out:** 2.1 (class design stays close to upstream to keep merges easy). Also out: `EntityFilterPredicate` (the `void*` callback). Everything else Jon named stays in, including `UNIVERSE`/`PLAYER`, `oo::Ref`, `OOCache`.
 - **Self-containment:** `oolite-dev` must not reference the planning repo. Tests run through `./mk.sh test test` and `tests/run.sh`. The outer desktop-lock lookup is **dropped** from `oolite-dev` tests (not replaced).
 - **Structure:** two epics. Epic A (Phase 4p): self-containment, the 2.5 bugs, tooling, warnings already at zero hits. Epic B (Phase 6, gated on the 4p exit): the sweeps and structural work.
-- **Bead size:** keep the CLAUDE.md rule (≤ 8 files, ≤ ~400 lines written). Expect a few hundred beads in epic B; generate them from per-check file lists with a script.
+- **Bead size:** no per-bead file or line caps (dropped globally the same day). A bead is one tick's work, sized by pattern (tree-wide, tool-driven) or by area. About 126 beads in total; the list is in the epics outline.
 - **Open:** `.clang-tidy` and `.editorconfig` contents (to discuss).
 
 ---
@@ -207,16 +207,16 @@ Scope, from the inline comments above:
 
 ## 3. Suggested remediation order
 
-Ordered by value over risk. Each step should be sized as a bead per CLAUDE.md (≤ 8 files, ≤ 400 lines written, a command that fails before and passes after). The "no `-Wno-*`" and "never modify tests" rules apply, so warning flags are enabled only where the count is 0, and big sweeps go through Tier B/C and the goldens.
+Ordered by value over risk, and now organised as two epics ([[2026-10-28 Idiom Epics and Beads Outline]]): **Epic A = steps 1 and 2**, **Epic B = steps 3 to 8**, each on its own branch and merged locally by Jon. A bead is one tick's work with a command that fails before and passes after; there is no file or line cap. The "no `-Wno-*`" and "never modify tests" rules apply, so a warning flag is enabled only where its count is 0, and each epic ends with an end gate (`./mk.sh build test`, then `tests/run.sh` `unit`, `component`, `smoke`, `gui`). The Tier B/C scripts and goldens this section used to cite no longer exist.
 
 1. **Tooling first (no behaviour change):** add `.clang-tidy` and `.editorconfig`; enable `-Wextra -Wpedantic -Wundef -Wsuggest-destructor-override` (all at 0 or near-0 hits); fix the dangling script references; run unit tests in CI; add a sanitizer build option. Decide whether to move to `-std=c++23` now.
 2. **Fix the real defects:** the `SDL/main.cpp` `strcat` and `argv` bugs, then move the Windows start-up code to `W` APIs and `std::filesystem::path`.
-3. **Mechanical, test-gated sweeps:** `NULL` → `nullptr` (1,112); drop `(void)` / `f(void)` / `register` / `OOINLINE`; `typedef` → `using`; add `override` to the 10 destructors; add `const`/`[[nodiscard]]`; replace `MIN`/`MAX`/`ABS` with `std::min/max/abs`; `M_PI` → `std::numbers`; `EXPECT` → `[[likely]]`. One bead per directory.
+3. **Mechanical, test-gated sweeps:** `NULL` → `nullptr` (1,112); drop `(void)` / `f(void)` / `register` / `OOINLINE`; `typedef` → `using`; add `override` to the 10 destructors; add `const`/`[[nodiscard]]`; replace `MIN`/`MAX`/`ABS` with `std::min/max/abs`; `M_PI` → `std::numbers`; `EXPECT` → `[[likely]]`. One bead per pattern across the whole tree, done with a clang-tidy fix or a short script.
 4. **Constants:** turn the 606 untested object-like defines into `inline constexpr`, starting with `HeadUpDisplay.h`, `ShipEntity.h`, `PlayerEntity.h`; row-id and key tables become `enum class`.
 5. **Enums:** convert `typedef enum` and unscoped enums to `enum class`, starting with bitmask enums (`OODebugFlags`, `OOWeaponFacing`, `ALERT_FLAG_*`, `OOTextureFlags`), and add one shared bitmask operator template. The `OOJS*.cpp` `enum : std::uint8_t` blocks come last.
 6. **Platform layer:** introduce `platform::` with Windows and Linux source files, move the in-body `#if`s out (start with `GameController.cpp`, `OOCPUInfo.cpp`, `OOLogHeader.cpp`, `PlayerEntityKeyMapper.cpp`, `ResourceManager.cpp`), generate a `config.hpp` for the feature switches, and delete dead Mac and SpiderMonkey branches.
 7. **oofnd retirement of Objective-C shape:** replace `NSUInteger`/`NSInteger`/`NSPoint` etc. with standard and project types; drop the `cxx_` prefix and the `StdLib.hpp` umbrella; migrate `oo::str::format` to `std::format`; make `oo::Exception` derive from `std::runtime_error`; swap `Expected.hpp` for `std::expected` once on C++23.
-8. **Structural, last and largest:** replace `UNIVERSE`/`PLAYER` macros with injected references; `initWith*` → constructors; the `EntityFilterPredicate` + `void*` callback → `std::function`; `OOCache`/`OOPriorityQueue` → std containers; `malloc`/`realloc` arrays → `std::vector`; split `PlayerEntity`, `ShipEntity`, `Universe`; replace the test-seam virtuals with interfaces.
+8. **Structural, last and largest:** `OOCache`/`OOPriorityQueue` → std containers; `malloc`/`realloc` arrays → `std::vector`; `Ref` over `std::shared_ptr`. **Dropped by decision (2026-10-28):** replacing the `UNIVERSE`/`PLAYER` macros (they stay global, as upstream), `initWith*` → constructors, the `EntityFilterPredicate` + `void*` callback, splitting `PlayerEntity`/`ShipEntity`/`Universe`, and the test-seam virtuals (all §2.1 or upstream-merge risk).
 
 ## 4. What not to change
 - `legacy_random` (save-game compatibility), the `.tbl` X-macro tables, libpng's `setjmp`, and the C-API glue in `JSEngine_quickjs.cpp` (void* and C casts there are legitimate).

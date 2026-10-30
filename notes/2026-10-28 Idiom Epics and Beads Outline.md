@@ -5,7 +5,7 @@ Source: [[2026-10-28 Modern C++ Idiom Review]] (scope and decisions are recorded
 ## 1. Decisions so far (Jon, 2026-10-28)
 
 - **Two epics, one branch each (`epic/<slug>`), each merged locally by Jon at the end** (two merges in total). No pull requests, no pushes by the worker: Jon merges and pushes himself. **Each bead is exactly one commit** on its epic branch. No guard shim; no merging `develop` into the epic branch (all the work happens on this machine, so there is no drift).
-- **No per-bead size caps.** The "≤ 8 files, ≤ ~400 lines written, ≤ ~1,500 lines read" guidance is dropped for these epics. A bead is sized by what one worker can finish and prove in one tick: one coherent change with a command that fails before and passes after. That turns the earlier ~600-bead estimate into about **125 beads**.
+- **No per-bead size caps.** The "≤ 8 files, ≤ ~400 lines written, ≤ ~1,500 lines read" guidance is dropped (globally, in the docs and the worker). A bead is sized by what one worker can finish and prove in one tick: one coherent change with a command that fails before and passes after. That turns the earlier ~600-bead estimate into about **126 beads**.
 - Google enumerator naming (`kFoo`, `Type::kFoo`).
 - `oo::Ref` is re-implemented over `std::shared_ptr` with the same names; the `autorelease`/`leakRef`/`adopt` call sites then go (fallback: an `intrusive_ptr`-style pointer if the design bead finds many raw-pointer-to-`Ref` conversions).
 - `UNIVERSE`/`PLAYER` stay as globals (no dependency injection, matching upstream). §2.1 (class design) and `EntityFilterPredicate` stay out too.
@@ -36,7 +36,7 @@ Exit gate: `./mk.sh build test`, `./mk.sh test test`, `tests/run.sh unit` green;
 | A2 | `OOCPUInfo.cpp:202-203` unchecked `strcpy`/`strcat` → `std::string` | `! rg -q '\bstr(cpy\|cat)\(' src/Core/OOCPUInfo.cpp`; unit |
 | A3 | `OOMeshToOctreeConverter.cpp` leak on `realloc` failure → `std::vector` | `! rg -q '\brealloc\(' …`; core unit tests |
 | A4 | Self-contained build files: scrub outward references in `meson.build`, `meson.options`, `src/meson.build`, `src/oofnd/meson.build`, `tests/unit/*/meson.build`; add `tests/unit/asan-suppressions.txt` and point the core suite at it | negated `rg` for `tools/(check-\|asan-)\|tests/golden\|goldens/\|docs/`; `./mk.sh build test` |
-| A5 | Self-contained tests: remove the outer desktop-lock lookup from `tests/launch_snapshot.py`, the component tier and the GUI tier (`conftest.py` ~2.7k lines, so read only the lock ranges), and scrub outward comments in the 26 files | negated `rg` for `desktop_lock\|gui-lock\|tests/golden\|docs/`; `tests/run.sh smoke` and `component`; `tests/run.sh gui` collects |
+| A5 | Self-contained tests: remove the outer desktop-lock lookup from `tests/launch_snapshot.py`, the component tier and the GUI tier, and scrub outward comments in the 26 files | negated `rg` for `desktop_lock\|gui-lock\|tests/golden\|docs/`; `tests/run.sh smoke` and `component`; `tests/run.sh gui` collects |
 | A6 | Tooling files: `.clang-tidy` (agreed draft), `.editorconfig`, `./mk.sh build` writes a git-ignored root `compile_commands.json`, fix `.clangd` | `clang-tidy --dump-config` exits 0; `test -f compile_commands.json` after a build |
 | A7 | Warnings already at zero hits: `-Wextra -Wpedantic -Wunused -Wsign-compare` | `./mk.sh build test` warning-free |
 | A8 | Header-aware clang-tidy baseline written to `notes/` (the first pass skipped headers) | report exists with per-check counts |
@@ -46,7 +46,7 @@ Worker-contract changes (the shim cleanup, `epic-finish.sh`, `land.sh`) are in t
 
 ## 4. Epic B — Phase 6: idiomatic C++ (about 117 beads)
 
-Gated on the Epic A exit and on upstream having seen the faithful port (4p doc). Every non-design bead after the first of its group is blocked by that group's design/exemplar bead. Counts are estimates from the hit survey (areas are directories: Entities, Scripting, Materials/OpenGL, SDL/Debug, Core-top, `oofnd`).
+Gated on the Epic A exit and on upstream having seen the faithful port (4p doc). Every non-design bead after the first of its group is blocked by that group's design/exemplar bead. The tool-driven sweeps are also blocked by A6 (they need `compile_commands.json` and `.clang-tidy`). Counts are estimates from the hit survey (areas are directories: Entities, Scripting, Materials/OpenGL, SDL/Debug, Core-top, `oofnd`).
 
 | Group | Beads | Count |
 |---|---|---:|
@@ -67,10 +67,20 @@ Out of scope by decision: §2.1 class design, `EntityFilterPredicate`, `UNIVERSE
 
 **Total: 9 (Epic A) + about 117 (Epic B) ≈ 126 beads**, of which 5 are interactive design beads.
 
-## 5. Docs to change with the sizing decision
+## 5. Docs changed with the sizing decision (done 2026-10-28, applied globally, uncommitted)
 
-- `docs/workflow.md` "A unit of work": replace the five-line readiness test with: (1) finishable in one tick; (2) an acceptance command that fails before and passes after; (3) any new interface is quoted in the bead or the bead is `design`; (4) names an existing file to copy the style from (or says which bead supplies it). Keep "if it fails 2, write the test first as its own bead."
-- `docs/templates/story.md`: remove the "Touches ≤ 8" / "Reads ≤ ~1,500 … Writes ≤ ~400" lines and the matching rows of the sizing table; keep the prohibitions.
-- `CLAUDE.md` "How work is shaped": "small, with a command…" → "one tick's work, with a command…".
-- `SKILL.md` step 7: drop "≤ 1,500 lines read, ≤ 400 written, ≤ 8 files".
-- Open: apply this globally, or only to beads in these two epics? Recommend: globally, since the cap was a proxy for a small model's context and the loop now runs on Claude Code.
+`docs/workflow.md` (readiness test and `accept_budget`), `docs/templates/story.md` (no file/line lines; five-row readiness check), `CLAUDE.md` ("one tick's work", no cap) and `SKILL.md` step 7 and acceptance section. `accept.sh` reads the per-bead `accept_budget`.
+
+## 6. What dropping the caps changes, and what it does not
+
+**Changes**
+- **Count:** about 600 beads become about 126. Epic B is hand-writable; a generator is only needed to paste per-area hit lists into bead descriptions.
+- **New dependency edge:** the tool-driven sweeps (B1, and the mechanical parts of B3, B6, B7) need a compile database and the clang-tidy config, so they are blocked by A6 (`.clang-tidy`, root `compile_commands.json`).
+- **Acceptance cost:** sweep beads run a build and the unit suite in their acceptance block, so each sets `accept_budget` (600 to 1,800 s). Put the fast negated-`rg` proof on the **first** acceptance line so a failed attempt fails in seconds, not after a 30-minute build.
+- **Commit size:** one commit per bead means a 125-file sweep is one commit. It is reviewable by rule (the tool and the pattern) rather than line by line; bisect granularity inside a sweep is lost. A parked bead of that size reverts as one large commit, which is safe but heavy.
+- **Epic A:** no change in content; the "read only the lock ranges" remark for the 2.7k-line GUI `conftest.py` is gone.
+
+**Does not change**
+- Scope, order, the five design beads, exemplar-first, Google naming, `Ref` over `shared_ptr`, two epics, one commit per bead, local merge by Jon.
+
+**Could coarsen further (not done):** B3 constants 7 to 3 (by area), B4 enums 10 to 6, B8 strings and casts 12 to 6. Up to about 15 fewer beads. I kept them per area because each is a judgement-heavy change that one worker should hold in view; say if you want them merged.

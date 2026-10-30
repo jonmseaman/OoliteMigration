@@ -34,7 +34,7 @@ bead_has_label() { [ "$(bead_json "$1" | jq -r --arg l "$2" '(.labels // []) | i
 bead_actor() { local a; a="$(bead_field "$1" '.assignee')"; echo "${a:-$(worker_actor)}"; }
 # Beads for a human or an interactive session are never the worker's. Everything else is selected
 # by the caller's selector, which is passed through to `bd list` verbatim.
-BEADS_WORKER_EXCLUDE="${BEADS_WORKER_EXCLUDE:-rebless proposed-adr design}"
+BEADS_WORKER_EXCLUDE="${BEADS_WORKER_EXCLUDE:-rebless proposed-adr design human}"
 # worker_list <bd list flags...>: one JSON array of matching beads, minus the excluded labels.
 worker_list() {
   real_bd list "$@" --json -n 0 2>/dev/null \
