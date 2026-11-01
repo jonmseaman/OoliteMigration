@@ -612,14 +612,207 @@
    "mechanical_command": null,
    "n": 8,
    "parent": "series/007-foundation-wave-1",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "stored",
+     "path": "src/Core/Debug/OODebugMonitor.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Debug/OODebugStandards.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Debug/OODebugTCPConsoleClient.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Debug/OODebugTCPConsoleClient.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Debug/OOTCPStreamDecoderAbstractionLayer.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/Entity.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Entities/Entity.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/PlayerEntity.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/PlayerEntity.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/PlayerEntityControls.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/PlayerEntityKeyMapper.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/PlayerEntityLoadSave.h"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/Core/Entities/PlayerEntityLoadSave.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/ShipEntity.mm"
+    },
+    {
+     "how": "deleted-earlier",
+     "path": "src/Core/GameController+FullScreen.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/GameController.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/GameController.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOConcreteTexture.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOShaderMaterial.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOTexture.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOFullScreenController.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOJoystickManager.h"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/Core/OOJoystickManager.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOOXZManager.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOOXZManager.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOStringExpander.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OXPVerifier/OOOXPVerifier.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Octree.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSDock.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJSEngineTimeManagement.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSEntity.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSPlanet.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSPlayer.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSPlayerShip.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSShip.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSSound.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSStation.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSVisualEffect.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSWaypoint.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSWormhole.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJavaScriptEngine.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Universe.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Universe.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/meson.build"
+    },
+    {
+     "how": "auto",
+     "path": "src/SDL/MyOpenGLView+Input.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/MyOpenGLView.mm"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/SDL/OOSDLJoystickManager.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/SDL/main.mm"
+    }
+   ],
    "size": null,
    "source": {
     "from": "5faa477a34d862eb81b59a6fe3d2e74592e1cad2",
     "to": "fa9cbc6c24fec4d77881a47e47e7b2591ece94d4",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "edf3a94cfd3f9f604839fb8cf35711fe9ed05fbf",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 2",
    "verification": null
