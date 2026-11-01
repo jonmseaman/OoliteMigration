@@ -91,7 +91,7 @@ history, merges into `main`, and a fake upstream with a reformat commit.
   `bead oo-xxx: merge into main`, one subtree-pull commit), plus a `game` repo whose `master` holds the
   upstream base and a reformat commit. Accept: `python -m unittest tools.series.tests.test_fixtures`
   (write that test too: the fixture builds and has 6 first-parent merges) exits 0.
-- [ ] T007 [P] Write `tools/series/tests/test_manifest.py` for data-model.md's validation rules 1, 4–6 and
+- [X] T007 [P] Write `tools/series/tests/test_manifest.py` for data-model.md's validation rules 1, 4–6 and
   9, then implement `tools/series/manifest.py` (load, save with sorted keys and `newline="\n"`,
   `validate()` returning a list of rule violations). Encode verbatim: branch `series/NNN-slug` with
   NNN = `n` zero-padded to 3; `chapter` set iff `source` = `history`, chapters contiguous;
@@ -99,12 +99,12 @@ history, merges into `main`, and a fake upstream with a reformat commit.
   `add` has a later `remove`; no `ADR-[0-9]{4}` or `\boo-[0-9a-z]{3,}\b` in titles or descriptions.
   Accept: `python -m unittest tools.series.tests.test_manifest` exits 0 (and failed before
   `manifest.py` existed).
-- [ ] T008 [P] Write `tools/series/tests/test_history.py`, then implement `tools/series/history.py`:
+- [X] T008 [P] Write `tools/series/tests/test_history.py`, then implement `tools/series/history.py`:
   `first_parent(repo, prefix, start, end)` lists merges under the prefix; `snapshot(repo, commit,
   prefix)` returns the tree id of `<commit>:<prefix>`; `upstream_under(commit)` returns
   `dc55e3e05` before `4c2bfae9f` and `9ee8ff22f` from it on (research table "Upstream under the
   history"). Accept: `python -m unittest tools.series.tests.test_history` exits 0.
-- [ ] T009 [P] Write `tools/series/tests/test_normalise.py`, then implement `tools/series/normalise.py`
+- [X] T009 [P] Write `tools/series/tests/test_normalise.py`, then implement `tools/series/normalise.py`
   (research R3): `normalise_tree(repo, tree, style_from)` formats `src/**` and `tests/**` files with
   extensions `.h .hpp .m .mm .c .cpp`, using `.agent-tmp/series-venv/Scripts/clang-format` and the
   `.clang-format` from `style_from`. It writes blobs with `git hash-object -w`, keeps a per-blob
