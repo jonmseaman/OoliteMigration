@@ -1,9 +1,45 @@
 {
+ "src/Core/CollisionRegion.cpp": {
+  "base": "c1e6e7b02d92f512151dfd98de8b7ba64d930da8",
+  "deleted": false,
+  "ours": "28c38b5b55867b1b9a5bed007652497a2d9d97e0",
+  "theirs": "98126685584d106254a8510a52fb4b3c712f0bf9"
+ },
+ "src/Core/Entities/DockEntity.cpp": {
+  "base": "414db83e0c6a225bba46852429ca13d8dd067c16",
+  "deleted": false,
+  "ours": "ef24abf369bdf52daf151c90ab8f230b9f6e1cba",
+  "theirs": "4cd3f58fafe70a854492def1e981c37c044ff8b8"
+ },
+ "src/Core/Entities/PlayerEntity.cpp": {
+  "base": "4d8f72d77eecc738987535d10dbbe2a5428ec092",
+  "deleted": false,
+  "ours": "f237576f3f71f677fb4fe14b23b19866f8bcb27b",
+  "theirs": "7918ae0da19588409312745e20f08f8b67f6278e"
+ },
+ "src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp": {
+  "base": "8c2888abdea44e1a426571d668a138792a99969a",
+  "deleted": false,
+  "ours": "29c03327913b0d659f27a3d64148a63180efe268",
+  "theirs": "f48034177e47693e9678de0179f73dca51789236"
+ },
  "src/Core/Entities/ShipEntityAI.cpp": {
   "base": "6b3495a26f0033bb9a6f68a9186467ea0025ab87",
   "deleted": false,
   "ours": "daf7d579368db41d963a9a47c5dda4bc576e43a2",
   "theirs": "677bf993dc1097cabbd269b54738edb0e656a53f"
+ },
+ "src/Core/GuiDisplayGen.cpp": {
+  "base": "dcb67ce88bacd92d281d4cee22882abf90c22b7f",
+  "deleted": false,
+  "ours": "ac5534729d4fcd7f846f188f402347ebf5ced785",
+  "theirs": "d0075559e38e0d70c375d71007f567cde278738a"
+ },
+ "src/Core/HeadUpDisplay.cpp": {
+  "base": "61e61c33ceee1c2bf2f74b925f4d25cbc678db31",
+  "deleted": false,
+  "ours": "8ff20748e32e349f8740bb4acaccaa7af36216ad",
+  "theirs": "76485f3d9bd6a639bf2d6c2fa53c213a884cb634"
  },
  "src/Core/Materials/OOConcreteTexture.cpp": {
   "base": "b15d7f1f62b8a8b11916b742c5f8030ad8a11865",
@@ -51,6 +87,18 @@
   "ours": "c00be8a7aeb22055d5c6d6d0e9e881587cb17d62",
   "theirs": "f3615bc82410035783fc9c014b109a734b0aa8bf"
  },
+ "src/Core/OOMesh.cpp": {
+  "base": "441bda0395efc629f2f295dc8b5b4810e70ab04c",
+  "deleted": false,
+  "ours": "9cdc5e9debc9f8c775249c0ac3daaba0261659b6",
+  "theirs": "398c050826bdf21cab182448a7cdd65b2d15dc12"
+ },
+ "src/Core/OOPolygonSprite.cpp": {
+  "base": "fc1f7ad64ceb40c68e1a92450eb284c2924f46f6",
+  "deleted": false,
+  "ours": "67f9e1099586af7e4c5b96e3cc2872cba218ea35",
+  "theirs": "83331a804f6233788b06b270b68314ebe9ef3d0a"
+ },
  "src/Core/OOStringParsing.cpp": {
   "base": "e54d5e10015ed1af3565e25def45fe2365315f7f",
   "deleted": false,
@@ -80,6 +128,12 @@
   "deleted": false,
   "ours": "40e63363dc0e006d11b78a6128d61edf75d4d4ff",
   "theirs": "ed4486276162c4d07c04fdc54ddb92af7ffc8d28"
+ },
+ "src/Core/Scripting/OOJSFunction.cpp": {
+  "base": "71823c95b7ef992d93906f5c352fd613721c0678",
+  "deleted": false,
+  "ours": "adbbf0cd7a2cb8ecb486bb4ebceb6c0ef9fa2619",
+  "theirs": "06794600d33e44e96dd73de0c30507a6d54eb039"
  },
  "src/Core/Scripting/OOJSPlayer.cpp": {
   "base": "7f50318d9993c44f6e80774d55529316f1f2ebe7",
@@ -122,6 +176,12 @@
   "deleted": false,
   "ours": "fada73f697150e20b91a9daaed0c3eb3e10b3160",
   "theirs": "c173d6dfca14c23dfcdeeb48bced3fdc541849ee"
+ },
+ "src/Core/Universe.cpp": {
+  "base": "cc10b98da17009dd96c97942c5cd5374fd46cd3a",
+  "deleted": false,
+  "ours": "c77621eabd2182c0ef7d695c394f136e15e9f4c1",
+  "theirs": "aca70aa9e6fbfc1dc5da28645d6f9add166c8fb3"
  },
  "src/Core/meson.build": {
   "base": "5530ea9fad148a8261f467b816495c2e253ae8ea",

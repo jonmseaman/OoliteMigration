@@ -1,4 +1,10 @@
 {
+ "src/Core/Scripting/OOJSFunction.mm": {
+  "base": "c48ae1fd909139b2f0455632f65a0db90c68b56f",
+  "deleted": false,
+  "ours": "3702d0a067ac592efb2c2c9762b28692f3f92612",
+  "theirs": "709ce7d7693308330196abd32ddb3246374ff3d4"
+ },
  "src/Core/Scripting/OOJSManifest.mm": {
   "base": "5be8e924fd6907a5367c884d54d2656ea0d61c22",
   "deleted": false,

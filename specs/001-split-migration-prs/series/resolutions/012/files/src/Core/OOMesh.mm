@@ -35,6 +35,8 @@ MA 02110-1301, USA.
 */
 
 #import "OOMesh.h"
+
+#include <vector>
 #import "Entity.h" // for NO_DRAW_DISTANCE_FACTOR.
 #import "NSObjectOOExtensions.h"
 #import "OOBasicMaterial.h"

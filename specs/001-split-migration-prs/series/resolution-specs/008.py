@@ -16,7 +16,7 @@ RES = {
     "src/Core/Debug/OODebugTCPConsoleClient.mm": ["theirs", "theirs", "theirs", "theirs"],
     # history's oo::PList key members + upstream's copy-URL key
     "src/Core/Entities/PlayerEntity.h": [COPYURL_DECL],
-    "src/Core/Entities/PlayerEntity.mm": [COPYURL_CHECK],
+    "src/Core/Entities/PlayerEntity.mm": ["theirs", COPYURL_CHECK],  # the history converts the cargo arrays (step 3 fixed them)
     # the history factored the per-platform keymap file into KeyMappingsFileName() (Mac deferred)
     "src/Core/Entities/PlayerEntityKeyMapper.mm": ["theirs", "theirs"],
     "src/Core/OOOXZManager.mm": [
@@ -57,3 +57,6 @@ RES = {
     ],
 }
 DELETE = []
+# the history converts these functions; its forms supersede step 3's Clang 23 fixes
+RES["src/Core/Entities/ShipEntity.mm"] = ["theirs"]
+RES["src/Core/OOStringExpander.mm"] = ["theirs", "theirs"]

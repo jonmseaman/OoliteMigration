@@ -8,7 +8,7 @@
  "src/Core/Entities/ShipEntity.mm": {
   "base": "923711062ab5a3db6d2f4fdd8e8d99a03bc33171",
   "deleted": false,
-  "ours": "826ee06b51f6246d5cf5c9fad96e93392fdc2bd0",
+  "ours": "6abaf9d054630a21fccc0355984b27b6df9eebf5",
   "theirs": "472c83e50b211e532d6ea07de4673127aa5761f5"
  },
  "src/Core/OOMesh.h": {
@@ -20,7 +20,7 @@
  "src/Core/OOMesh.mm": {
   "base": "6e38fd984450a0d094131c27bf4329358d790371",
   "deleted": false,
-  "ours": "934162d9202763e701a5ab0d84ea51b01c47db34",
+  "ours": "ea952963cbb8a9713fccc3b19d1372f9b6b42be4",
   "theirs": "eb4a3a8a0eb2de4e55e0947ac496a43209f4d48e"
  },
  "src/Core/OOOXZManager+ObjCBridge.h": {

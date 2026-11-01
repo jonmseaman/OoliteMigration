@@ -23,6 +23,8 @@ MA 02110-1301, USA.
 */
 
 #import "Universe.h"
+
+#include <vector>
 #import "AI.h"
 #import "GameController.h"
 #import "GuiDisplayGen.h"
@@ -2412,7 +2414,7 @@ static GLfloat docked_light_specular[4] = { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
     HPVector launchPos = [self cxx_coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
     GLfloat distance_from_center = 0.0;
     HPVector v_from_center, ship_pos;
-    HPVector ship_positions[howMany];
+    std::vector<HPVector> ship_positions(howMany);
     int i = 0;
     int scale_up_after = 0;
     int current_shell = 0;
@@ -2721,7 +2723,7 @@ static GLfloat docked_light_specular[4] = { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
     OOJS_PROFILE_ENTER
 
     // minimise the time between creating ship & assigning position.
-    if (radius == NSNotFound) {
+    if (radius == static_cast<GLfloat>(NSNotFound)) {
         GLfloat scalar = 1.0;
         [self cxx_coordinatesForPosition:pos withCoordinateSystem:"abs" returningScalar:&scalar];
         //	randomise
@@ -4070,7 +4072,7 @@ static BOOL IsFriendlyStationPredicate(Entity* entity, void* parameter)
     std::vector<oo::ObjCRef<ShipEntity*>> accumulator;
     accumulator.reserve(how_many);
     NSUInteger i = 0, commodityCount = [_cxxUniverse->commodityMarket count];
-    OOCargoQuantity quantities[commodityCount];
+    std::vector<OOCargoQuantity> quantities(commodityCount);
     OOCargoQuantity total_quantity = 0;
 
     const std::vector<std::string> goodsKeys = [_cxxUniverse->commodityMarket goods];
@@ -4564,7 +4566,7 @@ static const OOMatrix starboard_matrix = { { { 0.0f, 0.0f, 1.0f, 0.0f },
             Vector view_dir, view_up;
             OOMatrix view_matrix;
             int ent_count = _cxxUniverse->n_entities;
-            Entity* my_entities[ent_count];
+            std::vector<Entity*> my_entities(ent_count);
             int draw_count = 0;
             PlayerEntity* player = PLAYER;
             Entity* drawthing = nil;
@@ -5476,7 +5478,7 @@ static BOOL MaintainLinkedLists(Universe* uni)
 
     int i;
     int ent_count = _cxxUniverse->n_entities;
-    Entity* my_entities[ent_count];
+    std::vector<Entity*> my_entities(ent_count);
     for (i = 0; i < ent_count; i++)
         my_entities[i] = [_cxxUniverse->sortedEntities[i] retain]; //	retained
 
@@ -5541,7 +5543,7 @@ static BOOL MaintainLinkedLists(Universe* uni)
     Entity* result = nil;
     int i;
     int ent_count = _cxxUniverse->n_entities;
-    Entity* my_entities[ent_count];
+    std::vector<Entity*> my_entities(ent_count);
     for (i = 0; i < ent_count; i++)
         my_entities[i] = [_cxxUniverse->sortedEntities[i] retain]; //	retained
 
@@ -5596,7 +5598,7 @@ static BOOL MaintainLinkedLists(Universe* uni)
     HPVector result = p2;
     int i;
     int ent_count = _cxxUniverse->n_entities;
-    Entity* my_entities[ent_count];
+    std::vector<Entity*> my_entities(ent_count);
     for (i = 0; i < ent_count; i++)
         my_entities[i] = [_cxxUniverse->sortedEntities[i] retain]; // retained
     HPVector p1 = e1->_cxxEntity->position;
@@ -5779,7 +5781,7 @@ static BOOL MaintainLinkedLists(Universe* uni)
     int i;
     int ent_count = _cxxUniverse->n_entities;
     int ship_count = 0;
-    ShipEntity* my_entities[ent_count];
+    std::vector<ShipEntity*> my_entities(ent_count);
 
     for (i = 0; i < ent_count; i++) {
         Entity* ent = _cxxUniverse->sortedEntities[i];
@@ -5863,7 +5865,7 @@ static BOOL MaintainLinkedLists(Universe* uni)
     int i;
     int ent_count = _cxxUniverse->n_entities;
     int ship_count = 0;
-    Entity* my_entities[ent_count];
+    std::vector<Entity*> my_entities(ent_count);
 
     for (i = 0; i < ent_count; i++) {
         if (([_cxxUniverse->sortedEntities[i] isShip] && ![_cxxUniverse->sortedEntities[i] isPlayer]) || [_cxxUniverse->sortedEntities[i] isWormhole]) {
@@ -6675,7 +6677,7 @@ bool SameMessage(const std::optional<std::string>& current, const std::optional<
         }
 
         unsigned i, ent_count = _cxxUniverse->n_entities;
-        Entity* my_entities[ent_count];
+        std::vector<Entity*> my_entities(ent_count);
 
         [self verifyEntitySessionIDs];
 
@@ -9405,7 +9407,7 @@ int compareName(const oo::PList& offer1, const oo::PList& offer2)
     int i;
     int ent_count = _cxxUniverse->n_entities;
     int ship_count = 0;
-    ShipEntity* my_ships[ent_count];
+    std::vector<ShipEntity*> my_ships(ent_count);
     for (i = 0; i < ent_count; i++) {
         if (_cxxUniverse->sortedEntities[i]->_cxxEntity->isShip) {
             my_ships[ship_count++] = [(ShipEntity*)_cxxUniverse->sortedEntities[i] retain]; // retained
@@ -10007,7 +10009,7 @@ int compareName(const oo::PList& offer1, const oo::PList& offer2)
 
 - (HPVector)fractionalPositionFrom:(HPVector)point0 to:(HPVector)point1 withFraction:(double)routeFraction
 {
-    if (routeFraction == NSNotFound)
+    if (routeFraction == static_cast<double>(NSNotFound))
         routeFraction = randf();
 
     point1 = OOHPVectorInterpolate(point0, point1, routeFraction);

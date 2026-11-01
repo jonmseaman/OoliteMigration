@@ -35,3 +35,10 @@ try:
     POST.update(_POST_016)
 except NameError:
     POST = _POST_016
+# the history converts the arrays step 3 fixed (its forms win); the shader check keeps upstream's #756
+# guard with the history's `0 &&` form
+RES["src/Core/Entities/PlayerEntity.mm"] = ["theirs", "theirs"]
+RES["src/Core/Entities/ShipEntity.mm"] = ["theirs", "theirs"]
+RES["src/Core/Materials/OOShaderProgram.mm"] = ["ours"]
+RES["src/Core/Scripting/OOJSFunction.mm"] = ["theirs"]
+RES["src/Core/Universe.mm"] = ["theirs"] * 6

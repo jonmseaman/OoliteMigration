@@ -2,13 +2,13 @@
  "src/Core/Entities/PlayerEntityControls.mm": {
   "base": "e0118bd3934d0260d499773eb34bff2d340e04c4",
   "deleted": false,
-  "ours": "7467931c70143eaf052c5e37569f3a7c58cf7100",
+  "ours": "13854530636adeef34ad3dc68dcfb64886d68700",
   "theirs": "482e30ec87e8905e73b0ff9648e4b9931fd7cb3f"
  },
  "src/Core/Universe.mm": {
   "base": "da70527c288606187cfe3643e7d9c0d7f7375e77",
   "deleted": false,
-  "ours": "4374a044a15c16e8daeb4bb721409c0c59e9854c",
+  "ours": "f15e3829e78c114545b069c8c2d0dc6872a0a5e0",
   "theirs": "573dc5f3ac73dc84f094bd82a12f4adfe0267335"
  },
  "src/SDL/MyOpenGLView+Input.h": {

@@ -2,13 +2,13 @@
  "src/Core/Entities/PlayerEntity.mm": {
   "base": "e016ffac3c53108eeb420ed542b111c103cec0e5",
   "deleted": false,
-  "ours": "cb404a1bfd41303177d2bc92c088d07b9b2c4c55",
+  "ours": "d7e2540ca398086f6aae9fb96b824cda7bc1a134",
   "theirs": "25e6b1cf48ffb328fcd72b6d353e0a1372c37afd"
  },
  "src/Core/Entities/PlayerEntityControls.mm": {
   "base": "482e30ec87e8905e73b0ff9648e4b9931fd7cb3f",
   "deleted": false,
-  "ours": "0e954fa3f743fb7c4d2aec9a63da152ffabbf6be",
+  "ours": "880b1e10efddaef0bfefcead77e74b69e59ddb74",
   "theirs": "d39dddb534961b22969c34dd963cc16b99346d95"
  },
  "src/Core/Entities/PlayerEntityLoadSave.h": {
@@ -26,7 +26,7 @@
  "src/Core/Entities/ShipEntity.mm": {
   "base": "dffbde5ca00dd4fb47c261756355c1b168868241",
   "deleted": false,
-  "ours": "260a4e46a364e1892d27c742c14879d974baf8f5",
+  "ours": "770e8da640ee433697e834f7f3175cb8cc0800cb",
   "theirs": "ad605c9a9e5d78998f187d715da5f0b06153bef5"
  },
  "src/Core/OOOXZManager+ObjCBridge.h": {
@@ -50,7 +50,7 @@
  "src/Core/Universe.mm": {
   "base": "573dc5f3ac73dc84f094bd82a12f4adfe0267335",
   "deleted": false,
-  "ours": "784a32855f0b71f9c4b98e7dc0e2340b3e629a87",
+  "ours": "8078924432b2e7ec9e74489fe52f4efc4eaa8a9c",
   "theirs": "38d9069f729e93243ee4014ab493e6a48ea33dbc"
  }
 }

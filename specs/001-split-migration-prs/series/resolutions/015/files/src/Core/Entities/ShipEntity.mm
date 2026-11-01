@@ -12796,7 +12796,7 @@ void ShipEntity::setTargetToNearestStationIncludingHostiles(bool includeHostiles
         return;
     int ent_count = UNIVERSE->_cxxUniverse->n_entities;
     ::Entity** uni_entities = UNIVERSE->_cxxUniverse->sortedEntities; // grab the public sorted list
-    ::Entity* my_entities[ent_count];
+    std::vector<::Entity*> my_entities(ent_count);
     int i;
     int station_count = 0;
     for (i = 0; i < ent_count; i++)
@@ -13161,7 +13161,7 @@ int ShipEntity::checkShipsInVicinityForWitchJumpExit()
 
     int ent_count = UNIVERSE->_cxxUniverse->n_entities;
     ::Entity** uni_entities = UNIVERSE->_cxxUniverse->sortedEntities; // grab the public sorted list
-    ::ShipEntity* my_entities[ent_count];
+    std::vector<::ShipEntity*> my_entities(ent_count);
     int i;
 
     int ship_count = 0;

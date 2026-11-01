@@ -58,3 +58,6 @@ DELETE = []
 # Objective-C GCC warning; the migration keeps them in OOJoystickManager (as develop does). From
 # this step the SDL manager is the history's, so its files are the history's whole.
 WHOLE = {"src/SDL/OOSDLJoystickManager.h": "theirs", "src/SDL/OOSDLJoystickManager.mm": "theirs"}
+# the history rewrites two lines step 3 fixed for Clang 23; its forms supersede those fixes
+RES["src/Core/OOCPUInfo.mm"] = ["theirs"]
+RES["src/Core/OOPolygonSprite.mm"] = ["theirs"]

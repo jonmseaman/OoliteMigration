@@ -25,6 +25,8 @@ MA 02110-1301, USA.
 #include <assert.h>
 
 #import "PlayerEntity.h"
+
+#include <vector>
 #import "PlayerEntityContracts.h"
 #import "PlayerEntityControls.h"
 #import "PlayerEntityLegacyScriptEngine.h"
@@ -3116,7 +3118,7 @@ void PlayerEntity::updateAlertConditionForNearbyEntities()
 
     int i, ent_count = UNIVERSE->_cxxUniverse->n_entities;
     ::Entity** uni_entities = UNIVERSE->_cxxUniverse->sortedEntities; // grab the public sorted list
-    ::Entity* my_entities[ent_count];
+    std::vector<::Entity*> my_entities(ent_count);
     ::Entity* scannedEntity = nil;
     for (i = 0; i < ent_count; i++) {
         my_entities[i] = [uni_entities[i] retain]; // retained
@@ -6533,7 +6535,7 @@ void PlayerEntity::loseTargetStatus()
         return;
     int ent_count = UNIVERSE->_cxxUniverse->n_entities;
     ::Entity** uni_entities = UNIVERSE->_cxxUniverse->sortedEntities; // grab the public sorted list
-    ::Entity* my_entities[ent_count];
+    std::vector<::Entity*> my_entities(ent_count);
     int i;
     for (i = 0; i < ent_count; i++)
         my_entities[i] = [uni_entities[i] retain]; //	retained
@@ -8220,7 +8222,7 @@ void PlayerEntity::setGuiToGameOptionsScreen()
                 }
             }
 
-            if (brightnessIdx == NSNotFound) {
+            if (static_cast<NSInteger>(brightnessIdx) == NSNotFound) {
                 OO_LOG_WARN("hdr.maxBrightness.notFound", "{}", "couldn't find current max brightness setting, switching to 400 nits.");
                 brightnessIdx = 0;
             }
@@ -10119,7 +10121,7 @@ void PlayerEntity::setGuiToMarketScreen()
     }
 
     NSUInteger commodityCount = (shipCommodityData != nullptr ? shipCommodityData->count() : 0);
-    OOCargoQuantity quantityInHold[commodityCount];
+    std::vector<OOCargoQuantity> quantityInHold(commodityCount);
 
     for (NSUInteger i = 0; i < commodityCount; i++) {
         quantityInHold[i] = (i < goods.size()) ? (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(goods[i]) : 0) : 0; // (a nil good had none)
@@ -10282,7 +10284,7 @@ void PlayerEntity::setGuiToMarketInfoScreen()
     const std::vector<std::string> goods = applyMarketSorter(applyMarketFilter((localMarket != nullptr ? localMarket->goods() : std::vector<std::string>()), localMarket), localMarket);
 
     NSUInteger i, j, commodityCount = (shipCommodityData != nullptr ? shipCommodityData->count() : 0);
-    OOCargoQuantity quantityInHold[commodityCount];
+    std::vector<OOCargoQuantity> quantityInHold(commodityCount);
 
     for (i = 0; i < commodityCount; i++) {
         quantityInHold[i] = (i < goods.size()) ? (shipCommodityData != nullptr ? shipCommodityData->quantityForGood(goods[i]) : 0) : 0; // (a nil good had none)

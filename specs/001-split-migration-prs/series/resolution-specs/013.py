@@ -31,3 +31,15 @@ RES = {
     ],
 }
 DELETE = []
+# The history's ShipEntity slices keep two variable-length arrays (now ::Entity*); step 3's std::vector
+# fix is re-applied to its form. OOConvertCubeMapToLatLong: the history's own std::vector form.
+RES["src/Core/Entities/ShipEntity.mm"] = ["theirs", "theirs", "theirs", "theirs"]
+RES["src/Core/OOConvertCubeMapToLatLong.cpp"] = ["theirs"]
+try:
+    POST
+except NameError:
+    POST = {}
+POST["src/Core/Entities/ShipEntity.mm"] = [
+    ("\n    ::Entity* my_entities[ent_count];\n", "\n    std::vector<::Entity*> my_entities(ent_count);\n"),
+    ("\n    ::ShipEntity* my_entities[ent_count];\n", "\n    std::vector<::ShipEntity*> my_entities(ent_count);\n"),
+]

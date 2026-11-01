@@ -8,14 +8,26 @@
  "src/Core/Entities/PlayerEntity.mm": {
   "base": "936223f3077366168831ecf466fd36be4e50ffbe",
   "deleted": false,
-  "ours": "41a2e3ab171e76aedf4524d4c311ca86886b36fa",
+  "ours": "9088912182271caebc9daced6820c211416e5110",
   "theirs": "a022c0862ca957b4bd07f0ac6f5c40b96be48d5f"
  },
  "src/Core/Materials/OOShaderProgram.mm": {
   "base": "df9c8b811bdd47a826de21ab947d179ed0f4a755",
   "deleted": false,
-  "ours": "3c980b8bb32dd8fc174ee5deb5dc6b2b58f6f434",
+  "ours": "068ddcbda3bfd2f98e371932f23ff6a7ab352e4a",
   "theirs": "a277b563435ad33a941e8793a78b479773ff7c1a"
+ },
+ "src/Core/OOCPUInfo.mm": {
+  "base": "0f64804b307d37995db59b537529332eb6fb99da",
+  "deleted": false,
+  "ours": "3a44ea3c0fcb9e2645d9cc8d65dffd7ec23b150d",
+  "theirs": "69703950e3d6de8e1bc215f31fc3a23a8bf6527b"
+ },
+ "src/Core/OOPolygonSprite.mm": {
+  "base": "05581526aac2cf6306443e985cb228faeb7bae0e",
+  "deleted": false,
+  "ours": "3ade48ae4192f659704327036ba04f67968632e8",
+  "theirs": "87e1ec1d0d046e7beae496f6efb5d2e903421dbf"
  },
  "src/Core/OOStringParsing.mm": {
   "base": "df454a3405a882be92d298e92ec1f2aa4e8b0eb3",
@@ -48,10 +60,8 @@
   "theirs": "095853989f18790f95b7809ddff9854e8dc9385c"
  },
  "src/SDL/OOSDLJoystickManager.h": {
-  "base": "458d9359318c8b1db8ff7e073dbf88bcb4bc01de",
   "deleted": false,
-  "ours": "95a99c64403f8c08d63292b0c26864e026c98a50",
-  "theirs": "b52ca51b4f44fa2b6d54a59ac6544e26a73d6a72"
+  "extra": true
  },
  "src/SDL/OOSDLJoystickManager.mm": {
   "deleted": false,

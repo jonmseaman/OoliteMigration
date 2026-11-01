@@ -2935,7 +2935,7 @@ static int ClickedGUIRow(GuiDisplayGen* gui)
                     }
                 }
 
-                if (brightnessIdx == NSNotFound) {
+                if (static_cast<NSInteger>(brightnessIdx) == NSNotFound) {
                     OO_LOG_WARN("hdr.maxBrightness.notFound", "{}", "couldn't find current max brightness setting, switching to lowest.");
                     brightnessIdx = 0;
                 }

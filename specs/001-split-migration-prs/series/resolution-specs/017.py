@@ -24,3 +24,9 @@ DELETE = []
 # the history rewrites the include blocks; step 2's <vector> include is not needed by its form
 RES["src/Core/Entities/ShipEntityAI.cpp"] = ["theirs"]
 RES["src/Core/OOStringParsing.cpp"] = ["theirs"]
+# step 3's <vector> includes meet the history's rewritten include blocks; the history's blocks win
+for _p in ("src/Core/CollisionRegion.cpp", "src/Core/Entities/DockEntity.cpp", "src/Core/Entities/PlayerEntity.cpp",
+           "src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp", "src/Core/GuiDisplayGen.cpp",
+           "src/Core/HeadUpDisplay.cpp", "src/Core/OOMesh.cpp", "src/Core/OOPolygonSprite.cpp",
+           "src/Core/Scripting/OOJSFunction.cpp", "src/Core/Universe.cpp"):
+    RES[_p] = ["theirs"]

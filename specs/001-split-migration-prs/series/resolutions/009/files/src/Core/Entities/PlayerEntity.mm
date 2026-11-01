@@ -25,6 +25,8 @@ MA 02110-1301, USA.
 #include <assert.h>
 
 #import "PlayerEntity.h"
+
+#include <vector>
 #import "PlayerEntityContracts.h"
 #import "PlayerEntityControls.h"
 #import "PlayerEntityLegacyScriptEngine.h"
@@ -3057,7 +3059,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
     int i, ent_count = UNIVERSE->n_entities;
     Entity** uni_entities = UNIVERSE->sortedEntities; // grab the public sorted list
-    Entity* my_entities[ent_count];
+    std::vector<Entity*> my_entities(ent_count);
     Entity* scannedEntity = nil;
     for (i = 0; i < ent_count; i++) {
         my_entities[i] = [uni_entities[i] retain]; // retained
@@ -6387,7 +6389,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
         return;
     int ent_count = UNIVERSE->n_entities;
     Entity** uni_entities = UNIVERSE->sortedEntities; // grab the public sorted list
-    Entity* my_entities[ent_count];
+    std::vector<Entity*> my_entities(ent_count);
     int i;
     for (i = 0; i < ent_count; i++)
         my_entities[i] = [uni_entities[i] retain]; //	retained
@@ -8069,7 +8071,7 @@ std::string SliderString(NSInteger amountIn20ths)
                 }
             }
 
-            if (brightnessIdx == NSNotFound) {
+            if (static_cast<NSInteger>(brightnessIdx) == NSNotFound) {
                 OO_LOG_WARN("hdr.maxBrightness.notFound", "{}", "couldn't find current max brightness setting, switching to 400 nits.");
                 brightnessIdx = 0;
             }
@@ -9973,7 +9975,7 @@ std::optional<std::string> last_outfitting_key; // nullopt = none (was nil)
     }
 
     NSUInteger commodityCount = [shipCommodityData count];
-    OOCargoQuantity quantityInHold[commodityCount];
+    std::vector<OOCargoQuantity> quantityInHold(commodityCount);
 
     for (NSUInteger i = 0; i < commodityCount; i++) {
         quantityInHold[i] = (i < goods.size()) ? [shipCommodityData cxx_quantityForGood:goods[i]] : 0; // (a nil good had none)
@@ -10136,7 +10138,7 @@ std::optional<std::string> last_outfitting_key; // nullopt = none (was nil)
     const std::vector<std::string> goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
 
     NSUInteger i, j, commodityCount = [shipCommodityData count];
-    OOCargoQuantity quantityInHold[commodityCount];
+    std::vector<OOCargoQuantity> quantityInHold(commodityCount);
 
     for (i = 0; i < commodityCount; i++) {
         quantityInHold[i] = (i < goods.size()) ? [shipCommodityData cxx_quantityForGood:goods[i]] : 0; // (a nil good had none)

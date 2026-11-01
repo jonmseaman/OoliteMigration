@@ -32,7 +32,7 @@
  "src/Core/Entities/PlayerEntity.mm": {
   "base": "a022c0862ca957b4bd07f0ac6f5c40b96be48d5f",
   "deleted": false,
-  "ours": "bd046d5a2c500ef36edeb454aa1bd68e65496ab7",
+  "ours": "8a603d2690f4dbaf27995f62d2bc758d876552c7",
   "theirs": "688d3b2a0d4c3e3f8e7ba321e6187612602d88fb"
  },
  "src/Core/Entities/PlayerEntityKeyMapper.mm": {
@@ -41,11 +41,23 @@
   "ours": "90976a50811ad5fe705cc5e0b264b06e3e5ea1b5",
   "theirs": "aa6d708b01b7a496567d22ec9baacb05cd6eb23d"
  },
+ "src/Core/Entities/ShipEntity.mm": {
+  "base": "42ce75d0233352b55a47c43a62e4b4b6dd1e5586",
+  "deleted": false,
+  "ours": "5d283e1cbc9fa0029c5782ea0d5ffece9db7087c",
+  "theirs": "c7ba67d20a4d907b2f0446f4d95ce0a2d47c6ac1"
+ },
  "src/Core/OOOXZManager.mm": {
   "base": "edb8b68938a7fd62cd205098a020f5606d7e28cb",
   "deleted": false,
   "ours": "1a9044b671db392f7c6f771b8f1ee4c880185696",
   "theirs": "768a2a9c6a83a5bce71615b234bf54cda36dc702"
+ },
+ "src/Core/OOStringExpander.mm": {
+  "base": "138d97e70f40516996edd11661eb9933c153f833",
+  "deleted": false,
+  "ours": "1b1fa39264effb7839937a4405b6feadbf9c4474",
+  "theirs": "6ad45a41720d8c7b874cbd74a67861b3e8335171"
  },
  "src/Core/Octree.h": {
   "base": "67990c05004b3e70679d5ecb14545111e587a937",

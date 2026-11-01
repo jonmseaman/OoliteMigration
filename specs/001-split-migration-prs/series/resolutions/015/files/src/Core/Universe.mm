@@ -23,6 +23,8 @@ MA 02110-1301, USA.
 */
 
 #import "Universe.h"
+
+#include <vector>
 #import "AI.h"
 #import "GameController.h"
 #import "GuiDisplayGen.h"
@@ -2675,7 +2677,7 @@ bool Universe::addShipsAtPosition(int howMany, const std::string& desc, HPVector
     HPVector launchPos = [self cxx_coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
     GLfloat distance_from_center = 0.0;
     HPVector v_from_center, ship_pos;
-    HPVector ship_positions[howMany];
+    std::vector<HPVector> ship_positions(howMany);
     int i = 0;
     int scale_up_after = 0;
     int current_shell = 0;
@@ -3016,7 +3018,7 @@ namespace cxx {
     OOJS_PROFILE_ENTER
 
     // minimise the time between creating ship & assigning position.
-    if (radius == NSNotFound) {
+    if (radius == static_cast<GLfloat>(NSNotFound)) {
         GLfloat scalar = 1.0;
         [self cxx_coordinatesForPosition:pos withCoordinateSystem:"abs" returningScalar:&scalar];
         //	randomise
@@ -4393,7 +4395,7 @@ std::vector<oo::ObjCRef<::Entity*>> Universe::getContainersOfGoods(OOCargoQuanti
     std::vector<oo::ObjCRef<::Entity*>> accumulator;
     accumulator.reserve(how_many);
     NSUInteger i = 0, commodityCount = (commodityMarket != nullptr ? commodityMarket->count() : 0);
-    OOCargoQuantity quantities[commodityCount];
+    std::vector<OOCargoQuantity> quantities(commodityCount);
     OOCargoQuantity total_quantity = 0;
 
     const std::vector<std::string> goodsKeys = (commodityMarket != nullptr ? commodityMarket->goods() : std::vector<std::string>());
@@ -4893,7 +4895,7 @@ void Universe::drawUniverse()
             Vector view_dir, view_up;
             OOMatrix view_matrix;
             int ent_count = n_entities;
-            ::Entity* my_entities[ent_count];
+            std::vector<::Entity*> my_entities(ent_count);
             int draw_count = 0;
             ::PlayerEntity* player = PLAYER;
             ::Entity* drawthing = nil;
@@ -5714,7 +5716,7 @@ bool Universe::isVectorClearFromEntity(::Entity* e1, double dist, HPVector p2)
 
     int i;
     int ent_count = n_entities;
-    ::Entity* my_entities[ent_count];
+    std::vector<::Entity*> my_entities(ent_count);
     for (i = 0; i < ent_count; i++)
         my_entities[i] = [sortedEntities[i] retain]; //	retained
 
@@ -5779,7 +5781,7 @@ bool Universe::isVectorClearFromEntity(::Entity* e1, double dist, HPVector p2)
     ::Entity* result = nil;
     int i;
     int ent_count = n_entities;
-    ::Entity* my_entities[ent_count];
+    std::vector<::Entity*> my_entities(ent_count);
     for (i = 0; i < ent_count; i++)
         my_entities[i] = [sortedEntities[i] retain]; //	retained
 
@@ -5834,7 +5836,7 @@ HPVector Universe::getSafeVectorFromEntity(::Entity* e1, double dist, HPVector p
     HPVector result = p2;
     int i;
     int ent_count = n_entities;
-    ::Entity* my_entities[ent_count];
+    std::vector<::Entity*> my_entities(ent_count);
     for (i = 0; i < ent_count; i++)
         my_entities[i] = [sortedEntities[i] retain]; // retained
     HPVector p1 = e1->_cxxEntity->position;
@@ -6030,7 +6032,7 @@ void Universe::addLaserHitEffectsAt(HPVector pos, ::ShipEntity* target, float da
     int i;
     int ent_count = n_entities;
     int ship_count = 0;
-    ::ShipEntity* my_entities[ent_count];
+    std::vector<::ShipEntity*> my_entities(ent_count);
 
     for (i = 0; i < ent_count; i++) {
         ::Entity* ent = sortedEntities[i];
@@ -6127,7 +6129,7 @@ namespace cxx {
     int i;
     int ent_count = n_entities;
     int ship_count = 0;
-    ::Entity* my_entities[ent_count];
+    std::vector<::Entity*> my_entities(ent_count);
 
     for (i = 0; i < ent_count; i++) {
         if (([sortedEntities[i] isShip] && ![sortedEntities[i] isPlayer]) || [sortedEntities[i] isWormhole]) {
@@ -6978,7 +6980,7 @@ void Universe::update(OOTimeDelta inDeltaT)
         }
 
         unsigned i, ent_count = n_entities;
-        ::Entity* my_entities[ent_count];
+        std::vector<::Entity*> my_entities(ent_count);
 
         [self verifyEntitySessionIDs];
 
@@ -9605,7 +9607,7 @@ void Universe::allShipsDoScriptEvent(ooscript::PropertyId event, const std::opti
     int i;
     int ent_count = n_entities;
     int ship_count = 0;
-    ::ShipEntity* my_ships[ent_count];
+    std::vector<::ShipEntity*> my_ships(ent_count);
     for (i = 0; i < ent_count; i++) {
         if (sortedEntities[i]->_cxxEntity->isShip) {
             my_ships[ship_count++] = oo::ToShip([sortedEntities[i] retain]); // retained (its object)
@@ -10238,7 +10240,7 @@ Vector Universe::randomPlaceWithinScannerFrom(Vector pos, Vector route, double o
 
 HPVector Universe::fractionalPositionFrom(HPVector point0, HPVector point1, double routeFraction)
 {
-    if (routeFraction == NSNotFound)
+    if (routeFraction == static_cast<double>(NSNotFound))
         routeFraction = randf();
 
     point1 = OOHPVectorInterpolate(point0, point1, routeFraction);

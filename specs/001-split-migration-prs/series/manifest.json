@@ -396,7 +396,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "d2b07f0bd677930f927d1af7ca18bc5d9b816b7a",
    "n": 4,
    "parent": "series/003-objective-cxx",
    "resolutions": [
@@ -411,6 +411,10 @@
     {
      "how": "auto",
      "path": "src/Core/Scripting/OOJSEntity.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSFunction.mm"
     },
     {
      "how": "stored",
@@ -476,7 +480,7 @@
     "to": "a7e3ed1efcf202eb22d16951be73c23e3b2b264c",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "d2b07f0bd677930f927d1af7ca18bc5d9b816b7a",
    "temporaries": [],
    "title": "Run the game on QuickJS-ng and remove SpiderMonkey and NSPR",
    "verification": null
@@ -501,7 +505,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "6ddbc1bb07cb4b9f0d358f35a41b201dbce4c388",
    "n": 5,
    "parent": "series/004-quickjs-switch",
    "resolutions": [
@@ -537,7 +541,7 @@
     "to": "916311e66db2e9d025c763b9d028a9ff26d33ff0",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "6ddbc1bb07cb4b9f0d358f35a41b201dbce4c388",
    "temporaries": [],
    "title": "Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation",
    "verification": null
@@ -558,7 +562,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "264ec6f3b2011bc9fae7a36ccec3f37339bff843",
    "n": 6,
    "parent": "series/005-oofnd-core",
    "resolutions": [
@@ -573,6 +577,10 @@
     {
      "how": "auto",
      "path": "src/Core/Debug/OODebugTCPConsoleClient.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Entities/DockEntity.mm"
     },
     {
      "how": "stored",
@@ -596,10 +604,6 @@
     },
     {
      "how": "auto",
-     "path": "src/Core/OOJoystickManager.h"
-    },
-    {
-     "how": "auto",
      "path": "src/Core/OOJoystickProfile.h"
     },
     {
@@ -613,10 +617,6 @@
     {
      "how": "transplant",
      "path": "src/SDL/MyOpenGLView+Input.mm"
-    },
-    {
-     "how": "upstream-deleted",
-     "path": "src/SDL/OOSDLJoystickManager.mm"
     }
    ],
    "size": {
@@ -630,7 +630,7 @@
     "to": "bc9a02ca7b948001da5824b9c073b42b3e24ca08",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "264ec6f3b2011bc9fae7a36ccec3f37339bff843",
    "temporaries": [],
    "title": "Move most oo_*ForKey dictionary accessors to typed PListView::get",
    "verification": null
@@ -651,7 +651,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "606202a00e0f37cf620922fcfe8a1e491a55af12",
    "n": 7,
    "parent": "series/006-typed-accessors",
    "resolutions": [
@@ -724,6 +724,10 @@
      "path": "src/Core/Materials/OOTexture.mm"
     },
     {
+     "how": "stored",
+     "path": "src/Core/OOCPUInfo.mm"
+    },
+    {
      "how": "auto",
      "path": "src/Core/OODrawable.h"
     },
@@ -734,10 +738,6 @@
     {
      "how": "upstream-deleted",
      "path": "src/Core/OOHPVector.h"
-    },
-    {
-     "how": "transplant",
-     "path": "src/Core/OOJoystickManager.h"
     },
     {
      "how": "auto",
@@ -756,6 +756,10 @@
      "path": "src/Core/OOPlanetDrawable.mm"
     },
     {
+     "how": "stored",
+     "path": "src/Core/OOPolygonSprite.mm"
+    },
+    {
      "how": "auto",
      "path": "src/Core/OOSkyDrawable.mm"
     },
@@ -766,6 +770,10 @@
     {
      "how": "stored",
      "path": "src/Core/ResourceManager.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSFunction.mm"
     },
     {
      "how": "upstream-deleted",
@@ -807,7 +815,7 @@
     "to": "ecfafab47981c8224790752d96f2340d6b07c833",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "606202a00e0f37cf620922fcfe8a1e491a55af12",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 1",
    "verification": null
@@ -829,7 +837,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "8fa06e0b24239a260608e032e68dc40fe13018f9",
    "n": 8,
    "parent": "series/007-foundation-wave-1",
    "resolutions": [
@@ -886,7 +894,7 @@
      "path": "src/Core/Entities/PlayerEntityLoadSave.mm"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/Entities/ShipEntity.mm"
     },
     {
@@ -918,10 +926,6 @@
      "path": "src/Core/OOFullScreenController.h"
     },
     {
-     "how": "transplant",
-     "path": "src/Core/OOJoystickManager.h"
-    },
-    {
      "how": "auto",
      "path": "src/Core/OOOXZManager.h"
     },
@@ -930,7 +934,11 @@
      "path": "src/Core/OOOXZManager.mm"
     },
     {
-     "how": "auto",
+     "how": "transplant",
+     "path": "src/Core/OOOpenGL.h"
+    },
+    {
+     "how": "stored",
      "path": "src/Core/OOStringExpander.mm"
     },
     {
@@ -1029,7 +1037,7 @@
     "to": "fa9cbc6c24fec4d77881a47e47e7b2591ece94d4",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "24906d44d55b3cd5beec5514a93e6926fd1a401e",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 2",
    "verification": null
@@ -1051,7 +1059,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "c816e1a8616fb2db1a43de005363819d9040499c",
    "n": 9,
    "parent": "series/008-foundation-wave-2",
    "resolutions": [
@@ -1184,6 +1192,10 @@
      "path": "src/Core/OOPlanetDrawable.mm"
     },
     {
+     "how": "transplant",
+     "path": "src/Core/OOPolygonSprite.mm"
+    },
+    {
      "how": "auto",
      "path": "src/Core/OOSkyDrawable.mm"
     },
@@ -1219,7 +1231,7 @@
     "to": "e0b9e24b22ab4f7373ccf71dbf4d58ac5553c4be",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "d3f36603a06d0b16556d0d0875bb3e7f73689656",
    "temporaries": [],
    "title": "Retire the remaining Foundation selectors and their bridge callers",
    "verification": null
@@ -1243,10 +1255,14 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "db9bef6a9995d42fbe8b48e98242230322438e04",
    "n": 10,
    "parent": "series/009-selector-families",
    "resolutions": [
+    {
+     "how": "transplant",
+     "path": "src/Core/Entities/DockEntity.mm"
+    },
     {
      "how": "deleted-earlier",
      "path": "src/Core/GameController+FullScreen.mm"
@@ -1296,12 +1312,20 @@
      "path": "src/Core/OOMaths.h"
     },
     {
+     "how": "stored",
+     "path": "src/Core/OOOpenGL.h"
+    },
+    {
      "how": "auto",
      "path": "src/Core/OOOpenGLExtensionManager.h"
     },
     {
      "how": "transplant",
      "path": "src/Core/OOOpenGLExtensionManager.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOPolygonSprite.mm"
     },
     {
      "how": "upstream-deleted",
@@ -1314,6 +1338,10 @@
     {
      "how": "auto",
      "path": "src/Core/Octree.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSFunction.mm"
     },
     {
      "how": "upstream-deleted",
@@ -1343,7 +1371,7 @@
     "to": "67027c84d11fe03fcf208697938023d05d13f63c",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "bffe6e374ddd1a8b56536c2d90f7496020349104",
    "temporaries": [],
    "title": "Drop gnustep-base, then convert the first classes to C++: maths, leaf utilities, OXP verifier",
    "verification": null
@@ -1367,7 +1395,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "cc3b72ea4b036f546b340cc11c1d2b92efa4271f",
    "n": 11,
    "parent": "series/010-leaf-conversions",
    "resolutions": [
@@ -1492,10 +1520,6 @@
      "path": "src/Core/OODrawable.mm"
     },
     {
-     "how": "stored",
-     "path": "src/Core/OOJoystickManager.h"
-    },
-    {
      "how": "transplant",
      "path": "src/Core/OOPlanetDrawable.mm"
     },
@@ -1531,7 +1555,7 @@
     "to": "ab5dc6cd728a5b26951c588d3d6e0ef99049009c",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "0c39f9e0b0acc9bdf1d6b8cc4e26032fdd05d22e",
    "temporaries": [],
    "title": "Convert scripting, entities, audio and materials classes to C++",
    "verification": null
@@ -1554,7 +1578,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "82d71d989da512a5932722c30c347b4159fcc9c7",
    "n": 12,
    "parent": "series/011-module-conversions",
    "resolutions": [
@@ -1630,7 +1654,7 @@
     "to": "0c01939de79a4ac04237390d93dc78437057c5e0",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "c98a5c1de1b3d6323cf2fe30ad3ddbd9fa16f0bd",
    "temporaries": [],
    "title": "Convert the large files in slices; delete the first Objective-C facades",
    "verification": null
@@ -1651,10 +1675,14 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "fe72305a7565e883d17a0131e973f67d12ac4547",
    "n": 13,
    "parent": "series/012-first-slices",
    "resolutions": [
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/PlayerEntity.mm"
+    },
     {
      "how": "stored",
      "path": "src/Core/Entities/ShipEntity.mm"
@@ -1670,6 +1698,10 @@
     {
      "how": "auto",
      "path": "src/Core/GameController.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOConvertCubeMapToLatLong.cpp"
     },
     {
      "how": "auto",
@@ -1695,7 +1727,7 @@
     "to": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "872b83e6ea008330baa6e4975c65cf87f02cbc71",
    "temporaries": [],
    "title": "Convert ShipEntity to C++",
    "verification": null
@@ -1717,7 +1749,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "1258a0fb86d7efe72e7936c8a09ddc8d005aa693",
    "n": 14,
    "parent": "series/013-shipentity-slices",
    "resolutions": [
@@ -1761,7 +1793,7 @@
     "to": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "5572348cb56342d16bb52dc80c78db5a3a94e155",
    "temporaries": [],
    "title": "Convert Universe and PlayerEntity to C++",
    "verification": null
@@ -1782,7 +1814,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "0ec847c97e5565e04504608f9899973355d87780",
    "n": 15,
    "parent": "series/014-universe-player-slices",
    "resolutions": [
@@ -1874,7 +1906,7 @@
     "to": "2c2aae1316b5a125038a797c213162ffba389279",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "65ea4bb9f3c049b92a253d759548c2bc0a2a771d",
    "temporaries": [],
    "title": "Delete the Objective-C facades",
    "verification": null
@@ -1895,7 +1927,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "9e0725da3f8d3b69ddcbc56a6bc0f8eea350764d",
    "n": 16,
    "parent": "series/015-facade-deletions",
    "resolutions": [
@@ -1924,7 +1956,7 @@
      "path": "src/Core/Entities/OOParticleSystem.mm"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/Entities/PlayerEntity.mm"
     },
     {
@@ -1934,6 +1966,10 @@
     {
      "how": "upstream-deleted",
      "path": "src/Core/Entities/PlayerEntityLoadSave.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/ShipEntity.mm"
     },
     {
      "how": "auto",
@@ -1964,7 +2000,7 @@
      "path": "src/Core/Materials/OOShaderMaterial.mm"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/Materials/OOShaderProgram.mm"
     },
     {
@@ -2012,11 +2048,15 @@
      "path": "src/Core/Scripting/OOJSEntity.mm"
     },
     {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSFunction.mm"
+    },
+    {
      "how": "auto",
      "path": "src/Core/Scripting/OOJavaScriptEngine.mm"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/Universe.mm"
     },
     {
@@ -2035,7 +2075,7 @@
     "to": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "35c875a525bf69f0a1e91116eb9afab3e1b6a3ac",
    "temporaries": [],
    "title": "Delete the root Entity facade",
    "verification": null
@@ -2057,13 +2097,21 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "8f7432b9f36345f15a06b0641e703993d971f856",
    "n": 17,
    "parent": "series/016-entity-facade",
    "resolutions": [
     {
+     "how": "stored",
+     "path": "src/Core/CollisionRegion.cpp"
+    },
+    {
      "how": "transplant",
      "path": "src/Core/Debug/OODebugSupport.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/DockEntity.cpp"
     },
     {
      "how": "auto",
@@ -2082,8 +2130,16 @@
      "path": "src/Core/Entities/OOWaypointEntity.h"
     },
     {
+     "how": "stored",
+     "path": "src/Core/Entities/PlayerEntity.cpp"
+    },
+    {
      "how": "auto",
      "path": "src/Core/Entities/PlayerEntity.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp"
     },
     {
      "how": "auto",
@@ -2100,6 +2156,14 @@
     {
      "how": "auto",
      "path": "src/Core/Entities/WormholeEntity.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/GuiDisplayGen.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/HeadUpDisplay.cpp"
     },
     {
      "how": "stored",
@@ -2146,10 +2210,6 @@
      "path": "src/Core/OOHPVector.h"
     },
     {
-     "how": "stored",
-     "path": "src/Core/OOJoystickManager.h"
-    },
-    {
      "how": "transplant",
      "path": "src/Core/OOMacroOpenGL.h"
     },
@@ -2158,8 +2218,16 @@
      "path": "src/Core/OOMaths.h"
     },
     {
+     "how": "stored",
+     "path": "src/Core/OOMesh.cpp"
+    },
+    {
      "how": "auto",
      "path": "src/Core/OOPlanetDrawable.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOPolygonSprite.cpp"
     },
     {
      "how": "transplant",
@@ -2216,6 +2284,10 @@
     {
      "how": "transplant",
      "path": "src/Core/Scripting/OOJSFlasher.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSFunction.cpp"
     },
     {
      "how": "upstream-deleted",
@@ -2291,6 +2363,10 @@
     },
     {
      "how": "stored",
+     "path": "src/Core/Universe.cpp"
+    },
+    {
+     "how": "stored",
      "path": "src/Core/meson.build"
     },
     {
@@ -2321,7 +2397,7 @@
     "to": "af1f220542e4917a23833902e8efc313a8eb463b",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "8c58887f7c77b9ed3a8fb38694f357ead7a0100e",
    "temporaries": [],
    "title": "Remove the Objective-C runtime and rename the sources to .cpp",
    "verification": null
@@ -2342,7 +2418,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "b02823a1c4df1bca3f2885555796e9dfd111c471",
    "n": 18,
    "parent": "series/017-objc-runtime-out",
    "resolutions": [],
@@ -2357,7 +2433,7 @@
     "to": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "3a8b30255f8dc01c010f104cc71b2edb496dd855",
    "temporaries": [],
    "title": "Build with GCC as well as Clang",
    "verification": null
@@ -2378,7 +2454,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "d8a4c5f41f93e825e04ef522dd53d7ffa3677b37",
    "n": 19,
    "parent": "series/018-gcc-build",
    "resolutions": [
@@ -2450,7 +2526,7 @@
     "to": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "d93d9c3a79a371e7450abcd5a1b06f37f84f8837",
    "temporaries": [],
    "title": "Port upstream changes #369 to #765 into the C++ code",
    "verification": null

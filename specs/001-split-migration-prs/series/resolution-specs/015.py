@@ -44,3 +44,17 @@ RES = {
 DELETE = []
 # the history deletes the OXZ manager's facade here; step 12's copy-URL forwarder goes with it
 DELETE = DELETE + ["src/Core/OOOXZManager+ObjCBridge.h", "src/Core/OOOXZManager+ObjCBridge.mm"]
+
+
+# step 3's std::vector fix re-applied where the history's PlayerEntity code keeps the arrays
+import re as _re15
+
+
+def vla(ours, theirs):
+    out, n = _re15.subn(r"(?m)^(\s*)((?:::)?\w+\*) (\w+)\[(\w+)\];$", r"\1std::vector<\2> \3(\4);", theirs)
+    assert n == 1, n
+    return out
+
+
+RES["src/Core/Entities/PlayerEntity.mm"] = [last_savename, vla, vla]
+RES["src/Core/Entities/ShipEntity.mm"] = ["theirs", "theirs", "theirs"]  # its includes cover std::vector

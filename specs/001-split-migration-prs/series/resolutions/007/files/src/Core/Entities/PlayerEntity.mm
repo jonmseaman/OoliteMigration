@@ -25,6 +25,8 @@ MA 02110-1301, USA.
 #include <assert.h>
 
 #import "PlayerEntity.h"
+
+#include <vector>
 #import "PlayerEntityContracts.h"
 #import "PlayerEntityControls.h"
 #import "PlayerEntityLegacyScriptEngine.h"
@@ -2909,7 +2911,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void* market);
 
     int i, ent_count = UNIVERSE->n_entities;
     Entity** uni_entities = UNIVERSE->sortedEntities; // grab the public sorted list
-    Entity* my_entities[ent_count];
+    std::vector<Entity*> my_entities(ent_count);
     Entity* scannedEntity = nil;
     for (i = 0; i < ent_count; i++) {
         my_entities[i] = [uni_entities[i] retain]; // retained
@@ -6239,7 +6241,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void* market);
         return;
     int ent_count = UNIVERSE->n_entities;
     Entity** uni_entities = UNIVERSE->sortedEntities; // grab the public sorted list
-    Entity* my_entities[ent_count];
+    std::vector<Entity*> my_entities(ent_count);
     int i;
     for (i = 0; i < ent_count; i++)
         my_entities[i] = [uni_entities[i] retain]; //	retained
@@ -7404,8 +7406,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void* market);
     NSMutableArray* list = [NSMutableArray array];
 
     NSUInteger i, j, commodityCount = [shipCommodityData count];
-    OOCargoQuantity quantityInHold[commodityCount];
-    OOCargoQuantity containersInHold[commodityCount];
+    std::vector<OOCargoQuantity> quantityInHold(commodityCount);
+    std::vector<OOCargoQuantity> containersInHold(commodityCount);
     NSArray* goods = [shipCommodityData goods];
 
     // following changed to work whether docked or not
@@ -7902,7 +7904,7 @@ static NSString* SliderString(NSInteger amountIn20ths)
             NSArray* brightnesses = oo::PListView([UNIVERSE descriptions]).get<NSArray*>(@"hdr_maxBrightness_array");
             int brightnessIdx = [brightnesses indexOfObject:[NSString stringWithFormat:@"%d", (int)[gameView hdrMaxBrightness]]];
 
-            if (brightnessIdx == NSNotFound) {
+            if (static_cast<NSInteger>(brightnessIdx) == NSNotFound) {
                 OOLogWARN(@"hdr.maxBrightness.notFound", @"%@", @"couldn't find current max brightness setting, switching to 400 nits.");
                 brightnessIdx = 0;
             }
@@ -9755,7 +9757,7 @@ static NSString* last_outfitting_key = nil;
     }
 
     NSUInteger commodityCount = [shipCommodityData count];
-    OOCargoQuantity quantityInHold[commodityCount];
+    std::vector<OOCargoQuantity> quantityInHold(commodityCount);
 
     for (NSUInteger i = 0; i < commodityCount; i++) {
         quantityInHold[i] = [shipCommodityData quantityForGood:oo::PListView(goods).at<NSString*>(i)];
@@ -9918,7 +9920,7 @@ static NSString* last_outfitting_key = nil;
     NSArray* goods = [self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
 
     NSUInteger i, j, commodityCount = [shipCommodityData count];
-    OOCargoQuantity quantityInHold[commodityCount];
+    std::vector<OOCargoQuantity> quantityInHold(commodityCount);
 
     for (i = 0; i < commodityCount; i++) {
         quantityInHold[i] = [shipCommodityData quantityForGood:oo::PListView(goods).at<NSString*>(i)];

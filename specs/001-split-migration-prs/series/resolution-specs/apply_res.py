@@ -29,6 +29,9 @@ tree, conf = trees.merge(S.GAME, b, o, t)
 HUNK = re.compile(r"^<<<<<<< [^\n]*\n(.*?)^=======\n(.*?)^>>>>>>> [^\n]*\n", re.S | re.M)
 for path, specs in RES.items():
     if path not in conf:
+        if all(sp == "theirs" for sp in specs):
+            print(f"{path}: no longer a conflict (spec was the history's side); skipped")
+            continue
         raise SystemExit(f"{path}: not a conflict in step {n}")
     k = conf[path]
     text = "".join(trees.merge_file_by_hunks(S.GAME, k["base"], k["ours"], k["theirs"], o, path)[0])

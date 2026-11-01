@@ -47,3 +47,17 @@ POST = {
 }
 # the history folded the +Input header into the view class
 DELETE = ["src/SDL/MyOpenGLView+Input.h"]
+
+
+# The history's Universe slices keep variable-length arrays (now ::Entity*); step 3's std::vector fix
+# is re-applied to its form, hunk by hunk.
+import re as _re14
+
+
+def vla(ours, theirs):
+    out, n = _re14.subn(r"(?m)^(\s*)((?:::)?\w+\*) (\w+)\[(\w+)\];$", r"\1std::vector<\2> \3(\4);", theirs)
+    assert n == 1, n
+    return out
+
+
+RES["src/Core/Universe.mm"] = ["theirs", "theirs", guard] + [vla] * 8
