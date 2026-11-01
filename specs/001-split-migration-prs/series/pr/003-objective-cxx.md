@@ -56,6 +56,19 @@ scope or an `extern "C"` block. The ones that deserve a real read:
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `68763d885b`, 2026-11-01.
+
+| Check | Result |
+|---|---|
+| build_clang | fail: exit 1 (see .agent-tmp\series-verify-logs\003-build_clang.log) |
+| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | fail: not run, the build failed |
+| tests_untouched | pass |
+| unit | n/a: the tree has no unit suites |
+| warnings_clang | n/a: the build failed |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

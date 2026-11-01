@@ -1,0 +1,233 @@
+{
+ "src/Core/CollisionRegion.mm": [
+  [
+   "#import \"CollisionRegion.h\"\n",
+   "#import \"CollisionRegion.h\"\n\n#include <vector>\n",
+   1
+  ],
+  [
+   "\n    Entity* entities_to_test[n_entities];\n",
+   "\n    std::vector<Entity*> entities_to_test(n_entities);\n",
+   1
+  ],
+  [
+   "\n    Entity* planets[ent_count];\n",
+   "\n    std::vector<Entity*> planets(ent_count);\n",
+   1
+  ],
+  [
+   "\n    Entity* ships[ent_count];\n",
+   "\n    std::vector<Entity*> ships(ent_count);\n",
+   1
+  ]
+ ],
+ "src/Core/Entities/DockEntity.mm": [
+  [
+   "#import \"DockEntity.h\"\n",
+   "#import \"DockEntity.h\"\n\n#include <vector>\n",
+   1
+  ],
+  [
+   "\n    Entity* my_entities[ent_count];\n",
+   "\n    std::vector<Entity*> my_entities(ent_count);\n",
+   2
+  ]
+ ],
+ "src/Core/Entities/PlayerEntity.mm": [
+  [
+   "#import \"PlayerEntity.h\"\n",
+   "#import \"PlayerEntity.h\"\n\n#include <vector>\n",
+   1
+  ],
+  [
+   "\n    Entity* my_entities[ent_count];\n",
+   "\n    std::vector<Entity*> my_entities(ent_count);\n",
+   2
+  ],
+  [
+   "\n    OOCargoQuantity quantityInHold[commodityCount];\n",
+   "\n    std::vector<OOCargoQuantity> quantityInHold(commodityCount);\n",
+   3
+  ],
+  [
+   "\n    OOCargoQuantity containersInHold[commodityCount];\n",
+   "\n    std::vector<OOCargoQuantity> containersInHold(commodityCount);\n",
+   1
+  ]
+ ],
+ "src/Core/Entities/PlayerEntityLegacyScriptEngine.mm": [
+  [
+   "#import \"PlayerEntityLegacyScriptEngine.h\"\n",
+   "#import \"PlayerEntityLegacyScriptEngine.h\"\n\n#include <vector>\n",
+   1
+  ],
+  [
+   "\n    Entity* my_entities[ent_count];\n",
+   "\n    std::vector<Entity*> my_entities(ent_count);\n",
+   1
+  ]
+ ],
+ "src/Core/Entities/ShipEntity.mm": [
+  [
+   "#import \"ShipEntity.h\"\n",
+   "#import \"ShipEntity.h\"\n\n#include <vector>\n",
+   1
+  ],
+  [
+   "\n    Entity* my_entities[ent_count];\n",
+   "\n    std::vector<Entity*> my_entities(ent_count);\n",
+   1
+  ],
+  [
+   "\n    ShipEntity* my_entities[ent_count];\n",
+   "\n    std::vector<ShipEntity*> my_entities(ent_count);\n",
+   1
+  ],
+  [
+   "\n    OOCargoQuantity quantityInHold[commodityCount];\n",
+   "\n    std::vector<OOCargoQuantity> quantityInHold(commodityCount);\n",
+   1
+  ]
+ ],
+ "src/Core/GuiDisplayGen.mm": [
+  [
+   "#import \"GuiDisplayGen.h\"\n",
+   "#import \"GuiDisplayGen.h\"\n\n#include <vector>\n",
+   1
+  ],
+  [
+   "\n    float row_alpha[n_rows];\n",
+   "\n    std::vector<float> row_alpha(n_rows);\n",
+   1
+  ]
+ ],
+ "src/Core/HeadUpDisplay.mm": [
+  [
+   "#import \"HeadUpDisplay.h\"\n",
+   "#import \"HeadUpDisplay.h\"\n\n#include <vector>\n",
+   1
+  ],
+  [
+   "\n    Entity* my_entities[ent_count];\n",
+   "\n    std::vector<Entity*> my_entities(ent_count);\n",
+   1
+  ]
+ ],
+ "src/Core/OOConvertCubeMapToLatLong.mm": [
+  [
+   "#import \"OOConvertCubeMapToLatLong.h\"\n",
+   "#import \"OOConvertCubeMapToLatLong.h\"\n\n#include <vector>\n",
+   1
+  ],
+  [
+   "\n    float sinTable[width];\n",
+   "\n    std::vector<float> sinTable(width);\n",
+   1
+  ],
+  [
+   "\n    float cosTable[width];\n",
+   "\n    std::vector<float> cosTable(width);\n",
+   1
+  ]
+ ],
+ "src/Core/OOMesh.mm": [
+  [
+   "#import \"OOMesh.h\"\n",
+   "#import \"OOMesh.h\"\n\n#include <vector>\n",
+   1
+  ],
+  [
+   "\n    float triangle_area[faceCount];\n",
+   "\n    std::vector<float> triangle_area(faceCount);\n",
+   2
+  ],
+  [
+   "\n    BOOL is_edge_vertex[vertexCount];\n",
+   "\n    std::vector<BOOL> is_edge_vertex(vertexCount);\n",
+   1
+  ],
+  [
+   "\n    GLfloat smoothGroup[vertexCount];\n",
+   "\n    std::vector<GLfloat> smoothGroup(vertexCount);\n",
+   1
+  ]
+ ],
+ "src/Core/OOPolygonSprite.mm": [
+  [
+   "#import \"OOPolygonSprite.h\"\n",
+   "#import \"OOPolygonSprite.h\"\n\n#include <vector>\n",
+   1
+  ],
+  [
+   "\n    NSArray* subArrays[polyCount];\n",
+   "\n    std::vector<NSArray*> subArraysBuffer(polyCount);\n    NSArray** subArrays = subArraysBuffer.data();\n",
+   1
+  ]
+ ],
+ "src/Core/OOStringExpander.mm": [
+  [
+   "#import \"OOStringExpander.h\"\n",
+   "#import \"OOStringExpander.h\"\n\n#include <vector>\n",
+   1
+  ],
+  [
+   "\n    unichar characters[size];\n",
+   "\n    std::vector<unichar> charactersBuffer(size);\n    unichar* characters = charactersBuffer.data();\n",
+   1
+  ]
+ ],
+ "src/Core/Scripting/OOJSFunction.mm": [
+  [
+   "#import \"OOJSFunction.h\"\n",
+   "#import \"OOJSFunction.h\"\n\n#include <vector>\n",
+   1
+  ],
+  [
+   "\n    jsval argv[argc];\n",
+   "\n    std::vector<jsval> argvBuffer(argc);\n    jsval* argv = argvBuffer.data();\n",
+   1
+  ]
+ ],
+ "src/Core/Universe.mm": [
+  [
+   "#import \"Universe.h\"\n",
+   "#import \"Universe.h\"\n\n#include <vector>\n",
+   1
+  ],
+  [
+   "\n    HPVector ship_positions[howMany];\n",
+   "\n    std::vector<HPVector> ship_positions(howMany);\n",
+   1
+  ],
+  [
+   "\n    OOCargoQuantity quantities[commodityCount];\n",
+   "\n    std::vector<OOCargoQuantity> quantities(commodityCount);\n",
+   1
+  ],
+  [
+   "\n            Entity* my_entities[ent_count];\n",
+   "\n            std::vector<Entity*> my_entities(ent_count);\n",
+   1
+  ],
+  [
+   "\n    Entity* my_entities[ent_count];\n",
+   "\n    std::vector<Entity*> my_entities(ent_count);\n",
+   4
+  ],
+  [
+   "\n    ShipEntity* my_entities[ent_count];\n",
+   "\n    std::vector<ShipEntity*> my_entities(ent_count);\n",
+   1
+  ],
+  [
+   "\n        Entity* my_entities[ent_count];\n",
+   "\n        std::vector<Entity*> my_entities(ent_count);\n",
+   1
+  ],
+  [
+   "\n    ShipEntity* my_ships[ent_count];\n",
+   "\n    std::vector<ShipEntity*> my_ships(ent_count);\n",
+   1
+  ]
+ ]
+}

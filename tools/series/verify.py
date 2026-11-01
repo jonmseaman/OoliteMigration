@@ -241,7 +241,8 @@ def run_build(step_era, worktree, compiler, clean, log):
     body = f"cd '{_msys_path(worktree)}' || exit 2\n"
     if clean:
         body += "rm -rf build/meson_test\n"
-    body += f"./mk.sh{native} build test"
+    # keep going past failed objects, so one run reports every error and warning of the step
+    body += f"./mk.sh{native} --compile-flags=--ninja-args=-k0 build test"
     rc = run_script(step_era, body, log)
     return rc, warning_count(_read(log))
 

@@ -65,7 +65,7 @@ at this step. You can review them now or when step 4 links the backend.
 
 ## Verified **(gen)**
 
-Windows x64, `a31085df40`, 2026-11-01.
+Windows x64, `011b6c95f9`, 2026-11-01.
 
 | Check | Result |
 |---|---|
@@ -78,6 +78,6 @@ Windows x64, `a31085df40`, 2026-11-01.
 | smoke | pass |
 | tests_untouched | pass |
 | unit | n/a: the tree has no unit suites |
-| warnings_clang | fail: 1 warnings |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

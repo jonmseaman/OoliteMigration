@@ -16,10 +16,11 @@ from tools.series import series as S, trees, history  # noqa: E402
 n = int(sys.argv[1])
 dry = "--dry" in sys.argv
 spec_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "res", f"{n:03d}.py")
-ns = {}
+ns = {"__file__": spec_file}
 with open(spec_file, encoding="utf-8") as f:
     exec(f.read(), ns)
 RES, DELETE = ns.get("RES", {}), ns.get("DELETE", [])
+FIX_LATE = {}
 
 m = S.load_manifest()
 st = S.step_by_n(m, n)
@@ -93,17 +94,69 @@ for path, fn in ns.get("FIX", {}).items():
     if not dry:
         trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path,
                                 new.encode("utf-8", "surrogateescape"), key_merged=True)
-# EDIT = {path: fn(text) -> text}: for a conflict path the automatic rules already resolve, edit that
-# automatic result (the step's current merge tree, recorded by `tree`) and store it as the resolution.
-for path, fn in ns.get("EDIT", {}).items():
+# EDIT = {path: fn(text) -> text}: for a conflict path the automatic rules resolve, edit that automatic
+# result and store it as the resolution. The automatic result is recomputed without this path's stored
+# resolution, so re-running is idempotent.
+# CHANGES = {path: [(old, new), ...]}: exact replacements, each matching once; routed to FIX for a clean
+# path and to EDIT for an automatically resolved conflict (a path in RES takes POST instead).
+import json as _json
+
+
+def _pairs(pairs):
+    def fn(text):
+        for pair in pairs:
+            old, new, want = (tuple(pair) + (1,))[:3]
+            if text.count(old) != want:
+                raise SystemExit(f"replacement found {text.count(old)} times, not {want}: {old[:70]!r}")
+            text = text.replace(old, new)
+        return text
+    return fn
+
+
+def _automatic(path):
+    idx_file = os.path.join(S.resolutions_dir(st), "index.json")
+    index = _json.load(open(idx_file, encoding="utf-8")) if os.path.exists(idx_file) else {}
+    saved = index.pop(path, None)
+    tmp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "apply-res-tmp", f"{n:03d}")
+    os.makedirs(tmp_dir, exist_ok=True)
+    import shutil
+    shutil.rmtree(tmp_dir)
+    shutil.copytree(S.resolutions_dir(st), tmp_dir) if os.path.isdir(S.resolutions_dir(st)) else os.makedirs(tmp_dir)
+    with open(os.path.join(tmp_dir, "index.json"), "w", encoding="utf-8") as f:
+        _json.dump(index, f)
+    auto_tree, unresolved = trees.target_tree(S.GAME, b, o, t, tmp_dir)
+    if path in (unresolved or []):
+        raise SystemExit(f"{path}: not resolved automatically; use RES")
+    if auto_tree is None:
+        # other paths still unresolved: take this path's automatic text from the per-file merge
+        k = conf[path]
+        lines = trees.merge_file_by_hunks(S.GAME, k["base"], k["ours"], k["theirs"], o, path)[0]
+        text = "".join(lines)
+        if re.search(r"^(<<<<<<<|>>>>>>>)", text, re.M):
+            raise SystemExit(f"{path}: automatic result unavailable while other conflicts are open")
+        return text
+    return trees._git(S.GAME, "cat-file", "-p", f"{auto_tree}:{path}").stdout.decode("utf-8", "surrogateescape")
+
+
+EDIT = dict(ns.get("EDIT", {}))
+for path, pairs in ns.get("CHANGES", {}).items():
+    if path in RES:
+        raise SystemExit(f"{path}: in RES; put its replacements in POST")
+    (EDIT if path in conf else FIX_LATE).__setitem__(path, _pairs(pairs))
+for path, fn in EDIT.items():
     if path not in conf:
         raise SystemExit(f"{path}: not a conflict in step {n}; use FIX")
-    if not st.get("merge_tree"):
-        raise SystemExit(f"step {n}: run `tree {n}` first so the automatic result is recorded")
-    data = trees._git(S.GAME, "cat-file", "-p", f"{st['merge_tree']}:{path}").stdout.decode("utf-8", "surrogateescape")
+    data = _automatic(path)
     new = fn(data)
     if new == data:
         raise SystemExit(f"{path}: the edit changed nothing")
     print(f"{path}: edited")
     if not dry:
         trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path, new.encode("utf-8", "surrogateescape"))
+for path, fn in FIX_LATE.items():
+    data = trees._git(S.GAME, "cat-file", "-p", f"{tree}:{path}").stdout.decode("utf-8", "surrogateescape")
+    new = fn(data)
+    print(f"{path}: fixed")
+    if not dry:
+        trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path,
+                                new.encode("utf-8", "surrogateescape"), key_merged=True)
