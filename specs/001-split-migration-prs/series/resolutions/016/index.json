@@ -1,0 +1,20 @@
+{
+ "src/Core/Debug/OODebugSupport.mm": {
+  "base": "781d2ddf4dbc997a7b62803455818136f389d0bc",
+  "deleted": false,
+  "ours": "5de6b92d311d2f01a6e782fa387436e16989dd4f",
+  "theirs": "206e1a8e8160577911a94b8b41401377d9d97f25"
+ },
+ "src/Core/OOOXZManager.mm": {
+  "base": "46027cff87c7f2c87cb55c5c87ad5235be086d00",
+  "deleted": false,
+  "ours": "625e52009a05a9143dbd238f6aca170324cd94d0",
+  "theirs": "d3837d611e2c7d1bbb75f1dbcafe526ced33a2ab"
+ },
+ "src/SDL/MyOpenGLView.mm": {
+  "base": "83c5a27d1aa3cfce90a824fc1b8975021dae6f94",
+  "deleted": false,
+  "ours": "0f44e171c2d39b2c198c1806125fdff46c2df58d",
+  "theirs": "9060b8d220fecc8cc51469c230bbb4b77671ab26"
+ }
+}

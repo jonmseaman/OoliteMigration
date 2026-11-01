@@ -1610,14 +1610,139 @@
    "mechanical_command": null,
    "n": 16,
    "parent": "series/015-facade-deletions",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "stored",
+     "path": "src/Core/Debug/OODebugSupport.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Debug/OODebuggerInterface.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/Entity.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/OOEntityWithDrawable.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/OOLightParticleEntity.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/OOParticleSystem.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/PlayerEntity.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/PlayerEntityControls.mm"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/Core/Entities/PlayerEntityLoadSave.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/GameController.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOBasicMaterial.mm"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/Core/Materials/OOConcreteTexture.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOMaterial.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOMaterial.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOMultiTextureMaterial.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOShaderMaterial.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOShaderProgram.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOSingleTextureMaterial.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOTexture.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOTexture.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OODrawable.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OODrawable.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOMesh.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOOXZManager.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOPlanetDrawable.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOSkyDrawable.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSEntity.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJSEntity.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJavaScriptEngine.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Universe.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/MyOpenGLView.mm"
+    }
+   ],
    "size": null,
    "source": {
     "from": "d012b77f217a361b096ab70d04aa848eb174b04f",
     "to": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "a1bcbf32e5c60fdea39204a2ad1b82e65b4cf273",
    "temporaries": [],
    "title": "Delete the root Entity facade",
    "verification": null

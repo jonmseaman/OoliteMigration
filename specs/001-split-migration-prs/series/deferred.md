@@ -14,3 +14,4 @@ tree equalling `develop` (FR-002).
 | 11 | `PlanetEntity` (#745 names, #756 guards, `#pragma once`) | the history deleted this compiled-out old-planet code | n/a: deleted |
 | 12 | #774 (Linux/X11 blank window): the splash window is replaced by a new game window sharing its GL context | the history's C++ `MyOpenGLView` keeps the old splash window | 023 (`f80c74210` ports #774) |
 | 12 | #766 macOS: screenshot from the front buffer / GL drawable | macOS is not converted | 023 |
+| 12–18 | Upstream's OXZ-manager copy-URL key (`n_key_oxzmanager_copyurl`, `-setOXPURL:`, `-processCopyUrlKey`) | `OOOXZManager` becomes C++ in step 12; upstream's Objective-C methods need a C++ port (`setOXPURL(const std::optional<std::string>&)`, `processCopyUrlKey()`, `std::optional<std::string> _currentOXPURL`, as in `develop`). **Port during verification (T023)**, fixing steps 12–18's resolutions | 12 (once ported) |
