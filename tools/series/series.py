@@ -231,7 +231,126 @@ def cmd_tree(args):
     return 0
 
 
-HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut, "tree": cmd_tree}
+HAND_SECTIONS = ("What this changes", "Why", "Behaviour changes", "How to review")
+TODO = "_To write._"
+NOT_VERIFIED_PLATFORMS = "macOS (Phase 5: not converted) and Linux are not verified by this series."
+
+
+def parse_sections(text):
+    """{heading: body} for '## ' sections of a description."""
+    out, cur, buf = {}, None, []
+    for line in text.splitlines():
+        if line.startswith("## "):
+            if cur:
+                out[cur] = "\n".join(buf).strip()
+            cur, buf = line[3:].replace(" **(gen)**", "").strip(), []
+        elif cur:
+            buf.append(line)
+    if cur:
+        out[cur] = "\n".join(buf).strip()
+    return out
+
+
+def step_size(step, parent_tree):
+    """{src, tests, other, deleted_files} changed lines between parent_tree and the step's target tree."""
+    from tools.series import history
+    if not step.get("target_tree") or not parent_tree:
+        return None
+    num = history.git(GAME, "diff", "--numstat", "-M", parent_tree, step["target_tree"])
+    status = history.git(GAME, "diff", "--name-status", "-M", parent_tree, step["target_tree"])
+    deleted = {l.split("\t")[-1] for l in status.splitlines() if l.startswith("D")}
+    size = {"src": 0, "tests": 0, "other": 0, "deleted_files": 0}
+    for line in num.splitlines():
+        a, d, path = line.split("\t", 2)
+        if a == "-":
+            continue
+        path = path.split(" => ")[-1].strip("{}")
+        if path in deleted:
+            size["deleted_files"] += int(d)
+            continue
+        key = "tests" if path.startswith("tests/") else "src" if path.startswith("src/") else "other"
+        size[key] += int(a) + int(d)
+    return size
+
+
+def fmt_k(n):
+    return f"{n / 1000:.1f}k" if n >= 1000 else str(n)
+
+
+def parent_tree_of(m, step):
+    from tools.series import history
+    if step["n"] == 1:
+        return history.git(GAME, "rev-parse", f"{m['anchors']['upstream_base']}^{{tree}}")
+    return step_by_n(m, step["n"] - 1).get("target_tree")
+
+
+def render_description(m, step, kept):
+    steps = m["steps"]
+    nxt = step_by_n(m, step["n"] + 1)["branch"] if step["n"] < len(steps) else "—"
+    lines = [f"# {step['title']}", "",
+             f"**Series:** step {step['n']} of {len(steps)} · base `{step['parent']}` · next `{nxt}` **(gen)**", ""]
+    ch = step.get("chapter")
+    size = step.get("size")
+    size_txt = (f"{fmt_k(size['src'])} src, {fmt_k(size['tests'])} tests, {fmt_k(size['other'])} other changed lines; "
+                f"{fmt_k(size['deleted_files'])} lines in deleted files") if size else "not built yet"
+    if ch:
+        lines += [f"**Chapter:** {ch['phase']} · {', '.join(ch['work_items'])} · history "
+                  f"`{ch['first'][:10]}`..`{ch['last'][:10]}` ({ch['merges']} merges) · {size_txt} **(gen)**", ""]
+    else:
+        src = step["source"]
+        lines += [f"**From:** `develop` commits {', '.join(f'`{c[:9]}`' for c in src.get('commits', []))} · "
+                  f"{size_txt} **(gen)**", ""]
+    for h in HAND_SECTIONS:
+        lines += [f"## {h}", "", kept.get(h) or TODO, ""]
+    lines += ["## Verified **(gen)**", ""]
+    v = step.get("verification")
+    if v:
+        lines += [f"Windows x64, `{v.get('commit', '')[:10]}`, {v.get('date', '')}.", "",
+                  "| Check | Result |", "|---|---|"]
+        for k, r in sorted(v.get("checks", {}).items()):
+            lines.append(f"| {k} | {r} |")
+        lines.append("")
+    else:
+        lines += ["Not verified yet.", ""]
+    lines += [NOT_VERIFIED_PLATFORMS, ""]
+    temps = [t for t in m.get("ledger", []) if step["n"] in (t.get("added_in"), t.get("removed_in"))]
+    if temps:
+        lines += ["## Temporary code **(gen)**", ""]
+        for t in temps:
+            if t.get("added_in") == step["n"]:
+                lines.append(f"- Adds {t['description']}; removed in step {t.get('removed_in')}.")
+            else:
+                lines.append(f"- Removes {t['description']}, added in step {t.get('added_in')}.")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def cmd_describe(args):
+    from tools.series import manifest
+    m = load_manifest()
+    if args.handover:
+        return cmd_handover(m)
+    targets = [step_by_n(m, args.n)] if args.n else m["steps"]
+    for step in targets:
+        step["size"] = step_size(step, parent_tree_of(m, step)) or step.get("size")
+        path = os.path.join(SERIES_DIR, "pr", os.path.basename(step["description"]))
+        kept = {}
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                kept = {k: v for k, v in parse_sections(f.read()).items() if k in HAND_SECTIONS and v != TODO}
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(render_description(m, step, kept))
+        print(os.path.relpath(path, ROOT))
+    manifest.save(MANIFEST, m)
+    return 0
+
+
+def cmd_handover(m):
+    raise SystemExit("describe --handover: not implemented yet (T031)")
+
+
+HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut, "tree": cmd_tree, "describe": cmd_describe}
 
 
 def main(argv=None):

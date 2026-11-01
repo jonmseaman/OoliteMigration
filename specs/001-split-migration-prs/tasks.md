@@ -175,7 +175,7 @@ the contract's sections.
   `target_tree` in the manifest. Run it for steps 1–19. Accept: `python -I tools/series/series.py
   build --from 1 --to 19 && git -C oolite-dev town branch | grep -c 'series/0' | grep -qx 20`
   (000 plus 19).
-- [ ] T017 [P] [US1] Implement `describe <n>`: create or refresh
+- [X] T017 [P] [US1] Implement `describe <n>`: create or refresh
   `specs/001-split-migration-prs/series/pr/NNN-slug.md` per contracts/pr-description.md. Rewrite
   the **(gen)** sections (position, size by src/tests/other/deleted from normalised trees,
   verification table, temporary code) and keep the hand-written ones. Accept: `python -I
