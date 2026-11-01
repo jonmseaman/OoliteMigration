@@ -318,6 +318,111 @@ def cmd_build(args):
     return 0
 
 
+CHECK_GROUPS = ("manifest", "branches", "lineage", "trees", "descriptions", "final-tree", "ledger", "verified")
+
+
+def parse_range(text, total):
+    if not text:
+        return set(range(1, total + 1))
+    a, _, b = text.partition("-")
+    return set(range(int(a), int(b or a) + 1))
+
+
+def check_descriptions(m, step):
+    """Rule 8 and rule 9 (descriptions): required sections, written, no bookkeeping ids."""
+    from tools.series import manifest
+    out = []
+    path = os.path.join(SERIES_DIR, "pr", os.path.basename(step["description"]))
+    if not os.path.exists(path):
+        return [f"rule 8: step {step['n']} has no description {os.path.relpath(path, ROOT)}"]
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    if not text.startswith(f"# {step['title']}\n"):
+        out.append(f"rule 8: step {step['n']} description does not start with its title")
+    sections = parse_sections(text)
+    for h in HAND_SECTIONS + ("Verified",):
+        if h not in sections:
+            out.append(f"rule 8: step {step['n']} description lacks '## {h}'")
+        elif h in HAND_SECTIONS and (not sections[h] or sections[h] == TODO):
+            out.append(f"rule 8: step {step['n']} section '{h}' is not written")
+    hit = manifest.BOOKKEEPING_RE.search(text)
+    if hit:
+        out.append(f"rule 9: step {step['n']} description carries {hit.group(0)!r}")
+    return out
+
+
+def check_final_tree(m, step):
+    """Rule 7: the last step's tree equals develop_target outside the exclusions."""
+    import fnmatch
+    from tools.series import history
+    target = history.git(GAME, "rev-parse", f"{m['anchors']['develop_target']}^{{tree}}")
+    tip = history.git(GAME, "rev-parse", f"refs/heads/{step['branch']}^{{tree}}")
+    globs = [e["path_glob"] for e in m.get("exclusions", []) if e.get("path_glob")]
+    diff = [p for p in history.git(GAME, "diff", "--name-only", "--no-renames", tip, target).splitlines()
+            if not any(fnmatch.fnmatch(p, g) for g in globs)]
+    return [f"rule 7: last step differs from develop_target at {p}" for p in diff[:20]] + (
+        [f"rule 7: ... and {len(diff) - 20} more paths"] if len(diff) > 20 else [])
+
+
+def cmd_check(args):
+    from tools.series import manifest, stack
+    m = load_manifest()
+    groups = set(args.only.split(",")) if args.only else set(CHECK_GROUPS) - {"verified"}
+    if args.verified:
+        groups.add("verified")
+    unknown = groups - set(CHECK_GROUPS)
+    if unknown:
+        print(f"check: unknown group(s) {', '.join(sorted(unknown))}; groups are {', '.join(CHECK_GROUPS)}", file=sys.stderr)
+        return 2
+    steps = m.get("steps", [])
+    wanted = parse_range(args.steps, len(steps))
+    problems = []
+    if groups & {"manifest", "ledger"}:
+        inv = {r["commit"]: int(r["idx"]) for r in read_inventory()}
+        for p in manifest.validate(m, order=inv):
+            is_ledger = p.startswith("rule 6:")
+            if ("ledger" in groups and is_ledger) or ("manifest" in groups and not is_ledger):
+                problems.append(p)
+    for step in steps:
+        if step["n"] not in wanted:
+            continue
+        n, branch = step["n"], step["branch"]
+        built = stack.exists(GAME, branch)
+        if groups & {"branches", "lineage", "trees", "final-tree"} and not built:
+            problems.append(f"rule 2: step {n} branch {branch} does not exist")
+        if built and "branches" in groups:
+            parents = stack.git(GAME, "rev-list", "--parents", "-n", "1", branch).split()[1:]
+            parent_tip = stack.git(GAME, "rev-parse", f"refs/heads/{step['parent']}") if stack.exists(GAME, step["parent"]) else None
+            if parents != [parent_tip]:
+                problems.append(f"rule 2: step {n} commit is not a single commit on {step['parent']}'s tip")
+            msg = stack.git(GAME, "log", "-1", "--format=%B", branch)
+            hit = manifest.BOOKKEEPING_RE.search(msg)
+            if hit:
+                problems.append(f"rule 9: step {n} commit message carries {hit.group(0)!r}")
+        if built and "lineage" in groups and stack.lineage(GAME, branch) != step["parent"]:
+            problems.append(f"rule 2: step {n} Git Town parent is {stack.lineage(GAME, branch)!r}, expected {step['parent']!r}")
+        if built and "trees" in groups:
+            tree = stack.git(GAME, "rev-parse", f"{branch}^{{tree}}")
+            if not step.get("target_tree"):
+                problems.append(f"rule 3: step {n} has no target_tree")
+            elif tree != step["target_tree"]:
+                problems.append(f"rule 3: step {n} tree {tree[:10]} is not its target_tree {step['target_tree'][:10]}")
+        if "descriptions" in groups:
+            problems += check_descriptions(m, step)
+        if built and "final-tree" in groups and n == len(steps):
+            problems += check_final_tree(m, step)
+        if "verified" in groups:
+            v = step.get("verification") or {}
+            bad = [k for k, r in (v.get("checks") or {}).items() if not str(r).startswith(("pass", "n/a"))]
+            if not v or bad:
+                problems.append(f"rule 10: step {n} is not verified" + (f" ({', '.join(bad)})" if bad else ""))
+    for p in problems:
+        print(p)
+    print(f"check: {len(problems)} problem(s) in {', '.join(sorted(groups))} for steps "
+          f"{args.steps or f'1-{len(steps)}'}", file=sys.stderr)
+    return 1 if problems else 0
+
+
 HAND_SECTIONS = ("What this changes", "Why", "Behaviour changes", "How to review")
 TODO = "_To write._"
 NOT_VERIFIED_PLATFORMS = "macOS (Phase 5: not converted) and Linux are not verified by this series."
@@ -437,7 +542,7 @@ def cmd_handover(m):
     raise SystemExit("describe --handover: not implemented yet (T031)")
 
 
-HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut, "tree": cmd_tree, "build": cmd_build, "describe": cmd_describe}
+HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "describe": cmd_describe}
 
 
 def main(argv=None):
