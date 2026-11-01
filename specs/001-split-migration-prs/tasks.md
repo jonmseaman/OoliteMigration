@@ -222,7 +222,7 @@ verification worktree (R9).
   clang-format check passes with version 22 on steps 1–24; (d) no added `jsapi.h`, `mozjs`,
   `js32ECMAv5` or `gnustep-base` reference that the parent lacks. Accept: `python -m unittest
   tools.series.tests.test_verify` exits 0, with a test per check.
-- [ ] T022 [US2] Implement `verify <n> | --from n [--clean]`: write the verification record into the
+- [X] T022 [US2] Implement `verify <n> | --from n [--clean]`: write the verification record into the
   manifest (date, branch tip, each check `pass`/`fail`/`n/a` with reason), and refresh the
   description's Verified section. Accept: `python -I tools/series/series.py verify 1 --clean` exits 0.
 - [ ] T023 [US2] Verify steps 1–19 in order: `verify --from 1`, with clean builds at each era's first
