@@ -52,3 +52,8 @@ def _enum_cast(ours, theirs):
 
 
 RES["src/Core/Entities/ShipEntity.mm"] = ["theirs", _enum_cast, _enum_cast, "theirs", "theirs", "theirs"]
+
+
+# the containers selector gets a named second part (see selector_containers.py)
+exec(open(__file__.replace("013.py", "selector_containers.py"), encoding="utf-8").read())
+RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES

@@ -155,3 +155,25 @@ for path, src in ns.get("ADD", {}).items():
     print(f"{path}: added")
     if not dry:
         trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path, data)
+# RENAMES = [(regex, replacement), ...]: applied to every file of the step's result that matches (a
+# name the history keeps changing form across steps). Routed like CHANGES: POST for a path in RES,
+# EDIT for an automatically resolved conflict, FIX for a clean path. Run after the sections above.
+for _rx, _rep in ns.get("RENAMES", []):
+    _pat = re.compile(_rx)
+    _files = trees._git(S.GAME, "grep", "-l", "-P", "-e", _rx, tree, "--", "src", ok=(0, 1)).stdout.decode().split()
+    for _f in _files:
+        path = _f.split(":", 1)[1]
+        if path in RES:
+            print(f"{path}: in RES; its POST carries the rename (the build reports a miss)")
+            continue
+        if path in conf:
+            data = _automatic(path)
+        else:
+            data = trees._git(S.GAME, "cat-file", "-p", f"{tree}:{path}").stdout.decode("utf-8", "surrogateescape")
+        new, count = _pat.subn(_rep, data)
+        if count == 0:
+            continue
+        print(f"{path}: renamed ({count})")
+        if not dry:
+            trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path, new.encode("utf-8", "surrogateescape"),
+                                    key_merged=path not in conf)

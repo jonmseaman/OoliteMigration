@@ -61,3 +61,8 @@ def vla(ours, theirs):
 
 
 RES["src/Core/Universe.mm"] = ["theirs", "theirs", guard] + [vla] * 8
+
+
+# the containers selector gets a named second part (see selector_containers.py)
+exec(open(__file__.replace("014.py", "selector_containers.py"), encoding="utf-8").read())
+RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES

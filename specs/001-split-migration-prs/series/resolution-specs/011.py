@@ -26,3 +26,8 @@ WHOLE = {"src/Core/GameController.mm": lambda text: text.replace(
     "#if (OOLITE_GNUSTEP && !defined(NDEBUG))", "#if (OOLITE_SDL && defined(OO_DEBUG_MONITOR_ENABLED))")}
 # upstream's include block sits lower in this file; the history adds SDL_timer.h among the includes
 RES["src/SDL/MyOpenGLView.mm"] = [lambda ours, theirs: ours + "#include <SDL3/SDL_timer.h>\n"]
+
+
+# the containers selector gets a named second part (see selector_containers.py)
+exec(open(__file__.replace("011.py", "selector_containers.py"), encoding="utf-8").read())
+RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES

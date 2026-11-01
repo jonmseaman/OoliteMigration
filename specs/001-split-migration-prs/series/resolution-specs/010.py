@@ -29,3 +29,8 @@ POST = {"src/Core/OOMaths.h": [(
 # the same include order for the new oofnd peer header as for OOObjCRef.h (step 6)
 CHANGES["src/oofnd/objc/OOObjCPeer.h"] = [("#include <objc/objc-arc.h>\n#include <objc/runtime.h>\n",
                                            "#include <objc/runtime.h>\n\n#include <objc/objc-arc.h>\n")]
+
+
+# the containers selector gets a named second part (see selector_containers.py)
+exec(open(__file__.replace("010.py", "selector_containers.py"), encoding="utf-8").read())
+RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES

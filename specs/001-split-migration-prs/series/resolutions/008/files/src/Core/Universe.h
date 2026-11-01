@@ -528,7 +528,7 @@ enum {
 - (ShipEntity*)reifyCargoPod:(ShipEntity*)cargoObj;
 - (ShipEntity*)cargoPodFromTemplate:(ShipEntity*)cargoObj;
 - (std::vector<oo::ObjCRef<ShipEntity*>>)cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal;
-- (std::vector<oo::ObjCRef<ShipEntity*>>)cxx_getContainersOfCommodity:(const std::string&)commodity_name:(OOCargoQuantity)how_many;
+- (std::vector<oo::ObjCRef<ShipEntity*>>)cxx_getContainersOfCommodity:(const std::string&)commodity_name how_much:(OOCargoQuantity)how_many;
 - (void)fillCargopodWithRandomCargo:(ShipEntity*)cargopod;
 
 - (id)getRandomCommodity; // shared selector (proposed ADR-0043): an Objective-C string (a commodity key)

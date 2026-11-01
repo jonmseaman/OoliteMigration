@@ -126,3 +126,8 @@ FIX = {
 # upstream (#766) guards the full-screen setters with OOLITE_SDL instead of GNUSTEP_BASE_LIBRARY
 POST["src/SDL/MyOpenGLView.mm"] = [("#ifdef GNUSTEP_BASE_LIBRARY\nvoid cxx::MyOpenGLView::setFullScreenMode(bool fsm)\n",
                                     "#if OOLITE_SDL\nvoid cxx::MyOpenGLView::setFullScreenMode(bool fsm)\n")]
+
+
+# the containers selector gets a named second part (see selector_containers.py)
+exec(open(__file__.replace("012.py", "selector_containers.py"), encoding="utf-8").read())
+RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES

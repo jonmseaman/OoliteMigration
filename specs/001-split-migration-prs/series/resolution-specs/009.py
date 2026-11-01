@@ -19,3 +19,8 @@ RES = {
 }
 # the history retired this header; upstream's change to it is #pragma once and its include (mechanical)
 DELETE = ["src/Core/NSFileManagerOOExtensions.h"]
+
+
+# the containers selector gets a named second part (see selector_containers.py)
+exec(open(__file__.replace("009.py", "selector_containers.py"), encoding="utf-8").read())
+RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES

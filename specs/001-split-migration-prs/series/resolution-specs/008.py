@@ -83,3 +83,17 @@ RES["src/meson.build"] = [_threads_008]
 # main.mm: the history drops the runtime and NSDate imports from the head (the game headers come first
 # now); upstream's guard (#766) stays
 RES["src/SDL/main.mm"] = ["#if defined(GNUSTEP_BASE_LIBRARY) || defined(OOLITE_SDL_MAC)\n"]
+# the history adds its -O2 wrap patch here; step 4's void-return patch joins it on one diff_files line
+# (meson reads one value per key), in develop's order
+try:
+    CHANGES
+except NameError:
+    CHANGES = {}
+CHANGES["subprojects/quickjs-ng.wrap"] = [("diff_files = quickjs-ng-void-return.patch\ndiff_files = quickjs-ng-o2.patch\n",
+                                           "diff_files = quickjs-ng-o2.patch, quickjs-ng-void-return.patch\n")]
+exec(open(__file__.replace("008.py", "008_late.py"), encoding="utf-8").read())
+
+
+# the containers selector gets a named second part (see selector_containers.py)
+exec(open(__file__.replace("008.py", "selector_containers.py"), encoding="utf-8").read())
+RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES

@@ -61,3 +61,8 @@ RES["src/Core/Entities/ShipEntity.mm"] = ["theirs", "theirs", "theirs"]  # its i
 # the history deletes the vector bridge include here; its closing include-guard #endif goes too, since
 # upstream's #748 header uses #pragma once
 RES["src/Core/OOVector.h"] = [""]
+
+
+# the containers selector gets a named second part (see selector_containers.py)
+exec(open(__file__.replace("015.py", "selector_containers.py"), encoding="utf-8").read())
+RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES

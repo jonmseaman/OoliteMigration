@@ -210,3 +210,9 @@ game repo only gets local branches.
     C++ test sources to align with, and its include sorting broke an order-dependent test
     (`tests/unit/oofnd/test_objc_ref.mm`). Every step's `tests/` is now the history's byte for byte,
     apart from upstream's own two scripts, merged cleanly.
+  - From step 8 the history's own code carries warnings (the history built its middle steps with them):
+    hidden instance variables, an unnamed selector part, a definition whose parameter type disagrees
+    with its declaration (a real mismatch). FR-003 is kept as written: they are fixed, in the
+    history's later form where there is one (its step-9 local names; the declared parameter type), or
+    minimally (a new local name). The unnamed part of -cxx_getContainersOfCommodity:: becomes
+    how_much:, upstream's own label, for steps 8-15 (clang-format will not let a space fix a header).

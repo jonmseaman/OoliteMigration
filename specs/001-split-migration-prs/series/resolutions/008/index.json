@@ -41,11 +41,27 @@
   "ours": "90976a50811ad5fe705cc5e0b264b06e3e5ea1b5",
   "theirs": "aa6d708b01b7a496567d22ec9baacb05cd6eb23d"
  },
+ "src/Core/Entities/PlayerEntityLegacyScriptEngine.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "2bcc80e986476042f9c4931112ad3e686ad4ad94"
+ },
+ "src/Core/Entities/PlayerEntityLoadSave.mm": {
+  "base": "2920bdb75095d7482e3ad8771beced6abdc66661",
+  "deleted": false,
+  "ours": "d03f33a776715c3d8f5c7355a4a0bc581727142f",
+  "theirs": "09108f10c3824d72326b6b95494951557c7cf595"
+ },
  "src/Core/Entities/ShipEntity.mm": {
   "base": "42ce75d0233352b55a47c43a62e4b4b6dd1e5586",
   "deleted": false,
   "ours": "18b38bbde256417a5eee414c5dabebeb66d83bde",
   "theirs": "c7ba67d20a4d907b2f0446f4d95ce0a2d47c6ac1"
+ },
+ "src/Core/Entities/ShipEntityAI.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "943b70cb614b09f125ad6b663c8c140c3eb2a873"
  },
  "src/Core/OOOXZManager.mm": {
   "base": "edb8b68938a7fd62cd205098a020f5606d7e28cb",
@@ -65,11 +81,27 @@
   "ours": "60cbb2dabd0aa33a8b7205f1810356a88b9d0ab9",
   "theirs": "7400036fe619544af173a43286a0a71f16b228e9"
  },
+ "src/Core/Universe+FoundationBridge.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "40886a62f6821b2f317ddd35e69f09c6f4b71b36"
+ },
+ "src/Core/Universe+FoundationBridge.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "0276391f7b44606207268f58328e49959aa20a78"
+ },
  "src/Core/Universe.h": {
   "base": "1e934592addb8304f177c288a6e7a3c5fa531805",
   "deleted": false,
   "ours": "77a048daec56edd0109e7434df861fcbc13c8d4c",
   "theirs": "50b7316a8d83beb6f6a03527605556b964866e8e"
+ },
+ "src/Core/Universe.mm": {
+  "base": "44d7ad02b4b60469f1a9f21e7c4c5b556198f569",
+  "deleted": false,
+  "ours": "b9ce05fb93914da30a894d0e42f6edd62df905d8",
+  "theirs": "fc8e64bf21c85996f36887673040fba327e1aa0d"
  },
  "src/SDL/MyOpenGLView.mm": {
   "base": "095853989f18790f95b7809ddff9854e8dc9385c",
@@ -88,5 +120,11 @@
   "deleted": false,
   "ours": "6e15e0e22c4ab4ec130b4e6b889183b2a2bce127",
   "theirs": "9ff89e71d5f2f9bf6642de6f9f11a3a9058ac351"
+ },
+ "subprojects/quickjs-ng.wrap": {
+  "base": "2f4e0b80ec6c8381e82157c3fac2d3e747654df5",
+  "deleted": false,
+  "ours": "79afa62641c1992ca603ab9943c242ccbe50bc8a",
+  "theirs": "2f968417c235123b860000f3f3d9fa43dc4eacb2"
  }
 }

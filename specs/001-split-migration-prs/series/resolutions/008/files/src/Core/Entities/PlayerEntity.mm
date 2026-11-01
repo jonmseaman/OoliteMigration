@@ -2010,10 +2010,9 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
     // Most of this is probably also set more than once
 
     [self setCommanderName:PLAYER_DEFAULT_NAME];
-    NSString* savedName = [[NSUserDefaults standardUserDefaults] stringForKey:@"last_savename"];
-    if (savedName != nil) {
-        [_lastsaveName autorelease];
-        _lastsaveName = [savedName copy];
+    const oo::PList savedName = oo::Defaults::standard().object("last_savename");
+    if (const std::string* savedLastsaveName = savedName.getIf<std::string>()) {
+        _lastsaveName = *savedLastsaveName;
     }
 
     galaxy_coordinates = NSMakePoint(0x14, 0xAD); // 20,173
@@ -11590,7 +11589,7 @@ std::optional<std::string> last_outfitting_key; // nullopt = none (was nil)
 {
     NSParameterAssert(value.has_value());
     _lastsaveName = value;
-    [[NSUserDefaults standardUserDefaults] setObject:_lastsaveName forKey:@"last_savename"];
+    oo::Defaults::standard().setObject("last_savename", _lastsaveName.has_value() ? oo::PList(*_lastsaveName) : oo::PList());
 }
 
 - (BOOL)isDocked

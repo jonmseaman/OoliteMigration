@@ -1592,7 +1592,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
         GuiDisplayGen* gui = [UNIVERSE gui];
 
         if (_interfaceShowingOXZDetail) {
-            [[UNIVERSE gameView] stringToClipboard:_currentOXPURL];
+            if (_currentOXPURL != nil)
+                [[UNIVERSE gameView] cxx_stringToClipboard:oo::StdString(_currentOXPURL)];
         } else {
             OOGUIRow selection = [gui selectedRow];
 
@@ -1602,11 +1603,12 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
             }
             _item = _offset + selection - OXZ_GUI_ROW_LISTSTART;
 
-            NSDictionary* manifest = [_filteredList oo_dictionaryAtIndex:_item];
+            const oo::PList manifest = ElementAt(_filteredList, _item);
             // infoURL
-            NSString* infoURLString = [manifest oo_stringForKey:kOOManifestInformationURL];
+            const std::optional<std::string> infoURL = ManifestString(manifest, oo::StdString(kOOManifestInformationURL));
             // copy url info text to clipboard automatically once we are in the oxz info page
-            [[UNIVERSE gameView] stringToClipboard:infoURLString];
+            if (infoURL.has_value())
+                [[UNIVERSE gameView] cxx_stringToClipboard:*infoURL];
         }
     }
 }

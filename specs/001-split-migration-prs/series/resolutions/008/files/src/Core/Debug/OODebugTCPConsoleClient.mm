@@ -214,7 +214,7 @@ std::optional<std::string> PacketString(const oo::PList& packet, id key)
 - (BOOL)isWaitingForInput;
 - (BOOL)hasPendingErrorEvent;
 - (uintptr_t)socket;
-- (void)addToWaitSets:(fd_set*)readSet:(fd_set*)writeSet
+- (void)addToWaitSets:(fd_set*)readSet :(fd_set*)writeSet
                      :(fd_set*)exceptSet;
 - (void)handleWaitResultRead:(BOOL)readable write:(BOOL)writable except:(BOOL)exceptional;
 - (void)handleErrorEvent;
@@ -548,7 +548,7 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
     return _socket;
 }
 
-- (void)addToWaitSets:(fd_set*)readSet:(fd_set*)writeSet
+- (void)addToWaitSets:(fd_set*)readSet :(fd_set*)writeSet
                      :(fd_set*)exceptSet
 {
     if (_socket == kNoSocket)
@@ -773,7 +773,6 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
         OOALRelease(data);
         length = [self receive:buffer maxLength:kBufferSize];
     }
-#endif
 }
 
 - (void)dispatchPacket:(const oo::PList&)packet ofType:(const std::string&)packetType
@@ -1048,50 +1047,6 @@ static void LogSendPacket(const oo::PList& packet)
     const oo::Expected<oo::Data, oo::PListError> data = oo::writeXMLPList(packet);
     const std::string xml = data ? std::string(data->stringView()) : std::string();
     OO_LOG("debugTCP.send", "Sent packet:\n{}", xml);
-}
-#endif
-
-#if OOLITE_MAC_OS_X
-/*	Returns a connected TCP socket, or -1. The connection attempt is
-        non-blocking so an unreachable host fails after timeoutSeconds.
-*/
-static int OOConnectTCPSocket(NSString* address, uint16_t port, int timeoutSeconds)
-{
-    struct addrinfo hints = { 0 };
-    struct addrinfo* addresses = NULL;
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-    char portString[8];
-    snprintf(portString, sizeof portString, "%u", port);
-    if (getaddrinfo([address UTF8String], portString, &hints, &addresses) != 0)
-        return -1;
-
-    int result = -1;
-    for (struct addrinfo* candidate = addresses; candidate != NULL && result < 0; candidate = candidate->ai_next) {
-        int fd = socket(candidate->ai_family, candidate->ai_socktype, candidate->ai_protocol);
-        if (fd < 0)
-            continue;
-        int flags = fcntl(fd, F_GETFL, 0);
-        fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-        BOOL connected = connect(fd, candidate->ai_addr, candidate->ai_addrlen) == 0;
-        if (!connected && errno == EINPROGRESS) {
-            fd_set writeSet;
-            FD_ZERO(&writeSet);
-            FD_SET(fd, &writeSet);
-            struct timeval timeout = { timeoutSeconds, 0 };
-            int socketError = 0;
-            socklen_t length = sizeof socketError;
-            connected = select(fd + 1, NULL, &writeSet, NULL, &timeout) == 1 && getsockopt(fd, SOL_SOCKET, SO_ERROR, &socketError, &length) == 0 && socketError == 0;
-        }
-        if (connected) {
-            fcntl(fd, F_SETFL, flags);
-            result = fd;
-        } else {
-            close(fd);
-        }
-    }
-    freeaddrinfo(addresses);
-    return result;
 }
 #endif
 
