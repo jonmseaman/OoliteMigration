@@ -1,3 +1,8 @@
+# Oolite C++
+
+Since early September, I've been working on a C++ conversion of this project.
+
+## Project
 
 ## Tasks and Progress
 
@@ -16,16 +21,25 @@
 - Build entirely with clang in C++ mode.
 - Remove `libobjc2` and rename `.mm` files to `.cpp`.
 - GNUStep is gone from compilation.
+
+
 **TODO** Phase 5 - Prepare for merge.
 - **DONE** Basic playtest. I did a playtest by starting a new game. I was able to fly the ship, buy/sell cargo, fly around, jump systems without issues (after a couple bugfixes). I also completed the tutorial. No bugs detected here.
 - **DONE** Support Apple Silicon - From the Git repo, it seems like this was broken, but recently fixed. I need to investigate making this work with my changes. I confirmed that the latest upstream builds and runs on my mac.
+- **TODO** Integrate needed PRs such as:
+  - https://github.com/OoliteProject/oolite/pull/771 - SDL GPU change.
+  - https://github.com/OoliteProject/oolite/pull/772 - JavaScript tests change.
 - **TODO** More thorough playtest - Test more features like buying ships, load/save, dying, killing pirates, etc.
 - **TODO** More thorough testing - Add tests from this upstream PR and convert current tests into js instead of python. <where?>
 - **TODO** More thorough code review. Read through many files to compare to the objective c source code. I need to compare against the current upstream code to spot discrepancies in recent commits.
 
+
+
 ## Questions
 
 **TODO** Keep QuickJS as is, or add backwards compatible spidermonkey with a flag as in <where?>. QuickJS has some differences with spidermonkey, and so some expansions would not continue to work without changes.
+
+
 ## Out of scope
 
 -  Data formats - Support something like JSON5 alongside plist/tbl files.

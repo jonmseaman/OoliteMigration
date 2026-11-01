@@ -49,3 +49,9 @@ Something like this could give enhanced in-game menus and debug controls.
 It would also make the UI touch compatible if desired. It could be great. Not
 sure how the maintainers would feel about a more modern library. 
 The current game is meant to be Elite from 1984, which didn't have a nice UI.
+
+## Feature Ideas
+
+AI teams mates, big ship with ai turret gunners, eve online features in market etc, better UI
+
+There is also feature reference for various of the elite games.
