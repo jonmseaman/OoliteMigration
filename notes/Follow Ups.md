@@ -55,3 +55,7 @@ The current game is meant to be Elite from 1984, which didn't have a nice UI.
 AI teams mates, big ship with ai turret gunners, eve online features in market etc, better UI
 
 There is also feature reference for various of the elite games.
+
+## Mouse aiming?
+
+This could make it easier to fly.
