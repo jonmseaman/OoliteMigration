@@ -171,3 +171,18 @@ game repo only gets local branches.
   "bead oo-7wx", root `meson.build` "oo-pdsng, proposed ADR-0066"). FR-017 covers messages and
   descriptions only; scrubbing code comments is a code change, so it is left for T032 (polish) as
   a candidate, not done silently.
+- T018 review findings (description agents, 2026-11-01), with the default taken:
+  - Titles that overpromised were corrected in `chapters.py` (step 1: no goldens or JS API snapshot
+    in the game tree; step 6: `OOCollectionExtractors` survives it; gnustep-base is dropped in step
+    10, not 9).
+  - Step 19's `test_builds.yaml` resolution took the history's side whole and so undid upstream #782
+    (Fedora AppImage removed) and #766's macOS job; to fix by keeping upstream's side of both hunks.
+  - Steps 12-18 carry upstream's Objective-C copy-URL methods in C++ files (`OOOXZManager`,
+    `PlayerEntity`): the planned C++ port at T023; then reword 019's #747 bullet.
+  - Tests cited by descriptions but registered in no `meson.build` (`test_enumeration_shuffle.c`,
+    `test_jsengine_*.cpp`, `tests/unit/expander`, `tests/unit/sysdesc`): named as unwired in the
+    descriptions; registering them is a test addition, left as a candidate for T032.
+  - Step 16's generated tables come from generators that live outside the game tree; the description
+    says to sample rows by hand. Default: no generator is added to the series.
+  - From step 4 the build fetches QuickJS-ng through `subprojects/quickjs-ng.wrap` (network at
+    configure time); described, not changed.

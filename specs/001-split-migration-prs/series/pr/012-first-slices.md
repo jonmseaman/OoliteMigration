@@ -1,0 +1,91 @@
+# Convert the large files in slices; delete the first Objective-C facades
+
+**Series:** step 12 of 25 · base `series/011-module-conversions` · next `series/013-shipentity-slices` **(gen)**
+
+**Chapter:** P3 · slice plans, slices, facade deletions · history `ad82bd1efe`..`0c01939de7` (80 merges) · 26.0k src, 13.3k tests, 51 other changed lines; 5.1k lines in deleted files **(gen)**
+
+## What this changes
+
+This step does two separate kinds of work.
+
+**Large files converted in slices.** Files too big to convert in one change are converted a group of
+methods at a time, each group (a "slice") small enough to check on its own. These files finish
+here, each as a C++ class with an `X+ObjCBridge` facade for its remaining Objective-C callers:
+- `HeadUpDisplay`, `OOMesh`, `OOOXZManager`, `ResourceManager`;
+- `MyOpenGLView`, `OOJavaScriptEngine`;
+- `OOOXPVerifier`, `OOJSScript`, `OOJSSystem`, `OOJSPlayerShip`, `OOJSSpecialFunctions` (now
+  `.cpp`).
+
+`ShipEntity` only starts. Its state (every ivar) moves to `cxx::ShipEntity`, and its Objective-C
+interface moves, copied exactly, to `ShipEntity+ObjCBridge.h`. Most methods keep their Objective-C
+bodies for now and read the state through `_cxxShip->`. Later slices, in step 13, move them across
+one group at a time. `PlayerEntityStickProfile` is partly converted the same way.
+
+**Facade deletions.** 30 facades from steps 10–11 are deleted, because no Objective-C code messages
+those classes any more. Each class leaves `namespace cxx`, and its callers use it directly:
+- Materials: `OOBasicMaterial`, `OOConcreteTexture`, `OODefaultShaderSynthesizer`,
+  `OOMaterialConvenienceCreators`, `OOMultiTextureMaterial`, `OONullTexture`, `OOShaderMaterial`,
+  `OOShaderUniform`, `OOSingleTextureMaterial`;
+- audio: `OOALBufferedSound`, `OOALSoundChannel`, `OOALSoundMixer`, `OOALStreamedSound`;
+- OXP verifier: `OOOXPVerifierStage`, `OOPListSchemaVerifier` and four stages;
+- others: `OOJoystickProfile`, `OORegExpMatcher`, `OOMeshToOctreeConverter`, `OOECMBlastEntity`,
+  `OOPListScript`, and six `OOJS*` binding categories.
+
+## Why
+
+Steps 10 and 11 converted everything that the large files depend on, so the large files can now
+follow. They come before `PlayerEntity` and `Universe` (steps 13–14) because those two message
+them most. The facade deletions belong here because converting the large files removed the last
+Objective-C callers of those classes. Deleting each facade as soon as it has no caller keeps the
+two-headed state short-lived.
+
+## Behaviour changes
+
+- Windows debug builds: a paused game no longer drops into efficiency mode (`IDLE_PRIORITY_CLASS`)
+  while a debug console is connected. On a loaded machine that mode left a console-driven game
+  answering one command every 15–60 s. Pinned by `tests/component/test_paused_console_priority.py`.
+- Linux/X11, not built or verified here: upstream's fix for the blank window (#774), which replaces
+  the splash window with a new game window sharing its GL context, is not in this step. The C++
+  `MyOpenGLView` keeps the old splash window. Step 23 ports #774. No test pins this.
+- macOS only, not built or verified here: upstream's front-buffer screenshot path (#766) is not in
+  this step. Step 23 restores it.
+
+## How to review
+
+Review the two parts separately.
+
+For the slices, start with `src/Core/Entities/ShipEntity+ObjCBridge.h`. Its header comment
+describes the split state:
+- `cxx::ShipEntity` (in `ShipEntity.h`) holds the members by their old names;
+- the facade keeps the old interface and one borrowed pointer, `_cxxShip`;
+- each slice gets its bodies back verbatim by deleting `_cxxShip->`.
+
+So most of the 4,000-line `ShipEntity.mm` hunk, and the `ShipEntityAI.mm` and `PlayerEntity.mm`
+hunks, are `_cxxShip->` / `->_cxxShip->` insertions. To spot-check, strip that prefix
+from a hunk and compare with the base. The fully converted files read like step 10's classes: check
+`HeadUpDisplay.mm` against its base `@implementation` method by method, and read
+`tests/unit/core/test_HeadUpDisplay.mm`. Each of the 11 converted files has a matching test in
+`tests/unit/core`.
+
+`OOOXZManager.mm` also has to carry upstream's copy-URL key (`n_key_oxzmanager_copyurl`,
+`-setOXPURL:`, `-processCopyUrlKey`). In the converted class those are the members
+`setOXPURL(const std::optional<std::string>&)` and `processCopyUrlKey()`, with
+`std::optional<std::string> _currentOXPURL`. Check them against the base's Objective-C.
+
+For the deletions, each one is mechanical (git's rename detection pairs
+`OOJSSpecialFunctions+ObjCBridge.mm` with the deleted `OOModelVerifierStage+ObjCBridge.mm`; they
+are unrelated):
+- the two bridge files and their `meson.build` line go;
+- `namespace cxx { ... }` goes from the header;
+- callers lose their `oo::ToObjC` / `oo::ToCxx` crossings.
+
+`git grep` for the deleted facade's class name in a message send (`[X ` or `[x foo]` on that type)
+should find nothing.
+
+The `GameController.mm` hunk is the priority change, debug builds only (`#ifndef NDEBUG`).
+
+## Verified **(gen)**
+
+Not verified yet.
+
+macOS (Phase 5: not converted) and Linux are not verified by this series.
