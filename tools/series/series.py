@@ -269,6 +269,55 @@ def cmd_tree(args):
     return 0
 
 
+STACK_WORKTREE = os.path.join(ROOT, ".agent-tmp", "series-stack")
+
+
+def commit_message(step):
+    """The step commit's message: the title, then what it covers (no bead ids, no history paths)."""
+    ch = step.get("chapter")
+    if ch:
+        body = f"Migration phase {ch['phase'].lstrip('P')}: " + "; ".join(ch["work_items"]) + "."
+    else:
+        body = "Changes made on the fork after the migration: " + ", ".join(c[:10] for c in step["source"]["commits"]) + "."
+    return f"{step['title']}\n\n{body}\n"
+
+
+def build_one(m, step):
+    """Create or reset the step's branch; returns 'built' or 'unchanged'."""
+    from tools.series import manifest, stack
+    tree, conflicts = compute_tree(m, step)
+    if conflicts:
+        raise SystemExit(f"build {step['n']}: {len(conflicts)} unresolved conflicts; run `tree {step['n']}`")
+    if step.get("target_tree") != tree:
+        step["target_tree"] = tree
+        manifest.save(MANIFEST, m)
+    msg = commit_message(step)
+    parent_tip = stack.git(GAME, "rev-parse", f"refs/heads/{step['parent']}")
+    if stack.exists(GAME, step["branch"]) and stack.lineage(GAME, step["branch"]) == step["parent"]:
+        tip = step["branch"]
+        same = (stack.git(GAME, "rev-parse", f"{tip}^{{tree}}") == tree
+                and stack.git(GAME, "rev-parse", f"{tip}^") == parent_tip
+                and stack.git(GAME, "log", "-1", "--format=%B", tip).strip() == msg.strip())
+        if same:
+            return "unchanged"
+    stack.make_step(GAME, STACK_WORKTREE, step["branch"], step["parent"], tree, msg)
+    return "built"
+
+
+def cmd_build(args):
+    m = load_manifest()
+    if args.steps:
+        ns = sorted(args.steps)
+    else:
+        start = args.from_ or 1
+        end = args.to or len(m["steps"])
+        ns = list(range(start, end + 1))
+    for n in ns:
+        step = step_by_n(m, n)
+        print(f"build {n}: {step['branch']} {build_one(m, step)}", flush=True)
+    return 0
+
+
 HAND_SECTIONS = ("What this changes", "Why", "Behaviour changes", "How to review")
 TODO = "_To write._"
 NOT_VERIFIED_PLATFORMS = "macOS (Phase 5: not converted) and Linux are not verified by this series."
@@ -388,7 +437,7 @@ def cmd_handover(m):
     raise SystemExit("describe --handover: not implemented yet (T031)")
 
 
-HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut, "tree": cmd_tree, "describe": cmd_describe}
+HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut, "tree": cmd_tree, "build": cmd_build, "describe": cmd_describe}
 
 
 def main(argv=None):

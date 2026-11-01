@@ -163,14 +163,16 @@ the contract's sections.
   tools/series/series.py tree 1` prints a tree id, or lists only paths that both upstream and the
   chapter changed. (Amended: chapter 1 also edits `OOCocoa.h`, which upstream renamed to
   `OOFoundation.h` in #737, so step 1 has one real conflict. It is resolved in T015.)
-- [ ] T015 [US1] Resolve the conflicts for steps 2–19 in order. For each step run `tree <n>`. For
+- [X] T015 [US1] Resolve the conflicts for steps 2–19 in order. For each step run `tree <n>`. For
   each conflicting path, write the resolution that keeps upstream's change carried into that
   step's code. The answer is the file as it is at `develop` `3aa8d65e8`, adapted to the step. Save
   it as `specs/001-split-migration-prs/series/resolutions/NNN/<path>.patch`, and let rerere reuse
   identical hunks. Don't change behaviour beyond the merge, and never touch a test file (rule 1;
   a conflict in `tests/` stops the task: record it in plan.md Notes). Accept: `for n in $(seq 1
-  19); do python -I tools/series/series.py tree $n || exit 1; done`.
-- [ ] T016 [US1] Implement `build [--from n]`: for each step in order, compute the tree (`tree`) and call
+  19); do python -I tools/series/series.py tree $n || exit 1; done`. (Amended: resolutions are
+  stored as whole files under `resolutions/NNN/files/` keyed by stage blobs in `index.json`, not as
+  patches; the specs that produced them are in `series/resolution-specs/`.)
+- [X] T016 [US1] Implement `build [--from n]`: for each step in order, compute the tree (`tree`) and call
   `stack.make_step` with message `<title>` plus the step's chapter line (no bead ids), then store
   `target_tree` in the manifest. Run it for steps 1–19. Accept: `python -I tools/series/series.py
   build --from 1 --to 19 && git -C oolite-dev town branch | grep -c 'series/0' | grep -qx 20`
