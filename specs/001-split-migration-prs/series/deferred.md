@@ -12,3 +12,5 @@ tree equalling `develop` (FR-002).
 | 1–18 | #756 debug monitor in deployment builds: `#ifndef NDEBUG` → `#ifdef OO_DEBUG_MONITOR_ENABLED` | conflicting hunks take upstream's guard; code the history wrote on the pre-#756 base keeps `NDEBUG` (only the history knows which of its guards are monitor code). `test`-flavour builds define both, so they behave the same; deployment builds may lack monitor pieces | 19 (the history's own port of #756) |
 | 11 | #766 macOS: `GameController` Cocoa-UI arms (`OOLITE_MAC_COCOA_UI`) | the history moved the Mac methods into a `GameController (MacOSX)` category; macOS is not converted | 023 |
 | 11 | `PlanetEntity` (#745 names, #756 guards, `#pragma once`) | the history deleted this compiled-out old-planet code | n/a: deleted |
+| 12 | #774 (Linux/X11 blank window): the splash window is replaced by a new game window sharing its GL context | the history's C++ `MyOpenGLView` keeps the old splash window | 023 (`f80c74210` ports #774) |
+| 12 | #766 macOS: screenshot from the front buffer / GL drawable | macOS is not converted | 023 |

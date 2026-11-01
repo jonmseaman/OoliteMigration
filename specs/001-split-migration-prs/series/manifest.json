@@ -1309,14 +1309,67 @@
    "mechanical_command": null,
    "n": 12,
    "parent": "series/011-module-conversions",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/ShipEntity.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/ShipEntity.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/ShipEntityAI.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOMesh.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOMesh.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOOXZManager.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOOXZManager.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOOpenGL.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJavaScriptEngine.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJavaScriptEngine.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/MyOpenGLView+Input.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/MyOpenGLView.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/MyOpenGLView.mm"
+    }
+   ],
    "size": null,
    "source": {
     "from": "ad82bd1efe7e79a499cb62fc9ea52fc7f8123f08",
     "to": "0c01939de79a4ac04237390d93dc78437057c5e0",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "d3e2ab7c0300cf5e2feda012f65fce2aa9c0dd56",
    "temporaries": [],
    "title": "Convert the large files in slices; delete the first Objective-C facades",
    "verification": null
