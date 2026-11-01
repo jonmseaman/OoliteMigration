@@ -58,4 +58,4 @@ station, dock or visual effect.
 
 Not verified yet.
 
-macOS (Phase 5: not converted) and Linux are not verified by this series.
+macOS (its platform code is not converted yet) and Linux are not verified by this series.

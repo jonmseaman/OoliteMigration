@@ -2,7 +2,7 @@
 
 **Series:** step 19 of 25 · base `series/018-gcc-build` · next `series/020-develop-fixes` **(gen)**
 
-**Chapter:** P4 · upstream 9ee8ff22f pulled and ported · history `883d339f93`..`6504faa3b9` (4 merges) · 12.5k src, 348 tests, 85 other changed lines; 0 lines in deleted files **(gen)**
+**Chapter:** P4 · upstream 9ee8ff22f pulled and ported · history `883d339f93`..`6504faa3b9` (4 merges) · 12.5k src, 348 tests, 49 other changed lines; 0 lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -82,4 +82,4 @@ AppImage, which upstream dropped in #782; a later step in the series removes it.
 
 Not verified yet.
 
-macOS (Phase 5: not converted) and Linux are not verified by this series.
+macOS (its platform code is not converted yet) and Linux are not verified by this series.

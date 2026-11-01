@@ -1,8 +1,8 @@
-# Convert C-only files to C and the first classes to C++: maths, leaf utilities, OXP verifier
+# Drop gnustep-base, then convert the first classes to C++: maths, leaf utilities, OXP verifier
 
 **Series:** step 10 of 25 · base `series/009-selector-families` · next `series/011-module-conversions` **(gen)**
 
-**Chapter:** P3 · 3.1 oomath, 3.2 OXPVerifier, 3.3 leaf utilities · history `66914fbbed`..`67027c84d1` (61 merges) · 28.5k src, 17.0k tests, 20 other changed lines; 1.8k lines in deleted files **(gen)**
+**Chapter:** P3 · 2.4 delete libgnustep-base, 3.1 oomath, 3.2 OXPVerifier, 3.3 leaf utilities · history `66914fbbed`..`67027c84d1` (61 merges) · 28.5k src, 17.0k tests, 20 other changed lines; 1.8k lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -82,4 +82,4 @@ guard checks is unchanged.
 
 Not verified yet.
 
-macOS (Phase 5: not converted) and Linux are not verified by this series.
+macOS (its platform code is not converted yet) and Linux are not verified by this series.

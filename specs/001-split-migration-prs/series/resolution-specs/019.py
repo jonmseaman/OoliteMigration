@@ -1,7 +1,8 @@
 # Step 19 resolutions (the history pulls upstream 9ee8ff22f and ports it): the history's own port
 # where both sides carry the same (<= 9ee8ff22f) change; upstream's later changes (#766) kept.
 RES = {
-    ".github/workflows/test_builds.yaml": ["theirs", "theirs"],
+    # upstream #782 (no Fedora AppImage) and #766 (macOS job) are later than the history's pull
+    ".github/workflows/test_builds.yaml": ["ours", "ours"],
     "ShellScripts/Windows/install_deps.sh": ["theirs"],
     "ShellScripts/common/post_build.sh": ["theirs"],
     "src/Core/Debug/OODebugStandards.cpp": ["theirs"],

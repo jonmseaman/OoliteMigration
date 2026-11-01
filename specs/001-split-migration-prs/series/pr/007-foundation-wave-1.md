@@ -69,4 +69,4 @@ spawns a fixed hull for each role so the component scenarios don't depend on a r
 
 Not verified yet.
 
-macOS (Phase 5: not converted) and Linux are not verified by this series.
+macOS (its platform code is not converted yet) and Linux are not verified by this series.

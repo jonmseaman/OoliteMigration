@@ -47,8 +47,7 @@
     "phase": "P0",
     "work_items": [
      "0.1 iteration-order determinism",
-     "0.4 goldens",
-     "0.5 JS API snapshot",
+     "0.4 seed and floating-point hooks for reproducible runs",
      "0.8 GUI tier",
      "0.13 component tier"
     ]
@@ -79,7 +78,7 @@
    },
    "target_tree": "cd407f9726d25e0704152feca3848b0820cfb013",
    "temporaries": [],
-   "title": "Add a test safety net: determinism, goldens, JS API snapshot, GUI and component tests",
+   "title": "Add a test safety net: deterministic runs, GUI and component tests",
    "verification": null
   },
   {
@@ -378,7 +377,7 @@
     "merges": 108,
     "phase": "P2",
     "work_items": [
-     "2.2 typed accessors (OOCollectionExtractors retired)"
+     "2.2 typed accessors, first sweep"
     ]
    },
    "description": "series/pr/006-typed-accessors.md",
@@ -459,7 +458,7 @@
    },
    "target_tree": "79db4c75d1df2509091a61ad200fe0989e36b864",
    "temporaries": [],
-   "title": "Replace oo_*ForKey dictionary accessors with typed PList::get",
+   "title": "Move most oo_*ForKey dictionary accessors to typed PListView::get",
    "verification": null
   },
   {
@@ -867,8 +866,7 @@
     "phase": "P2",
     "work_items": [
      "selector families",
-     "bridge callers",
-     "2.4 delete libgnustep-base"
+     "bridge callers"
     ]
    },
    "description": "series/pr/009-selector-families.md",
@@ -1045,7 +1043,7 @@
    },
    "target_tree": "ad968ca55c9926b8d6f71d0cf55c540161c47c17",
    "temporaries": [],
-   "title": "Retire the remaining Foundation selectors and drop gnustep-base",
+   "title": "Retire the remaining Foundation selectors and their bridge callers",
    "verification": null
   },
   {
@@ -1057,6 +1055,7 @@
     "merges": 61,
     "phase": "P3",
     "work_items": [
+     "2.4 delete libgnustep-base",
      "3.1 oomath",
      "3.2 OXPVerifier",
      "3.3 leaf utilities"
@@ -1164,7 +1163,7 @@
    },
    "target_tree": "c6a095163c62df206f93045678e8c95001b5cc7b",
    "temporaries": [],
-   "title": "Convert C-only files to C and the first classes to C++: maths, leaf utilities, OXP verifier",
+   "title": "Drop gnustep-base, then convert the first classes to C++: maths, leaf utilities, OXP verifier",
    "verification": null
   },
   {
@@ -2107,8 +2106,8 @@
    ],
    "size": {
     "deleted_files": 8515,
-    "other": 11640,
-    "src": 6599,
+    "other": 11644,
+    "src": 6601,
     "tests": 1811
    },
    "source": {
@@ -2173,7 +2172,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "83ccc03063a8a95868e928b2d8d6da5daf262a22",
+   "merge_tree": "c03f7b455c2280ae272004e8bf70b832c6443890",
    "n": 19,
    "parent": "series/018-gcc-build",
    "resolutions": [
@@ -2240,7 +2239,7 @@
    ],
    "size": {
     "deleted_files": 0,
-    "other": 85,
+    "other": 49,
     "src": 12463,
     "tests": 348
    },
@@ -2249,7 +2248,7 @@
     "to": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
     "type": "history"
    },
-   "target_tree": "3d417c67fcefd99cc367006fd105971ac353bf52",
+   "target_tree": "22941f6396778adc55e797eb6de5eb35ec560437",
    "temporaries": [],
    "title": "Port upstream changes #369 to #765 into the C++ code",
    "verification": null

@@ -1,8 +1,8 @@
-# Replace oo_*ForKey dictionary accessors with typed PList::get
+# Move most oo_*ForKey dictionary accessors to typed PListView::get
 
 **Series:** step 6 of 25 · base `series/005-oofnd-core` · next `series/007-foundation-wave-1` **(gen)**
 
-**Chapter:** P2 · 2.2 typed accessors (OOCollectionExtractors retired) · history `b73f2cd400`..`bc9a02ca7b` (108 merges) · 11.1k src, 2.2k tests, 43 other changed lines; 0 lines in deleted files **(gen)**
+**Chapter:** P2 · 2.2 typed accessors, first sweep · history `b73f2cd400`..`bc9a02ca7b` (108 merges) · 11.1k src, 2.2k tests, 43 other changed lines; 0 lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -77,4 +77,4 @@ These need a real read:
 
 Not verified yet.
 
-macOS (Phase 5: not converted) and Linux are not verified by this series.
+macOS (its platform code is not converted yet) and Linux are not verified by this series.

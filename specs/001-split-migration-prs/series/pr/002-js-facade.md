@@ -67,4 +67,4 @@ at this step. You can review them now or when step 4 links the backend.
 
 Not verified yet.
 
-macOS (Phase 5: not converted) and Linux are not verified by this series.
+macOS (its platform code is not converted yet) and Linux are not verified by this series.

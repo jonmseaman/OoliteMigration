@@ -183,13 +183,13 @@ the contract's sections.
   verification table, temporary code) and keep the hand-written ones. Accept: `python -I
   tools/series/series.py describe 1 && grep -q '^## What this changes'
   specs/001-split-migration-prs/series/pr/001-*.md`.
-- [ ] T018 [US1] Write the hand-written sections (What this changes, Why, Behaviour changes, How to
+- [X] T018 [US1] Write the hand-written sections (What this changes, Why, Behaviour changes, How to
   review) for steps 1–19. Take them from the phase docs at `archive/phase-0-4-docs:docs/phases/`
   and the chapter's merge subjects in `inventory.tsv`. Explain the code, not the project: no bead
   ids, ADR numbers or OoliteMigration doc paths (FR-017). "Behaviour changes" lists each change
   with the test that pins it, or "None.". Where waves mix work items (chapters 12–15), say which.
   Accept: `python -I tools/series/series.py check --only descriptions --steps 1-19` exits 0.
-- [ ] T019 [US1] Implement `check` (all data-model.md rules, with `--only <rule-group>` and `--steps a-b`
+- [X] T019 [US1] Implement `check` (all data-model.md rules, with `--only <rule-group>` and `--steps a-b`
   filters used above): branches exist; single commit on the parent tip; Git Town lineage equals
   `parent`; tree equals `target_tree`; descriptions complete; no bookkeeping ids. Accept: `python
   -I tools/series/series.py check --steps 1-19` exits 0.
