@@ -18,3 +18,5 @@
 *.dat binary
 *.oxz binary
 *.zip binary
+# Series tool outputs (resolutions are byte-exact game files): never convert line endings.
+specs/*/series/** -text
