@@ -40,5 +40,15 @@
   "deleted": false,
   "ours": "b7ebe342e800a9759605ebaac269039035cd98bd",
   "theirs": "095853989f18790f95b7809ddff9854e8dc9385c"
+ },
+ "src/SDL/OOSDLJoystickManager.h": {
+  "base": "458d9359318c8b1db8ff7e073dbf88bcb4bc01de",
+  "deleted": false,
+  "ours": "95a99c64403f8c08d63292b0c26864e026c98a50",
+  "theirs": "b52ca51b4f44fa2b6d54a59ac6544e26a73d6a72"
+ },
+ "src/SDL/OOSDLJoystickManager.mm": {
+  "deleted": false,
+  "extra": true
  }
 }

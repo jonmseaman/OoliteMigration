@@ -1,4 +1,10 @@
 {
+ "src/Core/GameController+FullScreen.mm": {
+  "base": "d3e9406239ba3ab2133011c6e27c95b22d938e17",
+  "deleted": true,
+  "ours": null,
+  "theirs": "d3e9406239ba3ab2133011c6e27c95b22d938e17"
+ },
  "src/Core/OOCocoa.m": {
   "base": "feb4199828fcf3d79b9aa45e80daa226bd28cd63",
   "deleted": true,
@@ -20,6 +26,12 @@
  "src/Core/OOFoundation.mm": {
   "deleted": false,
   "extra": true
+ },
+ "src/Core/OOJoystickManager.mm": {
+  "base": "7e2a37863f44658685c0ef096db2c7db2b96cf62",
+  "deleted": false,
+  "ours": "e05701454625eed5896e893425311eba51719377",
+  "theirs": "ac1708c0e261b28876ca62cbac27704e2e44f3dc"
  },
  "src/Core/meson.build": {
   "base": "67a912e1f62449b6053ae82be474a706ac24013f",

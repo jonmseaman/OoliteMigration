@@ -240,13 +240,20 @@ def transplant(base, ours, theirs):
     return out
 
 
-def resolve_hunk(b, o, t):
-    """One diff3 hunk: (resolved lines, how) or (None, None)."""
+def resolve_hunk(b, o, t, moved=None):
+    """One diff3 hunk: (resolved lines, how) or (None, None).
+
+    `moved(removed_lines)`, if given, says whether upstream moved lines it removed to another file;
+    such a hunk is left for a person.
+    """
     if o == b:
         return t, "auto"
     if t == b or o == t:
         return o, "auto"
-    out = auto_merge_text(b, o, t)
+    flags = set()
+    out = auto_merge_text(b, o, t, flags)
+    if out is not None and flags and moved is not None and moved(_removed_by(b, o)):
+        out = None
     if out is not None:
         return out, "auto"
     out = transplant(b, o, t)
@@ -255,7 +262,7 @@ def resolve_hunk(b, o, t):
     return None, None
 
 
-def merge_file_by_hunks(repo, base_oid, ours_oid, theirs_oid):
+def merge_file_by_hunks(repo, base_oid, ours_oid, theirs_oid, ours_tree=None, path=None):
     """diff3-merge three blobs, resolving each conflict hunk on its own.
 
     Returns (lines, n_auto_hunks, unresolved_hunks) where unresolved hunks are left in `lines`
@@ -291,7 +298,8 @@ def merge_file_by_hunks(repo, base_oid, ours_oid, theirs_oid):
                 (o if sect == "o" else b if sect == "b" else t).append(l)
             i += 1
         i += 1  # the >>>>>>> line
-        res, how = resolve_hunk(b, o, t)
+        moved = (lambda removed: moved_elsewhere(repo, ours_tree, path, removed)) if ours_tree else None
+        res, how = resolve_hunk(b, o, t, moved)
         if res is None:
             left += 1
             out += ["<<<<<<< ours\n", *o, "=======\n", *t, ">>>>>>> theirs\n"]
@@ -299,6 +307,35 @@ def merge_file_by_hunks(repo, base_oid, ours_oid, theirs_oid):
             n_auto += 1
             out += res
     return out, n_auto, left
+
+
+def _distinctive(lines, limit=6):
+    out = []
+    for line in lines:
+        s = line.strip()
+        if len(s) >= 24 and not s.startswith(("//", "/*", "*", "#")) and s not in out:
+            out.append(s)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def moved_elsewhere(repo, tree, path, removed_lines):
+    """True if distinctive lines that upstream removed from `path` appear in another file of `tree`."""
+    for s in _distinctive(removed_lines):
+        r = _git(repo, "grep", "-l", "-F", "-e", s, tree, "--", "src", ok=(0, 1))
+        hits = [h.split(":", 1)[1] for h in r.stdout.decode("utf-8", "replace").splitlines() if ":" in h]
+        if any(h != path for h in hits):
+            return True
+    return False
+
+
+def _removed_by(base, ours):
+    out = []
+    for tag, i1, i2, _, _ in difflib.SequenceMatcher(None, base, ours, autojunk=False).get_opcodes():
+        if tag in ("delete", "replace"):
+            out += base[i1:i2]
+    return out
 
 
 def deleted_earlier(res_dir):
@@ -333,8 +370,9 @@ def target_tree(repo, base, ours, theirs, res_dir, report=None):
             # an earlier step deleted this file; the history is still editing it
             apply.append((path, "deleted-earlier", {"deleted": True}, None))
             continue
-        if key["base"] and key["ours"] is None and key["theirs"] == key["base"]:
-            # upstream deleted the file; the history only renamed it
+        if key["base"] and key["ours"] is None and key["theirs"] == key["base"] and \
+                not moved_elsewhere(repo, ours, path, _lines(repo, key["base"])):
+            # upstream deleted the file (and did not move its code); the history only renamed it
             apply.append((path, "upstream-deleted", {"deleted": True}, None))
             continue
         if key["base"] and key["ours"] and key["theirs"] is None and \
@@ -347,10 +385,12 @@ def target_tree(repo, base, ours, theirs, res_dir, report=None):
             flags = set()
             out = auto_merge_text(b, o, t, flags)
             how = "upstream-deleted" if flags else "auto"
+            if flags and moved_elsewhere(repo, ours, path, _removed_by(b, o)):
+                out = None  # upstream moved this code to another file: a person decides
             if out is None:
                 out, how = transplant(b, o, t), "transplant"
             if out is None:
-                lines, _, left = merge_file_by_hunks(repo, key["base"], key["ours"], key["theirs"])
+                lines, _, left = merge_file_by_hunks(repo, key["base"], key["ours"], key["theirs"], ours, path)
                 if left == 0:
                     out, how = lines, "hunks"
             if out is not None:

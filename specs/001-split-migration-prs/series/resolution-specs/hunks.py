@@ -21,7 +21,7 @@ for p in unresolved:
     if not all(k.values()):
         print(f"######## {p}: FILE-LEVEL {k}")
         continue
-    lines = "".join(trees.merge_file_by_hunks(S.GAME, k["base"], k["ours"], k["theirs"])[0]).splitlines()
+    lines = "".join(trees.merge_file_by_hunks(S.GAME, k["base"], k["ours"], k["theirs"], o, p)[0]).splitlines()
     starts = [i for i, l in enumerate(lines) if l.startswith("<<<<<<<")]
     print(f"######## {p}: {len(starts)} hunks")
     for h, s in enumerate(starts):

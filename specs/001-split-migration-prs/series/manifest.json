@@ -157,7 +157,7 @@
    "parent": "series/002-js-facade",
    "resolutions": [
     {
-     "how": "upstream-deleted",
+     "how": "stored",
      "path": "src/Core/GameController+FullScreen.mm"
     },
     {
@@ -177,7 +177,7 @@
      "path": "src/Core/OOFoundation.mm"
     },
     {
-     "how": "upstream-deleted",
+     "how": "stored",
      "path": "src/Core/OOJoystickManager.mm"
     },
     {
@@ -185,7 +185,7 @@
      "path": "src/Core/meson.build"
     },
     {
-     "how": "upstream-deleted",
+     "how": "hunks",
      "path": "src/SDL/MyOpenGLView.mm"
     }
    ],
@@ -195,7 +195,7 @@
     "to": "c9c052538370b03b976c6b5ac615490a873e6b21",
     "type": "history"
    },
-   "target_tree": "d247832bf902d87d70ea9677ec12adf490552ed5",
+   "target_tree": "8e73b8cde2353662ad6cd8b69cc952a285b51fa3",
    "temporaries": [],
    "title": "Compile the game as Objective-C++",
    "verification": null
@@ -283,7 +283,7 @@
     "to": "a7e3ed1efcf202eb22d16951be73c23e3b2b264c",
     "type": "history"
    },
-   "target_tree": "d6fdd7fc778085383c14f46affa4935f332cfd9b",
+   "target_tree": "1388c7fac12cc3deca9d8bad2778d0b21804f932",
    "temporaries": [],
    "title": "Run the game on QuickJS-ng and remove SpiderMonkey and NSPR",
    "verification": null
@@ -334,7 +334,7 @@
     "to": "916311e66db2e9d025c763b9d028a9ff26d33ff0",
     "type": "history"
    },
-   "target_tree": "2e32c4f8e3cd4aec60a5379f829245a80b32cf79",
+   "target_tree": "ee5d0fb116c7e5679be03c68f7417669aa266091",
    "temporaries": [],
    "title": "Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation",
    "verification": null
@@ -421,7 +421,7 @@
     "to": "bc9a02ca7b948001da5824b9c073b42b3e24ca08",
     "type": "history"
    },
-   "target_tree": "1d96914057299d9fffe65cac59a1e86fde64db54",
+   "target_tree": "79db4c75d1df2509091a61ad200fe0989e36b864",
    "temporaries": [],
    "title": "Replace oo_*ForKey dictionary accessors with typed PList::get",
    "verification": null
@@ -530,10 +530,6 @@
      "path": "src/Core/OOJoystickManager.h"
     },
     {
-     "how": "upstream-deleted",
-     "path": "src/Core/OOJoystickManager.mm"
-    },
-    {
      "how": "auto",
      "path": "src/Core/OOLogHeader.mm"
     },
@@ -578,8 +574,12 @@
      "path": "src/SDL/MyOpenGLView.mm"
     },
     {
-     "how": "upstream-deleted",
+     "how": "stored",
      "path": "src/SDL/OOSDLJoystickManager.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/OOSDLJoystickManager.mm"
     }
    ],
    "size": null,
@@ -588,7 +588,7 @@
     "to": "ecfafab47981c8224790752d96f2340d6b07c833",
     "type": "history"
    },
-   "target_tree": "c3f3f555deb6e5774e22dec015228b3f0fdaa5bb",
+   "target_tree": "371b7e14e3f8cef80217024d75fa9faf8b890c13",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 1",
    "verification": null
@@ -702,10 +702,6 @@
      "path": "src/Core/OOJoystickManager.h"
     },
     {
-     "how": "upstream-deleted",
-     "path": "src/Core/OOJoystickManager.mm"
-    },
-    {
      "how": "auto",
      "path": "src/Core/OOOXZManager.h"
     },
@@ -798,10 +794,6 @@
      "path": "src/SDL/MyOpenGLView.mm"
     },
     {
-     "how": "upstream-deleted",
-     "path": "src/SDL/OOSDLJoystickManager.h"
-    },
-    {
      "how": "auto",
      "path": "src/SDL/main.mm"
     }
@@ -812,7 +804,7 @@
     "to": "fa9cbc6c24fec4d77881a47e47e7b2591ece94d4",
     "type": "history"
    },
-   "target_tree": "edf3a94cfd3f9f604839fb8cf35711fe9ed05fbf",
+   "target_tree": "aeaa11685e018e1b60817533254359f0887f56a9",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 2",
    "verification": null
@@ -837,14 +829,167 @@
    "mechanical_command": null,
    "n": 9,
    "parent": "series/008-foundation-wave-2",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/DustEntity.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/OOEntityWithDrawable.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/OOLightParticleEntity.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/OOParticleSystem.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/PlanetEntity.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/PlayerEntity.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/PlayerEntityControls.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/PlayerEntityKeyMapper.mm"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/Core/Entities/PlayerEntityLoadSave.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/ShipEntity.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/SkyEntity.mm"
+    },
+    {
+     "how": "deleted-earlier",
+     "path": "src/Core/GameController+FullScreen.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOBasicMaterial.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOConcreteTexture.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOMaterial.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOMaterial.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOMultiTextureMaterial.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOShaderMaterial.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOSingleTextureMaterial.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/NSFileManagerOOExtensions.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/NSObjectOOExtensions.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/NSObjectOOExtensions.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOALSoundChannel.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOCache.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OODrawable.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OODrawable.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOFoundation.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOFullScreenController.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOHPVector.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOMesh.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOOXZManager.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOPlanetDrawable.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOSkyDrawable.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJSEngineTimeManagement.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJSStation.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJavaScriptEngine.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/meson.build"
+    },
+    {
+     "how": "transplant",
+     "path": "src/SDL/MyOpenGLView.mm"
+    }
+   ],
    "size": null,
    "source": {
     "from": "b75b5d1bc6f7957740adab23f8f09e65901302b3",
     "to": "e0b9e24b22ab4f7373ccf71dbf4d58ac5553c4be",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "834a675d76ff6eca425177743a2da7c86da2b76d",
    "temporaries": [],
    "title": "Retire the remaining Foundation selectors and drop gnustep-base",
    "verification": null
@@ -869,14 +1014,95 @@
    "mechanical_command": null,
    "n": 10,
    "parent": "series/009-selector-families",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "deleted-earlier",
+     "path": "src/Core/GameController+FullScreen.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOBasicMaterial.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOMaterial.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOMaterial.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOMultiTextureMaterial.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOSingleTextureMaterial.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OODrawable.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OODrawable.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOEquipmentType.h"
+    },
+    {
+     "how": "hunks",
+     "path": "src/Core/OOFoundation.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOJoystickProfile.h"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/Core/OOMaths.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOOpenGLExtensionManager.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOOpenGLExtensionManager.mm"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/Core/OOVector.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Octree.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Octree.mm"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/Core/Scripting/OOJSPlanet.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/meson.build"
+    },
+    {
+     "how": "auto",
+     "path": "src/SDL/MyOpenGLView+Input.mm"
+    }
+   ],
    "size": null,
    "source": {
     "from": "66914fbbede7e1b621fea3ffba830ac2130ccaf9",
     "to": "67027c84d11fe03fcf208697938023d05d13f63c",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "5751f134bc9e52b0afd3b98a5bd5091ed67b1502",
    "temporaries": [],
    "title": "Convert C-only files to C and the first classes to C++: maths, leaf utilities, OXP verifier",
    "verification": null

@@ -44,6 +44,7 @@ RES = {
         "        const char* clipboardText = stringToCopy.c_str();\n"
         "        if (!SDL_SetClipboardText(clipboardText)) {\n"
         "            OOLog(@\"stringToClipboard.failed\", @\"Failed to copy string %@ to clipboard: %s\", oo::NSStringFrom(stringToCopy), SDL_GetError());\n",
+        "ours",  # Linux stubs: upstream made these methods common to all SDL platforms (#747)
         "#endif\n"
         "    OOLog(@\"screenshot\", @\"Saving screen shot \\\"%@\\\" (%u x %u pixels).\", oo::NSStringFrom(*pathToPic), surface->w, surface->h);\n",
         "theirs",  # upstream side differs from base only in formatting
@@ -51,3 +52,8 @@ RES = {
     ],
 }
 DELETE = []
+
+# Joystick decoding: upstream (#742) moved decode*Event into OOSDLJoystickManager to silence an
+# Objective-C GCC warning; the migration keeps them in OOJoystickManager (as develop does). From
+# this step the SDL manager is the history's, so its files are the history's whole.
+WHOLE = {"src/SDL/OOSDLJoystickManager.h": "theirs", "src/SDL/OOSDLJoystickManager.mm": "theirs"}

@@ -1,0 +1,50 @@
+{
+ "src/Core/Entities/PlayerEntity.mm": {
+  "base": "688d3b2a0d4c3e3f8e7ba321e6187612602d88fb",
+  "deleted": false,
+  "ours": "1c2be12a57d9b1368c30199116a7c933292b015e",
+  "theirs": "5200b57a220e67925f76d7133d0c2ee191fd48d7"
+ },
+ "src/Core/NSFileManagerOOExtensions.h": {
+  "base": "70f919a745a33ee081a575d9c24a309c2dc924e2",
+  "deleted": true,
+  "ours": "639a82cf8eb78bfe960cf8472d89c970b7d8ae98",
+  "theirs": null
+ },
+ "src/Core/NSObjectOOExtensions.h": {
+  "base": "7d27c6502de035258ed8f10ee5d6ba4e7f101fd8",
+  "deleted": false,
+  "ours": "447f6fbd2870f6a85bd754ac08fcfa795544700e",
+  "theirs": "83e43ae64cc69e98f5549d722fa165df7e009908"
+ },
+ "src/Core/NSObjectOOExtensions.mm": {
+  "base": "0292e06123e8f3a54a28867e894d5348e5689119",
+  "deleted": false,
+  "ours": "0864e2386e999ac357a86c95e22653d24d04be89",
+  "theirs": "2aee619c75836367afde35c8e4a140c44774aa31"
+ },
+ "src/Core/OOALSoundChannel.h": {
+  "base": "802571d65091b0210ea090534ad6dbad7f15b1e2",
+  "deleted": false,
+  "ours": "7e7713b24bd6e6a0af8ece408d9dc9b5b874d44a",
+  "theirs": "5ff10c2033e3d02421d8bf47e56961bb4f34e371"
+ },
+ "src/Core/OOCache.mm": {
+  "base": "02269ddcdf8b7e4a1d9cbb5838d8950bf80f2da1",
+  "deleted": false,
+  "ours": "9ad6540eca1d471033bd8530d791eec4dd71a5c9",
+  "theirs": "15ce34cd937c98d3ca617c001d37963989e26bb9"
+ },
+ "src/Core/OOHPVector.h": {
+  "base": "096ea927c50312ff71194e80d82b1b95036fd0bd",
+  "deleted": false,
+  "ours": "22b33911fe51e35649c33a93413d1c95cfaeca67",
+  "theirs": "3562354b453ddf1484171e647837a3b5b7210b22"
+ },
+ "src/Core/Scripting/OOJavaScriptEngine.h": {
+  "base": "39502a0fb00c1903c8bea7fbc2f3947eedc76203",
+  "deleted": false,
+  "ours": "b936ffed3196593615c34abe96a60771d871233a",
+  "theirs": "35d0155d2f6ef372cd88cffe157d9ffccd5d5ee4"
+ }
+}

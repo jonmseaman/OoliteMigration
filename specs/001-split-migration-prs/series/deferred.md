@@ -7,3 +7,5 @@ tree equalling `develop` (FR-002).
 | From step | Upstream change | Why deferred | Present again from |
 |---:|---|---|---|
 | 7 | #766 macOS: `builtInPath` returns the app bundle's resource path under `OOLITE_MAC_COCOA_UI` | the history replaced the path code with `oo::ResourcePaths`; macOS is not converted (Phase 5) | 023 (`ac193cfe7` ports #766's macOS paths, dormant behind `OOLITE_MAC_OS_X`) |
+| 3 | #742 moved `decode{Axis,Button,Hat}Event` into `OOSDLJoystickManager` (an Objective-C GCC warning) | the migration keeps them in `OOJoystickManager`, as `develop` does; steps 3–6 carry both copies, and step 7 takes the history's SDL manager whole | n/a: `develop` keeps the history's design |
+| 8 | #766 debug console: a plain socket on macOS | the history's plain-socket client covers it on every platform | 8 (covered) |

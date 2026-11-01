@@ -220,7 +220,7 @@ def cmd_tree(args):
             key = conflicts.get(path, {})
             if all(key.get(k) for k in ("base", "ours", "theirs")):
                 # the file with only the hunks the automatic rules could not resolve still marked
-                lines = trees.merge_file_by_hunks(GAME, key["base"], key["ours"], key["theirs"])[0]
+                lines = trees.merge_file_by_hunks(GAME, key["base"], key["ours"], key["theirs"], ours, path)[0]
                 content = "".join(lines).encode("utf-8", "surrogateescape")
             else:
                 content = trees._git(GAME, "cat-file", "-p", f"{merged}:{path}", ok=(0, 128)).stdout

@@ -30,7 +30,7 @@ for path, specs in RES.items():
     if path not in conf:
         raise SystemExit(f"{path}: not a conflict in step {n}")
     k = conf[path]
-    text = "".join(trees.merge_file_by_hunks(S.GAME, k["base"], k["ours"], k["theirs"])[0])
+    text = "".join(trees.merge_file_by_hunks(S.GAME, k["base"], k["ours"], k["theirs"], o, path)[0])
     hunks = list(HUNK.finditer(text))
     if len(hunks) != len(specs):
         raise SystemExit(f"{path}: {len(hunks)} hunks, {len(specs)} specs")
@@ -63,3 +63,10 @@ for path in DELETE:
     print(f"{path}: deleted")
     if not dry:
         trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path, None)
+# WHOLE = {path: "theirs" | "ours"}: record that side's whole file (an extra if not a conflict path)
+for path, side in ns.get("WHOLE", {}).items():
+    tree_side = {"theirs": t, "ours": o}[side]
+    data = trees._git(S.GAME, "cat-file", "-p", f"{tree_side}:{path}").stdout
+    print(f"{path}: whole file from {side}")
+    if not dry:
+        trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path, data)
