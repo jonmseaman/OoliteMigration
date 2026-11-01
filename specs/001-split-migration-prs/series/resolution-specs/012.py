@@ -39,9 +39,11 @@ RES = {
     # history's C++ members (#774's splash/game window port is deferred to step 023)
     "src/SDL/MyOpenGLView.h": ["theirs", "theirs"],
     "src/SDL/MyOpenGLView.mm": [
+        "theirs",  # the history's C++ view (upstream's #766 guard is re-applied below)
         "theirs",
         "ours",    # upstream #744 removed the undocumented dark-mode API: it stays removed
-        "ours",    # Linux stubs: upstream made these methods common (#747)
+        # Linux stubs: upstream made three of these common (#747); the HDR stub stays, in the history's C++ form
+        "bool cxx::MyOpenGLView::hdrOutput()\n",
         "theirs",  # macOS screenshot path (#766) deferred
     ],
 }
@@ -120,3 +122,7 @@ FIX = {
          "- (void)processCopyUrlKey\n{\n    _cxxManager->processCopyUrlKey();\n}\n"),
     ),
 }
+
+# upstream (#766) guards the full-screen setters with OOLITE_SDL instead of GNUSTEP_BASE_LIBRARY
+POST["src/SDL/MyOpenGLView.mm"] = [("#ifdef GNUSTEP_BASE_LIBRARY\nvoid cxx::MyOpenGLView::setFullScreenMode(bool fsm)\n",
+                                    "#if OOLITE_SDL\nvoid cxx::MyOpenGLView::setFullScreenMode(bool fsm)\n")]

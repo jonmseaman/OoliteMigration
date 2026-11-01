@@ -17,6 +17,12 @@
   "ours": "38e9f420cf13d7535d566ec36117255be3a0389c",
   "theirs": "ad368b9efa6468c05fcb32b808c7eebb53f3c98a"
  },
+ "src/Core/Materials/OOConcreteTexture.mm": {
+  "base": "6ec645e7bab6ff07a9dd5ba754a41b35bcfb2072",
+  "deleted": false,
+  "ours": "b0ce931e80f814a363f05846a36b4ede91fa2ee8",
+  "theirs": "b15d7f1f62b8a8b11916b742c5f8030ad8a11865"
+ },
  "src/Core/Materials/OOShaderProgram.mm": {
   "base": "7c83f04aa29d0f52a83b36cb088814d01cc6a2c7",
   "deleted": false,
@@ -50,7 +56,7 @@
  "src/SDL/MyOpenGLView.mm": {
   "base": "83c5a27d1aa3cfce90a824fc1b8975021dae6f94",
   "deleted": false,
-  "ours": "0f44e171c2d39b2c198c1806125fdff46c2df58d",
+  "ours": "50d215ccc49dc3ccd468157ba441910114868180",
   "theirs": "9060b8d220fecc8cc51469c230bbb4b77671ab26"
  }
 }

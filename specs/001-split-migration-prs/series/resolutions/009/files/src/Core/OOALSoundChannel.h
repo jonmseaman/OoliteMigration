@@ -35,6 +35,7 @@ SOFTWARE.
 #import "OOFoundation.h"
 #import "OOMaths.h"
 #import "OOOpenALController.h"
+#import "oofnd/objc/OOObject.h"
 
 @class OOSound;
 

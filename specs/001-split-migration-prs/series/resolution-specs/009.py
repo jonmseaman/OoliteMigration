@@ -15,7 +15,7 @@ RES = {
     "src/Core/OOCache.mm": ["theirs"],
     "src/Core/Scripting/OOJavaScriptEngine.h": ["theirs"],
     # upstream (#748) dropped the closing include guard for #pragma once; keep the history's comment block
-    "src/Core/OOHPVector.h": [lambda ours, theirs: theirs.replace("\n#endif /* INCLUDED_OOMATHS_h */\n", "")],
+    # (OOHPVector.h: now merges cleanly, its conditionals balanced; no resolution needed)
 }
 # the history retired this header; upstream's change to it is #pragma once and its include (mechanical)
 DELETE = ["src/Core/NSFileManagerOOExtensions.h"]

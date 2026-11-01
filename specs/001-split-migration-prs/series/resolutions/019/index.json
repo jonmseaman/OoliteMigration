@@ -50,7 +50,7 @@
  "src/Core/OOMaths.h": {
   "base": "c68b96b6037f34b716dc993c71c045b091df9a36",
   "deleted": false,
-  "ours": "20c07761181796da096c7c37a2ae3a6fc5f08598",
+  "ours": "8a0a9f9494f1e101dbbc7426ad806b5574a10705",
   "theirs": "e23846b5e6156ca8b21dd468e498f06e36c171a4"
  },
  "src/Core/OOOXZManager.cpp": {
@@ -85,7 +85,7 @@
  "src/SDL/MyOpenGLView.cpp": {
   "base": "54c53f2e186fc28c684e3841c0aaa132079a6016",
   "deleted": false,
-  "ours": "ce9b050ff8ea8f4851715df6c941c0acadd5e095",
+  "ours": "c4d5ddb9e711b62bd969b192acf76c332fa2f1f9",
   "theirs": "954519a46834e07f3280d76622cadb2655b47318"
  },
  "src/meson.build": {

@@ -87,6 +87,12 @@
   "ours": "c00be8a7aeb22055d5c6d6d0e9e881587cb17d62",
   "theirs": "f3615bc82410035783fc9c014b109a734b0aa8bf"
  },
+ "src/Core/OOMaths.h": {
+  "base": "8744e9d7253228547bbcaf186174b734fbc38b67",
+  "deleted": false,
+  "ours": "d51ab0bfdbe40c7cc397180bac74a6a7f2c6f2c2",
+  "theirs": "c68b96b6037f34b716dc993c71c045b091df9a36"
+ },
  "src/Core/OOMesh.cpp": {
   "base": "441bda0395efc629f2f295dc8b5b4810e70ab04c",
   "deleted": false,
@@ -198,7 +204,7 @@
  "src/SDL/MyOpenGLView.cpp": {
   "base": "9060b8d220fecc8cc51469c230bbb4b77671ab26",
   "deleted": false,
-  "ours": "ffef5d2fcc53d1f4403cebd1e7f5b603d2d6ade4",
+  "ours": "bcb6b73af1871b8920e76a061f8616959329447c",
   "theirs": "54c53f2e186fc28c684e3841c0aaa132079a6016"
  },
  "src/meson/meson.build": {

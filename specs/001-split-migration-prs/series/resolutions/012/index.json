@@ -60,7 +60,7 @@
  "src/SDL/MyOpenGLView.mm": {
   "base": "714fbc07ecd244357374291e0c8c98e85f248ac5",
   "deleted": false,
-  "ours": "3522b44371f1fea2696afc00d9ff49e3ce26c037",
+  "ours": "ad46452507aaad7140bcf41f13315f198dd9d904",
   "theirs": "cb23899cc4dea1dd077b213697353ca84ae02f4a"
  }
 }

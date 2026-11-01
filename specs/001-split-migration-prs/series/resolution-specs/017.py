@@ -30,3 +30,23 @@ for _p in ("src/Core/CollisionRegion.cpp", "src/Core/Entities/DockEntity.cpp", "
            "src/Core/HeadUpDisplay.cpp", "src/Core/OOMesh.cpp", "src/Core/OOPolygonSprite.cpp",
            "src/Core/Scripting/OOJSFunction.cpp", "src/Core/Universe.cpp"):
     RES[_p] = ["theirs"]
+
+
+# The history's include list wins; upstream's png, SDL init and SDL3 clipboard headers (#747) stay.
+def _sdl_includes_017(ours, theirs):
+    return theirs + '#include "png.h"\n#include <SDL3/SDL_clipboard.h>\n#include <SDL3/SDL_init.h>\n'
+
+
+RES["src/SDL/MyOpenGLView.cpp"] = [_sdl_includes_017]
+
+
+# OOMaths.h: the history changes its GL-include condition here (no Objective-C units remain); step 10
+# carried that condition into upstream's #748 layout, so the change is made there too (the automatic
+# merge read the moved block as an upstream deletion and dropped the history's edit).
+try:
+    CHANGES
+except NameError:
+    CHANGES = {}
+CHANGES["src/Core/OOMaths.h"] = [(
+    '#include "OOFunctionAttributes.h"\n#ifdef __OBJC__\n#include "OOOpenGL.h"\n',
+    '#include "OOFunctionAttributes.h"\n#if defined(__cplusplus) && !defined(OO_PLAIN_CPP_UNIT) // was __OBJC__: a game unit, not a plain C++ one\n#include "OOOpenGL.h"\n')]

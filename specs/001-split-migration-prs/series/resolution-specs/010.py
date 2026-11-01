@@ -6,3 +6,21 @@ CHANGES = {"src/Core/OOOpenGL.h": [
      "#ifdef __cplusplus\n"),
     ("}\n#endif\n#ifdef __cplusplus\n}\n#endif\n", "}\n#endif\n"),
 ]}
+
+
+# The history starts compiling plain C units here (OOVoxel.c, for one), so OOMaths.h includes only the
+# GL types outside Objective-C (OOOpenGL.h brings in Foundation). Upstream's #748 OOMaths.h includes
+# OOOpenGL.h unconditionally and drops OOMATHS_OPENGL_INTEGRATION; the history's condition is put in
+# upstream's layout. (By step 19 the history includes OOOpenGL.h unconditionally again.)
+RES["src/Core/OOMaths.h"] = [""]
+POST = {"src/Core/OOMaths.h": [(
+    '#include "OOFunctionAttributes.h"\n#include "OOOpenGL.h"\n',
+    '#include "OOFunctionAttributes.h"\n'
+    '#ifdef __OBJC__\n'
+    '#include "OOOpenGL.h"\n'
+    '#else\n'
+    '/*	A plain C or C++ translation unit (OOVoxel.c, for one) needs only the GL types. OOOpenGL.h\n'
+    '        imports OOFoundation.h, i.e. Foundation, which does not compile outside Objective-C.\n'
+    '*/\n'
+    '#include "OOOpenGLOnly.h"\n'
+    '#endif\n')]}

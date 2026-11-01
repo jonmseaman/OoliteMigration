@@ -24,3 +24,5 @@ DELETE = ["src/Core/Entities/PlanetEntity.h", "src/Core/Entities/PlanetEntity.mm
 # debug-monitor guard on the exit path (#756)
 WHOLE = {"src/Core/GameController.mm": lambda text: text.replace(
     "#if (OOLITE_GNUSTEP && !defined(NDEBUG))", "#if (OOLITE_SDL && defined(OO_DEBUG_MONITOR_ENABLED))")}
+# upstream's include block sits lower in this file; the history adds SDL_timer.h among the includes
+RES["src/SDL/MyOpenGLView.mm"] = [lambda ours, theirs: ours + "#include <SDL3/SDL_timer.h>\n"]

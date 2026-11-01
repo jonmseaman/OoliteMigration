@@ -38,7 +38,14 @@ extern "C" {
 #endif
 
 #include "OOFunctionAttributes.h"
+#if defined(__cplusplus) && !defined(OO_PLAIN_CPP_UNIT) // was __OBJC__: a game unit, not a plain C++ one
 #include "OOOpenGL.h"
+#else
+/*	A plain C or C++ translation unit (OOVoxel.c, for one) needs only the GL types. OOOpenGL.h
+        imports OOFoundation.h, i.e. Foundation, which does not compile outside Objective-C.
+*/
+#include "OOOpenGLOnly.h"
+#endif
 #include <assert.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -112,6 +119,11 @@ typedef double OOHPScalar;
 
 #if !OOMATHS_STANDALONE
 #include "OOVoxel.h"
+
+#include "OOTriangle.h"
+
+#include "OOBoundingBox.h"
+
 #include "legacy_random.h"
 
 #ifdef __cplusplus

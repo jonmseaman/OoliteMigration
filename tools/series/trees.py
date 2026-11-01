@@ -105,6 +105,10 @@ def auto_merge_text(base, ours, theirs, flags=None):
                 jb += 1
             if jb < len(b) and b[jb][0] < ca[1]:  # an edit straddles the block's end
                 return None
+            if any(b[x][0] == b[x][1] for x in range(ib, jb)):
+                # theirs adds new lines in (or at the edge of) the deleted block: a reorder on our side
+                # reads as a deletion, and the added line must not vanish silently
+                return None
             if flags is not None:
                 flags.add("upstream-deleted")
             pick, ia, ib = ca, ia + 1, jb
@@ -350,15 +354,16 @@ def deleted_earlier(res_dir):
     return out
 
 
-def target_tree(repo, base, ours, theirs, res_dir, report=None):
+def target_tree(repo, base, ours, theirs, res_dir, report=None, ignore=()):
     """Return (tree, []) when every conflict is resolved, else (None, unresolved paths).
 
-    `report`, if a list, receives (path, how) for each resolved conflict.
+    `report`, if a list, receives (path, how) for each resolved conflict. Stored resolutions for the
+    paths in `ignore` are not used (to see what the automatic rules alone give for them).
     """
     tree, conflicts = merge(repo, base, ours, theirs)
     if not conflicts:
         return tree, []
-    index = _load_index(res_dir)
+    index = {p: rec for p, rec in _load_index(res_dir).items() if p not in ignore}
     gone = deleted_earlier(res_dir)
     apply, unresolved = [], []
     for path, key in conflicts.items():
@@ -449,8 +454,16 @@ def record_resolution(repo, base, ours, theirs, res_dir, path, content, key_merg
     if content is not None:
         target = os.path.join(res_dir, "files", path)
         os.makedirs(os.path.dirname(target), exist_ok=True)
-        with open(target, "wb") as f:
-            f.write(content)
+        for attempt in range(10):  # Windows: a scanner can hold a just-written file for a moment
+            try:
+                with open(target, "wb") as f:
+                    f.write(content)
+                break
+            except OSError:
+                if attempt == 9:
+                    raise
+                import time
+                time.sleep(0.5)
     os.makedirs(res_dir, exist_ok=True)
     text = json.dumps(index, indent=1, sort_keys=True) + "\n"
     for attempt in range(10):  # Windows: a scanner can hold the just-written file for a moment

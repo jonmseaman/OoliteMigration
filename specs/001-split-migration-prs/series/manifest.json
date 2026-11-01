@@ -537,7 +537,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "bc786b7754606cda4f8e7654c83ac18d5db86576",
+   "merge_tree": "0cd283d4583f2d4cb3069050a332bfca92a3db38",
    "n": 5,
    "parent": "series/004-quickjs-switch",
    "resolutions": [
@@ -554,7 +554,7 @@
      "path": "src/Core/meson.build"
     },
     {
-     "how": "upstream-deleted",
+     "how": "stored",
      "path": "src/SDL/MyOpenGLView.mm"
     },
     {
@@ -573,7 +573,7 @@
     "to": "916311e66db2e9d025c763b9d028a9ff26d33ff0",
     "type": "history"
    },
-   "target_tree": "bc786b7754606cda4f8e7654c83ac18d5db86576",
+   "target_tree": "0cd283d4583f2d4cb3069050a332bfca92a3db38",
    "temporaries": [],
    "title": "Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation",
    "verification": null
@@ -594,7 +594,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "65890cd7f2c5fb54f2a8fb4db426473de46994a7",
+   "merge_tree": "65bd64c907ea4a54e9e7c500da6ce93944223a10",
    "n": 6,
    "parent": "series/005-oofnd-core",
    "resolutions": [
@@ -631,7 +631,7 @@
      "path": "src/Core/Materials/OOShaderMaterial.mm"
     },
     {
-     "how": "upstream-deleted",
+     "how": "transplant",
      "path": "src/Core/OOALSoundChannel.h"
     },
     {
@@ -662,7 +662,7 @@
     "to": "bc9a02ca7b948001da5824b9c073b42b3e24ca08",
     "type": "history"
    },
-   "target_tree": "65890cd7f2c5fb54f2a8fb4db426473de46994a7",
+   "target_tree": "65bd64c907ea4a54e9e7c500da6ce93944223a10",
    "temporaries": [],
    "title": "Move most oo_*ForKey dictionary accessors to typed PListView::get",
    "verification": null
@@ -683,7 +683,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "a7c5cafd3eec18931c2ef505090bcf1da0d37d2b",
+   "merge_tree": "ca542e0f324227aa40f0da6576af5c1b5951b00d",
    "n": 7,
    "parent": "series/006-typed-accessors",
    "resolutions": [
@@ -768,7 +768,7 @@
      "path": "src/Core/OODrawable.mm"
     },
     {
-     "how": "upstream-deleted",
+     "how": "hunks",
      "path": "src/Core/OOHPVector.h"
     },
     {
@@ -776,7 +776,7 @@
      "path": "src/Core/OOLogHeader.mm"
     },
     {
-     "how": "upstream-deleted",
+     "how": "transplant",
      "path": "src/Core/OOMatrix.mm"
     },
     {
@@ -808,7 +808,7 @@
      "path": "src/Core/Scripting/OOJSFunction.mm"
     },
     {
-     "how": "upstream-deleted",
+     "how": "hunks",
      "path": "src/Core/Scripting/OOJSPlanet.mm"
     },
     {
@@ -847,7 +847,7 @@
     "to": "ecfafab47981c8224790752d96f2340d6b07c833",
     "type": "history"
    },
-   "target_tree": "a7c5cafd3eec18931c2ef505090bcf1da0d37d2b",
+   "target_tree": "ca542e0f324227aa40f0da6576af5c1b5951b00d",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 1",
    "verification": null
@@ -869,7 +869,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "502656d2d2ba533a84be326ce43d648d1e23d45b",
+   "merge_tree": "ddb97ac0e498988cf7247f96ce2dd7a8f22ea5b1",
    "n": 8,
    "parent": "series/007-foundation-wave-1",
    "resolutions": [
@@ -1077,7 +1077,7 @@
     "to": "fa9cbc6c24fec4d77881a47e47e7b2591ece94d4",
     "type": "history"
    },
-   "target_tree": "a6569e4f673b82dc5d9e18659b95c3c293e3f35f",
+   "target_tree": "b2c862e3467df144a31639f6f791db32ec182d78",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 2",
    "verification": null
@@ -1099,7 +1099,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "7c9b2a02bcb2064e5777ba424efffe59a77e7df2",
+   "merge_tree": "d20e793f11b4b45c76cf2ba4a094dbb0fae47268",
    "n": 9,
    "parent": "series/008-foundation-wave-2",
    "resolutions": [
@@ -1216,10 +1216,6 @@
      "path": "src/Core/OOFullScreenController.h"
     },
     {
-     "how": "stored",
-     "path": "src/Core/OOHPVector.h"
-    },
-    {
      "how": "auto",
      "path": "src/Core/OOMesh.mm"
     },
@@ -1271,7 +1267,7 @@
     "to": "e0b9e24b22ab4f7373ccf71dbf4d58ac5553c4be",
     "type": "history"
    },
-   "target_tree": "0876665593ea5a0950b1148f67138834f36c34db",
+   "target_tree": "c9bdd481641d9e86b6bd8a5ac5bf891a44812cb7",
    "temporaries": [],
    "title": "Retire the remaining Foundation selectors and their bridge callers",
    "verification": null
@@ -1295,7 +1291,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "80598a72572c7c31a5f7a9124b8b3f9c4fb592fd",
+   "merge_tree": "dede78812b2e729e2aac0be403e94c269f03e576",
    "n": 10,
    "parent": "series/009-selector-families",
    "resolutions": [
@@ -1348,7 +1344,7 @@
      "path": "src/Core/OOJoystickProfile.h"
     },
     {
-     "how": "upstream-deleted",
+     "how": "stored",
      "path": "src/Core/OOMaths.h"
     },
     {
@@ -1368,7 +1364,7 @@
      "path": "src/Core/OOPolygonSprite.mm"
     },
     {
-     "how": "upstream-deleted",
+     "how": "hunks",
      "path": "src/Core/OOVector.h"
     },
     {
@@ -1384,7 +1380,7 @@
      "path": "src/Core/Scripting/OOJSFunction.mm"
     },
     {
-     "how": "upstream-deleted",
+     "how": "auto",
      "path": "src/Core/Scripting/OOJSPlanet.mm"
     },
     {
@@ -1411,7 +1407,7 @@
     "to": "67027c84d11fe03fcf208697938023d05d13f63c",
     "type": "history"
    },
-   "target_tree": "8d79699fa4bc0e24592c06431b24dd9206329c1d",
+   "target_tree": "c909a5943c3ff5dc344f9d911e5817b12c35499e",
    "temporaries": [],
    "title": "Drop gnustep-base, then convert the first classes to C++: maths, leaf utilities, OXP verifier",
    "verification": null
@@ -1435,7 +1431,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "589a770932af6b684e51526b67fcdb9fa872e4ba",
+   "merge_tree": "7f788b3ba246fd7c6d2c7aeedde20859fbb42a29",
    "n": 11,
    "parent": "series/010-leaf-conversions",
    "resolutions": [
@@ -1548,7 +1544,7 @@
      "path": "src/Core/Materials/OOTexture.mm"
     },
     {
-     "how": "transplant",
+     "how": "auto",
      "path": "src/Core/OOALSoundChannel.h"
     },
     {
@@ -1584,7 +1580,7 @@
      "path": "src/Core/Scripting/OOJavaScriptEngine.h"
     },
     {
-     "how": "upstream-deleted",
+     "how": "stored",
      "path": "src/SDL/MyOpenGLView.mm"
     }
    ],
@@ -1599,7 +1595,7 @@
     "to": "ab5dc6cd728a5b26951c588d3d6e0ef99049009c",
     "type": "history"
    },
-   "target_tree": "d02743b37a290c58f29941bb548efb5673aad218",
+   "target_tree": "462ffa6af5e9ff54a761fd3fff5da49d4f886b56",
    "temporaries": [],
    "title": "Convert scripting, entities, audio and materials classes to C++",
    "verification": null
@@ -1622,7 +1618,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "2ba37ff07d65860b01ccb7a6ee5d7bdf073726fc",
+   "merge_tree": "2dc10669c4ab2b9356ac1e23c4024d3a6c5ba7b9",
    "n": 12,
    "parent": "series/011-module-conversions",
    "resolutions": [
@@ -1698,7 +1694,7 @@
     "to": "0c01939de79a4ac04237390d93dc78437057c5e0",
     "type": "history"
    },
-   "target_tree": "a70cf6f725ced1471bd8e5b68cd4beb211ef1c2c",
+   "target_tree": "e97c5f6ac2b5ba73411224e99693da4cc679e8e3",
    "temporaries": [],
    "title": "Convert the large files in slices; delete the first Objective-C facades",
    "verification": null
@@ -1719,7 +1715,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "80c4898d3a5361a8e098ab37fa6e0af9bb02da20",
+   "merge_tree": "f813ca3fb2946b3dd23d309c3cf8304b6081a93a",
    "n": 13,
    "parent": "series/012-first-slices",
    "resolutions": [
@@ -1771,7 +1767,7 @@
     "to": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
     "type": "history"
    },
-   "target_tree": "375f3987cc42718785ddc63d498f20dc000c175a",
+   "target_tree": "92353d3d012ea90e7a2b7209026edd458ecd2d78",
    "temporaries": [],
    "title": "Convert ShipEntity to C++",
    "verification": null
@@ -1793,7 +1789,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "732e2005f82b9f2c4352b4c5e4a1e4d5cf874b67",
+   "merge_tree": "d83ea9e18bcb1333576ee9fcbf19c9eb0ead4044",
    "n": 14,
    "parent": "series/013-shipentity-slices",
    "resolutions": [
@@ -1824,10 +1820,6 @@
     {
      "how": "stored",
      "path": "src/SDL/MyOpenGLView+Input.mm"
-    },
-    {
-     "how": "upstream-deleted",
-     "path": "src/SDL/MyOpenGLView.mm"
     }
    ],
    "size": {
@@ -1841,7 +1833,7 @@
     "to": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
     "type": "history"
    },
-   "target_tree": "bb6e608a2777aacd2fee409c8f3363e50b1b395f",
+   "target_tree": "972685d23bdfb40d95b2c3a789e663d16b89938b",
    "temporaries": [],
    "title": "Convert Universe and PlayerEntity to C++",
    "verification": null
@@ -1862,7 +1854,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "94c5e6994ee3ddc6e94d32dc8903f11cd12b48a7",
+   "merge_tree": "9e383709ab837a9bca7e8123d6b88d23d35481b1",
    "n": 15,
    "parent": "series/014-universe-player-slices",
    "resolutions": [
@@ -1915,7 +1907,7 @@
      "path": "src/Core/OOOXZManager.mm"
     },
     {
-     "how": "upstream-deleted",
+     "how": "stored",
      "path": "src/Core/OOVector.h"
     },
     {
@@ -1954,7 +1946,7 @@
     "to": "2c2aae1316b5a125038a797c213162ffba389279",
     "type": "history"
    },
-   "target_tree": "c71f6381ab4f5085097e0fca7e727b06565abc0c",
+   "target_tree": "73e137b9cd30878cf1eed107fc0ad71c91ecabd0",
    "temporaries": [],
    "title": "Delete the Objective-C facades",
    "verification": null
@@ -1975,7 +1967,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "4ae6a9855daeebdfc18ebe77fe90401123f98329",
+   "merge_tree": "fd163e88c5c55962f7d42d50b442d41c8f233dee",
    "n": 16,
    "parent": "series/015-facade-deletions",
    "resolutions": [
@@ -2028,7 +2020,7 @@
      "path": "src/Core/Materials/OOBasicMaterial.mm"
     },
     {
-     "how": "upstream-deleted",
+     "how": "stored",
      "path": "src/Core/Materials/OOConcreteTexture.mm"
     },
     {
@@ -2131,7 +2123,7 @@
     "to": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
     "type": "history"
    },
-   "target_tree": "b90d4088a8e2aff0384127df16d6d8acef2dee1d",
+   "target_tree": "384cbc08acb491cd999e2b5aae358388ef2735a2",
    "temporaries": [],
    "title": "Delete the root Entity facade",
    "verification": null
@@ -2153,7 +2145,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "5edaef61d6ef8b78e5d7378bc799c47c794d4e8a",
+   "merge_tree": "7e2b6133284fd35c40ad578f624b52e497172176",
    "n": 17,
    "parent": "series/016-entity-facade",
    "resolutions": [
@@ -2239,10 +2231,6 @@
     },
     {
      "how": "stored",
-     "path": "src/Core/OOALSoundChannel.h"
-    },
-    {
-     "how": "stored",
      "path": "src/Core/OOCocoa.cpp"
     },
     {
@@ -2274,7 +2262,7 @@
      "path": "src/Core/OOMacroOpenGL.h"
     },
     {
-     "how": "upstream-deleted",
+     "how": "stored",
      "path": "src/Core/OOMaths.h"
     },
     {
@@ -2461,7 +2449,7 @@
     "to": "af1f220542e4917a23833902e8efc313a8eb463b",
     "type": "history"
    },
-   "target_tree": "ac13a0b7c775293bb750b7ee13a55991fe30cdad",
+   "target_tree": "ecde8719c5842e48767114953475618915b36f46",
    "temporaries": [],
    "title": "Remove the Objective-C runtime and rename the sources to .cpp",
    "verification": null
@@ -2482,7 +2470,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "df17fc8f127f1947871b529ce407d949b44a74ad",
+   "merge_tree": "92b4e4e5cc92b3e36bc37ee0b4dbc4587bb8b449",
    "n": 18,
    "parent": "series/017-objc-runtime-out",
    "resolutions": [],
@@ -2497,7 +2485,7 @@
     "to": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
     "type": "history"
    },
-   "target_tree": "e9a74fcf8cb5e5c076d813aaf9b70fcaf9e6f103",
+   "target_tree": "a4e0ea4c54f7dccaf7ae08d3eaf8c4fdc6f40d67",
    "temporaries": [],
    "title": "Build with GCC as well as Clang",
    "verification": null
@@ -2518,7 +2506,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "06499189056d535c0fdd51989e82242c787d5ff1",
+   "merge_tree": "c72d7cf3c6bb3d87292eceb3b0c0b6e211911f56",
    "n": 19,
    "parent": "series/018-gcc-build",
    "resolutions": [
@@ -2602,7 +2590,7 @@
     "to": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
     "type": "history"
    },
-   "target_tree": "bf04f8a934be760c65f3ec9d7616fcbc65991301",
+   "target_tree": "7a08d4b4424c8a0181452b56bc638823eba71b7b",
    "temporaries": [],
    "title": "Port upstream changes #369 to #765 into the C++ code",
    "verification": null

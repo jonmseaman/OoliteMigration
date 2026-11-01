@@ -117,27 +117,11 @@ def _pairs(pairs):
 
 
 def _automatic(path):
-    idx_file = os.path.join(S.resolutions_dir(st), "index.json")
-    index = _json.load(open(idx_file, encoding="utf-8")) if os.path.exists(idx_file) else {}
-    saved = index.pop(path, None)
-    tmp_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "apply-res-tmp", f"{n:03d}")
-    os.makedirs(tmp_dir, exist_ok=True)
-    import shutil
-    shutil.rmtree(tmp_dir)
-    shutil.copytree(S.resolutions_dir(st), tmp_dir) if os.path.isdir(S.resolutions_dir(st)) else os.makedirs(tmp_dir)
-    with open(os.path.join(tmp_dir, "index.json"), "w", encoding="utf-8") as f:
-        _json.dump(index, f)
-    auto_tree, unresolved = trees.target_tree(S.GAME, b, o, t, tmp_dir)
+    auto_tree, unresolved = trees.target_tree(S.GAME, b, o, t, S.resolutions_dir(st), ignore={path})
     if path in (unresolved or []):
         raise SystemExit(f"{path}: not resolved automatically; use RES")
     if auto_tree is None:
-        # other paths still unresolved: take this path's automatic text from the per-file merge
-        k = conf[path]
-        lines = trees.merge_file_by_hunks(S.GAME, k["base"], k["ours"], k["theirs"], o, path)[0]
-        text = "".join(lines)
-        if re.search(r"^(<<<<<<<|>>>>>>>)", text, re.M):
-            raise SystemExit(f"{path}: automatic result unavailable while other conflicts are open")
-        return text
+        raise SystemExit(f"{path}: other conflicts are open in step {n} ({unresolved[:3]}); resolve them first")
     return trees._git(S.GAME, "cat-file", "-p", f"{auto_tree}:{path}").stdout.decode("utf-8", "surrogateescape")
 
 

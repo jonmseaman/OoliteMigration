@@ -58,5 +58,11 @@
   "deleted": false,
   "ours": "f81fade294c852a7a69a9b4c679f98ace94aeea2",
   "theirs": "7e41f417ff837e8c57635bb2be3a4c188c0eb32e"
+ },
+ "src/SDL/MyOpenGLView.mm": {
+  "base": "598b650e0ac1ac2e4ffb883eef60bb9126eb36de",
+  "deleted": false,
+  "ours": "a8dc6d095938447f68527cc89290859209b79a44",
+  "theirs": "714fbc07ecd244357374291e0c8c98e85f248ac5"
  }
 }

@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "MyOpenGLView.h"
+#include "oofnd/Process.hpp"
 #import "GameController.h"
 #import "GuiDisplayGen.h"
 #import "MyOpenGLView+Input.h"

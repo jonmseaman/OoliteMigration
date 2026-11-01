@@ -106,6 +106,26 @@ class AutoMergeTest(unittest.TestCase):
         theirs = self.base[:3] + ["int z;\n"]
         self.assertEqual(trees.auto_merge_text(self.base, ours, theirs), ["// head\n"] + self.base[:3] + ["int z;\n"])
 
+    def test_upstream_block_deletion_drops_history_edits_inside_it(self):
+        ours = self.base[3:]                                   # upstream deletes the debug block
+        theirs = self.base[:1] + ["void dump(JSContext* c);\n"] + self.base[2:]  # the history edits a line in it
+        flags = set()
+        self.assertEqual(trees.auto_merge_text(self.base, ours, theirs, flags), ["int x;\n"])
+        self.assertEqual(flags, {"upstream-deleted"})
+
+    def test_history_insertion_inside_an_upstream_deleted_block_conflicts(self):
+        # a reorder shows as a deletion; a line the history adds there must not vanish silently
+        base = ["#import \"A.h\"\n", "#import \"B.h\"\n", "#import \"C.h\"\n", "int x;\n"]
+        ours = ["int x;\n"]
+        theirs = base[:1] + ["#include \"oofnd/Process.hpp\"\n"] + base[1:]
+        self.assertIsNone(trees.auto_merge_text(base, ours, theirs))
+
+    def test_history_insertion_at_the_edge_of_an_upstream_deleted_block_conflicts(self):
+        base = ["#import \"A.h\"\n", "#import \"B.h\"\n", "int x;\n"]
+        ours = ["int x;\n"]
+        theirs = ["#include <vector>\n"] + base
+        self.assertIsNone(trees.auto_merge_text(base, ours, theirs))
+
 
 class TransplantTest(unittest.TestCase):
     base = ["static JSBool Get(JSContext *c);\n", "#ifndef NDEBUG\n", "static JSBool Dump(JSContext *c);\n",

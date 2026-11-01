@@ -24,9 +24,6 @@ MA 02110-1301, USA.
 
 #include "MyOpenGLView.h"
 #include "oofnd/Process.hpp"
-#include "png.h"
-#include <SDL3/SDL_clipboard.h>
-#include <SDL3/SDL_init.h>
 #include <SDL3/SDL_timer.h>
 
 #include "GameController.h"
@@ -40,6 +37,9 @@ MA 02110-1301, USA.
 #include "PlayerEntity.h"
 #include "ResourceManager.h"
 #include "Universe.h"
+#include "png.h"
+#include <SDL3/SDL_clipboard.h>
+#include <SDL3/SDL_init.h>
 #include "oofnd/Defaults.hpp"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListGet.hpp"
@@ -766,6 +766,108 @@ void MyOpenGLView::initSplashScreen()
     return;
 }
 
+// Slice 2 of docs/phases/3-slices/MyOpenGLView.md (bead oo-72cz): accessors, display modes, settings,
+// display / HDR, FOV and MSAA.
+
+NSRect MyOpenGLView::getBounds()
+{
+    return bounds;
+}
+
+NSSize MyOpenGLView::getViewSize()
+{
+    return viewSize;
+}
+
+NSSize MyOpenGLView::backingViewSize()
+{
+    return bounds.size;
+}
+
+GLfloat MyOpenGLView::getDisplay_z()
+{
+    return display_z;
+}
+
+GLfloat MyOpenGLView::getX_offset()
+{
+    return x_offset;
+}
+
+GLfloat MyOpenGLView::getY_offset()
+{
+    return y_offset;
+}
+
+::GameController* MyOpenGLView::getGameController()
+{
+    return gameController;
+}
+
+void MyOpenGLView::setGameController(::GameController* controller)
+{
+    gameController = controller;
+}
+
+bool MyOpenGLView::inFullScreenMode()
+{
+    return fullScreen;
+}
+
+#if OOLITE_SDL
+void MyOpenGLView::setFullScreenMode(bool fsm)
+{
+    fullScreen = fsm;
+
+    // Save the settings for later.
+    oo::Defaults::standard().setBool("fullscreen", fullScreen);
+    oo::Defaults::standard().synchronize();
+}
+
+void MyOpenGLView::toggleScreenMode()
+{
+    setFullScreenMode(!fullScreen);
+    if (fullScreen) {
+        initialiseGLWithSize(modeAsSize(currentSize));
+    } else {
+        initialiseGLWithSize(currentWindowSize);
+#if OOLITE_LINUX
+        SDL_HideWindow(window);
+        SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+        SDL_ShowWindow(window);
+#endif
+    }
+}
+
+void MyOpenGLView::setDisplayMode(int mode, bool fsm)
+{
+    setFullScreenMode(fsm);
+    currentSize = mode;
+    if (fullScreen)
+        initialiseGLWithSize(modeAsSize(mode));
+}
+
+void MyOpenGLView::setScreenSize(int sizeIndex)
+{
+    currentSize = sizeIndex;
+    if (fullScreen)
+        initialiseGLWithSize(modeAsSize(currentSize));
+}
+
+std::vector<oo::PList> MyOpenGLView::getScreenSizeArray()
+{
+    return screenSizes;
+}
+
+NSSize MyOpenGLView::modeAsSize(int sizeIndex)
+{
+    const oo::PList& mode = screenSizes.at(sizeIndex);
+    return NSMakeSize(mode.get<int>(std::string(kOODisplayWidth)),
+        mode.get<int>(std::string(kOODisplayHeight)));
+}
+
+#endif
+
 void MyOpenGLView::getDisplayDimensions(unsigned* width, unsigned* height)
 {
     SDL_DisplayID displayID = SDL_GetDisplayForWindow(window);
@@ -885,7 +987,7 @@ void MyOpenGLView::setHDRToneMapper(OOHDRToneMapper newToneMapper)
 
 #else // Linus stub methods
 
-- (BOOL)hdrOutput
+bool MyOpenGLView::hdrOutput()
 {
     return NO;
 }

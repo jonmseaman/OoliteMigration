@@ -41,6 +41,12 @@
   "ours": "7a54ad84ef587f1a68c9852619021f934d961566",
   "theirs": null
  },
+ "src/Core/OOVector.h": {
+  "base": "be7fed239e3fe8fa2e29ba2fe2405ace6a27cf5a",
+  "deleted": false,
+  "ours": "f14a3827b15aa6ccf330d481977257e546571a29",
+  "theirs": "7f732e4161e2149fc72961305666b70725696325"
+ },
  "src/Core/Scripting/OOJSSound.h": {
   "base": "c496006c4b864aa0b7809cde0809c8e6ebf6462b",
   "deleted": false,

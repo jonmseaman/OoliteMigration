@@ -6,3 +6,6 @@ POST = {"src/Core/OOStringParsing.mm": [
     ("            token = [NSString stringWithCharacters:result length:ri];\n",
      "            token = [NSString stringWithCharacters:result.data() length:ri];\n"),
 ]}
+# upstream's include block sits lower in this file (its order); the history adds oofnd/Process.hpp
+# among the includes it had here, which the series keeps
+RES["src/SDL/MyOpenGLView.mm"] = [lambda ours, theirs: ours + '#include "oofnd/Process.hpp"\n']

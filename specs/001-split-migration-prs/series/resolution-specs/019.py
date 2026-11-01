@@ -10,7 +10,7 @@ RES = {
     "src/Core/Entities/PlayerEntity.cpp": ["theirs", "theirs"],  # the history's port of #740 (develop's)
     "src/Core/GameController.cpp": ["ours"],  # #766: OOLITE_SDL in the debug-monitor exit guard
     "src/Core/Materials/OOTexture.cpp": ["theirs"],
-    "src/Core/OOMaths.h": ["theirs", "theirs"],
+    "src/Core/OOMaths.h": ["theirs", "theirs", "theirs"],
     "src/Core/OOOXZManager.cpp": ["theirs", "theirs"],  # the history's C++ copy-URL port
     "src/Core/OOOpenGLOnly.h": ["ours"],  # #766: GL_GLEXT_PROTOTYPES on macOS too
     "src/SDL/MyOpenGLView.cpp": ["ours"],  # Linux stubs stay removed (#747)

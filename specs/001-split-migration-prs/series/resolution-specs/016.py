@@ -9,7 +9,7 @@ RES = {
     "src/Core/OOOXZManager.mm": ["ours"],
     "src/SDL/MyOpenGLView.mm": [
         "ours",  # upstream #744 removed the undocumented dark-mode API: it stays removed
-        "ours",  # Linux stubs: upstream made these methods common (#747)
+        # (the Linux stubs no longer conflict: step 12 keeps the history's C++ HDR stub)
     ],
 }
 DELETE = []
@@ -44,3 +44,5 @@ RES["src/Core/Scripting/OOJSFunction.mm"] = ["theirs"]
 RES["src/Core/Universe.mm"] = ["theirs"] * 6
 # the history turns the profiling #warning into a comment here (step 4 did the same, earlier)
 RES["src/Core/Scripting/OOJSEngineTimeManagement.mm"] = ["theirs"]
+# the history re-lists texture includes that the series already has lower down (its block once sorted)
+RES["src/Core/Materials/OOConcreteTexture.mm"] = ["ours"]

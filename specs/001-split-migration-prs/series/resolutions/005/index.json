@@ -4,5 +4,11 @@
   "deleted": false,
   "ours": "9000232d201ae5ee632c910dd82fd236602aeb0c",
   "theirs": "df454a3405a882be92d298e92ec1f2aa4e8b0eb3"
+ },
+ "src/SDL/MyOpenGLView.mm": {
+  "base": "c7fa326636b8119406a709e1aaccaaf48199bd5a",
+  "deleted": false,
+  "ours": "84d7193bf5b4266598c918ab341c8a3624d138d2",
+  "theirs": "9e9f6c9310686f5fa1fa9d941c499b3ec5207098"
  }
 }

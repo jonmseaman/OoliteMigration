@@ -1,4 +1,10 @@
 {
+ "src/Core/OOMaths.h": {
+  "base": "c0c864a12b089f8861e1d2e22c7a75d3d63bc2a3",
+  "deleted": false,
+  "ours": "1a501c3144dbef8030af2db17ebf06656430dd44",
+  "theirs": "8744e9d7253228547bbcaf186174b734fbc38b67"
+ },
  "src/Core/OOOpenGL.h": {
   "deleted": false,
   "extra": true,
