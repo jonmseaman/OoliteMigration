@@ -119,7 +119,7 @@ history, merges into `main`, and a fake upstream with a reformat commit.
   an upstream-only change survives, a history-only change survives, and a both-sides change is
   reported as a conflict, then resolved by a patch. Depends on T008, T009. Accept: `python -I -m
   unittest tools.series.tests.test_trees` exits 0.
-- [ ] T011 Write `tools/series/tests/test_stack.py`, then implement `tools/series/stack.py` (research
+- [X] T011 Write `tools/series/tests/test_stack.py`, then implement `tools/series/stack.py` (research
   R8): `make_step(repo, branch, parent, tree, message)` creates or force-resets the branch to one
   commit (`git commit-tree <tree> -p <parent tip>`). On first creation it records lineage with
   `git town append <branch> --prototype --no-sync --no-push` run from the parent, then moves the
