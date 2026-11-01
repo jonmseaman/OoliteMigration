@@ -124,3 +124,20 @@ class TransplantTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HunkMergeTest(unittest.TestCase):
+    def test_easy_hunks_resolve_and_hard_ones_remain(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fx = make_history_repo(tmp)
+            g = fx["game"]
+            blob = lambda text: trees._git(g, "hash-object", "-w", "--stdin", inp=text.encode()).stdout.decode().strip()
+            base = "".join(f"line {i}\n" for i in range(30))
+            ours = base.replace("line 3\n", "#ifdef OO_DEBUG_MONITOR_ENABLED\n").replace("line 20\n", "upstream 20\n")
+            theirs = base.replace("line 4\n", "history 4\n").replace("line 20\n", "history 20\n")
+            lines, n_auto, left = trees.merge_file_by_hunks(g, blob(base), blob(ours), blob(theirs))
+            self.assertEqual(left, 1)          # line 20 changed differently on both sides
+            self.assertEqual(n_auto, 1)        # lines 3/4: adjacent edits merge
+            text = "".join(lines)
+            self.assertIn("#ifdef OO_DEBUG_MONITOR_ENABLED\nhistory 4\n", text)
+            self.assertIn("<<<<<<< ours\nupstream 20\n=======\nhistory 20\n>>>>>>> theirs\n", text)

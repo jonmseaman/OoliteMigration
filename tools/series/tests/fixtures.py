@@ -19,12 +19,13 @@ ENV = {
 STYLE = "BasedOnStyle: LLVM\nColumnLimit: 100\nAllowShortFunctionsOnASingleLine: None\n"
 
 
-def git(repo, *args, date=None):
+def git(repo, *args, date=None, input_text=None):
     env = dict(os.environ, **ENV)
     env["GIT_CONFIG_GLOBAL"] = os.devnull
     if date:
         env["GIT_AUTHOR_DATE"] = env["GIT_COMMITTER_DATE"] = date
-    r = subprocess.run(["git", "-C", repo, *args], capture_output=True, text=True, encoding="utf-8", env=env)
+    r = subprocess.run(["git", "-C", repo, *args], capture_output=True, text=True, encoding="utf-8", env=env,
+                       input=input_text)
     if r.returncode:
         raise RuntimeError(f"git {' '.join(args)}: {r.stderr.strip()}")
     return r.stdout.strip()

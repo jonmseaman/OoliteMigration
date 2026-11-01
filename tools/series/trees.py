@@ -240,20 +240,98 @@ def transplant(base, ours, theirs):
     return out
 
 
+def resolve_hunk(b, o, t):
+    """One diff3 hunk: (resolved lines, how) or (None, None)."""
+    if o == b:
+        return t, "auto"
+    if t == b or o == t:
+        return o, "auto"
+    out = auto_merge_text(b, o, t)
+    if out is not None:
+        return out, "auto"
+    out = transplant(b, o, t)
+    if out is not None:
+        return out, "transplant"
+    return None, None
+
+
+def merge_file_by_hunks(repo, base_oid, ours_oid, theirs_oid):
+    """diff3-merge three blobs, resolving each conflict hunk on its own.
+
+    Returns (lines, n_auto_hunks, unresolved_hunks) where unresolved hunks are left in `lines`
+    with ordinary <<<<<<< / ======= / >>>>>>> markers (no base section).
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        paths = []
+        for name, oid in (("ours", ours_oid), ("base", base_oid), ("theirs", theirs_oid)):
+            p = os.path.join(tmp, name)
+            with open(p, "wb") as f:
+                f.write(_git(repo, "cat-file", "blob", oid).stdout)
+            paths.append(p)
+        r = subprocess.run(["git", "merge-file", "-p", "--diff3", "-L", "ours", "-L", "base", "-L", "theirs", *paths],
+                           capture_output=True)
+    text = r.stdout.decode("utf-8", "surrogateescape").splitlines(keepends=True)
+    out, i, n_auto, left = [], 0, 0, 0
+    while i < len(text):
+        line = text[i]
+        if not line.startswith("<<<<<<< ours"):
+            out.append(line)
+            i += 1
+            continue
+        o, b, t = [], [], []
+        sect = "o"
+        i += 1
+        while i < len(text) and not text[i].startswith(">>>>>>> theirs"):
+            l = text[i]
+            if l.startswith("||||||| base"):
+                sect = "b"
+            elif l.startswith("=======") and sect == "b":
+                sect = "t"
+            else:
+                (o if sect == "o" else b if sect == "b" else t).append(l)
+            i += 1
+        i += 1  # the >>>>>>> line
+        res, how = resolve_hunk(b, o, t)
+        if res is None:
+            left += 1
+            out += ["<<<<<<< ours\n", *o, "=======\n", *t, ">>>>>>> theirs\n"]
+        else:
+            n_auto += 1
+            out += res
+    return out, n_auto, left
+
+
+def deleted_earlier(res_dir):
+    """Paths deleted by a resolution of an earlier step (sibling directories numbered lower)."""
+    parent, name = os.path.split(os.path.normpath(res_dir))
+    out = set()
+    if not name.isdigit() or not os.path.isdir(parent):
+        return out
+    for d in os.listdir(parent):
+        if d.isdigit() and int(d) < int(name):
+            out |= {p for p, rec in _load_index(os.path.join(parent, d)).items() if rec.get("deleted")}
+    return out
+
+
 def target_tree(repo, base, ours, theirs, res_dir, report=None):
     """Return (tree, []) when every conflict is resolved, else (None, unresolved paths).
 
-    `report`, if a list, receives (path, "stored" | "auto") for each resolved conflict.
+    `report`, if a list, receives (path, how) for each resolved conflict.
     """
     tree, conflicts = merge(repo, base, ours, theirs)
     if not conflicts:
         return tree, []
     index = _load_index(res_dir)
+    gone = deleted_earlier(res_dir)
     apply, unresolved = [], []
     for path, key in conflicts.items():
         rec = index.get(path)
         if rec and not rec.get("extra") and all(rec.get(k) == v for k, v in key.items()):
             apply.append((path, "stored", rec, None))
+            continue
+        if key["ours"] is None and path in gone:
+            # an earlier step deleted this file; the history is still editing it
+            apply.append((path, "deleted-earlier", {"deleted": True}, None))
             continue
         if key["base"] and key["ours"] is None and key["theirs"] == key["base"]:
             # upstream deleted the file; the history only renamed it
@@ -271,6 +349,10 @@ def target_tree(repo, base, ours, theirs, res_dir, report=None):
             how = "upstream-deleted" if flags else "auto"
             if out is None:
                 out, how = transplant(b, o, t), "transplant"
+            if out is None:
+                lines, _, left = merge_file_by_hunks(repo, key["base"], key["ours"], key["theirs"])
+                if left == 0:
+                    out, how = lines, "hunks"
             if out is not None:
                 apply.append((path, how, None, "".join(out).encode("utf-8", "surrogateescape")))
                 continue
