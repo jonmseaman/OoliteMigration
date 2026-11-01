@@ -146,5 +146,8 @@ game repo only gets local branches.
 - 2026-11-01: Cuts follow phases and work items first ("chapters"), size second (research R13,
   option D), after Jon asked for a logical split. A history-free split was rejected: 75% of `src`
   is one include cycle, so it would need a ~210k-line flip PR.
+- T002: clang-format 22.1.8 (PyPI `clang-format` wheel) in `.agent-tmp/series-venv`.
+- T003: the history is `refs/series/history` in `oolite-dev` (= OoliteMigration `338463308`); fetch by
+  full hash (abbreviated hashes are refused).
 - To fill at G2: boundary moves (if a snapshot doesn't build), hoisted fixes in chapter 1, and
   whether the tail groups 020–024 build in upstream style (else they fold into 025).

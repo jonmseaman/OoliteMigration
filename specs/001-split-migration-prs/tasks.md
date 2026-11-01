@@ -47,18 +47,18 @@ steps). US4 and US5 are P2.
 
 **Purpose**: the tools, objects and refs every later task uses.
 
-- [ ] T001 Create the package skeleton `tools/series/__init__.py`, `tools/series/series.py` (argparse
+- [X] T001 Create the package skeleton `tools/series/__init__.py`, `tools/series/series.py` (argparse
   CLI with the nine subcommands from contracts/series-cli.md, each exiting 2 with "not implemented"),
   and `tools/series/tests/__init__.py`. Accept: `python -I tools/series/series.py --help` exits 0
   and lists `inventory cut hoist tree build verify describe check renumber`.
-- [ ] T002 [P] Install clang-format 22 into a venv: `python -m venv .agent-tmp/series-venv &&
+- [X] T002 [P] Install clang-format 22 into a venv: `python -m venv .agent-tmp/series-venv &&
   .agent-tmp/series-venv/Scripts/pip install "clang-format>=22,<23"`. Record the exact version in
   plan.md Notes. Accept: `.agent-tmp/series-venv/Scripts/clang-format --version | grep -q 'version 22\.'`.
-- [ ] T003 [P] Make the history reachable from `oolite-dev` without a branch: `git -C oolite-dev
+- [X] T003 [P] Make the history reachable from `oolite-dev` without a branch: `git -C oolite-dev
   fetch .. 338463308:refs/series/history`. If the SHA fetch is refused, fetch
   `feature/phase4-polish` and `update-ref refs/series/history 338463308`. Accept:
   `git -C oolite-dev rev-parse --verify refs/series/history^:upstream/oolite`.
-- [ ] T004 [P] Create the stack root and Git Town config in `oolite-dev`: `git branch
+- [X] T004 [P] Create the stack root and Git Town config in `oolite-dev`: `git branch
   series/000-upstream-base 49a5eb9fc` and `git config git-town.perennial-branches
   series/000-upstream-base` (append if the key exists). Also `git config rerere.enabled true` and
   `git config rerere.autoUpdate false`. Accept: `[ "$(git -C oolite-dev rev-parse
