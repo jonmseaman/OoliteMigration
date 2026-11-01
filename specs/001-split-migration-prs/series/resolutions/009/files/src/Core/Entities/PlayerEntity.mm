@@ -2094,8 +2094,8 @@ std::optional<std::string> OoliteInfoString(std::string_view key)
 
     [self cxx_setCommanderName:std::string(PLAYER_DEFAULT_NAME)];
     const oo::PList savedName = oo::Defaults::standard().object("last_savename");
-    if (const std::string* name = savedName.getIf<std::string>()) {
-        [self cxx_setLastsaveName:*name];
+    if (const std::string* savedLastsaveName = savedName.getIf<std::string>()) {
+        [self cxx_setLastsaveName:*savedLastsaveName];
     }
 
     galaxy_coordinates = NSMakePoint(0x14, 0xAD); // 20,173

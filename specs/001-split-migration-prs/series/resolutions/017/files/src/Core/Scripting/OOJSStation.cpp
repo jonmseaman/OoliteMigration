@@ -1283,7 +1283,7 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 
     if (!shipyardDefinition.get<oo::PList>(std::string(SHIPYARD_KEY_PERSONALITY))) {
         // default to 0 if not supplied
-        result[oo::StdString(SHIPYARD_KEY_PERSONALITY)] = oo::PList::unsignedInteger(0);
+        result[std::string(SHIPYARD_KEY_PERSONALITY)] = oo::PList::unsignedInteger(0);
     } else {
         result[std::string(SHIPYARD_KEY_PERSONALITY)] = oo::PList::unsignedInteger(shipyardDefinition.get<unsigned int>(std::string(SHIPYARD_KEY_PERSONALITY)));
     }

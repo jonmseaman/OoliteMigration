@@ -11,6 +11,12 @@
   "ours": "3df7faf97d603925b50dc8ba4b9ef574456b3e1f",
   "theirs": "6a8e8deaa2cfe96a780468d1dd949ac5efcf1f75"
  },
+ "src/Core/Entities/PlayerEntityLoadSave.mm": {
+  "base": "09108f10c3824d72326b6b95494951557c7cf595",
+  "deleted": false,
+  "ours": "cad1423599cf950016debe4fa8ca0fd3e6fad321",
+  "theirs": "d77873e1b6eab549665a8c87c8f9354a1d3675bb"
+ },
  "src/Core/Entities/ShipEntity.mm": {
   "base": "c7ba67d20a4d907b2f0446f4d95ce0a2d47c6ac1",
   "deleted": false,
@@ -59,10 +65,22 @@
   "ours": "22b33911fe51e35649c33a93413d1c95cfaeca67",
   "theirs": "3562354b453ddf1484171e647837a3b5b7210b22"
  },
+ "src/Core/OOOXZManager.mm": {
+  "base": "768a2a9c6a83a5bce71615b234bf54cda36dc702",
+  "deleted": false,
+  "ours": "57e1056dce0709e90eb553d021b10bf83609304a",
+  "theirs": "1c7ada3dce947efd567b8622e50581129623f9ad"
+ },
  "src/Core/Scripting/OOJSShip.mm": {
   "deleted": false,
   "extra": true,
   "merged": "7c186c73c6cf8881b300bba8d479dbf24cc9e419"
+ },
+ "src/Core/Scripting/OOJSStation.mm": {
+  "base": "526c9105dd3bb7f3621dfe66260258e1c7501533",
+  "deleted": false,
+  "ours": "0b1268b896851c3fb136658abced9411b21f989a",
+  "theirs": "e9345fd14b81fc1b2344b8eab18832f867c08261"
  },
  "src/Core/Scripting/OOJavaScriptEngine.h": {
   "base": "39502a0fb00c1903c8bea7fbc2f3947eedc76203",
@@ -81,5 +99,11 @@
   "deleted": true,
   "ours": "9eb6d297a9d0e0ee3e5609335767cd6ac04d00fa",
   "theirs": null
+ },
+ "src/SDL/MyOpenGLView.mm": {
+  "base": "96d58a857d32454f9440f99968015830ff9b0772",
+  "deleted": false,
+  "ours": "e1091eed79fdd182c27fd8d7973af169c958740d",
+  "theirs": "cdb219c3f88b6b69b4851e7a42143a4af2a329cb"
  }
 }

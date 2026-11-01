@@ -222,7 +222,7 @@ void cxx::MyOpenGLView::createWindowWithSize(NSSize size)
         // Keep the splash screen's context (and its textures); the GL attributes are unchanged,
         // so the new window's pixel format matches.
         if (!SDL_GL_MakeCurrent(window, glContext)) {
-            OOLog(@"sdl.create_context", @"Could not make OpenGL context current: %s", SDL_GetError());
+            OO_LOG("sdl.create_context", "Could not make OpenGL context current: {}", SDL_GetError());
             exit(1);
         }
     } else {
@@ -244,7 +244,7 @@ void cxx::MyOpenGLView::createWindowWithSize(NSSize size)
     // shaders). SDL_GetWindowSurface() may create an internal GL renderer context for the window
     // and leave it current, so make glContext current again before any GL call.
     if (!SDL_GL_MakeCurrent(window, glContext)) {
-        OOLog(@"sdl.create_context", @"Could not make OpenGL context current: %s", SDL_GetError());
+        OO_LOG("sdl.create_context", "Could not make OpenGL context current: {}", SDL_GetError());
         exit(1);
     }
 
@@ -494,7 +494,7 @@ void cxx::MyOpenGLView::endSplashScreen()
         // which SDL makes current and then releases, so no context is current afterwards.
         // Rebind glContext before anything draws.
         if (!SDL_GL_MakeCurrent(window, glContext)) {
-            OOLog(@"sdl.create_context", @"Could not make OpenGL context current: %s", SDL_GetError());
+            OO_LOG("sdl.create_context", "Could not make OpenGL context current: {}", SDL_GetError());
             exit(1);
         }
         SDL_ShowWindow(window);

@@ -168,7 +168,7 @@
  "src/Core/Scripting/OOJSStation.cpp": {
   "base": "4e90e70465fb5723461dd1a7bce329c75c51f91d",
   "deleted": false,
-  "ours": "9ae0462a4c64e4222c178ea51e55a8474dd4cffb",
+  "ours": "9a73bdf8448941ba45527e60e34fb9ba4a97e5ac",
   "theirs": "ab2e07b4d800deaca6d5aa91fd87ea7a44f8939b"
  },
  "src/Core/Scripting/OOJSWaypoint.cpp": {
@@ -204,7 +204,7 @@
  "src/SDL/MyOpenGLView.cpp": {
   "base": "9060b8d220fecc8cc51469c230bbb4b77671ab26",
   "deleted": false,
-  "ours": "bcb6b73af1871b8920e76a061f8616959329447c",
+  "ours": "5ee72aa00ed8fa698951e7b08ba9f38f8bc4dc55",
   "theirs": "54c53f2e186fc28c684e3841c0aaa132079a6016"
  },
  "src/meson/meson.build": {

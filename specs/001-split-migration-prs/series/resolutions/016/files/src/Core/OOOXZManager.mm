@@ -1683,7 +1683,7 @@ void OOOXZManager::processCopyUrlKey()
 
             const oo::PList manifest = ElementAt(_filteredList, _item);
             // infoURL
-            const std::optional<std::string> infoURL = ManifestString(manifest, oo::StdString(kOOManifestInformationURL));
+            const std::optional<std::string> infoURL = ManifestString(manifest, std::string(kOOManifestInformationURL));
             // copy url info text to clipboard automatically once we are in the oxz info page
             if (infoURL.has_value() && UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)
                 UNIVERSE->getGameView()->stringToClipboard(*infoURL);
