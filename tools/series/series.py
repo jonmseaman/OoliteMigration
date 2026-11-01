@@ -81,7 +81,73 @@ def cmd_inventory(args):
     return 0
 
 
-HANDLERS = {"inventory": cmd_inventory}
+STATE_FIELDS = ("target_tree", "verification", "boundary_moved", "resolutions", "temporaries", "size", "era")
+
+
+def load_manifest():
+    from tools.series import manifest
+    return manifest.load(MANIFEST) if os.path.exists(MANIFEST) else {}
+
+
+def cmd_cut(args):
+    from tools.series import chapters, history, manifest
+    inv = read_inventory()
+    idx = {r["commit"]: int(r["idx"]) for r in inv}
+    full = lambda c: history.git(GAME, "rev-parse", "--verify", f"{c}^{{commit}}")
+    old = {s["branch"]: s for s in load_manifest().get("steps", [])}
+    steps, errors, expect = [], [], 0
+    for slug, phase, title, items, first, last in chapters.HISTORY:
+        f, l = full(first), full(last)
+        fi, li = idx.get(f), idx.get(l)
+        if fi is None or li is None:
+            errors.append(f"{slug}: boundary not in the inventory")
+            continue
+        if fi != expect:
+            errors.append(f"{slug}: starts at row {fi}, expected {expect}")
+        expect = li + 1
+        steps.append({"kind": "hand-written", "title": title, "slug": slug,
+                      "source": {"type": "history", "from": f, "to": l},
+                      "chapter": {"phase": phase, "work_items": items, "first": f, "last": l, "merges": li - fi + 1}})
+    if expect != len(inv):
+        errors.append(f"chapters end at row {expect - 1}, the inventory has {len(inv)} rows")
+    covered = set()
+    for slug, kind, title, commits, command in chapters.TAIL:
+        fulls = [full(c) for c in commits]
+        covered.update(fulls)
+        steps.append({"kind": kind, "title": title, "slug": slug, "source": {"type": "develop", "commits": fulls},
+                      "chapter": None, "mechanical_command": command})
+    # every develop commit after the squash's merge must be in a tail group, or excluded
+    excluded = {full(e["revert_commit"]) for e in chapters.EXCLUSIONS if "revert_commit" in e}
+    squash_merge = full("0e1cc17a4")
+    for c in history.git(GAME, "rev-list", "--first-parent", f"{squash_merge}..{chapters.ANCHORS['develop_target']}").split():
+        if c not in covered and c not in excluded:
+            errors.append(f"develop commit {c[:10]} is in no tail group")
+    if errors:
+        print("cut: " + "\n     ".join(errors), file=sys.stderr)
+        return 1
+    for n, s in enumerate(steps, 1):
+        slug = s.pop("slug")
+        s["n"] = n
+        s["branch"] = f"series/{n:03d}-{slug}"
+        s["parent"] = manifest.ROOT_BRANCH if n == 1 else steps[n - 2]["branch"]
+        s["description"] = f"series/pr/{n:03d}-{slug}.md"
+        s.setdefault("mechanical_command", None)
+        prev = old.get(s["branch"], {})
+        for k in STATE_FIELDS:
+            s[k] = prev.get(k, [] if k in ("resolutions", "temporaries") else None)
+    m = load_manifest()
+    m.update({"anchors": chapters.ANCHORS, "steps": steps, "exclusions": chapters.EXCLUSIONS})
+    m.setdefault("ledger", [])
+    problems = manifest.validate(m, order={r["commit"]: int(r["idx"]) for r in inv})
+    if problems:
+        print("cut: manifest invalid:\n  " + "\n  ".join(problems), file=sys.stderr)
+        return 1
+    manifest.save(MANIFEST, m)
+    print(f"cut: {len(steps)} steps ({len(chapters.HISTORY)} history chapters, {len(chapters.TAIL)} tail)")
+    return 0
+
+
+HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut}
 
 
 def main(argv=None):

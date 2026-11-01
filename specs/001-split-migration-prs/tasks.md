@@ -147,7 +147,7 @@ the contract's sections.
   `refs/series/history` under `upstream/oolite` from `4f089047c`. Accept: `python -I
   tools/series/series.py inventory && [ $(tail -n +2 specs/001-split-migration-prs/series/inventory.tsv
   | wc -l) -eq 1400 ]`.
-- [ ] T013 [US1] Implement `cut --chapters`: write the 19 history chapters from research.md R14
+- [X] T013 [US1] Implement `cut --chapters`: write the 19 history chapters from research.md R14
   (first/last commits, phase, work items, slug) and the 6 tail steps (020–025, `source` = `develop`
   with the listed commits; 025 `kind` = `mechanical`, `mechanical_command` = `clang-format -i` with
   version 22 and `develop`'s `.clang-format`) into `specs/001-split-migration-prs/series/manifest.json`.
