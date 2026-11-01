@@ -36,6 +36,11 @@ class NormaliseTest(unittest.TestCase):
             self.assertEqual(git(self.fx["game"], "rev-parse", f"{out}:{path}"),
                              git(self.fx["game"], "rev-parse", f"{src}:{path}"))
 
+    def test_test_sources_are_not_formatted(self):
+        self.assertTrue(normalise.is_source("src/Core/a.mm"))
+        self.assertFalse(normalise.is_source("tests/unit/oofnd/test_objc_ref.mm"))
+        self.assertFalse(normalise.is_source("tests/unit/core/test_AI.cpp"))
+
     def test_cache_is_written(self):
         self.norm(f"{self.fx['u2']}^{{tree}}")
         self.assertTrue(os.path.exists(self.cache))

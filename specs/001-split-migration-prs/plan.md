@@ -206,3 +206,7 @@ game repo only gets local branches.
     remaining use of the rule was checked.
   - The isolated MSYS2 gained `mingw-w64-ucrt-x86_64-llvm-tools` (llvm-ar), as the history's
     dependency script installs.
+  - The normaliser N formats `src/` only (research R3 named `src/` and `tests/`): upstream has no C or
+    C++ test sources to align with, and its include sorting broke an order-dependent test
+    (`tests/unit/oofnd/test_objc_ref.mm`). Every step's `tests/` is now the history's byte for byte,
+    apart from upstream's own two scripts, merged cleanly.

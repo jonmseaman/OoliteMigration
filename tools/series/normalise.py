@@ -1,6 +1,6 @@
 """The formatting normaliser N (research R3).
 
-`normalise_tree` formats every source file under src/ and tests/ with clang-format 22 and the
+`normalise_tree` formats every source file under src/ with clang-format 22 and the
 `.clang-format` of a given commit, and returns the resulting tree id. Works on git objects only
 (a temporary index, no checkout). Formatted blobs are cached per (clang-format version, style,
 input blob).
@@ -16,7 +16,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 CLANG_FORMAT = os.path.join(ROOT, ".agent-tmp", "series-venv", "Scripts", "clang-format.exe")
 DEFAULT_CACHE = os.path.join(ROOT, ".agent-tmp", "series-cache", "normalise.json")
 SOURCE_EXT = (".h", ".hpp", ".m", ".mm", ".c", ".cpp")
-SOURCE_TOPS = ("src/", "tests/")
+# src/ only: upstream has no C or C++ test sources to align with, and the history's tests must reach
+# each step byte for byte (rule 1); include sorting can break an order-dependent test.
+SOURCE_TOPS = ("src/",)
 
 
 def _git(repo, *args, inp=None, env=None):
@@ -38,7 +40,7 @@ def _version(clang_format):
 def normalise_tree(repo, tree, style_from, clang_format=CLANG_FORMAT, cache_path=DEFAULT_CACHE, jobs=8,
                    transform=None, transform_id="", select=is_source):
     """`transform(path, text) -> text`, if given, runs on each source file before clang-format.
-    `select(path)` picks the files to format (default: sources under src/ and tests/)."""
+    `select(path)` picks the files to format (default: sources under src/)."""
     style_blob = _git(repo, "rev-parse", f"{style_from}:.clang-format").decode().strip()
     key_prefix = f"{_version(clang_format)}|{style_blob}|{transform_id}|"
     cache = {}
