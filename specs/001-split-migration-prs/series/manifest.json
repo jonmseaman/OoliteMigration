@@ -219,14 +219,87 @@
    "mechanical_command": null,
    "n": 4,
    "parent": "series/003-objective-cxx",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "auto",
+     "path": "src/Core/Debug/OOJSConsole.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OORegExpMatcher.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSDock.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJSEngineNativeWrappers.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJSEntity.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJSEquipmentInfo.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJSFunction.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSPlanet.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSPlayer.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSPlayerShip.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSShip.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSSound.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJSSpecialFunctions.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSStation.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSVisualEffect.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSWaypoint.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSWormhole.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJavaScriptEngine.h"
+    }
+   ],
    "size": null,
    "source": {
     "from": "3b6aec8c6ffca4445a742d4f9cd23251c9a5d57d",
     "to": "a7e3ed1efcf202eb22d16951be73c23e3b2b264c",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "e45daf9bfd567eb6c0caf292f4406259209bf5b0",
    "temporaries": [],
    "title": "Run the game on QuickJS-ng and remove SpiderMonkey and NSPR",
    "verification": null
@@ -253,14 +326,43 @@
    "mechanical_command": null,
    "n": 5,
    "parent": "series/004-quickjs-switch",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "auto",
+     "path": "src/Core/Debug/OOTCPStreamDecoderAbstractionLayer.mm"
+    },
+    {
+     "how": "history-deleted",
+     "path": "src/Core/NSThreadOOExtensions.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOFoundation.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OORoleSet.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/meson.build"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/SDL/MyOpenGLView.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/SDL/main.mm"
+    }
+   ],
    "size": null,
    "source": {
     "from": "e31130fa0d6116abe5928624d276dfcf18eece16",
     "to": "916311e66db2e9d025c763b9d028a9ff26d33ff0",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "59ba55fbce1d7faeda6ac090bf4dc05ebd360c9b",
    "temporaries": [],
    "title": "Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation",
    "verification": null
@@ -283,14 +385,119 @@
    "mechanical_command": null,
    "n": 6,
    "parent": "series/005-oofnd-core",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "auto",
+     "path": "installers/flatpak/space.oolite.Oolite.yaml"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Debug/OODebugStandards.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Debug/OODebugTCPConsoleClient.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Debug/OODebugTCPConsoleClient.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/GameController+FullScreen.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/GameController.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOBasicMaterial.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOShaderMaterial.mm"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/Core/OOALSoundChannel.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOAsyncWorkManager.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOCacheManager.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOEncodingConverter.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOGraphicsResetManager.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOJoystickManager.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOJoystickProfile.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOPriorityQueue.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOProbabilitySet.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OORegExpMatcher.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOShipRegistry.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OXPVerifier/OOOXPVerifier.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OXPVerifier/OOOXPVerifier.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJSFunction.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJavaScriptEngine.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOLegacyScriptWhitelist.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/SDL/MyOpenGLView+Input.mm"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/SDL/OOSDLJoystickManager.mm"
+    }
+   ],
    "size": null,
    "source": {
     "from": "b73f2cd400db84dd246061c8b9cd95cb478a9534",
     "to": "bc9a02ca7b948001da5824b9c073b42b3e24ca08",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "d0ced8941c955c17efd30d3640d998c624c961db",
    "temporaries": [],
    "title": "Replace oo_*ForKey dictionary accessors with typed PList::get",
    "verification": null

@@ -133,6 +133,22 @@ def auto_merge_text(base, ours, theirs, flags=None):
     return merged
 
 
+# Upstream changes that only rename something, and so are moot in a file the history deleted.
+MECHANICAL_RENAMES = (('"OOCocoa.h"', '"OOFoundation.h"'), ("<OOCocoa.h>", "<OOFoundation.h>"))
+
+
+def mechanical_only(base, ours):
+    """True if ours differs from base only by MECHANICAL_RENAMES."""
+    def norm(lines):
+        out = []
+        for line in lines:
+            for old, new in MECHANICAL_RENAMES:
+                line = line.replace(old, new)
+            out.append(line)
+        return out
+    return norm(base) == norm(ours)
+
+
 def _similar(a, b):
     a, b = a.strip(), b.strip()
     if a == b:
@@ -242,6 +258,11 @@ def target_tree(repo, base, ours, theirs, res_dir, report=None):
         if key["base"] and key["ours"] is None and key["theirs"] == key["base"]:
             # upstream deleted the file; the history only renamed it
             apply.append((path, "upstream-deleted", {"deleted": True}, None))
+            continue
+        if key["base"] and key["ours"] and key["theirs"] is None and \
+                mechanical_only(_lines(repo, key["base"]), _lines(repo, key["ours"])):
+            # the history deleted the file; upstream's change to it is only a mechanical rename
+            apply.append((path, "history-deleted", {"deleted": True}, None))
             continue
         if all(key.values()):
             b, o, t = _lines(repo, key["base"]), _lines(repo, key["ours"]), _lines(repo, key["theirs"])
