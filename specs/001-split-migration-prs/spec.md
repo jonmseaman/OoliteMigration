@@ -70,8 +70,9 @@ GCC, and the smoke suite; all pass and no new warnings appear.
 
 **Acceptance Scenarios**:
 
-1. **Given** any PR branch in the series, **When** it is built with Clang and with GCC on Windows
-   x64, **Then** the build succeeds with no warnings under the project's warning flags.
+1. **Given** any PR branch in the series, **When** it is built on Windows x64 with the compilers
+   FR-003 requires for it, **Then** the build succeeds with no warnings under the project's warning
+   flags.
 2. **Given** any PR branch, **When** the unit and smoke suites run, **Then** they pass.
 3. **Given** a PR that changes behaviour a component scenario covers, **When** those scenarios run
    on that branch, **Then** they pass.
@@ -182,8 +183,11 @@ listed branch and file exists and the bases chain correctly.
   `master` at a recorded commit, and each later branch is based on the one before it.
 - **FR-002**: The tree of the last branch MUST equal the tree of the recorded `develop` commit,
   except for the paths in the manifest's exclusions list, each with a reason.
-- **FR-003**: Every branch in the series MUST build on Windows x64 with Clang and with GCC with no
-  warnings under the project's flags, and pass the unit and smoke suites.
+- **FR-003**: Every branch in the series MUST build on Windows x64 with no warnings under the
+  project's flags, and pass the unit and smoke suites present in its tree. It MUST build with Clang,
+  and with GCC whenever its parent builds with GCC (no step may break a compiler its parent
+  supports). Objective-C steps are Clang-only, as upstream's are; from the C++ era on, every step
+  builds with both. (Amended 2026-11-01 by the plan, research R5.)
 - **FR-004**: A branch whose change touches behaviour covered by a component scenario MUST pass
   those scenarios.
 - **FR-005**: No branch MAY modify or delete an existing test in order to pass; tests are added in

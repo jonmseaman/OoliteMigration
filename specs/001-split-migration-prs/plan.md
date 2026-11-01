@@ -1,0 +1,145 @@
+# Implementation Plan: Split the C++ migration into a reviewable PR series
+
+**Branch**: `feature/phase4-polish` (OoliteMigration); the series' own branches are `series/NNN-slug` in
+`oolite-dev` | **Date**: 2026-11-01 | **Spec**: [spec.md](spec.md)
+
+**Input**: Feature specification from `specs/001-split-migration-prs/spec.md`
+
+## Summary
+
+Turn `develop` (upstream `49a5eb9fc` plus a squashed 1,041-file migration and 58 later commits) into
+an ordered Git Town stack of one-commit PR branches that a maintainer can merge one at a time. The
+steps come from this repo's own iterative history: 1,935 commits under `upstream/oolite/`, from
+2026-09-05 to 10-27. Each step is a **target tree**: the history snapshot at a cut point, with
+formatting normalised by clang-format 22, carried onto upstream by a 3-way merge
+(research R1–R4). A small stdlib Python tool (`tools/series/series.py`) plans cuts, builds the
+branches, verifies each one in order for its era (R5, R9), writes the PR descriptions, and checks
+the manifest, branches and Git Town lineage against each other. Jon pushes and opens the PRs.
+
+## Technical Context
+
+**Language/Version**: Python 3.14 (stdlib only) for the tool; Bash in MSYS2 UCRT64 for game builds
+
+**Primary Dependencies**: git ≥ 2.38 (`merge-tree --write-tree`), Git Town 24 (`append --prototype`,
+`set-parent`, perennial branches), clang-format 22 (PyPI wheel, in `.agent-tmp/series-venv`), the
+game's own `mk.sh` / `tests/run.sh`
+
+**Storage**: files: `specs/001-split-migration-prs/series/` (manifest JSON, inventory TSV,
+resolution patches, PR descriptions); branches plus `git-town-branch.*` config in `oolite-dev`
+
+**Testing**: `python -m unittest discover tools/series/tests` for the tool (fixture repos built in a
+temp dir); for each step, the game's build, `tests/run.sh unit`, `smoke`, and the component scenarios
+it touches
+
+**Target Platform**: Windows x64 (MSYS2 UCRT64). Objective-C steps use an isolated MSYS2 that matches
+upstream CI (G0)
+
+**Project Type**: repository tooling (CLI) plus a deliverable of git branches and documents
+
+**Performance Goals**: verify the whole series in under 24 h of machine time with incremental builds
+(R9)
+
+**Constraints**: never push, sync or propose; never touch `develop`, `master` or `main`; never edit a
+test; scratch only under `.agent-tmp/`; GUI and smoke tests run one at a time
+
+**Scale/Scope**: 1,935 history commits → about 100–200 steps (R6); about 30 files with real conflicts
+between upstream and the migration (R4)
+
+## Constitution Check
+
+`.specify/memory/constitution.md` is still the unfilled template, so the gates are CLAUDE.md's
+hard rules.
+
+| Rule | Gate | Status |
+|---|---|---|
+| 1 Never modify a test to pass | The construction never edits tests; the check flags any test difference from the source snapshot (R11) | pass |
+| 2 Never silence a warning | Construction adds no `-Wno-*` or `pragma diagnostic`; checked (R11) | pass |
+| 3 Never push / touch `develop` | Prototype branches, perennial root, tool never pushes; handover is Jon's (quickstart §5) | pass |
+| 4 No expansion content | The series touches no OXP/OXZ | pass |
+| 5 Tools judge correctness | Every step's status comes from its verification record, not judgement | pass |
+| 6 No GNUstep / `JS_*` | **Interpreted** (R11): early steps carry upstream's GNUstep and SpiderMonkey; no step may add either; the last step has neither | justified, see Complexity Tracking |
+| 7 Don't rewrite C | Vendored C is carried as the history has it | pass |
+| 8 Never wait for Jon | Every open choice has a recorded default (below, research) | pass |
+| 9 Stay in the workspace | Tool, venv, isolated MSYS2 and verify worktree all under the repo | pass |
+| Workflow: command fails before, passes after | Every task's acceptance is `series.py check`/`verify` or the tool's unit tests | pass |
+
+Post-design re-check: same result. The design adds no new rule pressure beyond rule 6's
+interpretation.
+
+## Project Structure
+
+### Documentation (this feature)
+
+```text
+specs/001-split-migration-prs/
+├── spec.md
+├── plan.md              # this file
+├── research.md          # R1–R12
+├── data-model.md        # manifest, step, verification, ledger
+├── quickstart.md        # run and hand-over guide
+├── contracts/
+│   ├── series-cli.md    # tools/series/series.py commands
+│   └── pr-description.md
+├── checklists/requirements.md
+├── series/              # produced by the tool (manifest.json, inventory.tsv, resolutions/, pr/)
+└── tasks.md             # /speckit-tasks
+```
+
+### Source Code (repository root)
+
+```text
+tools/series/
+├── series.py            # CLI entry: inventory, cut, hoist, tree, build, verify, describe, check, renumber
+├── history.py           # reading the history: first-parent walk, snapshots, upstream-under-commit
+├── normalise.py         # clang-format 22 normaliser with per-blob cache
+├── trees.py             # 3-way merge onto the base, resolutions, rerere
+├── stack.py             # branches, single commits, Git Town lineage
+├── verify.py            # era matrix, MSYS2 invocation, shared worktree, records
+├── manifest.py          # load/save/validate (data-model.md rules)
+└── tests/               # unittest; fixture repos with a fake subtree history
+
+oolite-dev/ (branches only; no files change on develop)
+├── series/000-upstream-base      # 49a5eb9fc, Git Town perennial
+├── series/001-…  …  series/NNN-… # one commit each, prototype branches
+```
+
+**Structure Decision**: the tool lives in OoliteMigration (`tools/`, next to `corpus.sh` and the
+`oxp_*.py` tools) because it reads this repo's history; its outputs live in the spec directory. The
+game repo only gets local branches.
+
+## Gates and order of work
+
+- **G0, environment:** the upstream base `49a5eb9fc` builds in the isolated MSYS2
+  (`.agent-tmp/msys2-objc`, set up with upstream's `install_deps.sh clang`). Until it does, only
+  `cxx`-era steps can be verified locally. Fallback: CI on the fork after Jon pushes.
+- **G1, tool:** `series.py` unit tests pass on fixture repos (inventory, normalise, merge,
+  build, lineage, check, renumber).
+- **G2, plan of cuts:** `inventory` and `cut` run on the real history; step count, oversize list
+  and hoist candidates are written to the notes below.
+- **G3, build:** every step is `built`; `check` passes (lineage, trees, ledger, descriptions).
+- **G4, verify:** `check --verified` passes; the last step equals `develop` outside exclusions.
+- **G5, re-anchor (when Jon asks):** rebuild on upstream's tip (R12).
+
+## Complexity Tracking
+
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|---|---|---|
+| Rule 6 interpreted, not applied literally, to intermediate steps | The series base is upstream, which uses GNUstep and SpiderMonkey; the migration removes them step by step | Removing them in step 1 is the one-big-PR the feature exists to avoid |
+| A second MSYS2 install under `.agent-tmp/` | The installed GNUstep headers fail with Clang 23 even on upstream's own base; upstream CI uses newer packages | Upgrading Jon's MSYS2 changes his working toolchain (`pacman -Syu`) without his say |
+| A custom tool instead of plain git commands | ~150 steps × (normalise, merge, resolutions, lineage, verify) must be repeatable when upstream moves (R12) | Hand-made branches can't be rebuilt or checked |
+
+## Notes (decisions and state that outlive the session)
+
+- 2026-11-01: Steps are target trees from this repo's `upstream/oolite/` history, per Jon's
+  pointer that the history is the asset (spec FR-015).
+- 2026-11-01: Lineage via `git town append`, branches `series/NNN-slug` (Jon). Three digits because
+  the step count may exceed 99.
+- 2026-11-01: FR-003 amended (R5): GCC is required only from steps whose parent builds with GCC.
+- 2026-11-01: Size counting excludes pure renames and whole-file deletions (R6).
+- 2026-11-01: The base stays `49a5eb9fc` while building; re-anchor on upstream's tip (`7437f22a5`
+  today) is a separate, final gate (R12).
+- 2026-11-01: Default exclusions: `.zed/`, `.vscode/`, the fork-only CI branch filter (R10).
+- Open, with defaults taken: if the isolated MSYS2 can't reproduce upstream CI's packages, the
+  Objective-C steps are verified by CI on Jon's push, and their records say "CI" with the run URL.
+- To fill at G2: step count, number of oversize steps (target ≤ 10% of hand-written), hoisted
+  fixes.
