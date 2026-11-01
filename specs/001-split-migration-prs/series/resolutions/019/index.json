@@ -1,0 +1,74 @@
+{
+ ".github/workflows/test_builds.yaml": {
+  "base": "6f14131fc734fe0900ff727eb43cb2e25195e394",
+  "deleted": false,
+  "ours": "0389d7d578254d306f653d1f3eb8a863b4b9c541",
+  "theirs": "3d4e4ee6b74f0d30a59f71b22720320afd984e66"
+ },
+ "ShellScripts/Windows/install_deps.sh": {
+  "base": "9847fbe3d47149c31fe6ace3eb69f4067b0d44ef",
+  "deleted": false,
+  "ours": "b8521656e61c5801ac5693021d25bb262c2e2c9f",
+  "theirs": "10415c0dfbcb8f06acd952f79937adec3ad42eb9"
+ },
+ "ShellScripts/common/post_build.sh": {
+  "base": "29a1d2b708d5177bf5b94c2b7a14b6b09d926ef7",
+  "deleted": false,
+  "ours": "9d4b8e97a5acb1eaa7b137941aa0371fb627ed26",
+  "theirs": "2ddeb12a95ca119a0acedbca77d6f5bd76e7a99b"
+ },
+ "src/Core/Debug/OODebugStandards.cpp": {
+  "base": "992017404e69620e05c7c285ca30a8f19e73495d",
+  "deleted": false,
+  "ours": "df84824e7667afbe0f35657a8951fe2e7e81fa1c",
+  "theirs": "9e4e33cac10aebede2bbcac1e7dca91d94d0d677"
+ },
+ "src/Core/Debug/OODebugTCPConsoleClient.cpp": {
+  "base": "f4d64c8791142d438c7d4febd363c2067ddd046c",
+  "deleted": false,
+  "ours": "904297e02436a11851e7b7b9c7a74e5ba8d9eb87",
+  "theirs": "6005d3c4a7833a49da89039539ebc7ea9dcbe646"
+ },
+ "src/Core/Entities/PlayerEntity.cpp": {
+  "base": "d35a0c32d3ca72c34fbf2cce327bf4467754dcc4",
+  "deleted": false,
+  "ours": "f2645c7229a8ba85e6e5495de7201cc86074ce54",
+  "theirs": "c6002a387dfe4f97ee70d4c2caf54d6cfd351a33"
+ },
+ "src/Core/GameController.cpp": {
+  "base": "0a0cce243eebacb78170c071ee0a3bef1f6a788b",
+  "deleted": false,
+  "ours": "7bd63f456e7939c2ac2bce4ebb0e9f69c902fb81",
+  "theirs": "5005a47e51e55bae04c99eebcdfa86df24d11a49"
+ },
+ "src/Core/Materials/OOTexture.cpp": {
+  "base": "e380e98d669da58953461140cbe76df6d68eb0fa",
+  "deleted": false,
+  "ours": "1b6777852dc6aa1cce78b4e7d06a3dc920760cc8",
+  "theirs": "e77076304e0625a709cc82b0a7a858e61506a898"
+ },
+ "src/Core/OOMaths.h": {
+  "base": "c68b96b6037f34b716dc993c71c045b091df9a36",
+  "deleted": false,
+  "ours": "20c07761181796da096c7c37a2ae3a6fc5f08598",
+  "theirs": "e23846b5e6156ca8b21dd468e498f06e36c171a4"
+ },
+ "src/Core/OOOXZManager.cpp": {
+  "base": "5e32156c6eb47ce4738b53c16d7e937229de6297",
+  "deleted": false,
+  "ours": "38c621c8fb13425b5f4601d453989d313cd228d9",
+  "theirs": "370e2933bdf92f85f08e5934ff315482d7f9fb44"
+ },
+ "src/Core/OOOpenGLOnly.h": {
+  "base": "cb879eec025287fcb00d866af82913353de7c7b7",
+  "deleted": false,
+  "ours": "fb40aee53bf49d80fa8d1026853411e61c8c5530",
+  "theirs": "748c4f58a20e373d2279e62f269ef4dee555743b"
+ },
+ "src/SDL/MyOpenGLView.cpp": {
+  "base": "54c53f2e186fc28c684e3841c0aaa132079a6016",
+  "deleted": false,
+  "ours": "ce9b050ff8ea8f4851715df6c941c0acadd5e095",
+  "theirs": "954519a46834e07f3280d76622cadb2655b47318"
+ }
+}

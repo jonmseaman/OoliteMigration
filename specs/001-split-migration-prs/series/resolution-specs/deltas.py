@@ -9,6 +9,7 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from tools.series import series as S, trees  # noqa: E402
 
+sys.stdout.reconfigure(encoding="utf-8")
 n = int(sys.argv[1])
 m = S.load_manifest()
 st = S.step_by_n(m, n)

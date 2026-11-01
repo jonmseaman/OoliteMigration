@@ -2067,14 +2067,75 @@
    "mechanical_command": null,
    "n": 19,
    "parent": "series/018-gcc-build",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "stored",
+     "path": ".github/workflows/test_builds.yaml"
+    },
+    {
+     "how": "stored",
+     "path": "ShellScripts/Windows/install_deps.sh"
+    },
+    {
+     "how": "stored",
+     "path": "ShellScripts/common/post_build.sh"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Debug/OODebugStandards.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Debug/OODebugTCPConsoleClient.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/PlayerEntity.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/GameController.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Materials/OOTexture.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOMaths.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOOXZManager.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOOXZManager.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOOpenGLOnly.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSVisualEffect.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/MyOpenGLView.cpp"
+    },
+    {
+     "how": "auto",
+     "path": "src/SDL/main.cpp"
+    }
+   ],
    "size": null,
    "source": {
     "from": "883d339f93708db1a74f9a7f6426ed77622c449c",
     "to": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "83ccc03063a8a95868e928b2d8d6da5daf262a22",
    "temporaries": [],
    "title": "Port upstream changes #369 to #765 into the C++ code",
    "verification": null
