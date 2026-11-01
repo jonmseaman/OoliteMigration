@@ -157,10 +157,12 @@ the contract's sections.
   no gap or overlap. Accept: `python -I tools/series/series.py cut --chapters && python -I -c
   "import json;m=json.load(open('specs/001-split-migration-prs/series/manifest.json'));assert
   len(m['steps'])==25"`.
-- [ ] T014 [US1] Implement `tree <n>` for `source` = `history`, using `trees.target_tree` with
+- [X] T014 [US1] Implement `tree <n>` for `source` = `history`, using `trees.target_tree` with
   `N(upstream_under(last))` as the merge base, `49a5eb9fc` as ours, and `N(snapshot(last))` as
   theirs. Print the tree id, or list conflicting paths and exit 1. Accept: `python -I
-  tools/series/series.py tree 1` exits 0 (chapter 1 is new test files and should not conflict).
+  tools/series/series.py tree 1` prints a tree id, or lists only paths that both upstream and the
+  chapter changed. (Amended: chapter 1 also edits `OOCocoa.h`, which upstream renamed to
+  `OOFoundation.h` in #737, so step 1 has one real conflict. It is resolved in T015.)
 - [ ] T015 [US1] Resolve the conflicts for steps 2–19 in order. For each step run `tree <n>`. For
   each conflicting path, write the resolution that keeps upstream's change carried into that
   step's code. The answer is the file as it is at `develop` `3aa8d65e8`, adapted to the step. Save

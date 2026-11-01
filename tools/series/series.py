@@ -24,6 +24,8 @@ def parser():
     h.add_argument("--slug", required=True)
     t = sub.add_parser("tree", help="compute a step's target tree")
     t.add_argument("n", type=int)
+    t.add_argument("--show", metavar="PATH", help="write the conflicted file and its inputs to .agent-tmp/series-resolve")
+    t.add_argument("--record", metavar="PATH", help="store the edited file from .agent-tmp/series-resolve as the resolution")
     b = sub.add_parser("build", help="create or reset step branches")
     b.add_argument("steps", nargs="*", type=int)
     b.add_argument("--from", dest="from_", type=int)
@@ -147,7 +149,89 @@ def cmd_cut(args):
     return 0
 
 
-HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut}
+def resolutions_dir(step):
+    return os.path.join(SERIES_DIR, "resolutions", f"{step['n']:03d}")
+
+
+def merge_inputs(m, step):
+    """(base, ours, theirs) trees for a history step (research R4)."""
+    from tools.series import history, normalise
+    a = m["anchors"]
+    style = a["format"]["style_file_from"]
+    last = step["source"]["to"]
+    under = history.upstream_under(GAME, last)
+    base = normalise.normalise_tree(GAME, history.git(GAME, "rev-parse", f"{under}^{{tree}}"), style)
+    ours = history.git(GAME, "rev-parse", f"{a['upstream_base']}^{{tree}}")
+    theirs = normalise.normalise_tree(GAME, history.snapshot(GAME, last, a["history_prefix"]), style)
+    return base, ours, theirs
+
+
+def step_by_n(m, n):
+    for s in m.get("steps", []):
+        if s["n"] == n:
+            return s
+    raise SystemExit(f"no step {n}")
+
+
+def compute_tree(m, step):
+    """(tree, conflicts) for a step."""
+    from tools.series import trees
+    if step["source"]["type"] == "history":
+        base, ours, theirs = merge_inputs(m, step)
+        return trees.target_tree(GAME, base, ours, theirs, resolutions_dir(step))
+    raise SystemExit(f"tree: source type {step['source']['type']!r} not implemented yet (T024)")
+
+
+RESOLVE_SCRATCH = os.path.join(ROOT, ".agent-tmp", "series-resolve")
+
+
+def cmd_tree(args):
+    from tools.series import history, trees
+    m = load_manifest()
+    step = step_by_n(m, args.n)
+    scratch = os.path.join(RESOLVE_SCRATCH, f"{step['n']:03d}")
+    if args.show or args.record:
+        if step["source"]["type"] != "history":
+            raise SystemExit("tree --show/--record: history steps only")
+        base, ours, theirs = merge_inputs(m, step)
+        path = args.show or args.record
+        if path.startswith("tests/"):
+            print(f"tree {args.n}: {path} is a test file; tests are never resolved by hand (rule 1)", file=sys.stderr)
+            return 1
+        if args.show:
+            merged, _ = trees.merge(GAME, base, ours, theirs)
+            os.makedirs(os.path.dirname(os.path.join(scratch, path)), exist_ok=True)
+            for name, tree in (("merged", merged), ("upstream", ours), ("history", theirs), ("base", base)):
+                r = history.git(GAME, "cat-file", "-p", f"{tree}:{path}", check=False)
+                out = os.path.join(scratch, path + (f".{name}" if name != "merged" else ""))
+                with open(out, "w", encoding="utf-8", newline="\n") as f:
+                    f.write(r.stdout + "\n" if r.returncode == 0 else "")
+            print(os.path.join(scratch, path))
+            return 0
+        src = os.path.join(scratch, path)
+        if not os.path.exists(src):
+            trees.record_resolution(GAME, base, ours, theirs, resolutions_dir(step), path, None)
+            print(f"recorded: {path} deleted")
+            return 0
+        with open(src, "rb") as f:
+            content = f.read()
+        if b"<<<<<<<" in content or b">>>>>>>" in content:
+            print(f"tree {args.n}: {src} still has conflict markers", file=sys.stderr)
+            return 1
+        trees.record_resolution(GAME, base, ours, theirs, resolutions_dir(step), path, content)
+        print(f"recorded: {path}")
+        return 0
+    tree, conflicts = compute_tree(m, step)
+    if conflicts:
+        print(f"tree {args.n}: {len(conflicts)} conflicts")
+        for p in conflicts:
+            print(f"  {p}")
+        return 1
+    print(tree)
+    return 0
+
+
+HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut, "tree": cmd_tree}
 
 
 def main(argv=None):
