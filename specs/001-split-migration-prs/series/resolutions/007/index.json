@@ -1,0 +1,68 @@
+{
+ "src/Core/AI.mm": {
+  "base": "6c5d07bb8bf5c488bfa99cf31c3aa3252aa2099c",
+  "deleted": false,
+  "ours": "38969145d60af1ce6b79cb8da60a000f9eee91e8",
+  "theirs": "7e9faf38ebd2b47c3c6b4eefb1698f45a6ac96e7"
+ },
+ "src/Core/Entities/PlayerEntity.mm": {
+  "base": "e5c5db351ab8a744b08edd82e67e01ba26cac0d4",
+  "deleted": false,
+  "ours": "41a2e3ab171e76aedf4524d4c311ca86886b36fa",
+  "theirs": "55df23670e21e9db4918c0cabde8988c208f47af"
+ },
+ "src/Core/Entities/ShipEntity.mm": {
+  "base": "2ee42ace5f952e3b1c1da23d137aa4d5fa4837e0",
+  "deleted": false,
+  "ours": "fa91fe780bda7bbb81d040ab427197f892cff25d",
+  "theirs": "03b234c9381a9348ac881498a9bc0821227781c4"
+ },
+ "src/Core/Entities/SkyEntity.h": {
+  "base": "3abc83b822c172b02f7baf5556f20fa7dedff255",
+  "deleted": false,
+  "ours": "c622f781dbc40b11cac3061ee798ee0ea4d12812",
+  "theirs": "ac3024dcb72c22bf9dffe2e6e9cc132bd31393ba"
+ },
+ "src/Core/Entities/SkyEntity.mm": {
+  "base": "f6bc0182c52c9deccc3cf7c9dea1ec40cf45ebe9",
+  "deleted": false,
+  "ours": "0d292f02a77d2c53f62e16aa68fc2cce4ad51b7c",
+  "theirs": "f1fb8b2e8f2c403adb0ad76023e629e2e167495f"
+ },
+ "src/Core/Materials/OOShaderProgram.mm": {
+  "base": "df9c8b811bdd47a826de21ab947d179ed0f4a755",
+  "deleted": false,
+  "ours": "3c980b8bb32dd8fc174ee5deb5dc6b2b58f6f434",
+  "theirs": "a277b563435ad33a941e8793a78b479773ff7c1a"
+ },
+ "src/Core/ResourceManager.mm": {
+  "base": "8d7edb3428de7a6ffa708868c4153b102d186451",
+  "deleted": false,
+  "ours": "3c8de97f61a9a0e0704f43415143a324a793aeb5",
+  "theirs": "03cbcd2591b6bfab2830571d242bb9da00eab102"
+ },
+ "src/Core/Scripting/OOJSStation.mm": {
+  "base": "bb5bbdd8cbc26857160a898b16cd024a6bc316d2",
+  "deleted": false,
+  "ours": "c45bc4e22d680aad99435cff2e0a374e960feb72",
+  "theirs": "b4dd29b898ab4ccf9257652e6286af6795002360"
+ },
+ "src/Core/Scripting/OOJavaScriptEngine.h": {
+  "base": "df23ca19a4535c60cdc021f038488823b272ddbd",
+  "deleted": false,
+  "ours": "d3a2435a41a4a43d19a7d8626db4b9a83e418254",
+  "theirs": "195f163ac8ceb917457e7b4e4174e64cc5df7cc0"
+ },
+ "src/Core/Universe.mm": {
+  "base": "c51c332095578631ff06f3c5a215b66cecbeaf91",
+  "deleted": false,
+  "ours": "5591afbb74a9f6c6d9afe16bdb28995fffad3842",
+  "theirs": "5c444fc988ad0ffc21e769c094fa534b26f3f7d1"
+ },
+ "src/SDL/MyOpenGLView.mm": {
+  "base": "f28ad0005cfa3be68d15113e30196a31adfaef60",
+  "deleted": false,
+  "ours": "b7ebe342e800a9759605ebaac269039035cd98bd",
+  "theirs": "095853989f18790f95b7809ddff9854e8dc9385c"
+ }
+}
