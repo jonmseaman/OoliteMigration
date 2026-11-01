@@ -98,6 +98,9 @@ Measured on 2026-11-01. Commit ids are OoliteMigration's for the history and `oo
 
 ### R6. Cutting the history into steps
 
+*Superseded in part by R13: cuts are made at chapter boundaries first. The size rule below applies
+only inside a chapter.*
+
 - **Decision:** Walk the first-parent history in order and cut greedily. Each step's **counted**
   size is the normalised diff from the previous cut, without vendored paths (`subprojects/`),
   generated data (test goldens and snapshots, named in the manifest), pure renames, and whole-file
@@ -173,3 +176,82 @@ Measured on 2026-11-01. Commit ids are OoliteMigration's for the history and `oo
   ready to open the series, re-anchor on upstream's tip (now `7437f22a5`, #780) by changing
   `upstream_base` and rebuilding. R1 and R4 make that one command plus new resolutions for #780,
   which touches JavaScript naming and so will conflict with the ooscript steps.
+
+### R13. Split by phase and work item ("chapters"), not by line count alone
+
+Measured 2026-11-01 with the archived bead export (`git show 0c07daef7^:.beads/issues.jsonl`,
+1,860 beads; the five phase epics are `oo-1bf` P0, `oo-1gc` P1, `oo-3rb` P2, `oo-9ht` P3 and
+`oo-6e1` P4). Work items come from `archive/phase-0-4-docs:docs/phases/{0..4}-*.md`. Scripts are in
+`.agent-tmp/001/`.
+
+**What the history looks like:**
+- Each of the 1,400 first-parent entries is one bead merge. **Phases are contiguous** in that order:
+  P0×41 → P1×~60 → P2×774 → P3×461 → P4 (plus 60 late unlabelled fix-ups), with a handful of
+  stragglers. Every phase boundary is a snapshot that was built and tested at the time.
+- **Inside a phase, work items interleave**, because parallel workers merged whatever was ready.
+  By module, P2 has 533 runs in 774 merges and P3 has 245 in 461. Regrouping strictly by work item
+  would move a merge past a later merge touching a shared file for 56–61% of P2 and 77–86% of P3
+  (`commute.py`). Those intermediate states never existed, so each would need its conflicts
+  resolved and its build re-proved.
+- **But there are waves.** In time order, P3 runs as leaf/oomath/OXPVerifier conversions →
+  Scripting/Entities/audio/Materials conversions → slice plans and `ShipEntity` slices →
+  `Universe`/`PlayerEntity` slices → facade-deletion batches → the root `Entity` facade. P2 runs as
+  the `.m`→`.mm` switch → the `oofnd` core → Foundation sweeps → selector families → dropping
+  gnustep-base. P1 runs as façade and retargeting → QuickJS backend → deleting SpiderMonkey.
+- Net size per phase, as one PR each (src non-test lines counted / test lines): P0 0.5k/13.6k ·
+  P1 25.6k/0.9k · P2 95k/13k · P3 119k/79k · P4 plus the tail 354k/8k. The last figure includes the
+  446k-line reformat and the `.mm`→`.cpp` renames; normalising (R3) removes most of it.
+
+**Without the history (split the final tree directly):** 75% of `develop`'s `src` (232 of 306
+units, 210k lines) is **one strongly connected include component** (`scc.py`). Without the
+history's Objective-C/C++ bridges, those files can't build in parts. A history-free series is
+therefore some additive PRs that build on their own (the test tiers, `oofnd` as a library with its
+unit tests, QuickJS-ng as an unused subproject, tooling and format config, the independent fixes),
+then **one ~210k-line flip PR** that replaces the core. Splitting that flip means writing new
+bridges, which is redoing the migration.
+
+**Options compared:**
+
+| | A. Size only (R6 as first written) | B. Chapters (phase/work item) | C. No history | **D. Chapters, split by size inside** |
+|---|---|---|---|---|
+| PRs | ~100–200 | ~20–25 | ~8 + 1 giant | ~20–25 chapters, ~60–120 PRs |
+| Every step a tested snapshot | yes | yes (cuts at wave boundaries) | additive ones yes; the flip is one big step | yes |
+| Reviewer can see why a PR exists | weak (arbitrary cuts) | strong (maps to the phase docs) | strong for additive, none for the flip | strong |
+| Largest PR | ≤3k counted | 20–60k | ~210k | ≤3k counted, except whole-commit outliers |
+| Conflict work | R4 only | R4 only | low (taken from the final tree) | R4 only |
+| Fidelity to how it was done | high | high | none | high |
+
+**Decision: D.** Cut first at chapter boundaries: the first-parent position closest to each
+work-item transition listed below. The range stays contiguous, so no reordering, and every cut is a
+historical snapshot. Inside a chapter, split at merge boundaries with the R6 size rule. Allowed
+reordering is limited to (1) hoisting independent fixes (R7) and (2) the P0 test-tier additions,
+which are new files and commute; both are re-proved by building. PR titles carry the chapter
+(for example "Phase 3 · ShipEntity slices (2/5): …"), and each chapter's first PR explains the chapter.
+
+Initial chapter list (boundaries to be fixed by `cut --chapters` against the waves):
+
+| Ch | Phase · work item |
+|---|---|
+| 0a | Independent fixes: iteration-order determinism, `OO_RANDOM_SEED` (hoisted) |
+| 0b | Safety net: goldens and the JS API snapshot; GUI tier; component tier |
+| 1a | JS façade (`ooscript`), call sites retargeted, SpiderMonkey still underneath |
+| 1b | QuickJS-ng backend; switch |
+| 1c | Delete SpiderMonkey and NSPR |
+| 2a | `.m` → `.mm` (Objective-C++), one mechanical step |
+| 2b | `oofnd` core (`Ref`, `PList`, typed accessors, strings, `FileSystem`, `Defaults`, logging) with unit tests |
+| 2c | Foundation → `oofnd` sweeps, in the doc's module order as far as the waves allow |
+| 2d | Selector families |
+| 2e | Drop gnustep-base |
+| 3a | Leaf, oomath, OXPVerifier conversions (house style from `OOColor`) |
+| 3b | Scripting, Entities, audio and Materials conversions |
+| 3c | Slice plans and `ShipEntity` slices |
+| 3d | `Universe` and `PlayerEntity` slices |
+| 3e | Facade-deletion batches |
+| 3f | The root `Entity` facade |
+| 4a | Deferred release (`AutoreleaseScope`) |
+| 4b | Objective-C runtime out: root classes, `@try`, `@selector`, `@encode`, `#import` |
+| 4c | `.mm` → `.cpp` rename (mechanical) and the GCC build |
+| T | Tail (R10): upstream ports, source hygiene, format |
+
+Where waves overlap (3c–3e interleave on 10-05…10-09), the chapter takes the contiguous range and
+says in its description which work items it mixes. Default: no reordering to purify a chapter.

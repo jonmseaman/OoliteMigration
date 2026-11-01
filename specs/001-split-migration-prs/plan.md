@@ -12,7 +12,8 @@ an ordered Git Town stack of one-commit PR branches that a maintainer can merge 
 steps come from this repo's own iterative history: 1,935 commits under `upstream/oolite/`, from
 2026-09-05 to 10-27. Each step is a **target tree**: the history snapshot at a cut point, with
 formatting normalised by clang-format 22, carried onto upstream by a 3-way merge
-(research R1–R4). A small stdlib Python tool (`tools/series/series.py`) plans cuts, builds the
+(research R1–R4), cut at phase and work-item boundaries ("chapters", R13) and split by size
+only inside a chapter. A small stdlib Python tool (`tools/series/series.py`) plans cuts, builds the
 branches, verifies each one in order for its era (R5, R9), writes the PR descriptions, and checks
 the manifest, branches and Git Town lineage against each other. Jon pushes and opens the PRs.
 
@@ -42,7 +43,7 @@ upstream CI (G0)
 **Constraints**: never push, sync or propose; never touch `develop`, `master` or `main`; never edit a
 test; scratch only under `.agent-tmp/`; GUI and smoke tests run one at a time
 
-**Scale/Scope**: 1,935 history commits → about 100–200 steps (R6); about 30 files with real conflicts
+**Scale/Scope**: 1,935 history commits → ~20–25 chapters, ~60–120 steps (R13); about 30 files with real conflicts
 between upstream and the migration (R4)
 
 ## Constitution Check
@@ -141,5 +142,8 @@ game repo only gets local branches.
 - 2026-11-01: Default exclusions: `.zed/`, `.vscode/`, the fork-only CI branch filter (R10).
 - Open, with defaults taken: if the isolated MSYS2 can't reproduce upstream CI's packages, the
   Objective-C steps are verified by CI on Jon's push, and their records say "CI" with the run URL.
+- 2026-11-01: Cuts follow phases and work items first ("chapters"), size second (research R13,
+  option D), after Jon asked for a logical split. A history-free split was rejected: 75% of `src`
+  is one include cycle, so it would need a ~210k-line flip PR.
 - To fill at G2: step count, number of oversize steps (target ≤ 10% of hand-written), hoisted
   fixes.
