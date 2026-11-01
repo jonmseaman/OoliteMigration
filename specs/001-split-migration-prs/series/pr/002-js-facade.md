@@ -2,7 +2,7 @@
 
 **Series:** step 2 of 25 · base `series/001-safety-net` · next `series/003-objective-cxx` **(gen)**
 
-**Chapter:** P1 · 1.1 define the façade, 1.2 retarget call sites, 1.3 QuickJS-ng backend · history `3ca73e5a13`..`7bc686c0af` (55 merges) · 14.6k src, 1.4k tests, 6.9k other changed lines; 5.6k lines in deleted files **(gen)**
+**Chapter:** P1 · 1.1 define the façade, 1.2 retarget call sites, 1.3 QuickJS-ng backend · history `3ca73e5a13`..`7bc686c0af` (55 merges) · 14.6k src, 1.4k tests, 7.0k other changed lines; 5.6k lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -65,7 +65,7 @@ at this step. You can review them now or when step 4 links the backend.
 
 ## Verified **(gen)**
 
-Windows x64, `7cec2b3f88`, 2026-11-01.
+Windows x64, `a31085df40`, 2026-11-01.
 
 | Check | Result |
 |---|---|
@@ -78,6 +78,6 @@ Windows x64, `7cec2b3f88`, 2026-11-01.
 | smoke | pass |
 | tests_untouched | pass |
 | unit | n/a: the tree has no unit suites |
-| warnings_clang | fail: 8 warnings |
+| warnings_clang | fail: 1 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

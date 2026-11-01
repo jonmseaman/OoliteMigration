@@ -117,7 +117,7 @@
    "era": "objc-spidermonkey",
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "c90183e7576cf2cce20b8daca5da9ee6a76adcfc",
+   "merge_tree": "8758933ec326ed45e93e5ed878e1d971481a4c3f",
    "n": 2,
    "parent": "series/001-safety-net",
    "resolutions": [
@@ -168,8 +168,8 @@
    ],
    "size": {
     "deleted_files": 5591,
-    "other": 6948,
-    "src": 14606,
+    "other": 6962,
+    "src": 14602,
     "tests": 1418
    },
    "source": {
@@ -177,7 +177,7 @@
     "to": "7bc686c0af68d3b935bce3716a55b2e5dfbb82a4",
     "type": "history"
    },
-   "target_tree": "c90183e7576cf2cce20b8daca5da9ee6a76adcfc",
+   "target_tree": "8758933ec326ed45e93e5ed878e1d971481a4c3f",
    "temporaries": [],
    "title": "Put the game's JavaScript behind an engine façade, with a QuickJS-ng backend beside SpiderMonkey",
    "verification": {
@@ -191,13 +191,13 @@
      "smoke": "pass",
      "tests_untouched": "pass",
      "unit": "n/a: the tree has no unit suites",
-     "warnings_clang": "fail: 8 warnings"
+     "warnings_clang": "fail: 1 warnings"
     },
     "clean": false,
-    "commit": "7cec2b3f88454ca43bc419535b8109fecaed978b",
+    "commit": "a31085df40233cc455bfef8480ae9102f225cfc8",
     "date": "2026-11-01",
     "era": "objc-spidermonkey",
-    "tree": "df337ec949af36fcf1a0b0d8cb28592f1bc1af08"
+    "tree": "c90183e7576cf2cce20b8daca5da9ee6a76adcfc"
    }
   },
   {
@@ -216,7 +216,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "cd7e3628d9df52637ef54928918271064f1f7ebd",
+   "merge_tree": "f21f04c76c578e584eded3aaec912372cd0b9b0c",
    "n": 3,
    "parent": "series/002-js-facade",
    "resolutions": [
@@ -264,7 +264,7 @@
     "to": "c9c052538370b03b976c6b5ac615490a873e6b21",
     "type": "history"
    },
-   "target_tree": "cd7e3628d9df52637ef54928918271064f1f7ebd",
+   "target_tree": "f21f04c76c578e584eded3aaec912372cd0b9b0c",
    "temporaries": [],
    "title": "Compile the game as Objective-C++",
    "verification": null
@@ -286,7 +286,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "05eea5ba473709042cd544124866bc9898fdc0a6",
+   "merge_tree": "04ba8f59b0235222d75d399f72599cc4f22530f6",
    "n": 4,
    "parent": "series/003-objective-cxx",
    "resolutions": [
@@ -366,7 +366,7 @@
     "to": "a7e3ed1efcf202eb22d16951be73c23e3b2b264c",
     "type": "history"
    },
-   "target_tree": "05eea5ba473709042cd544124866bc9898fdc0a6",
+   "target_tree": "04ba8f59b0235222d75d399f72599cc4f22530f6",
    "temporaries": [],
    "title": "Run the game on QuickJS-ng and remove SpiderMonkey and NSPR",
    "verification": null
@@ -391,7 +391,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "837415a8bec22e30ebb794efbf9ebed619a579ee",
+   "merge_tree": "3cbbd459df9e6535100003e2ff4f02d46f28cca3",
    "n": 5,
    "parent": "series/004-quickjs-switch",
    "resolutions": [
@@ -427,7 +427,7 @@
     "to": "916311e66db2e9d025c763b9d028a9ff26d33ff0",
     "type": "history"
    },
-   "target_tree": "837415a8bec22e30ebb794efbf9ebed619a579ee",
+   "target_tree": "3cbbd459df9e6535100003e2ff4f02d46f28cca3",
    "temporaries": [],
    "title": "Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation",
    "verification": null
@@ -448,7 +448,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "23238ff2a5a82d8d85385fcc1b96f09fcdb7915c",
+   "merge_tree": "9eae5d5075a1855aa75aca42df579d61b6131cca",
    "n": 6,
    "parent": "series/005-oofnd-core",
    "resolutions": [
@@ -520,7 +520,7 @@
     "to": "bc9a02ca7b948001da5824b9c073b42b3e24ca08",
     "type": "history"
    },
-   "target_tree": "23238ff2a5a82d8d85385fcc1b96f09fcdb7915c",
+   "target_tree": "9eae5d5075a1855aa75aca42df579d61b6131cca",
    "temporaries": [],
    "title": "Move most oo_*ForKey dictionary accessors to typed PListView::get",
    "verification": null
@@ -541,7 +541,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "1e99c19f01fdb330bcc8b2bc27cf0a55ac6a9a4e",
+   "merge_tree": "a066e36f06e95b6d670eadd012ee1fb7d51d433d",
    "n": 7,
    "parent": "series/006-typed-accessors",
    "resolutions": [
@@ -697,7 +697,7 @@
     "to": "ecfafab47981c8224790752d96f2340d6b07c833",
     "type": "history"
    },
-   "target_tree": "1e99c19f01fdb330bcc8b2bc27cf0a55ac6a9a4e",
+   "target_tree": "a066e36f06e95b6d670eadd012ee1fb7d51d433d",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 1",
    "verification": null
@@ -719,7 +719,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "318d09d7af201088a32d873168adf9221bdcb62a",
+   "merge_tree": "7684f400e2ceeeb332bd8d2319127ed98dad7e3d",
    "n": 8,
    "parent": "series/007-foundation-wave-1",
    "resolutions": [
@@ -919,7 +919,7 @@
     "to": "fa9cbc6c24fec4d77881a47e47e7b2591ece94d4",
     "type": "history"
    },
-   "target_tree": "c6d1814ae99c7923e5447d4ed710f42aa7d0a2d3",
+   "target_tree": "0436d11cfc8411dc175926c75d6871b317863793",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 2",
    "verification": null

@@ -936,7 +936,7 @@ static inline Context OOJSFCX(JSContext* cx) { return reinterpret_cast<Context>(
 
     //-- Locates one of the merchantman in range.
     [self checkScannerIgnoringUnpowered];
-    ShipEntity* ids_found[n_scanned_ships];
+    std::vector<ShipEntity*> ids_found(n_scanned_ships);
 
     n_found = 0;
     DESTROY(_foundTarget);

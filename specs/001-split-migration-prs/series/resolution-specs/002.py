@@ -18,6 +18,7 @@ FIX = {
         ('#import "ShipEntityAI.h"\n', '#import "ShipEntityAI.h"\n\n#include <vector>\n'),
         ("        WormholeEntity* wormholes[ent_count];\n", "        std::vector<WormholeEntity*> wormholes(ent_count);\n"),
         ("    Entity* my_entities[ent_count];\n", "    std::vector<Entity*> my_entities(ent_count);\n"),
+        ("    ShipEntity* ids_found[n_scanned_ships];\n", "    std::vector<ShipEntity*> ids_found(n_scanned_ships);\n"),
     ),
     "src/Core/OOStringParsing.mm": subs(
         ('#import "OOStringParsing.h"\n', '#import "OOStringParsing.h"\n\n#include <vector>\n'),
