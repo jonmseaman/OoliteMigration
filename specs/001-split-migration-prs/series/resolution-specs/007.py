@@ -10,8 +10,6 @@ RES = {
             "n_key_oxzmanager_showinfo && n_key_oxzmanager_copyurl && n_key_oxzmanager_extract &&"),
     ],
     "src/Core/Materials/OOShaderProgram.mm": [
-        "OOShaderProgram* sActiveProgram = nil;\n"
-        "\n"
         "BOOL GetShaderSource(const std::optional<std::string>& fileName, const std::string& shaderType, std::optional<std::string>* outResult);\n"
         "std::string GetGLSLInfoLog(GLhandleARB shaderObject);\n"
         "\n"

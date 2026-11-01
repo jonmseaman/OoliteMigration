@@ -50,3 +50,5 @@ except NameError:
 CHANGES["src/Core/OOMaths.h"] = [(
     '#include "OOFunctionAttributes.h"\n#ifdef __OBJC__\n#include "OOOpenGL.h"\n',
     '#include "OOFunctionAttributes.h"\n#if defined(__cplusplus) && !defined(OO_PLAIN_CPP_UNIT) // was __OBJC__: a game unit, not a plain C++ one\n#include "OOOpenGL.h"\n')]
+# the history deletes the oofnd Objective-C headers here; the include order steps 6 and 10 restored goes with them
+DELETE = list(globals().get("DELETE", [])) + ["src/oofnd/objc/OOObjCPeer.h", "src/oofnd/objc/OOObjCRef.h"]

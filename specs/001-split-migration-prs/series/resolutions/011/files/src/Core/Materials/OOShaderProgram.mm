@@ -52,8 +52,6 @@ std::string StringOrNull(const std::optional<std::string>& string)
     return string.value_or("(null)");
 }
 
-OOShaderProgram* sActiveProgram = nil;
-
 BOOL GetShaderSource(const std::optional<std::string>& fileName, const std::string& shaderType, std::optional<std::string>* outResult);
 std::string GetGLSLInfoLog(GLhandleARB shaderObject);
 

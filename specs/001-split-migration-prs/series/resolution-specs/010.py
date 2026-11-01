@@ -24,3 +24,8 @@ POST = {"src/Core/OOMaths.h": [(
     '*/\n'
     '#include "OOOpenGLOnly.h"\n'
     '#endif\n')]}
+
+
+# the same include order for the new oofnd peer header as for OOObjCRef.h (step 6)
+CHANGES["src/oofnd/objc/OOObjCPeer.h"] = [("#include <objc/objc-arc.h>\n#include <objc/runtime.h>\n",
+                                           "#include <objc/runtime.h>\n\n#include <objc/objc-arc.h>\n")]

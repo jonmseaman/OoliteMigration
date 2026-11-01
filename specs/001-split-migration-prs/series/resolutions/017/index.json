@@ -212,5 +212,17 @@
   "deleted": false,
   "ours": "f58f0a19954f9f61c079df870c02138d927df978",
   "theirs": "7532ad5e59d22c45507841b78a0e9dcd03ecca34"
+ },
+ "src/oofnd/objc/OOObjCPeer.h": {
+  "base": "8d1ce54ee51876c9ec4c365beed1f9c0ddf3c838",
+  "deleted": true,
+  "ours": "e30688b25e509d3c65c37eab2a929a5e1f3a3630",
+  "theirs": null
+ },
+ "src/oofnd/objc/OOObjCRef.h": {
+  "base": "2cd4f845369c078952a4a617d30f7ec222b51511",
+  "deleted": true,
+  "ours": "3b245cb9a4353ff6623b9f8c0e40e27e7d36a411",
+  "theirs": null
  }
 }
