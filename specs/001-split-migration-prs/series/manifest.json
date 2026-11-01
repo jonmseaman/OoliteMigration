@@ -66,7 +66,7 @@
     "to": "8af7966e7d95101c57ceea1f66b338f0abeec2a1",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "f594a29f679b78b66247f722603c2fdee26f73f0",
    "temporaries": [],
    "title": "Add a test safety net: determinism, goldens, JS API snapshot, GUI and component tests",
    "verification": null

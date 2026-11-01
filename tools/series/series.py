@@ -154,15 +154,28 @@ def resolutions_dir(step):
 
 
 def merge_inputs(m, step):
-    """(base, ours, theirs) trees for a history step (research R4)."""
+    """(base, ours, theirs) trees for a history step: an incremental, rebase-style merge (research R15).
+
+    base   = N(history at the previous chapter's boundary), or N(the history's start) for the first
+    ours   = the previous step's resolved tree, or the series base for the first
+    theirs = N(history at this chapter's boundary)
+    """
     from tools.series import history, normalise
     a = m["anchors"]
     style = a["format"]["style_file_from"]
-    last = step["source"]["to"]
-    under = history.upstream_under(GAME, last)
-    base = normalise.normalise_tree(GAME, history.git(GAME, "rev-parse", f"{under}^{{tree}}"), style)
-    ours = history.git(GAME, "rev-parse", f"{a['upstream_base']}^{{tree}}")
-    theirs = normalise.normalise_tree(GAME, history.snapshot(GAME, last, a["history_prefix"]), style)
+    snap = lambda c: normalise.normalise_tree(GAME, history.snapshot(GAME, c, a["history_prefix"]), style)
+    prev = step_by_n(m, step["n"] - 1) if step["n"] > 1 else None
+    if prev is None:
+        base = snap(a["history_start"])
+        ours = history.git(GAME, "rev-parse", f"{a['upstream_base']}^{{tree}}")
+    else:
+        if prev["source"]["type"] != "history":
+            raise SystemExit(f"step {step['n']}: previous step is not a history step")
+        ours = prev.get("target_tree")
+        if not ours:
+            raise SystemExit(f"step {step['n']}: step {prev['n']} has no resolved tree yet; run `tree {prev['n']}` first")
+        base = snap(prev["source"]["to"])
+    theirs = snap(step["source"]["to"])
     return base, ours, theirs
 
 
@@ -227,6 +240,12 @@ def cmd_tree(args):
         for p in conflicts:
             print(f"  {p}")
         return 1
+    if step.get("target_tree") != tree:
+        from tools.series import manifest
+        step["target_tree"] = tree
+        for later in m["steps"][step["n"]:]:  # later trees were computed on the old one
+            later["target_tree"] = None
+        manifest.save(MANIFEST, m)
     print(tree)
     return 0
 

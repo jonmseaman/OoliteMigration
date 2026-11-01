@@ -51,10 +51,14 @@ def _load_index(res_dir):
     return {}
 
 
-def merge(repo, base, ours, theirs):
+RENAME_THRESHOLD = "30%"  # the history renamed .m -> .mm while rewriting 40-60% of a file
+
+
+def merge(repo, base, ours, theirs, renames=RENAME_THRESHOLD):
     """Return (merged tree id, conflicted paths) from git merge-tree."""
     cb, co, ct = _commit(repo, base), _commit(repo, ours), _commit(repo, theirs)
-    r = _git(repo, "merge-tree", "--write-tree", "-z", "--name-only", f"--merge-base={cb}", co, ct, ok=(0, 1))
+    r = _git(repo, "merge-tree", "--write-tree", "-z", "--name-only", "-X", f"find-renames={renames}",
+             f"--merge-base={cb}", co, ct, ok=(0, 1))
     parts = r.stdout.decode("utf-8").split("\0")
     tree = parts[0]
     conflicts = []

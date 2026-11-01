@@ -346,3 +346,20 @@ upstream style should still build. Verification decides. If one doesn't, that gr
 
 Step 025 asks upstream to change its style. Its description says it is optional and that every
 step before it already passes upstream's own clang-format check.
+
+### R15. Incremental merging (supersedes R4's merge inputs), measured 2026-11-01
+
+Merging each chapter snapshot against upstream from scratch (R4 as first written) made the same
+upstream changes conflict again in every later step: 14, 21, 36 … 203 conflicting files for steps
+2–18, about 2,300 resolutions in all. What survives normalising in upstream's `dc55e3e05`→`49a5eb9fc`
+change is real and repeated across 216 `src` files: `#ifndef NDEBUG` → `#ifdef
+OO_DEBUG_MONITOR_ENABLED` (#756, ~145 sites), `OOCocoa.h` → `OOFoundation.h` (#737, ~80), `#pragma
+once`, and `OOLITE_MAC_OS_X` → `OOLITE_MAC_COCOA_UI` (#766). The history also renamed `.m` → `.mm`
+while rewriting 40–60% of a file, so git's default 50% rename threshold reported delete/modify.
+
+**Decision:** step *k* is a rebase-style 3-way merge: base = N(history at chapter *k−1*'s boundary),
+ours = step *k−1*'s resolved tree, theirs = N(history at chapter *k*'s boundary). For step 1, base =
+N(history start) and ours = the series base. `merge-tree` runs with `-X find-renames=30%`. An upstream
+change ported once is carried forward. A file conflicts only where a chapter edits near an upstream
+change it hasn't absorbed yet. Step 2 went from 14 conflicts to 7. Trees are computed in order, and
+`tree <n>` stores the resolved tree (clearing later ones), so step *k+1* can use it.

@@ -157,5 +157,7 @@ game repo only gets local branches.
 - T010: resolutions are whole resolved files keyed by their three input blobs
   (`series/resolutions/NNN/index.json` + `files/<path>`), not patches, so a stale one is reported
   instead of applied. `git rerere` does not apply to `merge-tree` and is unused.
+- 2026-11-01: merges are incremental, rebase-style, with a 30% rename threshold (research R15), after
+  the from-scratch merge gave ~2,300 recurring conflicts.
 - To fill at G2: boundary moves (if a snapshot doesn't build), hoisted fixes in chapter 1, and
   whether the tail groups 020–024 build in upstream style (else they fold into 025).
