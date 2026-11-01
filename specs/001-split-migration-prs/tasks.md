@@ -35,7 +35,9 @@ steps). US4 and US5 are P2.
   `.agent-tmp/series*`.
 - Worktrees: create with `git worktree add`, remove with `git worktree remove`; never
   `git worktree prune` from Git for Windows git.
-- Python: standard library only, `python -I`, files written with `newline="\n"`.
+- Python: standard library only. Run scripts with `python -I` and unit tests with `python -m
+  unittest`: isolated mode drops the working directory, so the test package can't be imported.
+  Write files with `newline="\n"`.
 - Commit each finished task in OoliteMigration (`<task id>: <title>`, with the attribution trailer).
   Branch and git-config changes in `oolite-dev` need no commit.
 - If an Accept command can't be made to pass, stop that task, record why and the default taken in
@@ -84,10 +86,10 @@ history, merges into `main`, and a fake upstream with a reformat commit.
 
 **⚠️ CRITICAL**: no story work can begin until this phase is complete.
 
-- [ ] T006 Write `tools/series/tests/fixtures.py`: `make_history_repo(tmp)` builds a superproject with a
+- [X] T006 Write `tools/series/tests/fixtures.py`: `make_history_repo(tmp)` builds a superproject with a
   subtree-like `upstream/oolite/` (an add commit, 6 first-parent bead merges whose subjects follow
   `bead oo-xxx: merge into main`, one subtree-pull commit), plus a `game` repo whose `master` holds the
-  upstream base and a reformat commit. Accept: `python -I -m unittest tools.series.tests.test_fixtures`
+  upstream base and a reformat commit. Accept: `python -m unittest tools.series.tests.test_fixtures`
   (write that test too: the fixture builds and has 6 first-parent merges) exits 0.
 - [ ] T007 [P] Write `tools/series/tests/test_manifest.py` for data-model.md's validation rules 1, 4–6 and
   9, then implement `tools/series/manifest.py` (load, save with sorted keys and `newline="\n"`,
@@ -95,20 +97,20 @@ history, merges into `main`, and a fake upstream with a reformat commit.
   NNN = `n` zero-padded to 3; `chapter` set iff `source` = `history`, chapters contiguous;
   `mechanical_command` set iff `kind` = `mechanical`; independent steps before all others; ledger
   `add` has a later `remove`; no `ADR-[0-9]{4}` or `\boo-[0-9a-z]{3,}\b` in titles or descriptions.
-  Accept: `python -I -m unittest tools.series.tests.test_manifest` exits 0 (and failed before
+  Accept: `python -m unittest tools.series.tests.test_manifest` exits 0 (and failed before
   `manifest.py` existed).
 - [ ] T008 [P] Write `tools/series/tests/test_history.py`, then implement `tools/series/history.py`:
   `first_parent(repo, prefix, start, end)` lists merges under the prefix; `snapshot(repo, commit,
   prefix)` returns the tree id of `<commit>:<prefix>`; `upstream_under(commit)` returns
   `dc55e3e05` before `4c2bfae9f` and `9ee8ff22f` from it on (research table "Upstream under the
-  history"). Accept: `python -I -m unittest tools.series.tests.test_history` exits 0.
+  history"). Accept: `python -m unittest tools.series.tests.test_history` exits 0.
 - [ ] T009 [P] Write `tools/series/tests/test_normalise.py`, then implement `tools/series/normalise.py`
   (research R3): `normalise_tree(repo, tree, style_from)` formats `src/**` and `tests/**` files with
   extensions `.h .hpp .m .mm .c .cpp`, using `.agent-tmp/series-venv/Scripts/clang-format` and the
   `.clang-format` from `style_from`. It writes blobs with `git hash-object -w`, keeps a per-blob
   cache in `.agent-tmp/series-cache/normalise.json`, and returns a new tree id. Test: idempotent
   (normalising twice gives the same tree) and leaves non-source files byte-identical. Accept:
-  `python -I -m unittest tools.series.tests.test_normalise` exits 0.
+  `python -m unittest tools.series.tests.test_normalise` exits 0.
 - [ ] T010 Write `tools/series/tests/test_trees.py`, then implement `tools/series/trees.py` (research
   R4): `target_tree(base_tree, upstream_tree, snapshot_tree)` runs `git merge-tree --write-tree
   --merge-base=<N(base)> <upstream> <N(snapshot)>` with temporary commits for the three trees. It
@@ -123,9 +125,9 @@ history, merges into `main`, and a fake upstream with a reformat commit.
   `git town append <branch> --prototype --no-sync --no-push` run from the parent, then moves the
   branch to the commit. Later it uses `git town set-parent`. `lineage(repo, branch)` reads `git
   config git-town-branch.<branch>.parent`. The test checks the commit's only parent is the parent's
-  tip and that lineage matches. Accept: `python -I -m unittest tools.series.tests.test_stack` exits 0.
+  tip and that lineage matches. Accept: `python -m unittest tools.series.tests.test_stack` exits 0.
 
-**Checkpoint**: `python -I -m unittest discover -s tools/series/tests -t .` exits 0. That is gate G1.
+**Checkpoint**: `python -m unittest discover -s tools/series/tests -t .` exits 0. That is gate G1.
 
 ---
 
@@ -207,14 +209,14 @@ verification worktree (R9).
   `--native-file=gcc.ini` for GCC), warning count from the build log, then `tests/run.sh unit` and
   `tests/run.sh smoke` if present in the tree, and `tests/run.sh component -k <names>` for scenarios
   whose files the step touches. Objective-C eras use the T005 shell (or record `ci-pending` under
-  the G0 fallback). Accept: `python -I -m unittest tools.series.tests.test_verify` exits 0.
+  the G0 fallback). Accept: `python -m unittest tools.series.tests.test_verify` exits 0.
 - [ ] T021 [US2] Add the construction-integrity checks to `verify.py` (research R11), recorded as
   `tests_untouched`, `no_new_suppressions`, `clang_format` and `no_new_spidermonkey_or_gnustep`:
   (a) no file under `tests/` differs between the step's tree and its source snapshot carried onto
   the base, except by the step's stored resolutions, which must not touch `tests/`; (b) no added
   line matching `-Wno-|#pragma .*diagnostic` that the source snapshot lacks; (c) upstream's
   clang-format check passes with version 22 on steps 1–24; (d) no added `jsapi.h`, `mozjs`,
-  `js32ECMAv5` or `gnustep-base` reference that the parent lacks. Accept: `python -I -m unittest
+  `js32ECMAv5` or `gnustep-base` reference that the parent lacks. Accept: `python -m unittest
   tools.series.tests.test_verify` exits 0, with a test per check.
 - [ ] T022 [US2] Implement `verify <n> | --from n [--clean]`: write the verification record into the
   manifest (date, branch tip, each check `pass`/`fail`/`n/a` with reason), and refresh the
@@ -243,7 +245,7 @@ matching the manifest's exclusions, and `check --verified` passes for 020–025.
   `N_upstream(develop at the group's last commit)`, with commits outside the group backed out by
   3-way merge, plus the exclusions taken from the base. For step 025 it is `develop_target` with
   the exclusions taken from the base. Add a test to `tools/series/tests/test_trees.py` using the
-  fixture's reformat commit. Accept: `python -I -m unittest tools.series.tests.test_trees && for n
+  fixture's reformat commit. Accept: `python -m unittest tools.series.tests.test_trees && for n
   in 20 21 22 23 24 25; do python -I tools/series/series.py tree $n || exit 1; done`.
 - [ ] T025 [US3] Build steps 20–25, write their descriptions (step 025: mechanical, optional, gives
   the reproducing command, and notes that 001–024 already pass upstream's own clang-format check),
@@ -271,7 +273,7 @@ and builds there with Clang.
   change applies to `49a5eb9fc` with `git apply --3way` and builds in the T005 shell. Then insert
   an `independent` step before step 1, and remove the same change from later steps' diffs by
   carrying it into every target tree up to its original chapter. Add a test with the fixture.
-  Accept: `python -I -m unittest tools.series.tests.test_hoist` exits 0.
+  Accept: `python -m unittest tools.series.tests.test_hoist` exits 0.
 - [ ] T028 [US4] Pick the candidates: from `inventory.tsv`, list merges whose subjects or bead
   titles name determinism, `OO_RANDOM_SEED`, iteration order, or a bug fix in code that upstream
   also has. Read each diff, keeping only changes outside test-harness and migration code, and
@@ -297,7 +299,7 @@ and builds there with Clang.
 - [ ] T030 [P] [US5] Implement `renumber`: after a step is inserted or removed, rename the branches
   (`git branch -m`), description files and resolution directories so that NNN = `n`. Rewrite the
   manifest and reset Git Town lineage with `git town set-parent` for every moved branch. Add a test
-  with the fixture. Accept: `python -I -m unittest tools.series.tests.test_renumber` exits 0.
+  with the fixture. Accept: `python -m unittest tools.series.tests.test_renumber` exits 0.
 - [ ] T031 [US5] Generate `specs/001-split-migration-prs/series/HANDOVER.md` from the manifest
   (`series.py describe --handover`). It contains the anchors, the exclusions, the temporary-code
   ledger, and per step: branch, base, title, size and verification. It then gives Jon's commands,
@@ -323,7 +325,7 @@ and builds there with Clang.
   Re-anchor dry run' specs/001-split-migration-prs/plan.md`.
 - [ ] T035 Final gate: the full tool test suite, then `check --verified`, then `git -C oolite-dev
   status --porcelain` empty and `git -C oolite-dev rev-parse develop` still `3aa8d65e8`.
-  Accept: `python -I -m unittest discover -s tools/series/tests -t . && python -I
+  Accept: `python -m unittest discover -s tools/series/tests -t . && python -I
   tools/series/series.py check --verified && [ -z "$(git -C oolite-dev status --porcelain)" ] && [
   "$(git -C oolite-dev rev-parse --short=9 develop)" = 3aa8d65e8 ]`.
 
