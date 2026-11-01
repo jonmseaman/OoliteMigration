@@ -11,10 +11,10 @@ check or verification failed, `2` usage or environment error. Never pushes, neve
 | `cut --chapters` | Writes R14's chapters and tail groups as `planned` steps, resolving each boundary to its first-parent merge and checking that the chapters tile the history with no gaps. Does not overwrite steps already `built`. | manifest written, chapters contiguous |
 | `hoist <history-commit>… --slug S` | Turns history commits into an `independent` step at the front, if they apply to `upstream_base` alone. | the commits apply and the step is planned |
 | `tree <n>` | Computes step *n*'s target tree (normalise, 3-way merge onto upstream, apply resolutions); prints the tree id, or the conflicting paths. | no unresolved conflicts |
-| `build [<n>…\|--from n]` | For each step in order: creates or resets `series/NNN-slug` to one commit on the parent tip with the target tree; sets Git Town lineage (`git town append --prototype --no-sync --no-push` on first creation, `git town set-parent` after). | every requested step is `built` |
+| `build [<n>…\|--from n [--to m]]` | For each step in order: creates or resets `series/NNN-slug` to one commit on the parent tip with the target tree; sets Git Town lineage (`git town append --prototype --no-sync --no-push` on first creation, `git town set-parent` after). | every requested step is `built` |
 | `verify <n>\|--from n [--clean]` | Runs the verification matrix for the step's era in the shared verification worktree (research R9); writes the verification record. | every check is `pass` or justified `n/a` |
-| `describe <n>` | Writes or refreshes the generated parts of `series/pr/NNN-slug.md` (size, source range, verification, position); keeps the hand-written sections. | file has every required section |
-| `check [--verified]` | Validates the manifest, branches, lineage and trees against `data-model.md`'s rules. | all rules hold |
+| `describe <n>\|--handover` | Writes or refreshes the generated parts of `series/pr/NNN-slug.md` (size, source range, verification, position) and keeps the hand-written sections. With `--handover`, writes `series/HANDOVER.md` (anchors, exclusions, ledger, and per step the push and `gh pr create` commands for Jon). | file has every required section |
+| `check [--verified] [--only <group>] [--steps a-b]` | Validates the manifest, branches, lineage and trees against `data-model.md`'s rules. Groups: `manifest`, `branches`, `lineage`, `trees`, `descriptions`, `final-tree`, `ledger`. | all selected rules hold |
 | `renumber` | After inserting or removing a step: renames branches and description files, and rewrites the manifest and lineage to keep `NNN` = `n`. | `check` passes afterwards |
 
 ## Files
@@ -24,5 +24,6 @@ specs/001-split-migration-prs/series/
 ├── manifest.json          # anchors, steps, exclusions, ledger (data-model.md)
 ├── inventory.tsv          # output of `inventory`
 ├── resolutions/NNN/<path>.patch   # conflict resolutions, applied by `tree`
-└── pr/NNN-slug.md         # one PR description per step (pr-description.md)
+├── pr/NNN-slug.md         # one PR description per step (pr-description.md)
+└── HANDOVER.md            # Jon's push and open-PR commands, generated
 ```
