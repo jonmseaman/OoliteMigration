@@ -140,7 +140,7 @@ commit whose tree is its chapter's snapshot carried onto upstream, with a PR des
 parent with matching Git Town lineage, every tree equals its target, and every description has
 the contract's sections.
 
-- [ ] T012 [US1] Implement `inventory` in `tools/series/series.py`: write
+- [X] T012 [US1] Implement `inventory` in `tools/series/series.py`: write
   `specs/001-split-migration-prs/series/inventory.tsv`. Columns: `idx`, `commit`, `date`,
   `bead`, `phase` (from the bead id prefix: `oo-1bf` P0, `oo-1gc` P1, `oo-3rb` P2, `oo-9ht` P3,
   `oo-6e1` P4, else `?`), `subject`, `upstream_under`. Use the 1,400 first-parent merges of

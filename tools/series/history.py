@@ -20,13 +20,38 @@ def git(repo, *args, check=True):
     return r.stdout.strip() if check else r
 
 
-def phase_of(bead):
+BEAD_EXPORT = ("0c07daef7^", ".beads/issues.jsonl")  # last tracked export, in OoliteMigration
+LABEL_PHASE_RE = re.compile(r"^phase[-:]?(\d)$")
+
+
+def load_bead_phases(superproject):
+    """{bead id: phase} from the archived bead export's labels (`phase:N`)."""
+    import json
+    commit, path = BEAD_EXPORT
+    out = {}
+    for line in git(superproject, "show", f"{commit}:{path}").splitlines():
+        if not line.strip():
+            continue
+        r = json.loads(line)
+        for label in r.get("labels") or []:
+            m = LABEL_PHASE_RE.match(label)
+            if m:
+                out[r["id"]] = "P" + m.group(1)
+                break
+    return out
+
+
+def phase_of(bead, labelled=None):
+    """Phase from the epic prefix, else from the bead export's labels, else '?'."""
     if not bead:
         return "?"
-    return EPIC_PHASE.get(bead.split(".")[0], "?")
+    p = EPIC_PHASE.get(bead.split(".")[0])
+    if p:
+        return p
+    return (labelled or {}).get(bead, "?")
 
 
-def first_parent(repo, prefix, start, end):
+def first_parent(repo, prefix, start, end, labelled=None):
     """First-parent commits in start..end that change `prefix`, oldest first."""
     out = git(repo, "log", "--reverse", "--first-parent", "--date=short",
               "--format=%H%x09%ad%x09%P%x09%s", f"{start}..{end}", "--", prefix)
@@ -36,7 +61,7 @@ def first_parent(repo, prefix, start, end):
         m = BEAD_RE.search(subject)
         bead = m.group(0) if m else None
         rows.append({"commit": commit, "date": date, "merge": len(parents.split()) > 1,
-                     "subject": subject, "bead": bead, "phase": phase_of(bead)})
+                     "subject": subject, "bead": bead, "phase": phase_of(bead, labelled)})
     return rows
 
 

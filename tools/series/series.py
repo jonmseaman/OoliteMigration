@@ -43,10 +43,54 @@ def parser():
     return p
 
 
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+GAME = os.path.join(ROOT, "oolite-dev")
+SERIES_DIR = os.path.join(ROOT, "specs", "001-split-migration-prs", "series")
+MANIFEST = os.path.join(SERIES_DIR, "manifest.json")
+INVENTORY = os.path.join(SERIES_DIR, "inventory.tsv")
+HISTORY_REF = "refs/series/history"
+HISTORY_PREFIX = "upstream/oolite"
+HISTORY_START = "4f089047c"  # the subtree add at upstream dc55e3e05
+HISTORY_END = HISTORY_REF + "^"  # 338463308 itself removes the subtree
+INVENTORY_COLUMNS = ("idx", "commit", "date", "bead", "phase", "subject", "upstream_under")
+
+
+def read_inventory(path=INVENTORY):
+    with open(path, encoding="utf-8") as f:
+        header = f.readline().rstrip("\n").split("\t")
+        return [dict(zip(header, line.rstrip("\n").split("\t"))) for line in f if line.strip()]
+
+
+def cmd_inventory(args):
+    from tools.series import history
+    rows = history.first_parent(GAME, HISTORY_PREFIX, HISTORY_START, HISTORY_END,
+                                labelled=history.load_bead_phases(ROOT))
+    pull, pulled = history.HISTORY_PULLS[0]
+    after = set(history.git(GAME, "rev-list", HISTORY_END, f"^{pull}^").split())
+    os.makedirs(SERIES_DIR, exist_ok=True)
+    with open(INVENTORY, "w", encoding="utf-8", newline="\n") as f:
+        f.write("\t".join(INVENTORY_COLUMNS) + "\n")
+        for i, r in enumerate(rows):
+            # commits that contain the pull sit on the pulled upstream; the rest on the history's base
+            contains_pull = r["commit"] in after and history.git(
+                GAME, "merge-base", "--is-ancestor", pull, r["commit"], check=False).returncode == 0
+            under = pulled if contains_pull else history.HISTORY_BASE_UPSTREAM
+            subject = r["subject"].replace("\t", " ")
+            f.write("\t".join([str(i), r["commit"], r["date"], r["bead"] or "", r["phase"], subject, under]) + "\n")
+    print(f"inventory: {len(rows)} first-parent commits -> {os.path.relpath(INVENTORY, ROOT)}")
+    return 0
+
+
+HANDLERS = {"inventory": cmd_inventory}
+
+
 def main(argv=None):
     args = parser().parse_args(argv)
-    print(f"series.py {args.command}: not implemented", file=sys.stderr)
-    return 2
+    handler = HANDLERS.get(args.command)
+    if handler is None:
+        print(f"series.py {args.command}: not implemented", file=sys.stderr)
+        return 2
+    return handler(args)
 
 
 if __name__ == "__main__":
