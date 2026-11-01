@@ -1392,14 +1392,43 @@
    "mechanical_command": null,
    "n": 13,
    "parent": "series/012-first-slices",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/ShipEntity.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/ShipEntityAI.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/GameController.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/GameController.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOMatrix.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Universe.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Universe.mm"
+    }
+   ],
    "size": null,
    "source": {
     "from": "477a4919bcb8c6160d4765ee9d225e920fbf241f",
     "to": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "b1f3db5e4d5f13738c867e660a81299b47fd9fd6",
    "temporaries": [],
    "title": "Convert ShipEntity to C++",
    "verification": null
