@@ -255,3 +255,41 @@ Initial chapter list (boundaries to be fixed by `cut --chapters` against the wav
 
 Where waves overlap (3c–3e interleave on 10-05…10-09), the chapter takes the contiguous range and
 says in its description which work items it mixes. Default: no reordering to purify a chapter.
+
+**Measured option B (chapters as PRs), 2026-11-01** (`.agent-tmp/001/chapters.py`). Every boundary
+snapshot is formatted with upstream `49a5eb9fc`'s `.clang-format` (clang-format 23 here, `src/` and
+`tests/`), committed to a scratch repo and diffed with rename detection. "Reviewed" lines =
+additions + deletions in src, tests and build files. Whole-file deletions are listed apart. Sizes
+are against `dc55e3e05`; rebasing onto `49a5eb9fc` adds the R4 resolutions.
+
+| # | Merges | Chapter | Reviewed (src / tests / other) | Whole files deleted |
+|---:|---:|---|---|---:|
+| 1 | 41 | P0 safety net | 0.5k / 13.6k / 0 | 0 |
+| 2 | 55 | P1 façade, retarget, QuickJS-ng beside SpiderMonkey | 14.6k / 1.4k / 6.9k | 5.6k |
+| 3 | 1 | P2 `.m`→`.mm` | 0.5k / 0 / 1.6k | 0 |
+| 4 | 6 | P1 switch to QuickJS-ng, delete SpiderMonkey | 11.8k / 0 / 0.2k | 1.5k |
+| 5 | 19 | P2 `oofnd` core and the Objective-C floor | 10.0k / 6.5k / 0 | 0.5k |
+| 6 | 108 | P2 typed accessors (`oo_*ForKey` retired) | 11.1k / 2.2k / 0 | 0 |
+| 7 | 210 | P2 Foundation→`oofnd` wave 1 | 35.3k / 1.3k / 0 | 0 |
+| 8 | 240 | P2 Foundation→`oofnd` wave 2 | 48.2k / 2.9k / 0 | 1.7k |
+| 9 | 199 | P2 selector families, endgame, gnustep-base gone | 18.7k / 1.0k / 0 | 10.5k |
+| 10 | 61 | P3 C files, leaf, oomath, OXPVerifier | 28.5k / 17.0k / 0 | 1.8k |
+| 11 | 120 | P3 Scripting, Entities, audio, Materials | 38.9k / 40.0k / 0.1k | 2.4k |
+| 12 | 80 | P3 first slices, first facade deletions | 26.1k / 13.3k / 0 | 5.1k |
+| 13 | 60 | P3 `ShipEntity` slices | 29.2k / 6.5k / 0.1k | 0.1k |
+| 14 | 40 | P3 `Universe`, `PlayerEntity` slices | 17.7k / 3.6k / 0 | 1.2k |
+| 15 | 51 | P3 facade-deletion batches | 50.4k / 27.6k / 0 | 22.1k |
+| 16 | 70 | P3 root `Entity` facade | 29.9k / 18.1k / 0 | 17.8k |
+| 17 | 32 | P4 deferred release, runtime out, `.mm`→`.cpp` | 6.6k / 1.8k / 11.6k | 8.5k |
+| 18 | 3 | P4 GCC build | 0.2k / 1.7k / 0 | 0 |
+| 19 | 4 | history tail: upstream `9ee8ff22f` ported | 13.2k / 0.4k / 0.3k | 0.2k |
+| T1 | — | develop: Google-style reformat (`13eb19ee7`, `266118a39`, `21c3048a2`) | mechanical: 150k / 47.5k | 0 |
+| T2 | — | develop: comment sweeps (bead/ADR/slice markers), `#pragma once` | 16.9k / 9.6k / 0 | 0 |
+| T3 | — | develop: C → C++, `bool`, `nullptr` (`448aa6d20`) | 11.7k / 5.4k / 0.2k | 0 |
+| T4 | — | develop: upstream merge and ports of #766, #774, #781; Mac build fix | 0.5k / 0.2k / 0.5k | 0 |
+| T5 | — | develop: small fixes, tooling, editor, tests | ~0.5k / 1.4k / 0.6k | 0.1k |
+
+Reviewed size ranges from 2k to 79k; the median is about 20k. The largest are 11 (79k, half of it
+unit tests) and 15 (78k plus 22k of deleted facade files), then 8 (51k), 16 (48k), 10 (46k) and 12
+(39k). Normalising does not undo the Google reformat (include regrouping and comment reflow are not
+reversible), so T1 stays a mechanical PR.
