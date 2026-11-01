@@ -1511,14 +1511,83 @@
    "mechanical_command": null,
    "n": 15,
    "parent": "series/014-universe-player-slices",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "auto",
+     "path": "src/Core/AI.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/DockEntity.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/PlayerEntity.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/PlayerEntityControls.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/PlayerEntityLoadSave.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/PlayerEntityLoadSave.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/ShipEntity.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OODrawable.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OODrawable.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOOXZManager.mm"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/Core/OOVector.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Octree.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJSEngineTimeManagement.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSSound.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Universe.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/meson.build"
+    },
+    {
+     "how": "auto",
+     "path": "src/SDL/MyOpenGLView+Input.mm"
+    }
+   ],
    "size": null,
    "source": {
     "from": "d01d45e47c50bda1ebbfd44c5f94596519ba840b",
     "to": "2c2aae1316b5a125038a797c213162ffba389279",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "df23589437f73054221a6bda57196cac198efe41",
    "temporaries": [],
    "title": "Delete the Objective-C facades",
    "verification": null
