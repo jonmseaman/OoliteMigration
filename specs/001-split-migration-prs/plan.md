@@ -149,5 +149,13 @@ game repo only gets local branches.
 - T002: clang-format 22.1.8 (PyPI `clang-format` wheel) in `.agent-tmp/series-venv`.
 - T003: the history is `refs/series/history` in `oolite-dev` (= OoliteMigration `338463308`); fetch by
   full hash (abbreviated hashes are refused).
+- T005 / G0 passed 2026-11-01: isolated MSYS2 at `.agent-tmp/msys2-objc/` (2.8 GB, unpacked from scoop's
+  cached base `msys2#2025-12-13`, then `pacman -Syuu` twice and upstream's `install_deps.sh clang`).
+  Shell: `MSYSTEM=UCRT64 .agent-tmp/msys2-objc/usr/bin/bash.exe -l <script>`. Packages: clang 23.1.4,
+  gnustep-base 1.31.1+85dedc64b, libobjc2 2.3, nspr 4.40. Upstream `49a5eb9fc` builds there with
+  `./mk.sh build test`, with 0 warnings. Jon's scoop MSYS2 is untouched.
+- T010: resolutions are whole resolved files keyed by their three input blobs
+  (`series/resolutions/NNN/index.json` + `files/<path>`), not patches, so a stale one is reported
+  instead of applied. `git rerere` does not apply to `merge-tree` and is unused.
 - To fill at G2: boundary moves (if a snapshot doesn't build), hoisted fixes in chapter 1, and
   whether the tail groups 020–024 build in upstream style (else they fold into 025).

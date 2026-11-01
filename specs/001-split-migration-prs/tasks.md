@@ -66,7 +66,7 @@ steps). US4 and US5 are P2.
   `git config rerere.autoUpdate false`. Accept: `[ "$(git -C oolite-dev rev-parse
   series/000-upstream-base)" = "$(git -C oolite-dev rev-parse 49a5eb9fc)" ] && git -C oolite-dev
   config --get git-town.perennial-branches | grep -q series/000-upstream-base`.
-- [ ] T005 Gate G0: build an isolated MSYS2 for the Objective-C steps. Unpack the MSYS2 base archive
+- [X] T005 Gate G0: build an isolated MSYS2 for the Objective-C steps. Unpack the MSYS2 base archive
   (`msys2-base-x86_64-latest.tar.zst` from repo.msys2.org) into `.agent-tmp/msys2-objc/`, then run
   upstream's `ShellScripts/Windows/install_deps.sh clang` from a `49a5eb9fc` worktree at
   `.agent-tmp/series-g0/`, inside that MSYS2's UCRT64 shell. Jon's scoop MSYS2 must not be touched.
@@ -111,7 +111,7 @@ history, merges into `main`, and a fake upstream with a reformat commit.
   cache in `.agent-tmp/series-cache/normalise.json`, and returns a new tree id. Test: idempotent
   (normalising twice gives the same tree) and leaves non-source files byte-identical. Accept:
   `python -m unittest tools.series.tests.test_normalise` exits 0.
-- [ ] T010 Write `tools/series/tests/test_trees.py`, then implement `tools/series/trees.py` (research
+- [X] T010 Write `tools/series/tests/test_trees.py`, then implement `tools/series/trees.py` (research
   R4): `target_tree(base_tree, upstream_tree, snapshot_tree)` runs `git merge-tree --write-tree
   --merge-base=<N(base)> <upstream> <N(snapshot)>` with temporary commits for the three trees. It
   applies stored resolutions from `series/resolutions/NNN/*.patch` and returns `(tree, conflicts[])`.

@@ -54,6 +54,7 @@ A0 = "int a(void) { return 1; }\n"
 A1 = "int a(void) {\n  return 1;\n}\n"  # upstream's reformat
 B0 = "int b(void) { return 2; }\n"
 B2 = "int b(void) { return 3; }  /* upstream edit */\n"
+E2 = "int e(void) {\n  return 7;\n}\n"  # upstream-only new file
 
 
 def make_history_repo(tmp):
@@ -67,7 +68,8 @@ def make_history_repo(tmp):
     write(game, "src/a.m", A1)
     u1 = commit_all(game, "U1 clang-format code (#749)", 1)
     write(game, "src/b.m", B2)
-    u2 = commit_all(game, "U2 upstream edit to b", 2)
+    write(game, "src/e.m", E2)
+    u2 = commit_all(game, "U2 upstream edit to b, new e", 2)
 
     sup = init(os.path.join(tmp, "super"), "main")
     write(sup, "README.md", "migration\n")
