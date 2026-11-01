@@ -34,6 +34,7 @@ def parser():
     v.add_argument("n", nargs="?", type=int)
     v.add_argument("--from", dest="from_", type=int)
     v.add_argument("--clean", action="store_true")
+    v.add_argument("--integrity-only", action="store_true", help="run only the construction checks (no build)")
     d = sub.add_parser("describe", help="write a step's PR description, or the handover")
     d.add_argument("n", nargs="?", type=int)
     d.add_argument("--handover", action="store_true")
@@ -83,7 +84,7 @@ def cmd_inventory(args):
     return 0
 
 
-STATE_FIELDS = ("target_tree", "verification", "boundary_moved", "resolutions", "temporaries", "size", "era")
+STATE_FIELDS = ("target_tree", "merge_tree", "verification", "boundary_moved", "resolutions", "temporaries", "size", "era")
 
 
 def load_manifest():
@@ -174,7 +175,7 @@ def merge_inputs(m, step):
     else:
         if prev["source"]["type"] != "history":
             raise SystemExit(f"step {step['n']}: previous step is not a history step")
-        ours = prev.get("target_tree")
+        ours = prev.get("merge_tree") or prev.get("target_tree")
         if not ours:
             raise SystemExit(f"step {step['n']}: step {prev['n']} has no resolved tree yet; run `tree {prev['n']}` first")
         base = snap(prev["source"]["to"])
@@ -189,13 +190,32 @@ def step_by_n(m, n):
     raise SystemExit(f"no step {n}")
 
 
-def compute_tree(m, step, report=None):
-    """(tree, conflicts) for a step; `report` receives (path, "stored" | "auto") per resolved conflict."""
+def compute_merge_tree(m, step, report=None):
+    """(merge tree, conflicts) for a step; `report` receives (path, "stored" | "auto") per resolved conflict."""
     from tools.series import trees
     if step["source"]["type"] == "history":
         base, ours, theirs = merge_inputs(m, step)
         return trees.target_tree(GAME, base, ours, theirs, resolutions_dir(step), report=report)
     raise SystemExit(f"tree: source type {step['source']['type']!r} not implemented yet (T024)")
+
+
+def format_pass(m, tree):
+    """The published tree: `tree` with the files upstream's CI format check covers (C and C++ under
+    src/) run through clang-format. Merging two formatted sides can give an unformatted result (e.g.
+    an include block that is no longer sorted); this fixes only that. Tests are never touched."""
+    from tools.series import normalise, verify
+    style = m["anchors"]["format"]["style_file_from"]
+    return normalise.normalise_tree(GAME, tree, style, select=lambda p: p.startswith("src/")
+                                    and bool(verify.FORMAT_INCLUDE_RE.match(p)))
+
+
+def compute_tree(m, step, report=None):
+    """(published tree, merge tree, conflicts). The next step merges onto the merge tree, so stored
+    resolutions (keyed by the merge's input blobs) stay valid; the branch carries the published tree."""
+    merged, conflicts = compute_merge_tree(m, step, report)
+    if conflicts:
+        return None, merged, conflicts
+    return format_pass(m, merged), merged, conflicts
 
 
 RESOLVE_SCRATCH = os.path.join(ROOT, ".agent-tmp", "series-resolve")
@@ -246,7 +266,7 @@ def cmd_tree(args):
         print(f"recorded: {path}")
         return 0
     report = []
-    tree, conflicts = compute_tree(m, step, report)
+    tree, merged, conflicts = compute_tree(m, step, report)
     if conflicts:
         print(f"tree {args.n}: {len(conflicts)} conflicts")
         for p in conflicts:
@@ -258,12 +278,13 @@ def cmd_tree(args):
         kinds = collections.Counter(how for _, how in report)
         print(f"tree {args.n}: {len(report)} conflicts resolved ("
               + ", ".join(f"{v} {k}" for k, v in sorted(kinds.items())) + ")", file=sys.stderr)
-    if step.get("target_tree") != tree or step.get("resolutions") != resolved:
+    if step.get("target_tree") != tree or step.get("merge_tree") != merged or step.get("resolutions") != resolved:
         from tools.series import manifest
         step["resolutions"] = resolved
         step["target_tree"] = tree
+        step["merge_tree"] = merged
         for later in m["steps"][step["n"]:]:  # later trees were computed on the old one
-            later["target_tree"] = None
+            later["target_tree"] = later["merge_tree"] = None
         manifest.save(MANIFEST, m)
     print(tree)
     return 0
@@ -285,11 +306,11 @@ def commit_message(step):
 def build_one(m, step):
     """Create or reset the step's branch; returns 'built' or 'unchanged'."""
     from tools.series import manifest, stack
-    tree, conflicts = compute_tree(m, step)
+    tree, merged, conflicts = compute_tree(m, step)
     if conflicts:
         raise SystemExit(f"build {step['n']}: {len(conflicts)} unresolved conflicts; run `tree {step['n']}`")
-    if step.get("target_tree") != tree:
-        step["target_tree"] = tree
+    if step.get("target_tree") != tree or step.get("merge_tree") != merged:
+        step["target_tree"], step["merge_tree"] = tree, merged
         manifest.save(MANIFEST, m)
     msg = commit_message(step)
     parent_tip = stack.git(GAME, "rev-parse", f"refs/heads/{step['parent']}")
@@ -316,6 +337,86 @@ def cmd_build(args):
         step = step_by_n(m, n)
         print(f"build {n}: {step['branch']} {build_one(m, step)}", flush=True)
     return 0
+
+
+def resolution_paths(step):
+    import json
+    index = os.path.join(resolutions_dir(step), "index.json")
+    if not os.path.exists(index):
+        return []
+    with open(index, encoding="utf-8") as f:
+        data = json.load(f)
+    return sorted(data)  # {path: {base, ours, theirs, deleted}}
+
+
+def integrity(m, step):
+    """The construction-integrity checks (research R11) for a built step."""
+    from tools.series import normalise, verify
+    tree = stack_tree(step)
+    parent = parent_tree_of(m, step)
+    if step["source"]["type"] != "history":
+        raise SystemExit(f"verify: integrity for {step['source']['type']!r} steps is not implemented yet (T024)")
+    base, ours, source = merge_inputs(m, step)
+    out = {
+        "tests_untouched": verify.check_tests_untouched(GAME, tree, source, ours, resolution_paths(step), base),
+        "no_new_suppressions": verify.check_no_new_suppressions(GAME, parent, tree, source),
+        "no_new_spidermonkey_or_gnustep": verify.check_no_new_legacy(GAME, parent, tree),
+    }
+    if step["n"] <= 24:
+        out["clang_format"] = verify.check_clang_format(GAME, tree, normalise.normalise_tree(GAME, tree, tree))
+    else:
+        out["clang_format"] = "n/a: the reformat step changes the style; upstream's check follows it"
+    return out
+
+
+def stack_tree(step):
+    from tools.series import stack
+    return stack.git(GAME, "rev-parse", f"refs/heads/{step['branch']}^{{tree}}")
+
+
+def cmd_verify(args):
+    from tools.series import manifest, verify
+    m = load_manifest()
+    steps = m["steps"]
+    if args.n:
+        ns = [args.n]
+    elif args.from_:
+        ns = list(range(args.from_, len(steps) + 1))
+    else:
+        print("verify: give a step or --from", file=sys.stderr)
+        return 2
+    failed = False
+    from tools.series import stack
+    for n in ns:
+        step = step_by_n(m, n)
+        if not stack.exists(GAME, step["branch"]):
+            print(f"verify {n}: {step['branch']} is not built; stopping", file=sys.stderr)
+            return 1 if args.n else (1 if failed else 0)
+        checks = integrity(m, step)
+        if args.integrity_only:
+            print(f"verify {n}: " + "; ".join(f"{k}={v}" for k, v in checks.items()), flush=True)
+            failed |= not all(v.startswith(("pass", "n/a")) for v in checks.values())
+            continue
+        prev = step_by_n(m, n - 1) if n > 1 else None
+        parent_record = (prev or {}).get("verification")
+        parent_era = (parent_record or {}).get("era")
+        tree = stack_tree(step)
+        clean = args.clean or n == 1 or verify.era(GAME, tree) != parent_era or n == HISTORY_STEPS_LAST(m)
+        record = verify.verify_step(GAME, step, parent_tree_of(m, step), parent_record, clean=clean, integrity=checks)
+        step["verification"] = record
+        step["era"] = record["era"]
+        manifest.save(MANIFEST, m)
+        cmd_describe(argparse.Namespace(n=n, handover=False))
+        ok = verify.record_passes(record)
+        print(f"verify {n}: {'pass' if ok else 'FAIL'} " + "; ".join(f"{k}={v}" for k, v in record["checks"].items()),
+              flush=True)
+        if not ok:
+            return 1  # later steps build on this one: stop at the first failure
+    return 1 if failed else 0
+
+
+def HISTORY_STEPS_LAST(m):
+    return max(s["n"] for s in m["steps"] if s["source"]["type"] == "history")
 
 
 CHECK_GROUPS = ("manifest", "branches", "lineage", "trees", "descriptions", "final-tree", "ledger", "verified")
@@ -425,7 +526,7 @@ def cmd_check(args):
 
 HAND_SECTIONS = ("What this changes", "Why", "Behaviour changes", "How to review")
 TODO = "_To write._"
-NOT_VERIFIED_PLATFORMS = "macOS (Phase 5: not converted) and Linux are not verified by this series."
+NOT_VERIFIED_PLATFORMS = "macOS (its platform code is not converted yet) and Linux are not verified by this series."
 
 
 def parse_sections(text):
@@ -542,7 +643,7 @@ def cmd_handover(m):
     raise SystemExit("describe --handover: not implemented yet (T031)")
 
 
-HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "describe": cmd_describe}
+HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
 
 
 def main(argv=None):

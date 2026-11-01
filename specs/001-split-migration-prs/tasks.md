@@ -214,7 +214,7 @@ verification worktree (R9).
   `tests/run.sh smoke` if present in the tree, and `tests/run.sh component -k <names>` for scenarios
   whose files the step touches. Objective-C eras use the T005 shell (or record `ci-pending` under
   the G0 fallback). Accept: `python -m unittest tools.series.tests.test_verify` exits 0.
-- [ ] T021 [US2] Add the construction-integrity checks to `verify.py` (research R11), recorded as
+- [X] T021 [US2] Add the construction-integrity checks to `verify.py` (research R11), recorded as
   `tests_untouched`, `no_new_suppressions`, `clang_format` and `no_new_spidermonkey_or_gnustep`:
   (a) no file under `tests/` differs between the step's tree and its source snapshot carried onto
   the base, except by the step's stored resolutions, which must not touch `tests/`; (b) no added

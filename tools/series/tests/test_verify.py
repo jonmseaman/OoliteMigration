@@ -123,6 +123,97 @@ class TouchedScenariosTest(unittest.TestCase):
         self.assertEqual(verify.touched_scenarios(self.repo, a, b), [])
 
 
+class IntegrityTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo = self.tmp.name
+        git(self.repo, "init", "-q")
+        git(self.repo, "config", "user.email", "t@example.com")
+        git(self.repo, "config", "user.name", "t")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def t(self, files):
+        return tree_of(self.repo, files)
+
+    # (a) tests_untouched
+    def test_tests_equal_to_source_pass(self):
+        src = self.t({"tests/a.py": "1\n", "src/x.c": "a\n"})
+        step = self.t({"tests/a.py": "1\n", "src/x.c": "b\n"})
+        self.assertEqual(verify.check_tests_untouched(self.repo, step, src, src, []), "pass")
+
+    def test_tests_from_upstream_side_pass(self):
+        src = self.t({"tests/a.py": "1\n"})
+        ours = self.t({"tests/a.py": "1\n", "tests/run_test_fn.sh": "up\n"})
+        step = self.t({"tests/a.py": "1\n", "tests/run_test_fn.sh": "up\n"})
+        self.assertEqual(verify.check_tests_untouched(self.repo, step, src, ours, []), "pass")
+
+    def test_test_edited_by_construction_fails(self):
+        src = self.t({"tests/a.py": "1\n"})
+        step = self.t({"tests/a.py": "2\n"})
+        self.assertTrue(verify.check_tests_untouched(self.repo, step, src, src, []).startswith("fail: tests/a.py"))
+
+    def test_resolution_on_a_test_fails(self):
+        src = self.t({"tests/a.py": "1\n"})
+        self.assertTrue(verify.check_tests_untouched(self.repo, src, src, src, ["tests/a.py"]).startswith("fail"))
+
+    # (b) no_new_suppressions
+    def test_suppression_from_source_passes(self):
+        parent = self.t({"meson.build": "x\n"})
+        src = self.t({"meson.build": "x\nargs += '-Wno-deprecated'\n"})
+        step = self.t({"meson.build": "x\nargs += '-Wno-deprecated'\n"})
+        self.assertEqual(verify.check_no_new_suppressions(self.repo, parent, step, src), "pass")
+
+    def test_added_suppression_fails(self):
+        parent = self.t({"src/a.cpp": "int a;\n"})
+        step = self.t({"src/a.cpp": "#pragma clang diagnostic ignored \"-Wfoo\"\nint a;\n"})
+        self.assertTrue(verify.check_no_new_suppressions(self.repo, parent, step, parent).startswith("fail: src/a.cpp"))
+
+    # (d) no_new_spidermonkey_or_gnustep
+    def test_legacy_reference_removed_passes(self):
+        parent = self.t({"src/a.mm": "#include <jsapi.h>\n"})
+        step = self.t({"src/a.mm": "#include \"quickjs.h\"\n"})
+        self.assertEqual(verify.check_no_new_legacy(self.repo, parent, step), "pass")
+
+    def test_legacy_reference_added_fails(self):
+        parent = self.t({"src/meson.build": "deps = []\n"})
+        step = self.t({"src/meson.build": "deps = [dependency('gnustep-base')]\n"})
+        self.assertEqual(verify.check_no_new_legacy(self.repo, parent, step), "fail: gnustep-base 0->1")
+
+    def test_legacy_mention_in_a_comment_passes(self):
+        parent = self.t({"src/meson.build": "deps = []\n"})
+        step = self.t({"src/meson.build": "deps = []  # gnustep-base still owns @\"...\"\n# was 'gnustep-base'\n"})
+        self.assertEqual(verify.check_no_new_legacy(self.repo, parent, step), "pass")
+
+    def test_macos_build_file_is_ignored(self):
+        parent = self.t({"src/meson/darwin/meson.build": "x = 1\n"})
+        step = self.t({"src/meson/darwin/meson.build": "js_name = 'js_static'\n"})
+        self.assertEqual(verify.check_no_new_legacy(self.repo, parent, step), "pass")
+
+    def test_clean_merge_of_a_test_passes_and_a_hand_edit_fails(self):
+        base = self.t({"tests/a.py": "1\n2\n3\n4\n5\n"})
+        ours = self.t({"tests/a.py": "1 upstream\n2\n3\n4\n5\n"})
+        src = self.t({"tests/a.py": "1\n2\n3\n4\n5 history\n"})
+        merged = self.t({"tests/a.py": "1 upstream\n2\n3\n4\n5 history\n"})
+        edited = self.t({"tests/a.py": "1 upstream\n2\n3 edited\n4\n5 history\n"})
+        self.assertEqual(verify.check_tests_untouched(self.repo, merged, src, ours, [], base), "pass")
+        self.assertTrue(verify.check_tests_untouched(self.repo, edited, src, ours, [], base).startswith("fail"))
+
+    def test_suppression_moved_by_a_rename_passes(self):
+        parent = self.t({"src/OOFoundation.mm": "int a;\n"})
+        src = self.t({"src/OOCocoa.mm": "#pragma clang diagnostic push\nint a;\n"})
+        step = self.t({"src/OOFoundation.mm": "#pragma clang diagnostic push\nint a;\n"})
+        self.assertEqual(verify.check_no_new_suppressions(self.repo, parent, step, src), "pass")
+
+    # (c) clang_format
+    def test_unformatted_source_fails_and_objc_is_not_checked(self):
+        step = self.t({"src/a.cpp": "int  a;\n", "src/b.mm": "int  b;\n", "src/c.h": "int c;\n"})
+        formatted = self.t({"src/a.cpp": "int a;\n", "src/b.mm": "int b;\n", "src/c.h": "int c;\n"})
+        self.assertEqual(verify.check_clang_format(self.repo, step, formatted), "fail: 1 files not formatted: src/a.cpp")
+        self.assertEqual(verify.check_clang_format(self.repo, formatted, formatted), "pass")
+
+
 class PlanTest(unittest.TestCase):
     def test_matrix_for_each_era(self):
         p = verify.plan("objc-spidermonkey", None, has_unit=False, has_smoke=True, scenarios=[])

@@ -97,6 +97,108 @@ def plan(step_era, parent_record, has_unit, has_smoke, scenarios):
     return out
 
 
+# --- construction integrity (research R11) ----------------------------------------------------------
+
+SUPPRESSION_RE = re.compile(r"-Wno-|#\s*pragma\s.*diagnostic")
+LEGACY_DEP_RE = {"gnustep-base": re.compile(r"['\"](?:lib)?gnustep-base['\"]"),
+                 "nspr": re.compile(r"dependency\(\s*['\"]nspr['\"]"),
+                 "spidermonkey": re.compile(r"\bwin_js_suffix\b|\bjs_static\b|mozjs|js32ECMAv5")}
+# jidicula/clang-format-action's default include-regex, over check-path 'src' (upstream's build-all.yaml)
+FORMAT_INCLUDE_RE = re.compile(r"^.*\.((((c|C)(c|pp|xx|\+\+)?$)|((h|H)h?(pp|xx|\+\+)?$))|(ino|pde|proto|cu))$")
+
+
+def _blob(repo, tree, path):
+    r = subprocess.run(["git", "-C", repo, "rev-parse", "-q", "--verify", f"{tree}:{path}"],
+                       capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+def _text(repo, tree, path):
+    r = subprocess.run(["git", "-C", repo, "cat-file", "-p", f"{tree}:{path}"], capture_output=True)
+    return r.stdout.decode("utf-8", "replace") if r.returncode == 0 else ""
+
+
+def _clean_merge(repo, base, ours, theirs, path):
+    """The text of a conflict-free `git merge-file` of the path's three versions, or None."""
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        files = []
+        for name, t in (("ours", ours), ("base", base), ("theirs", theirs)):
+            f = os.path.join(tmp, name)
+            r = subprocess.run(["git", "-C", repo, "cat-file", "-p", f"{t}:{path}"], capture_output=True)
+            with open(f, "wb") as out:
+                out.write(r.stdout if r.returncode == 0 else b"")
+            files.append(f)
+        r = subprocess.run(["git", "merge-file", "-p", *files], capture_output=True)
+        return r.stdout if r.returncode == 0 else None
+
+
+def check_tests_untouched(repo, tree, source, ours, resolution_paths, base=None):
+    """(a) every tests/ file is the source snapshot's, upstream's (`ours`, the merge's other side), or
+    the conflict-free merge of the two, and no stored resolution is a test file."""
+    bad = [p for p in resolution_paths if p.startswith("tests/")]
+    for p in _git(repo, "diff", "--name-only", "--no-renames", source, tree, "--", "tests/").splitlines():
+        if _blob(repo, tree, p) == _blob(repo, ours, p):
+            continue
+        merged = _clean_merge(repo, base, ours, source, p) if base else None
+        if merged is None or merged != subprocess.run(["git", "-C", repo, "cat-file", "-p", f"{tree}:{p}"],
+                                                      capture_output=True).stdout:
+            bad.append(p)
+    return "pass" if not bad else "fail: " + ", ".join(sorted(set(bad))[:8])
+
+
+def _added_lines(repo, parent_tree, tree):
+    """{path: [added line]} from parent_tree to tree."""
+    out, path = {}, None
+    diff = subprocess.run(["git", "-C", repo, "diff", "-U0", "--no-renames", "--no-color", parent_tree, tree],
+                          capture_output=True).stdout.decode("utf-8", "replace")
+    for line in diff.splitlines():
+        if line.startswith("+++ "):
+            path = line[6:] if line.startswith("+++ b/") else None
+        elif line.startswith("+") and path:
+            out.setdefault(path, []).append(line[1:])
+    return out
+
+
+def check_no_new_suppressions(repo, parent_tree, tree, source):
+    """(b) no added -Wno-* or #pragma diagnostic line that the source snapshot lacks."""
+    bad = []
+    for path, lines in _added_lines(repo, parent_tree, tree).items():
+        for l in (l for l in lines if SUPPRESSION_RE.search(l)):
+            # anywhere in the source snapshot: upstream renames move lines between files (#737)
+            found = subprocess.run(["git", "-C", repo, "grep", "-q", "-F", "-e", l.strip(), source],
+                                   capture_output=True).returncode == 0
+            if not found:
+                bad.append(f"{path}: {l.strip()[:60]}")
+    return "pass" if not bad else "fail: " + "; ".join(bad[:5])
+
+
+def _meson_code(repo, tree):
+    """The build files' code, comments stripped (macOS's file excluded, as for the era)."""
+    files = [p for p in _git(repo, "ls-tree", "-r", "--name-only", tree).splitlines()
+             if p.endswith("meson.build") and not p.startswith(DARWIN_MESON)]
+    return "\n".join(line.split("#", 1)[0] for p in files for line in _text(repo, tree, p).splitlines())
+
+
+def check_no_new_legacy(repo, parent_tree, tree):
+    """(d) no SpiderMonkey or gnustep-base dependency that the parent lacks: per pattern, the number of
+    uses in the build files' code may not grow. Mentions in comments and docs are not dependencies."""
+    def count(t):
+        text = _meson_code(repo, t)
+        return {k: len(r.findall(text)) for k, r in LEGACY_DEP_RE.items()}
+    before, after = count(parent_tree), count(tree)
+    grown = [f"{k} {before[k]}->{after[k]}" for k in LEGACY_DEP_RE if after[k] > before[k]]
+    return "pass" if not grown else "fail: " + ", ".join(grown)
+
+
+def check_clang_format(repo, tree, formatted_tree):
+    """(c) upstream's CI format check: src/ files matching the action's regex are clang-format fixed points.
+    `formatted_tree` is normalise.normalise_tree(repo, tree, tree)."""
+    diff = [p for p in _git(repo, "diff", "--name-only", "--no-renames", tree, formatted_tree, "--", "src/").splitlines()
+            if FORMAT_INCLUDE_RE.match(p)]
+    return "pass" if not diff else f"fail: {len(diff)} files not formatted: " + ", ".join(diff[:5])
+
+
 # --- running ---------------------------------------------------------------------------------------
 
 def _shell(step_era):

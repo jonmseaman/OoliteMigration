@@ -57,6 +57,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "cd407f9726d25e0704152feca3848b0820cfb013",
    "n": 1,
    "parent": "series/000-upstream-base",
    "resolutions": [
@@ -65,7 +66,12 @@
      "path": "src/Core/OOFoundation.h"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 27,
+    "src": 504,
+    "tests": 13620
+   },
    "source": {
     "from": "7555b5d4254e0a89cc609a5c2263385d2b54904e",
     "to": "8af7966e7d95101c57ceea1f66b338f0abeec2a1",
@@ -94,6 +100,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "df337ec949af36fcf1a0b0d8cb28592f1bc1af08",
    "n": 2,
    "parent": "series/001-safety-net",
    "resolutions": [
@@ -126,7 +133,12 @@
      "path": "src/Core/Scripting/OOJavaScriptEngine.mm"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 5591,
+    "other": 6948,
+    "src": 14606,
+    "tests": 1418
+   },
    "source": {
     "from": "3ca73e5a13571246ceaabc4fa989b80f83031b06",
     "to": "7bc686c0af68d3b935bce3716a55b2e5dfbb82a4",
@@ -153,6 +165,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "8e73b8cde2353662ad6cd8b69cc952a285b51fa3",
    "n": 3,
    "parent": "series/002-js-facade",
    "resolutions": [
@@ -189,7 +202,12 @@
      "path": "src/SDL/MyOpenGLView.mm"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 1744,
+    "src": 454,
+    "tests": 0
+   },
    "source": {
     "from": "c9c052538370b03b976c6b5ac615490a873e6b21",
     "to": "c9c052538370b03b976c6b5ac615490a873e6b21",
@@ -217,6 +235,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "1388c7fac12cc3deca9d8bad2778d0b21804f932",
    "n": 4,
    "parent": "series/003-objective-cxx",
    "resolutions": [
@@ -277,7 +296,12 @@
      "path": "src/Core/Scripting/OOJavaScriptEngine.h"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 1529,
+    "other": 235,
+    "src": 11844,
+    "tests": 4
+   },
    "source": {
     "from": "3b6aec8c6ffca4445a742d4f9cd23251c9a5d57d",
     "to": "a7e3ed1efcf202eb22d16951be73c23e3b2b264c",
@@ -308,6 +332,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "ee5d0fb116c7e5679be03c68f7417669aa266091",
    "n": 5,
    "parent": "series/004-quickjs-switch",
    "resolutions": [
@@ -328,7 +353,12 @@
      "path": "src/SDL/main.mm"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 460,
+    "other": 3,
+    "src": 10033,
+    "tests": 6501
+   },
    "source": {
     "from": "e31130fa0d6116abe5928624d276dfcf18eece16",
     "to": "916311e66db2e9d025c763b9d028a9ff26d33ff0",
@@ -355,6 +385,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "79db4c75d1df2509091a61ad200fe0989e36b864",
    "n": 6,
    "parent": "series/005-oofnd-core",
    "resolutions": [
@@ -415,7 +446,12 @@
      "path": "src/SDL/OOSDLJoystickManager.mm"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 43,
+    "src": 11059,
+    "tests": 2182
+   },
    "source": {
     "from": "b73f2cd400db84dd246061c8b9cd95cb478a9534",
     "to": "bc9a02ca7b948001da5824b9c073b42b3e24ca08",
@@ -442,6 +478,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "371b7e14e3f8cef80217024d75fa9faf8b890c13",
    "n": 7,
    "parent": "series/006-typed-accessors",
    "resolutions": [
@@ -582,7 +619,12 @@
      "path": "src/SDL/OOSDLJoystickManager.mm"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 0,
+    "src": 35474,
+    "tests": 1283
+   },
    "source": {
     "from": "931bee60e9e766df7298710946f16fb5f43038fa",
     "to": "ecfafab47981c8224790752d96f2340d6b07c833",
@@ -610,6 +652,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "aeaa11685e018e1b60817533254359f0887f56a9",
    "n": 8,
    "parent": "series/007-foundation-wave-1",
    "resolutions": [
@@ -798,13 +841,18 @@
      "path": "src/SDL/main.mm"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 1663,
+    "other": 39,
+    "src": 48267,
+    "tests": 2893
+   },
    "source": {
     "from": "5faa477a34d862eb81b59a6fe3d2e74592e1cad2",
     "to": "fa9cbc6c24fec4d77881a47e47e7b2591ece94d4",
     "type": "history"
    },
-   "target_tree": "aeaa11685e018e1b60817533254359f0887f56a9",
+   "target_tree": "0c7499e948cbfaaa65c61224aaeba5e06cde7858",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 2",
    "verification": null
@@ -827,6 +875,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "834a675d76ff6eca425177743a2da7c86da2b76d",
    "n": 9,
    "parent": "series/008-foundation-wave-2",
    "resolutions": [
@@ -983,13 +1032,18 @@
      "path": "src/SDL/MyOpenGLView.mm"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 10526,
+    "other": 12,
+    "src": 18642,
+    "tests": 1015
+   },
    "source": {
     "from": "b75b5d1bc6f7957740adab23f8f09e65901302b3",
     "to": "e0b9e24b22ab4f7373ccf71dbf4d58ac5553c4be",
     "type": "history"
    },
-   "target_tree": "834a675d76ff6eca425177743a2da7c86da2b76d",
+   "target_tree": "ad968ca55c9926b8d6f71d0cf55c540161c47c17",
    "temporaries": [],
    "title": "Retire the remaining Foundation selectors and drop gnustep-base",
    "verification": null
@@ -1012,6 +1066,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "5751f134bc9e52b0afd3b98a5bd5091ed67b1502",
    "n": 10,
    "parent": "series/009-selector-families",
    "resolutions": [
@@ -1096,13 +1151,18 @@
      "path": "src/SDL/MyOpenGLView+Input.mm"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 1783,
+    "other": 20,
+    "src": 28480,
+    "tests": 17047
+   },
    "source": {
     "from": "66914fbbede7e1b621fea3ffba830ac2130ccaf9",
     "to": "67027c84d11fe03fcf208697938023d05d13f63c",
     "type": "history"
    },
-   "target_tree": "5751f134bc9e52b0afd3b98a5bd5091ed67b1502",
+   "target_tree": "c6a095163c62df206f93045678e8c95001b5cc7b",
    "temporaries": [],
    "title": "Convert C-only files to C and the first classes to C++: maths, leaf utilities, OXP verifier",
    "verification": null
@@ -1126,6 +1186,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "defcd65caa6cc980dcdd806cd8c571b9fc589d0b",
    "n": 11,
    "parent": "series/010-leaf-conversions",
    "resolutions": [
@@ -1278,13 +1339,18 @@
      "path": "src/SDL/MyOpenGLView.mm"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 2354,
+    "other": 112,
+    "src": 38935,
+    "tests": 40044
+   },
    "source": {
     "from": "1964f76209e19f37b8f7311a6057e469cb919c7e",
     "to": "ab5dc6cd728a5b26951c588d3d6e0ef99049009c",
     "type": "history"
    },
-   "target_tree": "defcd65caa6cc980dcdd806cd8c571b9fc589d0b",
+   "target_tree": "98e04066702ec3196c4f110f8d0ce37bdc837502",
    "temporaries": [],
    "title": "Convert scripting, entities, audio and materials classes to C++",
    "verification": null
@@ -1307,6 +1373,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "d3e2ab7c0300cf5e2feda012f65fce2aa9c0dd56",
    "n": 12,
    "parent": "series/011-module-conversions",
    "resolutions": [
@@ -1363,13 +1430,18 @@
      "path": "src/SDL/MyOpenGLView.mm"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 5058,
+    "other": 51,
+    "src": 25966,
+    "tests": 13298
+   },
    "source": {
     "from": "ad82bd1efe7e79a499cb62fc9ea52fc7f8123f08",
     "to": "0c01939de79a4ac04237390d93dc78437057c5e0",
     "type": "history"
    },
-   "target_tree": "d3e2ab7c0300cf5e2feda012f65fce2aa9c0dd56",
+   "target_tree": "e3376a893614b3616f4f5dfa9a1acea5ca34ecab",
    "temporaries": [],
    "title": "Convert the large files in slices; delete the first Objective-C facades",
    "verification": null
@@ -1390,6 +1462,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "b1f3db5e4d5f13738c867e660a81299b47fd9fd6",
    "n": 13,
    "parent": "series/012-first-slices",
    "resolutions": [
@@ -1422,13 +1495,18 @@
      "path": "src/Core/Universe.mm"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 57,
+    "other": 103,
+    "src": 29131,
+    "tests": 6450
+   },
    "source": {
     "from": "477a4919bcb8c6160d4765ee9d225e920fbf241f",
     "to": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
     "type": "history"
    },
-   "target_tree": "b1f3db5e4d5f13738c867e660a81299b47fd9fd6",
+   "target_tree": "199600bb1f4e3a0e21804aeeb5f729a6580ab38f",
    "temporaries": [],
    "title": "Convert ShipEntity to C++",
    "verification": null
@@ -1450,6 +1528,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "acbaf70609bc0f6d623d3052fd59c5e922d3996c",
    "n": 14,
    "parent": "series/013-shipentity-slices",
    "resolutions": [
@@ -1482,13 +1561,18 @@
      "path": "src/SDL/MyOpenGLView.mm"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 1154,
+    "other": 0,
+    "src": 17665,
+    "tests": 3602
+   },
    "source": {
     "from": "4b272b165ececbc7e183a328c4962cfbc65e4d78",
     "to": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
     "type": "history"
    },
-   "target_tree": "acbaf70609bc0f6d623d3052fd59c5e922d3996c",
+   "target_tree": "e7f9813deb21a0c548068689a3154021270c24f6",
    "temporaries": [],
    "title": "Convert Universe and PlayerEntity to C++",
    "verification": null
@@ -1509,6 +1593,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "df23589437f73054221a6bda57196cac198efe41",
    "n": 15,
    "parent": "series/014-universe-player-slices",
    "resolutions": [
@@ -1581,13 +1666,18 @@
      "path": "src/SDL/MyOpenGLView+Input.mm"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 22063,
+    "other": 0,
+    "src": 50308,
+    "tests": 27629
+   },
    "source": {
     "from": "d01d45e47c50bda1ebbfd44c5f94596519ba840b",
     "to": "2c2aae1316b5a125038a797c213162ffba389279",
     "type": "history"
    },
-   "target_tree": "df23589437f73054221a6bda57196cac198efe41",
+   "target_tree": "5fc613b826cb2903efdca26077dd26901ef744e6",
    "temporaries": [],
    "title": "Delete the Objective-C facades",
    "verification": null
@@ -1608,6 +1698,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "a1bcbf32e5c60fdea39204a2ad1b82e65b4cf273",
    "n": 16,
    "parent": "series/015-facade-deletions",
    "resolutions": [
@@ -1736,13 +1827,18 @@
      "path": "src/SDL/MyOpenGLView.mm"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 17791,
+    "other": 59,
+    "src": 29874,
+    "tests": 18066
+   },
    "source": {
     "from": "d012b77f217a361b096ab70d04aa848eb174b04f",
     "to": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
     "type": "history"
    },
-   "target_tree": "a1bcbf32e5c60fdea39204a2ad1b82e65b4cf273",
+   "target_tree": "5140e61cd6a0a67405e387edc670815bbe7ef64e",
    "temporaries": [],
    "title": "Delete the root Entity facade",
    "verification": null
@@ -1764,6 +1860,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "5b50e9dab8bef1b7a394b7e13e1bb843667e77fc",
    "n": 17,
    "parent": "series/016-entity-facade",
    "resolutions": [
@@ -2008,13 +2105,18 @@
      "path": "src/meson/meson.build"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 8515,
+    "other": 11640,
+    "src": 6599,
+    "tests": 1811
+   },
    "source": {
     "from": "1248d43e1bbf6f5de945fe89d898630122a8e641",
     "to": "af1f220542e4917a23833902e8efc313a8eb463b",
     "type": "history"
    },
-   "target_tree": "5b50e9dab8bef1b7a394b7e13e1bb843667e77fc",
+   "target_tree": "233c912b325602724ffb004abb9a441f32b3c776",
    "temporaries": [],
    "title": "Remove the Objective-C runtime and rename the sources to .cpp",
    "verification": null
@@ -2035,16 +2137,22 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "37547f2b9bd6091c40c19926b75bfa4e36a9481d",
    "n": 18,
    "parent": "series/017-objc-runtime-out",
    "resolutions": [],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 0,
+    "src": 218,
+    "tests": 1681
+   },
    "source": {
     "from": "5fda5e404c04bbf37a5faadb2c685e3819a60662",
     "to": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
     "type": "history"
    },
-   "target_tree": "37547f2b9bd6091c40c19926b75bfa4e36a9481d",
+   "target_tree": "ac43b5bcc1c9496dc3f8a81227127506874379ee",
    "temporaries": [],
    "title": "Build with GCC as well as Clang",
    "verification": null
@@ -2065,6 +2173,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": "83ccc03063a8a95868e928b2d8d6da5daf262a22",
    "n": 19,
    "parent": "series/018-gcc-build",
    "resolutions": [
@@ -2129,13 +2238,18 @@
      "path": "src/SDL/main.cpp"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 85,
+    "src": 12463,
+    "tests": 348
+   },
    "source": {
     "from": "883d339f93708db1a74f9a7f6426ed77622c449c",
     "to": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
     "type": "history"
    },
-   "target_tree": "83ccc03063a8a95868e928b2d8d6da5daf262a22",
+   "target_tree": "3d417c67fcefd99cc367006fd105971ac353bf52",
    "temporaries": [],
    "title": "Port upstream changes #369 to #765 into the C++ code",
    "verification": null
@@ -2148,6 +2262,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": null,
    "n": 20,
    "parent": "series/019-upstream-9ee8ff22f-port",
    "resolutions": [],
@@ -2176,6 +2291,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": null,
    "n": 21,
    "parent": "series/020-develop-fixes",
    "resolutions": [],
@@ -2201,6 +2317,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": null,
    "n": 22,
    "parent": "series/021-source-hygiene",
    "resolutions": [],
@@ -2225,6 +2342,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": null,
    "n": 23,
    "parent": "series/022-c-as-cxx",
    "resolutions": [],
@@ -2251,6 +2369,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
+   "merge_tree": null,
    "n": 24,
    "parent": "series/023-upstream-49a5eb9fc-ports",
    "resolutions": [],
@@ -2279,6 +2398,7 @@
    "era": null,
    "kind": "mechanical",
    "mechanical_command": "take .clang-format from 3aa8d65e8, then run clang-format 22 -i on every .h/.hpp/.c/.cpp under src/ and tests/",
+   "merge_tree": null,
    "n": 25,
    "parent": "series/024-tests-and-tooling",
    "resolutions": [],

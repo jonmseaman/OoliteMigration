@@ -36,8 +36,9 @@ def _version(clang_format):
 
 
 def normalise_tree(repo, tree, style_from, clang_format=CLANG_FORMAT, cache_path=DEFAULT_CACHE, jobs=8,
-                   transform=None, transform_id=""):
-    """`transform(path, text) -> text`, if given, runs on each source file before clang-format."""
+                   transform=None, transform_id="", select=is_source):
+    """`transform(path, text) -> text`, if given, runs on each source file before clang-format.
+    `select(path)` picks the files to format (default: sources under src/ and tests/)."""
     style_blob = _git(repo, "rev-parse", f"{style_from}:.clang-format").decode().strip()
     key_prefix = f"{_version(clang_format)}|{style_blob}|{transform_id}|"
     cache = {}
@@ -53,7 +54,7 @@ def normalise_tree(repo, tree, style_from, clang_format=CLANG_FORMAT, cache_path
         meta, path = line.split(b"\t", 1)
         mode, typ, sha = meta.decode().split()
         path = path.decode("utf-8")
-        if typ == "blob" and is_source(path):
+        if typ == "blob" and select(path):
             entries.append((mode, sha, path))
 
     with tempfile.TemporaryDirectory() as tmp:
