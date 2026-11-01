@@ -1,8 +1,8 @@
 {
  "src/Core/OOFoundation.h": {
-  "base": null,
+  "base": "7efb93c4b5dabd6c430d7a3335fbe46e19acbf82",
   "deleted": false,
   "ours": "79b526996c8ae9b52715e8d823019dfbe113f823",
-  "theirs": null
+  "theirs": "9a4f1ded01b2844a4b30f93add93eaa0cc862c53"
  }
 }

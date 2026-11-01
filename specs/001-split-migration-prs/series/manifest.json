@@ -59,7 +59,12 @@
    "mechanical_command": null,
    "n": 1,
    "parent": "series/000-upstream-base",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "stored",
+     "path": "src/Core/OOFoundation.h"
+    }
+   ],
    "size": null,
    "source": {
     "from": "7555b5d4254e0a89cc609a5c2263385d2b54904e",
@@ -91,14 +96,43 @@
    "mechanical_command": null,
    "n": 2,
    "parent": "series/001-safety-net",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "auto",
+     "path": "ShellScripts/common/post_build.sh"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSEntity.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJSGlobal.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJSMissionVariables.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJSPlanet.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJavaScriptEngine.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/OOJavaScriptEngine.mm"
+    }
+   ],
    "size": null,
    "source": {
     "from": "3ca73e5a13571246ceaabc4fa989b80f83031b06",
     "to": "7bc686c0af68d3b935bce3716a55b2e5dfbb82a4",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "cbd3ed25fede24904d6b7c46a1d68fbbb7ec2313",
    "temporaries": [],
    "title": "Put the game's JavaScript behind an engine façade, with a QuickJS-ng backend beside SpiderMonkey",
    "verification": null

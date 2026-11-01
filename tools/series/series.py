@@ -186,12 +186,12 @@ def step_by_n(m, n):
     raise SystemExit(f"no step {n}")
 
 
-def compute_tree(m, step):
-    """(tree, conflicts) for a step."""
+def compute_tree(m, step, report=None):
+    """(tree, conflicts) for a step; `report` receives (path, "stored" | "auto") per resolved conflict."""
     from tools.series import trees
     if step["source"]["type"] == "history":
         base, ours, theirs = merge_inputs(m, step)
-        return trees.target_tree(GAME, base, ours, theirs, resolutions_dir(step))
+        return trees.target_tree(GAME, base, ours, theirs, resolutions_dir(step), report=report)
     raise SystemExit(f"tree: source type {step['source']['type']!r} not implemented yet (T024)")
 
 
@@ -234,14 +234,22 @@ def cmd_tree(args):
         trees.record_resolution(GAME, base, ours, theirs, resolutions_dir(step), path, content)
         print(f"recorded: {path}")
         return 0
-    tree, conflicts = compute_tree(m, step)
+    report = []
+    tree, conflicts = compute_tree(m, step, report)
     if conflicts:
         print(f"tree {args.n}: {len(conflicts)} conflicts")
         for p in conflicts:
             print(f"  {p}")
         return 1
-    if step.get("target_tree") != tree:
+    resolved = [{"path": p, "how": how} for p, how in sorted(report)]
+    if report:
+        import collections
+        kinds = collections.Counter(how for _, how in report)
+        print(f"tree {args.n}: {len(report)} conflicts resolved ("
+              + ", ".join(f"{v} {k}" for k, v in sorted(kinds.items())) + ")", file=sys.stderr)
+    if step.get("target_tree") != tree or step.get("resolutions") != resolved:
         from tools.series import manifest
+        step["resolutions"] = resolved
         step["target_tree"] = tree
         for later in m["steps"][step["n"]:]:  # later trees were computed on the old one
             later["target_tree"] = None

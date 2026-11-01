@@ -60,5 +60,67 @@ class TreesTest(unittest.TestCase):
         self.assertIsNone(tree)
 
 
+class AutoMergeTest(unittest.TestCase):
+    base = ["#ifndef NDEBUG\n", "void dump(JSContext *c);\n", "#endif\n", "int x;\n"]
+
+    def test_adjacent_changes_on_different_lines_merge(self):
+        ours = ["#ifdef OO_DEBUG_MONITOR_ENABLED\n"] + self.base[1:]
+        theirs = self.base[:1] + ["extern \"C\" void dump(JSContext *c);\n"] + self.base[2:]
+        self.assertEqual(trees.auto_merge_text(self.base, ours, theirs),
+                         ["#ifdef OO_DEBUG_MONITOR_ENABLED\n", "extern \"C\" void dump(JSContext *c);\n",
+                          "#endif\n", "int x;\n"])
+
+    def test_same_change_both_sides_merges_once(self):
+        side = self.base[:3] + ["int y;\n"]
+        self.assertEqual(trees.auto_merge_text(self.base, side, side), side)
+
+    def test_overlapping_different_changes_conflict(self):
+        ours = ["#if OOLITE_DEBUG\n"] + self.base[1:]
+        theirs = ["#if defined(OO_DEBUG)\n"] + self.base[1:]
+        self.assertIsNone(trees.auto_merge_text(self.base, ours, theirs))
+
+    def test_different_insertions_at_one_point_conflict(self):
+        ours = self.base[:2] + ["int a;\n"] + self.base[2:]
+        theirs = self.base[:2] + ["int b;\n"] + self.base[2:]
+        self.assertIsNone(trees.auto_merge_text(self.base, ours, theirs))
+
+    def test_changes_far_apart_merge(self):
+        ours = ["// head\n"] + self.base
+        theirs = self.base[:3] + ["int z;\n"]
+        self.assertEqual(trees.auto_merge_text(self.base, ours, theirs), ["// head\n"] + self.base[:3] + ["int z;\n"])
+
+
+class TransplantTest(unittest.TestCase):
+    base = ["static JSBool Get(JSContext *c);\n", "#ifndef NDEBUG\n", "static JSBool Dump(JSContext *c);\n",
+            "#endif\n", "\n", "int other;\n", "#ifndef NDEBUG\n", "int debug_only;\n", "#endif\n"]
+    # upstream: only the first guard becomes the debug-monitor guard
+    ours = base[:1] + ["#ifdef OO_DEBUG_MONITOR_ENABLED\n"] + base[2:]
+    # history: rewrote the declarations around the first guard, kept both guards
+    theirs = ["namespace {\n", "static bool Get(Context c);\n", "} // namespace\n", "#ifndef NDEBUG\n",
+              "namespace {\n", "static bool Dump(Context c);\n", "} // namespace\n", "#endif\n", "\n",
+              "int other;\n", "#ifndef NDEBUG\n", "int debug_only;\n", "#endif\n"]
+
+    def test_guard_substitution_lands_on_the_matching_guard_only(self):
+        out = trees.transplant(self.base, self.ours, self.theirs)
+        self.assertIsNotNone(out)
+        self.assertEqual(out[3], "#ifdef OO_DEBUG_MONITOR_ENABLED\n")
+        self.assertEqual(out[10], "#ifndef NDEBUG\n")  # the other guard is untouched
+        self.assertEqual(len(out), len(self.theirs))
+
+    def test_guard_whose_neighbours_were_all_rewritten_needs_context(self):
+        # theirs rewrote both neighbours of the guard on the same line as ours' change:
+        # auto-merge refuses (overlap), transplant places it by context
+        base = ["// one\n", "int a;\n", "#ifndef NDEBUG\n", "int dump();\n", "#endif\n", "// two\n"]
+        ours = base[:2] + ["#ifdef OO_DEBUG_MONITOR_ENABLED\n"] + base[3:]
+        theirs = ["// one\n", "long a;\n", "#ifndef NDEBUG\n", "bool dump();\n", "#endif\n", "// two\n"]
+        self.assertEqual(trees.transplant(base, ours, theirs)[2], "#ifdef OO_DEBUG_MONITOR_ENABLED\n")
+
+    def test_guard_without_matching_context_is_refused(self):
+        base = ["p\n", "#ifndef NDEBUG\n", "q\n"]
+        ours = ["p\n", "#ifdef OO_DEBUG_MONITOR_ENABLED\n", "q\n"]
+        theirs = ["#ifndef NDEBUG\n", "r\n", "#ifndef NDEBUG\n"]
+        self.assertIsNone(trees.transplant(base, ours, theirs))
+
+
 if __name__ == "__main__":
     unittest.main()
