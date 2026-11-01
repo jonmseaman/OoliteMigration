@@ -11693,7 +11693,7 @@ std::optional<std::string> last_outfitting_key; // nullopt = none (was nil)
 {
     OOParameterAssert(value.has_value());
     _lastsaveName = value;
-    [[NSUserDefaults standardUserDefaults] setObject:_lastsaveName forKey:@"last_savename"];
+    oo::Defaults::standard().setObject("last_savename", _lastsaveName.has_value() ? oo::PList(*_lastsaveName) : oo::PList());
 }
 
 - (BOOL)isDocked

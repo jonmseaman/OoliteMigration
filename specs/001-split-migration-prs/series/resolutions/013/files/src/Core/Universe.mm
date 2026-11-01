@@ -4129,7 +4129,7 @@ static BOOL IsFriendlyStationPredicate(Entity* entity, void* parameter)
     return accumulator;
 }
 
-- (std::vector<oo::ObjCRef<ShipEntity*>>)cxx_getContainersOfCommodity:(const std::string&)commodity_name:(OOCargoQuantity)how_much
+- (std::vector<oo::ObjCRef<ShipEntity*>>)cxx_getContainersOfCommodity:(const std::string&)commodity_name how_much:(OOCargoQuantity)how_much
 {
     std::vector<oo::ObjCRef<ShipEntity*>> accumulator;
     accumulator.reserve(how_much);

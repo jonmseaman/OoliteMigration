@@ -68,7 +68,8 @@ COPY_URL_OLD = '''- (void)processCopyUrlKey
         GuiDisplayGen* gui = [UNIVERSE gui];
 
         if (_interfaceShowingOXZDetail) {
-            [[UNIVERSE gameView] stringToClipboard:_currentOXPURL];
+            if (_currentOXPURL != nil)
+                [[UNIVERSE gameView] cxx_stringToClipboard:oo::StdString(_currentOXPURL)];
         } else {'''
 COPY_URL_NEW = '''void OOOXZManager::processCopyUrlKey()
 {
@@ -109,7 +110,7 @@ EDIT = {"src/Core/OOOXZManager.mm": subs(
          "    _currentOXPURL = url.has_value() ? std::optional<std::string>(oo::str::lowercase(*url)) : std::nullopt;\n}\n"),
         ("            [self setOXPURL:oo::NSStringOrNil(infoURL)];\n", "            setOXPURL(infoURL);\n"),
         (COPY_URL_OLD, COPY_URL_NEW),
-        (LIST_OLD, LIST_NEW),
+        # (the list branch is already C++ from step 8's port)
 )}
 
 FIX = {

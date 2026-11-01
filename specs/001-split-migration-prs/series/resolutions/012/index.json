@@ -8,7 +8,7 @@
  "src/Core/Entities/ShipEntity.mm": {
   "base": "923711062ab5a3db6d2f4fdd8e8d99a03bc33171",
   "deleted": false,
-  "ours": "8bf8fc22068edd007775478c30e496f051bf0364",
+  "ours": "dcd0947070f6943a16ae3e15c42c4fab7f280be1",
   "theirs": "472c83e50b211e532d6ea07de4673127aa5761f5"
  },
  "src/Core/OOMesh.h": {
@@ -42,7 +42,7 @@
  "src/Core/OOOXZManager.mm": {
   "base": "1cecbd61576b8239028f0d283a55da1b83b402b3",
   "deleted": false,
-  "ours": "6f66e07d2e23dbddeda1def319f53b11f99c216b",
+  "ours": "d70a6f97de44207ee9c1894c5c35e8d17f60d334",
   "theirs": "731a0715c16207b4b453a83ae7cda74a11cc515d"
  },
  "src/SDL/MyOpenGLView+Input.mm": {

@@ -60,7 +60,7 @@ def vla(ours, theirs):
     return out
 
 
-RES["src/Core/Universe.mm"] = ["theirs", "theirs", guard] + [vla] * 8
+RES["src/Core/Universe.mm"] = ["theirs", "theirs", guard, "theirs"] + [vla] * 8  # hunk 3: the history makes the containers method C++
 
 
 # the containers selector gets a named second part (see selector_containers.py)

@@ -1,4 +1,10 @@
 {
+ "src/Core/Debug/OODebugTCPConsoleClient.mm": {
+  "base": "166cf2ee7ceb147acfa080c5ebf507f4a9b7e6c0",
+  "deleted": false,
+  "ours": "c6a545e950818d5490a660e3c4ee4481ec48b0f2",
+  "theirs": "7795d8b5f360cca525a991edc90db802ab3b16bd"
+ },
  "src/Core/Entities/Entity.mm": {
   "base": "43c69c224b01ff690eef126ec1c137578e7b0d25",
   "deleted": false,

@@ -2,8 +2,26 @@
  "src/Core/Entities/PlayerEntity.mm": {
   "base": "688d3b2a0d4c3e3f8e7ba321e6187612602d88fb",
   "deleted": false,
-  "ours": "3b66acbe63ce7c7271f5511e888281c55f223c46",
+  "ours": "6b409480777db9ba6b5737f741c6cb9a7045c607",
   "theirs": "5200b57a220e67925f76d7133d0c2ee191fd48d7"
+ },
+ "src/Core/Entities/PlayerEntityLegacyScriptEngine.mm": {
+  "base": "16416f40e8d0d8203701ccfa9fa7ba57cb6e7ea2",
+  "deleted": false,
+  "ours": "3df7faf97d603925b50dc8ba4b9ef574456b3e1f",
+  "theirs": "6a8e8deaa2cfe96a780468d1dd949ac5efcf1f75"
+ },
+ "src/Core/Entities/ShipEntity.mm": {
+  "base": "c7ba67d20a4d907b2f0446f4d95ce0a2d47c6ac1",
+  "deleted": false,
+  "ours": "47a9e655cd53bd6eda9e0eb73554df9280a9e34d",
+  "theirs": "512068e25c544d9692922449f7e24838f3f52de4"
+ },
+ "src/Core/Entities/ShipEntityAI.mm": {
+  "base": "043933387fa00108f49f6c27215b4f6836d49a1d",
+  "deleted": false,
+  "ours": "53afe2e2c5bdaa28e7733af05ccbe41df4cb1b53",
+  "theirs": "04dfa40f45c18fc7891ab90038b3824bc2aea156"
  },
  "src/Core/NSFileManagerOOExtensions.h": {
   "base": "70f919a745a33ee081a575d9c24a309c2dc924e2",
@@ -41,10 +59,27 @@
   "ours": "22b33911fe51e35649c33a93413d1c95cfaeca67",
   "theirs": "3562354b453ddf1484171e647837a3b5b7210b22"
  },
+ "src/Core/Scripting/OOJSShip.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "7c186c73c6cf8881b300bba8d479dbf24cc9e419"
+ },
  "src/Core/Scripting/OOJavaScriptEngine.h": {
   "base": "39502a0fb00c1903c8bea7fbc2f3947eedc76203",
   "deleted": false,
   "ours": "b936ffed3196593615c34abe96a60771d871233a",
   "theirs": "35d0155d2f6ef372cd88cffe157d9ffccd5d5ee4"
+ },
+ "src/Core/Universe+FoundationBridge.h": {
+  "base": "40886a62f6821b2f317ddd35e69f09c6f4b71b36",
+  "deleted": true,
+  "ours": "bcb11c904071b2856f13cf273d6dd09234c38be7",
+  "theirs": null
+ },
+ "src/Core/Universe+FoundationBridge.mm": {
+  "base": "0276391f7b44606207268f58328e49959aa20a78",
+  "deleted": true,
+  "ours": "9eb6d297a9d0e0ee3e5609335767cd6ac04d00fa",
+  "theirs": null
  }
 }

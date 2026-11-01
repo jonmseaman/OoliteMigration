@@ -2,7 +2,7 @@
  "src/Core/Entities/ShipEntity.mm": {
   "base": "472c83e50b211e532d6ea07de4673127aa5761f5",
   "deleted": false,
-  "ours": "2d4a40ea353e0d183b04972f84913a4ac57c4808",
+  "ours": "5d98118468fc386ebc49f089ba967018c2f0bc9e",
   "theirs": "d7538439bf064dba59be59bca17f5768b0ef088e"
  },
  "src/Core/GameController.h": {
@@ -17,16 +17,21 @@
   "ours": "68818919c016a236db923d37103b41ed8a0387d6",
   "theirs": "5ac4e3983a08dcda5f570d096eb352842237df90"
  },
+ "src/Core/Universe+ObjCBridge.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "61e869e1650d00ddcf8757d7373facd70727f110"
+ },
  "src/Core/Universe.h": {
   "base": "a2f19beb0624c1be0a6b1bbe682a2ad8dd0ecc42",
   "deleted": false,
-  "ours": "52ae1301ceca90a53889d706c7f269c07d254ddf",
+  "ours": "65e2f617e4e3a3d3180ef97f5d70fb148ba16b77",
   "theirs": "82c9cd03982abf715e251619af71fc0c8175d0ff"
  },
  "src/Core/Universe.mm": {
   "base": "31b7bdc9df416be74ee559619f2a2c6e639f4352",
   "deleted": false,
-  "ours": "60767e688770a9d831d78226ad6ab37552de1a2f",
+  "ours": "6c1e42ce8f162f118cfc6901145f4e8ee9118a4a",
   "theirs": "da70527c288606187cfe3643e7d9c0d7f7375e77"
  }
 }

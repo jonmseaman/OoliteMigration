@@ -31,3 +31,5 @@ RES["src/SDL/MyOpenGLView.mm"] = [lambda ours, theirs: ours + "#include <SDL3/SD
 # the containers selector gets a named second part (see selector_containers.py)
 exec(open(__file__.replace("011.py", "selector_containers.py"), encoding="utf-8").read())
 RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES
+# the history converts the console client to C++ here; step 8's selector spacing goes with the method
+RES["src/Core/Debug/OODebugTCPConsoleClient.mm"] = ["theirs", "theirs"]

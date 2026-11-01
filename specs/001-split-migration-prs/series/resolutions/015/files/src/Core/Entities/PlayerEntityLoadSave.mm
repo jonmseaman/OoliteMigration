@@ -81,8 +81,6 @@ int SecondFieldIntValue(const std::optional<std::string>& key)
     return fields.size() > 1 ? oo::str::intValue(fields[1]) : 0;
 }
 
-#if OO_USE_CUSTOM_LOAD_SAVE
-
 // %@ of a string that may be nil, in a runtime format.
 oo::str::FormatArg TextArg(const std::optional<std::string>& string)
 {
@@ -116,8 +114,6 @@ unsigned char FirstUnitLowByte(const std::string& string)
     const std::u16string units = oo::utf8ToUtf16(string);
     return units.empty() ? 0 : static_cast<unsigned char>(units[0] & 0x00ff);
 }
-
-#endif
 
 } // namespace
 

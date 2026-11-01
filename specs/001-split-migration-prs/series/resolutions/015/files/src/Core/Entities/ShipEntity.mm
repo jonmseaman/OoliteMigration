@@ -7810,7 +7810,7 @@ void ShipEntity::setCargoFlag(OOCargoFlag flag)
             switch (cargo_flag) {
             case CARGO_FLAG_FULL_UNIFORM: {
                 const oo::PList& info = shipinfoDictionary;
-                newCargo = [UNIVERSE cxx_getContainersOfCommodity:StringForKey(info, "cargo_carried").value_or(""):num];
+                newCargo = [UNIVERSE cxx_getContainersOfCommodity:StringForKey(info, "cargo_carried").value_or("") how_much:num];
             } break;
             case CARGO_FLAG_FULL_PLENTIFUL:
                 newCargo = [UNIVERSE cxx_getContainersOfGoods:num scarce:NO legal:YES];
@@ -7819,7 +7819,7 @@ void ShipEntity::setCargoFlag(OOCargoFlag flag)
                 newCargo = [UNIVERSE cxx_getContainersOfGoods:num scarce:YES legal:YES];
                 break;
             case CARGO_FLAG_FULL_MEDICAL:
-                newCargo = [UNIVERSE cxx_getContainersOfCommodity:"Narcotics":num];
+                newCargo = [UNIVERSE cxx_getContainersOfCommodity:"Narcotics" how_much:num];
                 break;
             case CARGO_FLAG_FULL_CONTRABAND:
                 newCargo = [UNIVERSE cxx_getContainersOfGoods:num scarce:YES legal:NO];

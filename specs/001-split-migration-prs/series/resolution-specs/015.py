@@ -66,3 +66,15 @@ RES["src/Core/OOVector.h"] = [""]
 # the containers selector gets a named second part (see selector_containers.py)
 exec(open(__file__.replace("015.py", "selector_containers.py"), encoding="utf-8").read())
 RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES
+
+
+# the history retypes the bridge's containers methods here; the selector's how_much: part is re-applied
+def _containers_part(ours, theirs):
+    out, n = _re15.subn(r"\)commodity_name ?:\(OOCargoQuantity\)", ")commodity_name how_much:(OOCargoQuantity)", theirs)
+    assert n == 1, n
+    return out
+
+
+RES["src/Core/Universe+ObjCBridge.h"] = [_containers_part]
+RES["src/Core/Universe+ObjCBridge.mm"] = [_containers_part]
+RES["src/Core/Scripting/OOJSShip.mm"] = [lambda ours, theirs: theirs.replace('value_or(""):adjustment]', 'value_or("") how_much:adjustment]')]

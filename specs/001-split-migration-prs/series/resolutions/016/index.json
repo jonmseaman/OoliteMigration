@@ -8,13 +8,13 @@
  "src/Core/Entities/PlayerEntity.mm": {
   "base": "25e6b1cf48ffb328fcd72b6d353e0a1372c37afd",
   "deleted": false,
-  "ours": "f503763d5137534bf4f924ac72696ab9ead98796",
+  "ours": "a8afb0c7690b1de89ba3405af5826a4608543866",
   "theirs": "4d8f72d77eecc738987535d10dbbe2a5428ec092"
  },
  "src/Core/Entities/ShipEntity.mm": {
   "base": "ad605c9a9e5d78998f187d715da5f0b06153bef5",
   "deleted": false,
-  "ours": "7ec7bc226107836a1a75358968eac6cbb6f0c739",
+  "ours": "4fc7e0dd868f5b45c9c815f025a663a7c4ca4e1b",
   "theirs": "ad368b9efa6468c05fcb32b808c7eebb53f3c98a"
  },
  "src/Core/Materials/OOConcreteTexture.mm": {
@@ -32,7 +32,7 @@
  "src/Core/OOOXZManager.mm": {
   "base": "46027cff87c7f2c87cb55c5c87ad5235be086d00",
   "deleted": false,
-  "ours": "f57d87aea50ac409b89d08050856907e9ff245af",
+  "ours": "0787a72ae7071f0d01ddf03552076cd994d9eb59",
   "theirs": "d3837d611e2c7d1bbb75f1dbcafe526ced33a2ab"
  },
  "src/Core/Scripting/OOJSEngineTimeManagement.mm": {
@@ -46,6 +46,24 @@
   "deleted": false,
   "ours": "85554a551ad8ff44c09a66c8b300f07b92546a09",
   "theirs": "71823c95b7ef992d93906f5c352fd613721c0678"
+ },
+ "src/Core/Scripting/OOJSShip.mm": {
+  "base": "be5888d102dcfd290a6055cbdd0687e2530ed0d5",
+  "deleted": false,
+  "ours": "902e2f8c7781276d8c6de48f2b4d6285558a1122",
+  "theirs": "9309b71c597d1c447f0d28686dcc85456863a091"
+ },
+ "src/Core/Universe+ObjCBridge.h": {
+  "base": "2498c60205f9a04620ea9e486557aaaa8868c767",
+  "deleted": true,
+  "ours": "ae76dcd191f725b313be6589c842254f4eef4393",
+  "theirs": null
+ },
+ "src/Core/Universe+ObjCBridge.mm": {
+  "base": "9271a76b9c13ac7780af45efc89d30ea9fc3f589",
+  "deleted": true,
+  "ours": "a5e749c64807dcb1d725b6e7eff640532313ebb6",
+  "theirs": null
  },
  "src/Core/Universe.mm": {
   "base": "38d9069f729e93243ee4014ab493e6a48ea33dbc",

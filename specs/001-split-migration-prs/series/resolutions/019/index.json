@@ -32,7 +32,7 @@
  "src/Core/Entities/PlayerEntity.cpp": {
   "base": "d35a0c32d3ca72c34fbf2cce327bf4467754dcc4",
   "deleted": false,
-  "ours": "f2645c7229a8ba85e6e5495de7201cc86074ce54",
+  "ours": "52c563b8d621e64f0d14d545c08f12481d6f4ce3",
   "theirs": "c6002a387dfe4f97ee70d4c2caf54d6cfd351a33"
  },
  "src/Core/GameController.cpp": {
@@ -56,7 +56,7 @@
  "src/Core/OOOXZManager.cpp": {
   "base": "5e32156c6eb47ce4738b53c16d7e937229de6297",
   "deleted": false,
-  "ours": "38c621c8fb13425b5f4601d453989d313cd228d9",
+  "ours": "e287b1593fbef589ce1719b86f4a44d1a0e41433",
   "theirs": "370e2933bdf92f85f08e5934ff315482d7f9fb44"
  },
  "src/Core/OOOpenGLOnly.h": {

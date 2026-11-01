@@ -5,10 +5,15 @@
   "ours": "13854530636adeef34ad3dc68dcfb64886d68700",
   "theirs": "482e30ec87e8905e73b0ff9648e4b9931fd7cb3f"
  },
+ "src/Core/Universe+ObjCBridge.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "59eb7342ee0dcdf947ea5c8a908f0c7f43e5a59e"
+ },
  "src/Core/Universe.mm": {
   "base": "da70527c288606187cfe3643e7d9c0d7f7375e77",
   "deleted": false,
-  "ours": "f15e3829e78c114545b069c8c2d0dc6872a0a5e0",
+  "ours": "f7798ff918cc1632f14422b1d2b13ebc2add144a",
   "theirs": "573dc5f3ac73dc84f094bd82a12f4adfe0267335"
  },
  "src/SDL/MyOpenGLView+Input.h": {

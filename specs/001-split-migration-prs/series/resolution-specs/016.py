@@ -48,3 +48,8 @@ RES["src/Core/Scripting/OOJSEngineTimeManagement.mm"] = ["theirs"]
 RES["src/Core/Materials/OOConcreteTexture.mm"] = ["ours"]
 # the history adds the same enum/float casts here (step 5 had them first) and converts the arrays
 RES["src/Core/Entities/ShipEntity.mm"] = ["theirs"] * 4
+# the containers calls become C++ member calls here (the selector, and its how_much: part, go)
+RES["src/Core/Entities/ShipEntity.mm"] = ["theirs"] * 6
+RES["src/Core/Scripting/OOJSShip.mm"] = ["theirs"]
+# the history deletes the Universe facade here; step 15's selector part goes with it
+DELETE = list(globals().get("DELETE", [])) + ["src/Core/Universe+ObjCBridge.h", "src/Core/Universe+ObjCBridge.mm"]

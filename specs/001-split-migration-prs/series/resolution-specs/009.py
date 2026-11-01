@@ -24,3 +24,8 @@ DELETE = ["src/Core/NSFileManagerOOExtensions.h"]
 # the containers selector gets a named second part (see selector_containers.py)
 exec(open(__file__.replace("009.py", "selector_containers.py"), encoding="utf-8").read())
 RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES
+# the history's step-9 forms supersede step 8's warning fixes (its own local names and types); it
+# deletes the Universe Foundation bridge, so step 8's selector rename there goes with it
+RES["src/Core/Entities/PlayerEntityLegacyScriptEngine.mm"] = ["theirs"] * 5
+RES["src/Core/Entities/ShipEntityAI.mm"] = ["theirs", "theirs"]
+DELETE = DELETE + ["src/Core/Universe+FoundationBridge.h", "src/Core/Universe+FoundationBridge.mm"]

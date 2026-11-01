@@ -11864,7 +11864,7 @@ void PlayerEntity::setLastsaveName(const std::optional<std::string>& value)
 {
     OOCParameterAssert(value.has_value());
     _lastsaveName = value;
-    [[NSUserDefaults standardUserDefaults] setObject:_lastsaveName forKey:@"last_savename"];
+    oo::Defaults::standard().setObject("last_savename", _lastsaveName.has_value() ? oo::PList(*_lastsaveName) : oo::PList());
 }
 
 // Slice 28 of docs/phases/3-slices/PlayerEntity.md (bead oo-zn1vy): docking clearance, scanned wormholes, mission destinations, the shipyard record, extra mission and GUI-screen keys, the state dump.
