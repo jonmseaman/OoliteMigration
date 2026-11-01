@@ -67,3 +67,8 @@ Everything here is a seam; there are no sweeps.
 - 2026-09-10 — Resequenced from Phase 3 to Phase 5 (ADR-0009). Goal, entry gate and work items
   rewritten for a codebase with no Objective-C.
 - 2026-09-11 — Linux x64 joins here with macOS (ADR-0017); runner wording removed.
+- 2026-11-01 — Upstream's Apple Silicon port (#766, #781) merged by oo-74i. Its macOS hunks are ported to
+  C++ and dormant behind `OOLITE_MAC_OS_X` (GL 2.1 names and extension check, MSAA renderbuffer, GLSL
+  330→120 translation, swap interval, front-buffer snapshot, bundle chdir); the bundle, DMG and install
+  scripts are in. Still to do for item 1: a C++ `darwin` branch in `src/meson/` (upstream's links
+  SpiderMonkey and Apple Foundation, so it was not taken) and defining `OOLITE_MAC_OS_X` there.
