@@ -161,3 +161,13 @@ game repo only gets local branches.
   the from-scratch merge gave ~2,300 recurring conflicts.
 - To fill at G2: boundary moves (if a snapshot doesn't build), hoisted fixes in chapter 1, and
   whether the tail groups 020–024 build in upstream style (else they fold into 025).
+- T020: verification shells per era (default, conservative): Objective-C eras in the isolated
+  `.agent-tmp/msys2-objc` (upstream's packages), the C++ era in Jon's MSYS2 (scoop), where `develop`
+  builds; no step's `install_deps.sh` is run during verification, so no package changes. Clang and
+  GCC get separate worktrees (`.agent-tmp/series-verify`, `-gcc`) since `mk.sh` fixes the build
+  directory name. The era is the Windows build's: `src/meson/darwin/` (still SpiderMonkey until
+  macOS is converted) is ignored. Eras: 1-3 `objc-spidermonkey`, 4-16 `objc-quickjs`, 17+ `cxx`.
+- Found at T020: the history's source comments carry bead ids and ADR numbers (e.g. `src/meson.build`
+  "bead oo-7wx", root `meson.build` "oo-pdsng, proposed ADR-0066"). FR-017 covers messages and
+  descriptions only; scrubbing code comments is a code change, so it is left for T032 (polish) as
+  a candidate, not done silently.

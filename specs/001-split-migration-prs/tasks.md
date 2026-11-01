@@ -205,7 +205,7 @@ verification worktree (R9).
 
 **Independent Test**: `python -I tools/series/series.py check --verified` exits 0.
 
-- [ ] T020 [US2] Write `tools/series/tests/test_verify.py` (era from the tree: `objc-spidermonkey`
+- [X] T020 [US2] Write `tools/series/tests/test_verify.py` (era from the tree: `objc-spidermonkey`
   if `src` has `.m`/`.mm` files and a SpiderMonkey dependency in `meson.build`; `objc-quickjs` if
   Objective-C without SpiderMonkey; `cxx` otherwise; GCC required iff the parent's record has
   `build_gcc: pass`). Then implement `tools/series/verify.py`: the shared worktree at
