@@ -40,7 +40,8 @@ move to the next.
 **Why this priority**: This is the whole point. Without it the migration does not go upstream.
 
 **Independent Test**: Take the series manifest; for each PR in order, check out its branch and
-confirm it is based on its predecessor (the first on upstream `master`), that its size is within
+confirm it is based on its predecessor (the first on upstream `master`), that `git town`
+records the same parent, that its size is within
 the limit for its kind, and that its description has the required sections.
 
 **Acceptance Scenarios**:
@@ -220,6 +221,14 @@ listed branch and file exists and the bases chain correctly.
   `upstream/oolite/`) MUST NOT produce steps; a step's diff contains only game-tree changes.
 - **FR-017**: Commit messages and PR descriptions MUST explain the code, not the project's history:
   no bead ids or ADR numbers.
+- **FR-018**: The ordering MUST be recorded in Git Town's branch lineage as well as in the
+  manifest. Each step is created with `git town append` from its predecessor, so `git town` knows
+  every step's parent. The root of the stack is a base branch at the series' upstream commit, not
+  `develop`. The check (FR-013) MUST fail if the Git Town lineage and the manifest disagree.
+- **FR-019**: Branch names MUST carry the step's position as a zero-padded number,
+  `series/NNN-slug` (for example `series/001-fixed-random-seed`), so that sorting by name gives the
+  series order. Inserting a step later renumbers the steps after it, and the manifest and lineage
+  are updated with it.
 
 ### Key Entities
 
@@ -272,7 +281,12 @@ Defaults taken where the request did not say (recorded per CLAUDE.md rule 8; Jon
   Linux is reported where it builds; macOS is Phase 5 and is stated as not verified.
 - **Fork-only content** (fork CI tweaks, migration-only tooling if any remains in `oolite-dev`) goes
   in the exclusions list rather than upstream; deciding each item is part of the plan.
-- **Branch naming** uses a common prefix in `oolite-dev` (for example `series/NN-slug`), never
-  `develop`, `master` or `main`.
+- **Branch naming and lineage**: `series/NNN-slug` with three digits, because the 1,940 history
+  commits could produce more than 99 steps. The stack is built with `git town append` (per Jon,
+  2026-11-01). In `oolite-dev`, Git Town's main branch is `develop`, so the stack's root is a local
+  base branch `series/000-upstream-base` at `49a5eb9fc`, made Git Town's parent of step 001.
+  Pushing (`git town sync`/`propose`) stays Jon's step.
+- **Squash merges**: Jon squash-merges on GitHub, so each step should read well as one commit; the
+  history commits inside a step are a means of building it, not something the reviewer sees.
 - Phase 4p polish work continuing on `develop` is not blocked by this feature; it lands as later
   steps.
