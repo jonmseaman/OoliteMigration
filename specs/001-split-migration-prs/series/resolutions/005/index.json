@@ -1,0 +1,8 @@
+{
+ "src/Core/OOStringParsing.mm": {
+  "base": "2bf22b86ed7b07b0d80c5161313f66ce8de214b0",
+  "deleted": false,
+  "ours": "9000232d201ae5ee632c910dd82fd236602aeb0c",
+  "theirs": "df454a3405a882be92d298e92ec1f2aa4e8b0eb3"
+ }
+}

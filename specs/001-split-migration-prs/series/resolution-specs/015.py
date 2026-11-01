@@ -42,3 +42,5 @@ RES = {
     "src/Core/Universe.mm": [gl_names, blur_uniform],               # upstream #766
 }
 DELETE = []
+# the history deletes the OXZ manager's facade here; step 12's copy-URL forwarder goes with it
+DELETE = DELETE + ["src/Core/OOOXZManager+ObjCBridge.h", "src/Core/OOOXZManager+ObjCBridge.mm"]

@@ -23,11 +23,27 @@
   "ours": "934162d9202763e701a5ab0d84ea51b01c47db34",
   "theirs": "eb4a3a8a0eb2de4e55e0947ac496a43209f4d48e"
  },
+ "src/Core/OOOXZManager+ObjCBridge.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "193467b4e84c63c2b9203206d257ead6d4300ad9"
+ },
+ "src/Core/OOOXZManager+ObjCBridge.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "78ef52471bf19846bde4543560ed8d2d5adf816d"
+ },
  "src/Core/OOOXZManager.h": {
   "base": "fe911c0c69ace09b131bd422c12cada440dc3d77",
   "deleted": false,
   "ours": "fa06aa76109e5a05c8480bfc9aa4af0ec4472d3c",
   "theirs": "43f06edcc96ef0a147cf0318b2ff25175387bc11"
+ },
+ "src/Core/OOOXZManager.mm": {
+  "base": "1cecbd61576b8239028f0d283a55da1b83b402b3",
+  "deleted": false,
+  "ours": "6f66e07d2e23dbddeda1def319f53b11f99c216b",
+  "theirs": "731a0715c16207b4b453a83ae7cda74a11cc515d"
  },
  "src/SDL/MyOpenGLView+Input.mm": {
   "base": "b2580193416e8ba909a5666c16314e5743e7c464",

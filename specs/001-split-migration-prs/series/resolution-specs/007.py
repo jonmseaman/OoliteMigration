@@ -1,6 +1,7 @@
 # Step 7 resolutions (after the #745/#737 rename transform): history's types and accessors +
 # upstream's debug-monitor guards (#756), Mac fixes (#766), SDL3 clipboard (#747), Dock icon (#781).
 RES = {
+    "src/Core/OOStringParsing.mm": ["theirs", "theirs"],  # the history drops step 2's buffer here
     "src/Core/AI.mm": ["theirs"],  # upstream side differs from base only in formatting
     "src/Core/Entities/PlayerEntity.mm": [
         # history's empty() check + upstream's new OXZ-manager copy-URL key

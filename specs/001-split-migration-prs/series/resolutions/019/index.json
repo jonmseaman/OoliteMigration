@@ -65,6 +65,12 @@
   "ours": "fb40aee53bf49d80fa8d1026853411e61c8c5530",
   "theirs": "748c4f58a20e373d2279e62f269ef4dee555743b"
  },
+ "src/Core/Scripting/OOJSSystem.cpp": {
+  "base": "db7ba2f3f1726769c03ac6bc99ca2c6b5a536059",
+  "deleted": false,
+  "ours": "81ee9fdc532145f33b2592b2ca8b1a2e5ba1da44",
+  "theirs": "8a9ffcd633346b01e14bb2d98e73f62e638aac04"
+ },
  "src/SDL/MyOpenGLView.cpp": {
   "base": "54c53f2e186fc28c684e3841c0aaa132079a6016",
   "deleted": false,

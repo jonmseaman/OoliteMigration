@@ -397,12 +397,16 @@ def target_tree(repo, base, ours, theirs, res_dir, report=None):
                 apply.append((path, how, None, "".join(out).encode("utf-8", "surrogateescape")))
                 continue
         unresolved.append(path)
-    if unresolved:
-        return None, sorted(unresolved)
-    # files a resolution adds outside the conflicted paths (e.g. a name both sides renamed differently)
+    # files a resolution adds outside the conflicted paths (e.g. a name both sides renamed differently);
+    # an edit of a cleanly merged file is keyed by that merged blob, and is stale if the merge changed
     for path, rec in index.items():
         if rec.get("extra") and path not in conflicts:
+            if rec.get("merged") and _blob_at(repo, tree, path) != rec["merged"]:
+                unresolved.append(path)
+                continue
             apply.append((path, "stored", rec, None))
+    if unresolved:
+        return None, sorted(unresolved)
     with tempfile.TemporaryDirectory() as tmp:
         env = {"GIT_INDEX_FILE": os.path.join(tmp, "index")}
         _git(repo, "read-tree", tree, env=env)
@@ -422,18 +426,26 @@ def target_tree(repo, base, ours, theirs, res_dir, report=None):
     return out, []
 
 
-def record_resolution(repo, base, ours, theirs, res_dir, path, content):
+def _blob_at(repo, tree, path):
+    r = _git(repo, "rev-parse", "-q", "--verify", f"{tree}:{path}", ok=(0, 1, 128))
+    return r.stdout.decode().strip() or None
+
+
+def record_resolution(repo, base, ours, theirs, res_dir, path, content, key_merged=False):
     """Store a resolution for `path` against these inputs. content=None means the path is deleted.
 
     A path that is not one of the merge's conflicts is stored as an `extra` file, added whenever
-    the step's conflicts are all resolved.
+    the step's conflicts are all resolved. With `key_merged`, the extra is an edit of the cleanly
+    merged file and applies only while the merge still gives that file.
     """
-    _, conflicts = merge(repo, base, ours, theirs)
+    merged_tree, conflicts = merge(repo, base, ours, theirs)
     index = _load_index(res_dir)
     if path in conflicts:
         index[path] = dict(conflicts[path], deleted=content is None)
     else:
         index[path] = {"extra": True, "deleted": content is None}
+        if key_merged:
+            index[path]["merged"] = _blob_at(repo, merged_tree, path)
     if content is not None:
         target = os.path.join(res_dir, "files", path)
         os.makedirs(os.path.dirname(target), exist_ok=True)

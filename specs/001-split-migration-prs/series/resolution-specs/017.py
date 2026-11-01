@@ -21,3 +21,6 @@ RES["src/Core/OOHPVector.h"] = ["ours"]  # as in step 9: upstream dropped the cl
 RES["src/Core/meson.build"] = [lambda ours, theirs: theirs.replace("'OOCocoa.cpp'", "'OOFoundation.cpp'")]
 RES["src/SDL/MyOpenGLView.cpp"] = [sdl_clipboard]
 DELETE = []
+# the history rewrites the include blocks; step 2's <vector> include is not needed by its form
+RES["src/Core/Entities/ShipEntityAI.cpp"] = ["theirs"]
+RES["src/Core/OOStringParsing.cpp"] = ["theirs"]

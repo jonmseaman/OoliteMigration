@@ -1,4 +1,10 @@
 {
+ "src/Core/Entities/ShipEntityAI.cpp": {
+  "base": "6b3495a26f0033bb9a6f68a9186467ea0025ab87",
+  "deleted": false,
+  "ours": "daf7d579368db41d963a9a47c5dda4bc576e43a2",
+  "theirs": "677bf993dc1097cabbd269b54738edb0e656a53f"
+ },
  "src/Core/Materials/OOConcreteTexture.cpp": {
   "base": "b15d7f1f62b8a8b11916b742c5f8030ad8a11865",
   "deleted": false,
@@ -44,6 +50,12 @@
   "deleted": false,
   "ours": "c00be8a7aeb22055d5c6d6d0e9e881587cb17d62",
   "theirs": "f3615bc82410035783fc9c014b109a734b0aa8bf"
+ },
+ "src/Core/OOStringParsing.cpp": {
+  "base": "e54d5e10015ed1af3565e25def45fe2365315f7f",
+  "deleted": false,
+  "ours": "2fd43ff71f728b81534f910dd6c2cd2a27591f58",
+  "theirs": "c15594d63f3387a858fee8f9260a27d8e4416508"
  },
  "src/Core/Scripting/EntityOOJavaScriptExtensions.cpp": {
   "base": "facbbab3b46551ab18b1a3816e695161051d3c8a",

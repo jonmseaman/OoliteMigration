@@ -475,10 +475,9 @@ void OOOXZManager::setFilter(const std::string& filter)
     _currentFilter = oo::str::lowercase(filter);
 }
 
-- (void)setOXPURL:(NSString*)url
+void OOOXZManager::setOXPURL(const std::optional<std::string>& url)
 {
-    DESTROY(_currentOXPURL);
-    _currentOXPURL = [[url lowercaseString] copy]; // copy retains
+    _currentOXPURL = url.has_value() ? std::optional<std::string>(oo::str::lowercase(*url)) : std::nullopt;
 }
 
 oo::PList OOOXZManager::applyCurrentFilter(const oo::PList& list)
@@ -1654,10 +1653,7 @@ void OOOXZManager::processShowInfoKey()
             const std::optional<std::string> infoURL = ManifestString(manifest, std::string(kOOManifestInformationURL));
             if (gui != nullptr)
                 gui->setText(DescFormat(OO_DESC("oolite-oxzmanager-infopage-infourl-@"), { Arg(infoURL) }), 25, GUI_ALIGN_LEFT);
-            // copy url info text to clipboard automatically once we are in the oxz info page
-            if (UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)
-                UNIVERSE->getGameView()->stringToClipboard(infoURL.value_or(std::string()));
-
+            setOXPURL(infoURL);
             // instructions
             if (gui != nullptr) {
                 gui->setText(cxx_OOExpand(cxx_OOLookUpDescriptionPRIV("oolite-oxzmanager-infopage-return")), 27, GUI_ALIGN_CENTER);
@@ -1667,16 +1663,17 @@ void OOOXZManager::processShowInfoKey()
     }
 }
 
-- (void)processCopyUrlKey
+void OOOXZManager::processCopyUrlKey()
 {
 
     if (_interfaceState == OXZ_STATE_PICK_INSTALL || _interfaceState == OXZ_STATE_PICK_INSTALLED || _interfaceState == OXZ_STATE_PICK_REMOVE) {
-        GuiDisplayGen* gui = [UNIVERSE gui];
+        ::GuiDisplayGen* gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);
 
         if (_interfaceShowingOXZDetail) {
-            [[UNIVERSE gameView] stringToClipboard:_currentOXPURL];
+            if (_currentOXPURL.has_value() && UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)
+                UNIVERSE->getGameView()->stringToClipboard(*_currentOXPURL);
         } else {
-            OOGUIRow selection = [gui selectedRow];
+            OOGUIRow selection = (gui != nullptr ? gui->getSelectedRow() : 0);
 
             if (selection < OXZ_GUI_ROW_LISTSTART || selection >= OXZ_GUI_ROW_LISTSTART + OXZ_GUI_NUM_LISTROWS) {
                 // not on an OXZ
@@ -1684,11 +1681,12 @@ void OOOXZManager::processShowInfoKey()
             }
             _item = _offset + selection - OXZ_GUI_ROW_LISTSTART;
 
-            NSDictionary* manifest = [_filteredList oo_dictionaryAtIndex:_item];
+            const oo::PList manifest = ElementAt(_filteredList, _item);
             // infoURL
-            NSString* infoURLString = [manifest oo_stringForKey:kOOManifestInformationURL];
+            const std::optional<std::string> infoURL = ManifestString(manifest, std::string(kOOManifestInformationURL));
             // copy url info text to clipboard automatically once we are in the oxz info page
-            [[UNIVERSE gameView] stringToClipboard:infoURLString];
+            if (infoURL.has_value() && UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)
+                UNIVERSE->getGameView()->stringToClipboard(*infoURL);
         }
     }
 }

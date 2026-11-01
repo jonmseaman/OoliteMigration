@@ -1,0 +1,8 @@
+{
+ "src/Core/Scripting/OOJSManifest.mm": {
+  "base": "5be8e924fd6907a5367c884d54d2656ea0d61c22",
+  "deleted": false,
+  "ours": "49c7a17410078ab5ed1471640933a71185c64be4",
+  "theirs": "2d72eb47ba3a8f3bfac70a7efcb1c26b5d1d8f7a"
+ }
+}

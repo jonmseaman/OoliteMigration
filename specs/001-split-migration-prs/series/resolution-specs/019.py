@@ -16,3 +16,5 @@ RES = {
     "src/SDL/MyOpenGLView.cpp": ["ours"],  # Linux stubs stay removed (#747)
 }
 DELETE = []
+# step 2 removed the unused system prototype; the history removes it here too
+RES["src/Core/Scripting/OOJSSystem.cpp"] = ["theirs", "theirs"]

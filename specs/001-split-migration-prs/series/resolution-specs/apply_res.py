@@ -80,3 +80,30 @@ for path, side in ns.get("WHOLE", {}).items():
     print(f"{path}: whole file from {'theirs (edited)' if fn else side}")
     if not dry:
         trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path, data)
+# FIX = {path: fn(text) -> text}: an edit of a cleanly merged (non-conflict) file, keyed by the merged
+# blob so it goes stale if the merge changes. For code the merge leaves uncompilable or warning.
+for path, fn in ns.get("FIX", {}).items():
+    if path in conf:
+        raise SystemExit(f"{path}: a conflict in step {n}; use RES and POST")
+    data = trees._git(S.GAME, "cat-file", "-p", f"{tree}:{path}").stdout.decode("utf-8", "surrogateescape")
+    new = fn(data)
+    if new == data:
+        raise SystemExit(f"{path}: the fix changed nothing")
+    print(f"{path}: fixed")
+    if not dry:
+        trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path,
+                                new.encode("utf-8", "surrogateescape"), key_merged=True)
+# EDIT = {path: fn(text) -> text}: for a conflict path the automatic rules already resolve, edit that
+# automatic result (the step's current merge tree, recorded by `tree`) and store it as the resolution.
+for path, fn in ns.get("EDIT", {}).items():
+    if path not in conf:
+        raise SystemExit(f"{path}: not a conflict in step {n}; use FIX")
+    if not st.get("merge_tree"):
+        raise SystemExit(f"step {n}: run `tree {n}` first so the automatic result is recorded")
+    data = trees._git(S.GAME, "cat-file", "-p", f"{st['merge_tree']}:{path}").stdout.decode("utf-8", "surrogateescape")
+    new = fn(data)
+    if new == data:
+        raise SystemExit(f"{path}: the edit changed nothing")
+    print(f"{path}: edited")
+    if not dry:
+        trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path, new.encode("utf-8", "surrogateescape"))

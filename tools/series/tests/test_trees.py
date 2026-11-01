@@ -59,6 +59,23 @@ class TreesTest(unittest.TestCase):
         self.assertEqual(conflicts, ["src/b.m"])
         self.assertIsNone(tree)
 
+    def test_edit_of_a_merged_file_applies_while_the_merge_is_unchanged(self):
+        trees.record_resolution(self.game, self.base, self.ours, self.theirs, self.res, "src/b.m", b"int b;\n")
+        trees.record_resolution(self.game, self.base, self.ours, self.theirs, self.res, "src/a.m",
+                                b"int a(void) { return 10; } /* fixed */\n", key_merged=True)
+        tree, conflicts = trees.target_tree(self.game, self.base, self.ours, self.theirs, self.res)
+        self.assertEqual(conflicts, [])
+        self.assertIn("/* fixed */", self.show(tree, "src/a.m"))
+        idx = os.path.join(self.res, "index.json")
+        with open(idx, encoding="utf-8") as f:
+            data = json.load(f)
+        data["src/a.m"]["merged"] = "0" * 40  # the merge now gives a different file
+        with open(idx, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        tree, conflicts = trees.target_tree(self.game, self.base, self.ours, self.theirs, self.res)
+        self.assertEqual(conflicts, ["src/a.m"])
+        self.assertIsNone(tree)
+
 
 class AutoMergeTest(unittest.TestCase):
     base = ["#ifndef NDEBUG\n", "void dump(JSContext *c);\n", "#endif\n", "int x;\n"]

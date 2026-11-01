@@ -17,6 +17,12 @@
   "ours": "3c980b8bb32dd8fc174ee5deb5dc6b2b58f6f434",
   "theirs": "a277b563435ad33a941e8793a78b479773ff7c1a"
  },
+ "src/Core/OOStringParsing.mm": {
+  "base": "df454a3405a882be92d298e92ec1f2aa4e8b0eb3",
+  "deleted": false,
+  "ours": "e6a06aed31029075b3967a7e3ee4c096bf4f4706",
+  "theirs": "b1ba1cdfd5a235e83495ebf56e616b6c689a0b11"
+ },
  "src/Core/ResourceManager.mm": {
   "base": "fd00df81fde0fd0c31c2f8ae671b880944582170",
   "deleted": false,

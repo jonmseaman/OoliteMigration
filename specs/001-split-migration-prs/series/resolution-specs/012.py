@@ -46,3 +46,77 @@ RES = {
     ],
 }
 DELETE = []
+
+
+# Upstream's copy-URL key (#747) arrived as Objective-C methods; this step converts OOOXZManager to a
+# C++ class, so they are ported here in the form the history's own port takes (step 19).
+def subs(*pairs):
+    def fn(text):
+        for old, new in pairs:
+            assert text.count(old) == 1, (old, text.count(old))
+            text = text.replace(old, new)
+        return text
+    return fn
+
+
+COPY_URL_OLD = '''- (void)processCopyUrlKey
+{
+
+    if (_interfaceState == OXZ_STATE_PICK_INSTALL || _interfaceState == OXZ_STATE_PICK_INSTALLED || _interfaceState == OXZ_STATE_PICK_REMOVE) {
+        GuiDisplayGen* gui = [UNIVERSE gui];
+
+        if (_interfaceShowingOXZDetail) {
+            [[UNIVERSE gameView] stringToClipboard:_currentOXPURL];
+        } else {'''
+COPY_URL_NEW = '''void OOOXZManager::processCopyUrlKey()
+{
+
+    if (_interfaceState == OXZ_STATE_PICK_INSTALL || _interfaceState == OXZ_STATE_PICK_INSTALLED || _interfaceState == OXZ_STATE_PICK_REMOVE) {
+        GuiDisplayGen* gui = [UNIVERSE gui];
+
+        if (_interfaceShowingOXZDetail) {
+            if (_currentOXPURL.has_value())
+                [[UNIVERSE gameView] cxx_stringToClipboard:*_currentOXPURL];
+        } else {'''
+LIST_OLD = '''            NSDictionary* manifest = [_filteredList oo_dictionaryAtIndex:_item];
+            // infoURL
+            NSString* infoURLString = [manifest oo_stringForKey:kOOManifestInformationURL];
+            // copy url info text to clipboard automatically once we are in the oxz info page
+            [[UNIVERSE gameView] stringToClipboard:infoURLString];'''
+LIST_NEW = '''            const oo::PList manifest = ElementAt(_filteredList, _item);
+            // infoURL
+            const std::optional<std::string> infoURL = ManifestString(manifest, std::string(kOOManifestInformationURL));
+            // copy url info text to clipboard automatically once we are in the oxz info page
+            if (infoURL.has_value())
+                [[UNIVERSE gameView] cxx_stringToClipboard:*infoURL];'''
+
+POST = {"src/Core/OOOXZManager.h": [  # a conflict path here: edits on the resolved file
+    ("    void processShowInfoKey();\n", "    void processShowInfoKey();\n    void processCopyUrlKey();\n"),
+    ("    void setFilter(const std::string& filter);\n",
+     "    void setFilter(const std::string& filter);\n"
+     "    void setOXPURL(const std::optional<std::string>& url); // lowercased; nullopt: none (was nil)\n"),
+    ("    NSString* _currentOXPURL;\n",
+     "    std::optional<std::string> _currentOXPURL; // lowercase; the info page's URL, nullopt: none (was nil)\n"),
+]}
+
+# the automatic resolution of the class file, with the port applied on top
+EDIT = {"src/Core/OOOXZManager.mm": subs(
+        ("- (void)setOXPURL:(NSString*)url\n{\n    DESTROY(_currentOXPURL);\n"
+         "    _currentOXPURL = [[url lowercaseString] copy]; // copy retains\n}\n",
+         "void OOOXZManager::setOXPURL(const std::optional<std::string>& url)\n{\n"
+         "    _currentOXPURL = url.has_value() ? std::optional<std::string>(oo::str::lowercase(*url)) : std::nullopt;\n}\n"),
+        ("            [self setOXPURL:oo::NSStringOrNil(infoURL)];\n", "            setOXPURL(infoURL);\n"),
+        (COPY_URL_OLD, COPY_URL_NEW),
+        (LIST_OLD, LIST_NEW),
+)}
+
+FIX = {
+    "src/Core/OOOXZManager+ObjCBridge.h": subs(
+        ("- (void)processShowInfoKey;\n", "- (void)processShowInfoKey;\n- (void)processCopyUrlKey;\n"),
+    ),
+    "src/Core/OOOXZManager+ObjCBridge.mm": subs(
+        ("- (void)processShowInfoKey\n{\n    _cxxManager->processShowInfoKey();\n}\n",
+         "- (void)processShowInfoKey\n{\n    _cxxManager->processShowInfoKey();\n}\n"
+         "- (void)processCopyUrlKey\n{\n    _cxxManager->processCopyUrlKey();\n}\n"),
+    ),
+}

@@ -65,6 +65,19 @@ at this step. You can review them now or when step 4 links the backend.
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `7cec2b3f88`, 2026-11-01.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | n/a: the tree has no unit suites |
+| warnings_clang | fail: 8 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.
