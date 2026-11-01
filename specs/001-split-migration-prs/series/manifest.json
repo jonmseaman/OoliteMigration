@@ -155,14 +155,47 @@
    "mechanical_command": null,
    "n": 3,
    "parent": "series/002-js-facade",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "upstream-deleted",
+     "path": "src/Core/GameController+FullScreen.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOCocoa.m"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOCocoa.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOFoundation.m"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOFoundation.mm"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/Core/OOJoystickManager.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/meson.build"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/SDL/MyOpenGLView.mm"
+    }
+   ],
    "size": null,
    "source": {
     "from": "c9c052538370b03b976c6b5ac615490a873e6b21",
     "to": "c9c052538370b03b976c6b5ac615490a873e6b21",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "1a2988f5bdb83246582c49f11dff797ca82722f8",
    "temporaries": [],
    "title": "Compile the game as Objective-C++",
    "verification": null

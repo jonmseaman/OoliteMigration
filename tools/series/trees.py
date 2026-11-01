@@ -81,11 +81,13 @@ def _lines(repo, oid):
     return _git(repo, "cat-file", "blob", oid).stdout.decode("utf-8", "surrogateescape").splitlines(keepends=True)
 
 
-def auto_merge_text(base, ours, theirs):
+def auto_merge_text(base, ours, theirs, flags=None):
     """Line-level 3-way merge that accepts changes to different (even adjacent) base lines.
 
     base, ours, theirs: lists of lines. Returns the merged list, or None when the sides change
-    overlapping base lines differently or insert different text at the same point.
+    overlapping base lines differently or insert different text at the same point. One overlap is
+    accepted: ours (upstream) deleting a block wholly containing theirs' edits drops the block; then
+    "upstream-deleted" is added to `flags` (a set) if given.
     """
     def changes(side):
         sm = difflib.SequenceMatcher(None, base, side, autojunk=False)
@@ -96,7 +98,17 @@ def auto_merge_text(base, ours, theirs):
     while ia < len(a) or ib < len(b):
         ca = a[ia] if ia < len(a) else None
         cb = b[ib] if ib < len(b) else None
-        if ca and cb:
+        if ca and cb and not ca[2] and ca[0] < ca[1] and ca[0] <= cb[0] and cb[1] <= ca[1] and ca != cb:
+            # upstream deleted a block; drop theirs' edits that lie inside it
+            jb = ib
+            while jb < len(b) and ca[0] <= b[jb][0] and b[jb][1] <= ca[1]:
+                jb += 1
+            if jb < len(b) and b[jb][0] < ca[1]:  # an edit straddles the block's end
+                return None
+            if flags is not None:
+                flags.add("upstream-deleted")
+            pick, ia, ib = ca, ia + 1, jb
+        elif ca and cb:
             if ca == cb:  # the same change on both sides
                 pick, ia, ib = ca, ia + 1, ib + 1
             else:
@@ -224,13 +236,18 @@ def target_tree(repo, base, ours, theirs, res_dir, report=None):
     apply, unresolved = [], []
     for path, key in conflicts.items():
         rec = index.get(path)
-        if rec and all(rec.get(k) == v for k, v in key.items()):
+        if rec and not rec.get("extra") and all(rec.get(k) == v for k, v in key.items()):
             apply.append((path, "stored", rec, None))
+            continue
+        if key["base"] and key["ours"] is None and key["theirs"] == key["base"]:
+            # upstream deleted the file; the history only renamed it
+            apply.append((path, "upstream-deleted", {"deleted": True}, None))
             continue
         if all(key.values()):
             b, o, t = _lines(repo, key["base"]), _lines(repo, key["ours"]), _lines(repo, key["theirs"])
-            out = auto_merge_text(b, o, t)
-            how = "auto"
+            flags = set()
+            out = auto_merge_text(b, o, t, flags)
+            how = "upstream-deleted" if flags else "auto"
             if out is None:
                 out, how = transplant(b, o, t), "transplant"
             if out is not None:
@@ -239,6 +256,10 @@ def target_tree(repo, base, ours, theirs, res_dir, report=None):
         unresolved.append(path)
     if unresolved:
         return None, sorted(unresolved)
+    # files a resolution adds outside the conflicted paths (e.g. a name both sides renamed differently)
+    for path, rec in index.items():
+        if rec.get("extra") and path not in conflicts:
+            apply.append((path, "stored", rec, None))
     with tempfile.TemporaryDirectory() as tmp:
         env = {"GIT_INDEX_FILE": os.path.join(tmp, "index")}
         _git(repo, "read-tree", tree, env=env)
@@ -259,12 +280,17 @@ def target_tree(repo, base, ours, theirs, res_dir, report=None):
 
 
 def record_resolution(repo, base, ours, theirs, res_dir, path, content):
-    """Store a resolution for `path` against these inputs. content=None means the path is deleted."""
+    """Store a resolution for `path` against these inputs. content=None means the path is deleted.
+
+    A path that is not one of the merge's conflicts is stored as an `extra` file, added whenever
+    the step's conflicts are all resolved.
+    """
     _, conflicts = merge(repo, base, ours, theirs)
-    key = conflicts.get(path) or {"base": _blob(repo, base, path), "ours": _blob(repo, ours, path),
-                                  "theirs": _blob(repo, theirs, path)}
     index = _load_index(res_dir)
-    index[path] = dict(key, deleted=content is None)
+    if path in conflicts:
+        index[path] = dict(conflicts[path], deleted=content is None)
+    else:
+        index[path] = {"extra": True, "deleted": content is None}
     if content is not None:
         target = os.path.join(res_dir, "files", path)
         os.makedirs(os.path.dirname(target), exist_ok=True)

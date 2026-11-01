@@ -1,0 +1,30 @@
+{
+ "src/Core/OOCocoa.m": {
+  "base": "0f2272fdeee6692071dbde6e30d7c65236dc077e",
+  "deleted": true,
+  "ours": null,
+  "theirs": null
+ },
+ "src/Core/OOCocoa.mm": {
+  "base": null,
+  "deleted": true,
+  "ours": null,
+  "theirs": "735521237be6253296c115f4b788b9d8ee1c6bec"
+ },
+ "src/Core/OOFoundation.m": {
+  "base": null,
+  "deleted": true,
+  "ours": "735521237be6253296c115f4b788b9d8ee1c6bec",
+  "theirs": null
+ },
+ "src/Core/OOFoundation.mm": {
+  "deleted": false,
+  "extra": true
+ },
+ "src/Core/meson.build": {
+  "base": "67a912e1f62449b6053ae82be474a706ac24013f",
+  "deleted": false,
+  "ours": "b4e0376bb39e59edb41f01870cfcd01601e44e94",
+  "theirs": "e4a3a9f2f8822e4a6cac703bdd65cf4db06b536b"
+ }
+}
