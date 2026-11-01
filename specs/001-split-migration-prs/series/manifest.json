@@ -1766,14 +1766,255 @@
    "mechanical_command": null,
    "n": 17,
    "parent": "series/016-entity-facade",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "transplant",
+     "path": "src/Core/Debug/OODebugSupport.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/DockEntity.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Entities/Entity.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/OOVisualEffectEntity.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/OOWaypointEntity.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/PlayerEntity.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/ShipEntity.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/StationEntity.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/WormholeEntity.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Materials/OOConcreteTexture.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Materials/OOShaderUniformMethodType.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOTextureInternal.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOALSoundChannel.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOCocoa.cpp"
+    },
+    {
+     "how": "deleted-earlier",
+     "path": "src/Core/OOCocoa.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOFoundation.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOFoundation.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOFoundation.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOHPVector.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOHPVector.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOJoystickManager.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOMacroOpenGL.h"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/Core/OOMaths.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOPlanetDrawable.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOSound.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOVector.cpp"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOVector.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/EntityOOJavaScriptExtensions.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/EntityOOJavaScriptExtensions.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSCall.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSDock.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSDock.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSEntity.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSEntity.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSEquipmentInfo.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSEquipmentInfo.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSFlasher.h"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/Core/Scripting/OOJSPlanet.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSPlanet.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSPlayer.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSPlayer.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSPlayerShip.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSPlayerShip.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSShip.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSShip.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSSound.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSSound.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSStation.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSStation.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSVisualEffect.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSWaypoint.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSWaypoint.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSWormhole.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSWormhole.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJavaScriptEngine.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/meson.build"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/MyOpenGLView+Input.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/MyOpenGLView.cpp"
+    },
+    {
+     "how": "auto",
+     "path": "src/SDL/main.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/meson/meson.build"
+    }
+   ],
    "size": null,
    "source": {
     "from": "1248d43e1bbf6f5de945fe89d898630122a8e641",
     "to": "af1f220542e4917a23833902e8efc313a8eb463b",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "5b50e9dab8bef1b7a394b7e13e1bb843667e77fc",
    "temporaries": [],
    "title": "Remove the Objective-C runtime and rename the sources to .cpp",
    "verification": null
@@ -1803,7 +2044,7 @@
     "to": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "37547f2b9bd6091c40c19926b75bfa4e36a9481d",
    "temporaries": [],
    "title": "Build with GCC as well as Clang",
    "verification": null

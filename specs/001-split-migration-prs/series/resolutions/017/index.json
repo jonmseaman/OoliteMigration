@@ -1,0 +1,138 @@
+{
+ "src/Core/Materials/OOConcreteTexture.cpp": {
+  "base": "b15d7f1f62b8a8b11916b742c5f8030ad8a11865",
+  "deleted": false,
+  "ours": "7d6d2181434c9fa9140b90a9a181950288fc6c56",
+  "theirs": "aa548591379a44b1a7e18801312484ff7c0fd9fa"
+ },
+ "src/Core/Materials/OOShaderUniformMethodType.h": {
+  "base": "4389583c6fd70f99b7872a54afab27bb4b2d0412",
+  "deleted": false,
+  "ours": "09346f00a4132563ea22f89749361603cdc1875e",
+  "theirs": "5a432f4d5bc35d6883b03c7921ac503ac2427f5a"
+ },
+ "src/Core/OOALSoundChannel.h": {
+  "base": "6ed636e01e8823ae323a570448af0442e26a5111",
+  "deleted": false,
+  "ours": "f813abf1adcf9346a51a13af49003c0edded33e8",
+  "theirs": "7e14ad113644a7f8c4557a0c134be6a1ca772923"
+ },
+ "src/Core/OOCocoa.cpp": {
+  "base": null,
+  "deleted": true,
+  "ours": null,
+  "theirs": "d5c75c1a0e2bb3432a2e75e358ba218ccbb50f22"
+ },
+ "src/Core/OOFoundation.cpp": {
+  "deleted": false,
+  "extra": true
+ },
+ "src/Core/OOFoundation.mm": {
+  "base": null,
+  "deleted": true,
+  "ours": "d5c75c1a0e2bb3432a2e75e358ba218ccbb50f22",
+  "theirs": null
+ },
+ "src/Core/OOHPVector.h": {
+  "base": "3562354b453ddf1484171e647837a3b5b7210b22",
+  "deleted": false,
+  "ours": "2db554cbf0385277952cb8366d0ab108381e07fe",
+  "theirs": "4daed3eeae0a8395c51644c81a11bf8151a1c503"
+ },
+ "src/Core/OOJoystickManager.h": {
+  "base": "0ac7c54891343271dbc15970001633e5f10b50cc",
+  "deleted": false,
+  "ours": "c00be8a7aeb22055d5c6d6d0e9e881587cb17d62",
+  "theirs": "f3615bc82410035783fc9c014b109a734b0aa8bf"
+ },
+ "src/Core/Scripting/EntityOOJavaScriptExtensions.cpp": {
+  "base": "facbbab3b46551ab18b1a3816e695161051d3c8a",
+  "deleted": false,
+  "ours": "0f006281043af2c241051fcc8156f1802799d709",
+  "theirs": "7dce011dad88d495c8932a9de79c90b89375e946"
+ },
+ "src/Core/Scripting/OOJSDock.cpp": {
+  "base": "eaae8efffc579b40aefa0bfab7ecf86a21ebfe02",
+  "deleted": false,
+  "ours": "8c20e0b99ec4b5583986258bbfd9983ba87e97de",
+  "theirs": "ccb7da8be5af9e6f1b413bdcfb970a91d5508b7c"
+ },
+ "src/Core/Scripting/OOJSEntity.cpp": {
+  "base": "7c4bafd5a9c8aba6129c018ab1b837bb7575a6e1",
+  "deleted": false,
+  "ours": "22ab46b2f3db103619102ec5745e9ad785f86c3d",
+  "theirs": "933fe958a592751f44a137f67a8890e2300c3387"
+ },
+ "src/Core/Scripting/OOJSEquipmentInfo.cpp": {
+  "base": "5d49f8ad18478bc2ed704dc3684105d95dc0335b",
+  "deleted": false,
+  "ours": "40e63363dc0e006d11b78a6128d61edf75d4d4ff",
+  "theirs": "ed4486276162c4d07c04fdc54ddb92af7ffc8d28"
+ },
+ "src/Core/Scripting/OOJSPlayer.cpp": {
+  "base": "7f50318d9993c44f6e80774d55529316f1f2ebe7",
+  "deleted": false,
+  "ours": "239c43620a5b6b9d055cead86368e72c57e3f211",
+  "theirs": "2ec40f13cf36412319606d792b2edb7b31d00afa"
+ },
+ "src/Core/Scripting/OOJSPlayerShip.cpp": {
+  "base": "eb5357e778292fb958f49d8238adb2978184a892",
+  "deleted": false,
+  "ours": "55c1d53297decab7c1e9b99b804d3b0dd7e04577",
+  "theirs": "23156ba47bc1a7ed5cfe4eb02a5ad407858f52b4"
+ },
+ "src/Core/Scripting/OOJSShip.cpp": {
+  "base": "9309b71c597d1c447f0d28686dcc85456863a091",
+  "deleted": false,
+  "ours": "d49393064a4f01770e587057dadf21235862aa6b",
+  "theirs": "2ee8052628b50d5944dc895c2366ece25851b196"
+ },
+ "src/Core/Scripting/OOJSSound.cpp": {
+  "base": "472cba07be21c50e771ebf9ca94fe6dc246d0282",
+  "deleted": false,
+  "ours": "72d07bd80dd5c42e4e4a0dd6e597380369316cdc",
+  "theirs": "923c634511372e64a88c3db23ac4113168c45e7a"
+ },
+ "src/Core/Scripting/OOJSStation.cpp": {
+  "base": "4e90e70465fb5723461dd1a7bce329c75c51f91d",
+  "deleted": false,
+  "ours": "9ae0462a4c64e4222c178ea51e55a8474dd4cffb",
+  "theirs": "ab2e07b4d800deaca6d5aa91fd87ea7a44f8939b"
+ },
+ "src/Core/Scripting/OOJSWaypoint.cpp": {
+  "base": "44e7c2a1a9c927646784477e077f14ce939546a7",
+  "deleted": false,
+  "ours": "f6d02ad61b5c223797c16dffe15e9d6809251d6c",
+  "theirs": "4ceab731ccf0ce88a4e52ba0749d106702cd3a3d"
+ },
+ "src/Core/Scripting/OOJSWormhole.cpp": {
+  "base": "733ef18741d7a4b6cb499aa10ecbf930e79b48d8",
+  "deleted": false,
+  "ours": "fada73f697150e20b91a9daaed0c3eb3e10b3160",
+  "theirs": "c173d6dfca14c23dfcdeeb48bced3fdc541849ee"
+ },
+ "src/Core/meson.build": {
+  "base": "5530ea9fad148a8261f467b816495c2e253ae8ea",
+  "deleted": false,
+  "ours": "6b5819b67aec96c31940096bc143679e130022d2",
+  "theirs": "f1fdae27a356e2aa14345f07fec072e7fdeb9220"
+ },
+ "src/SDL/MyOpenGLView+Input.cpp": {
+  "base": "d929115ae51392f9f1d414fd29617c315497a5f5",
+  "deleted": false,
+  "ours": "9109842ff8577e21537e9fcd75c7f1f5e4bcd884",
+  "theirs": "4be81b3031173de38e0fda08fc5e65aee6db76e0"
+ },
+ "src/SDL/MyOpenGLView.cpp": {
+  "base": "9060b8d220fecc8cc51469c230bbb4b77671ab26",
+  "deleted": false,
+  "ours": "ffef5d2fcc53d1f4403cebd1e7f5b603d2d6ade4",
+  "theirs": "54c53f2e186fc28c684e3841c0aaa132079a6016"
+ },
+ "src/meson/meson.build": {
+  "base": "6445b105d979ae0a283b48becf4a641955412c52",
+  "deleted": false,
+  "ours": "f58f0a19954f9f61c079df870c02138d927df978",
+  "theirs": "7532ad5e59d22c45507841b78a0e9dcd03ecca34"
+ }
+}
