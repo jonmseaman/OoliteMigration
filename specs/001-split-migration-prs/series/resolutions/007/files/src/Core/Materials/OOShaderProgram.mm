@@ -77,6 +77,8 @@ std::string StringOrNull(const std::optional<std::string>& string)
 
 OOShaderProgram* sActiveProgram = nil;
 
+OOShaderProgram* sActiveProgram = nil;
+
 BOOL GetShaderSource(const std::optional<std::string>& fileName, const std::string& shaderType, std::optional<std::string>* outResult);
 std::string GetGLSLInfoLog(GLhandleARB shaderObject);
 

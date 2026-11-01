@@ -988,4 +988,3 @@ static void SetUpSparkle(void)
 }
 
 #endif
-

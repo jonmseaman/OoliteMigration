@@ -400,6 +400,14 @@ def record_resolution(repo, base, ours, theirs, res_dir, path, content):
         with open(target, "wb") as f:
             f.write(content)
     os.makedirs(res_dir, exist_ok=True)
-    with open(os.path.join(res_dir, "index.json"), "w", encoding="utf-8", newline="\n") as f:
-        json.dump(index, f, indent=1, sort_keys=True)
-        f.write("\n")
+    text = json.dumps(index, indent=1, sort_keys=True) + "\n"
+    for attempt in range(10):  # Windows: a scanner can hold the just-written file for a moment
+        try:
+            with open(os.path.join(res_dir, "index.json"), "w", encoding="utf-8", newline="\n") as f:
+                f.write(text)
+            break
+        except OSError:
+            if attempt == 9:
+                raise
+            import time
+            time.sleep(0.5)

@@ -163,7 +163,10 @@ def merge_inputs(m, step):
     from tools.series import history, normalise
     a = m["anchors"]
     style = a["format"]["style_file_from"]
-    snap = lambda c: normalise.normalise_tree(GAME, history.snapshot(GAME, c, a["history_prefix"]), style)
+    from tools.series import selectors
+    snap = lambda c: normalise.normalise_tree(GAME, history.snapshot(GAME, c, a["history_prefix"]), style,
+                                              transform=selectors.upstream_renames,
+                                              transform_id=selectors.TRANSFORM_VERSION)
     prev = step_by_n(m, step["n"] - 1) if step["n"] > 1 else None
     if prev is None:
         base = snap(a["history_start"])
@@ -212,13 +215,21 @@ def cmd_tree(args):
             print(f"tree {args.n}: {path} is a test file; tests are never resolved by hand (rule 1)", file=sys.stderr)
             return 1
         if args.show:
-            merged, _ = trees.merge(GAME, base, ours, theirs)
+            merged, conflicts = trees.merge(GAME, base, ours, theirs)
             os.makedirs(os.path.dirname(os.path.join(scratch, path)), exist_ok=True)
-            for name, tree in (("merged", merged), ("upstream", ours), ("history", theirs), ("base", base)):
-                r = history.git(GAME, "cat-file", "-p", f"{tree}:{path}", check=False)
-                out = os.path.join(scratch, path + (f".{name}" if name != "merged" else ""))
-                with open(out, "w", encoding="utf-8", newline="\n") as f:
-                    f.write(r.stdout + "\n" if r.returncode == 0 else "")
+            key = conflicts.get(path, {})
+            if all(key.get(k) for k in ("base", "ours", "theirs")):
+                # the file with only the hunks the automatic rules could not resolve still marked
+                lines = trees.merge_file_by_hunks(GAME, key["base"], key["ours"], key["theirs"])[0]
+                content = "".join(lines).encode("utf-8", "surrogateescape")
+            else:
+                content = trees._git(GAME, "cat-file", "-p", f"{merged}:{path}", ok=(0, 128)).stdout
+            blobs = {"": content}
+            for side, suffix in (("ours", ".upstream"), ("theirs", ".history"), ("base", ".base")):
+                blobs[suffix] = trees._git(GAME, "cat-file", "blob", key[side]).stdout if key.get(side) else b""
+            for suffix, data in blobs.items():  # raw bytes: the resolution must be byte-exact
+                with open(os.path.join(scratch, path + suffix), "wb") as f:
+                    f.write(data)
             print(os.path.join(scratch, path))
             return 0
         src = os.path.join(scratch, path)

@@ -61,7 +61,7 @@
    "parent": "series/000-upstream-base",
    "resolutions": [
     {
-     "how": "stored",
+     "how": "auto",
      "path": "src/Core/OOFoundation.h"
     }
    ],
@@ -71,7 +71,7 @@
     "to": "8af7966e7d95101c57ceea1f66b338f0abeec2a1",
     "type": "history"
    },
-   "target_tree": "f594a29f679b78b66247f722603c2fdee26f73f0",
+   "target_tree": "cd407f9726d25e0704152feca3848b0820cfb013",
    "temporaries": [],
    "title": "Add a test safety net: determinism, goldens, JS API snapshot, GUI and component tests",
    "verification": null
@@ -132,7 +132,7 @@
     "to": "7bc686c0af68d3b935bce3716a55b2e5dfbb82a4",
     "type": "history"
    },
-   "target_tree": "cbd3ed25fede24904d6b7c46a1d68fbbb7ec2313",
+   "target_tree": "df337ec949af36fcf1a0b0d8cb28592f1bc1af08",
    "temporaries": [],
    "title": "Put the game's JavaScript behind an engine façade, with a QuickJS-ng backend beside SpiderMonkey",
    "verification": null
@@ -195,7 +195,7 @@
     "to": "c9c052538370b03b976c6b5ac615490a873e6b21",
     "type": "history"
    },
-   "target_tree": "1a2988f5bdb83246582c49f11dff797ca82722f8",
+   "target_tree": "d247832bf902d87d70ea9677ec12adf490552ed5",
    "temporaries": [],
    "title": "Compile the game as Objective-C++",
    "verification": null
@@ -225,28 +225,12 @@
      "path": "src/Core/Debug/OOJSConsole.mm"
     },
     {
-     "how": "auto",
-     "path": "src/Core/OORegExpMatcher.h"
-    },
-    {
      "how": "transplant",
      "path": "src/Core/Scripting/OOJSDock.h"
     },
     {
      "how": "auto",
-     "path": "src/Core/Scripting/OOJSEngineNativeWrappers.h"
-    },
-    {
-     "how": "auto",
      "path": "src/Core/Scripting/OOJSEntity.mm"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/Scripting/OOJSEquipmentInfo.h"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/Scripting/OOJSFunction.h"
     },
     {
      "how": "transplant",
@@ -299,7 +283,7 @@
     "to": "a7e3ed1efcf202eb22d16951be73c23e3b2b264c",
     "type": "history"
    },
-   "target_tree": "e45daf9bfd567eb6c0caf292f4406259209bf5b0",
+   "target_tree": "d6fdd7fc778085383c14f46affa4935f332cfd9b",
    "temporaries": [],
    "title": "Run the game on QuickJS-ng and remove SpiderMonkey and NSPR",
    "verification": null
@@ -329,19 +313,7 @@
    "resolutions": [
     {
      "how": "auto",
-     "path": "src/Core/Debug/OOTCPStreamDecoderAbstractionLayer.mm"
-    },
-    {
-     "how": "history-deleted",
-     "path": "src/Core/NSThreadOOExtensions.mm"
-    },
-    {
-     "how": "auto",
      "path": "src/Core/OOFoundation.h"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/OORoleSet.h"
     },
     {
      "how": "auto",
@@ -362,7 +334,7 @@
     "to": "916311e66db2e9d025c763b9d028a9ff26d33ff0",
     "type": "history"
    },
-   "target_tree": "59ba55fbce1d7faeda6ac090bf4dc05ebd360c9b",
+   "target_tree": "2e32c4f8e3cd4aec60a5379f829245a80b32cf79",
    "temporaries": [],
    "title": "Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation",
    "verification": null
@@ -395,10 +367,6 @@
      "path": "src/Core/Debug/OODebugStandards.mm"
     },
     {
-     "how": "transplant",
-     "path": "src/Core/Debug/OODebugTCPConsoleClient.h"
-    },
-    {
      "how": "auto",
      "path": "src/Core/Debug/OODebugTCPConsoleClient.mm"
     },
@@ -424,22 +392,6 @@
     },
     {
      "how": "auto",
-     "path": "src/Core/OOAsyncWorkManager.h"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/OOCacheManager.h"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/OOEncodingConverter.h"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/OOGraphicsResetManager.h"
-    },
-    {
-     "how": "auto",
      "path": "src/Core/OOJoystickManager.h"
     },
     {
@@ -448,39 +400,11 @@
     },
     {
      "how": "auto",
-     "path": "src/Core/OOPriorityQueue.h"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/OOProbabilitySet.h"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/OORegExpMatcher.h"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/OOShipRegistry.h"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/OXPVerifier/OOOXPVerifier.h"
-    },
-    {
-     "how": "auto",
      "path": "src/Core/OXPVerifier/OOOXPVerifier.mm"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/Scripting/OOJSFunction.h"
     },
     {
      "how": "transplant",
      "path": "src/Core/Scripting/OOJavaScriptEngine.h"
-    },
-    {
-     "how": "transplant",
-     "path": "src/Core/Scripting/OOLegacyScriptWhitelist.mm"
     },
     {
      "how": "transplant",
@@ -497,7 +421,7 @@
     "to": "bc9a02ca7b948001da5824b9c073b42b3e24ca08",
     "type": "history"
    },
-   "target_tree": "d0ced8941c955c17efd30d3640d998c624c961db",
+   "target_tree": "1d96914057299d9fffe65cac59a1e86fde64db54",
    "temporaries": [],
    "title": "Replace oo_*ForKey dictionary accessors with typed PList::get",
    "verification": null
@@ -554,28 +478,8 @@
      "path": "src/Core/Entities/PlayerEntity.mm"
     },
     {
-     "how": "stored",
-     "path": "src/Core/Entities/ShipEntity.mm"
-    },
-    {
-     "how": "stored",
-     "path": "src/Core/Entities/SkyEntity.h"
-    },
-    {
-     "how": "stored",
+     "how": "auto",
      "path": "src/Core/Entities/SkyEntity.mm"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/GuiDisplayGen.h"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/GuiDisplayGen.mm"
-    },
-    {
-     "how": "transplant",
-     "path": "src/Core/HeadUpDisplay.mm"
     },
     {
      "how": "auto",
@@ -608,14 +512,6 @@
     {
      "how": "auto",
      "path": "src/Core/Materials/OOTexture.mm"
-    },
-    {
-     "how": "transplant",
-     "path": "src/Core/NSDataOOExtensions.mm"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/NSStringOOExtensions.mm"
     },
     {
      "how": "auto",
@@ -655,23 +551,11 @@
     },
     {
      "how": "auto",
-     "path": "src/Core/OORegExpMatcher.h"
-    },
-    {
-     "how": "auto",
      "path": "src/Core/OOSkyDrawable.mm"
     },
     {
      "how": "stored",
      "path": "src/Core/ResourceManager.mm"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/Scripting/OOJSEquipmentInfo.h"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/Scripting/OOJSFunction.h"
     },
     {
      "how": "upstream-deleted",
@@ -690,14 +574,6 @@
      "path": "src/Core/Scripting/OOJavaScriptEngine.h"
     },
     {
-     "how": "auto",
-     "path": "src/Core/Scripting/OOLegacyScriptWhitelist.mm"
-    },
-    {
-     "how": "stored",
-     "path": "src/Core/Universe.mm"
-    },
-    {
      "how": "stored",
      "path": "src/SDL/MyOpenGLView.mm"
     },
@@ -712,7 +588,7 @@
     "to": "ecfafab47981c8224790752d96f2340d6b07c833",
     "type": "history"
    },
-   "target_tree": "44c850a4abac5bc3a5e1f968b7f908915d57b742",
+   "target_tree": "c3f3f555deb6e5774e22dec015228b3f0fdaa5bb",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 1",
    "verification": null

@@ -35,9 +35,11 @@ def _version(clang_format):
     return subprocess.run([clang_format, "--version"], capture_output=True, text=True).stdout.strip()
 
 
-def normalise_tree(repo, tree, style_from, clang_format=CLANG_FORMAT, cache_path=DEFAULT_CACHE, jobs=8):
+def normalise_tree(repo, tree, style_from, clang_format=CLANG_FORMAT, cache_path=DEFAULT_CACHE, jobs=8,
+                   transform=None, transform_id=""):
+    """`transform(path, text) -> text`, if given, runs on each source file before clang-format."""
     style_blob = _git(repo, "rev-parse", f"{style_from}:.clang-format").decode().strip()
-    key_prefix = f"{_version(clang_format)}|{style_blob}|"
+    key_prefix = f"{_version(clang_format)}|{style_blob}|{transform_id}|"
     cache = {}
     if os.path.exists(cache_path):
         with open(cache_path, encoding="utf-8") as f:
@@ -67,6 +69,8 @@ def normalise_tree(repo, tree, style_from, clang_format=CLANG_FORMAT, cache_path
             if hit:
                 return mode, hit, path
             data = _git(repo, "cat-file", "blob", sha)
+            if transform is not None:
+                data = transform(path, data.decode("utf-8", "surrogateescape")).encode("utf-8", "surrogateescape")
             r = subprocess.run([clang_format, f"--style=file:{style_file}", f"--assume-filename={path}"],
                                input=data, capture_output=True)
             if r.returncode:
