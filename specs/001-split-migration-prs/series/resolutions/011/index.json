@@ -1,0 +1,62 @@
+{
+ "src/Core/Entities/Entity.mm": {
+  "base": "43c69c224b01ff690eef126ec1c137578e7b0d25",
+  "deleted": false,
+  "ours": "f78d416561675b13e0e4da62189c9ba0379ef8c6",
+  "theirs": "4ce15025aced12e7e80ec83dbc5606963bcf1fd3"
+ },
+ "src/Core/Entities/PlanetEntity.h": {
+  "base": "05aee26e4cbd106c6a7bc2f0042d62a23c94140d",
+  "deleted": true,
+  "ours": "eec37b19b17607fdb4c762ec2663e55a9d69e090",
+  "theirs": null
+ },
+ "src/Core/Entities/PlanetEntity.mm": {
+  "base": "eac456f8f7190c5e198a68fb09263f0fcdfb9e69",
+  "deleted": true,
+  "ours": "f4f8c0341334425292b29714040788714ef769e0",
+  "theirs": null
+ },
+ "src/Core/GameController.mm": {
+  "base": "a5a6b945ade3e148df7fedc468a9253022e2832e",
+  "deleted": false,
+  "ours": "b35febde6f854a279a0348e5e0752144e9b0a4c3",
+  "theirs": "6edab35a92b140bcd9c806db15b884f63a9f5cc0"
+ },
+ "src/Core/Materials/OOShaderMaterial.h": {
+  "base": "5985a1f7ee9041a0305f093a20742221d6941eea",
+  "deleted": false,
+  "ours": "ec629aec4e12c09bf74e7864b7a43ecd49909a47",
+  "theirs": "53fa68a52f4e09f0662b13decd74032262b3efaa"
+ },
+ "src/Core/Materials/OOShaderProgram.mm": {
+  "base": "2a0d1e30c9b30872ea725038869f8807679f56d7",
+  "deleted": false,
+  "ours": "38d1072b1d01a3cfecd19929571326e8e34084df",
+  "theirs": "ac15b7bbe49120775c1ad7a7146d3e6374428189"
+ },
+ "src/Core/Materials/OOTexture.h": {
+  "base": "42c7a0e8153e82c106d535a7bf69619ebcfc6512",
+  "deleted": false,
+  "ours": "73e4306084c0ca1ab0048d94b4926ba86b2a0688",
+  "theirs": "87df99261fa40033d85cf870786863b3ef588ba0"
+ },
+ "src/Core/Materials/OOTexture.mm": {
+  "base": "07c57b8ba9ef7dc6a827721229d6a356dc65a442",
+  "deleted": false,
+  "ours": "784e0527db751f46852360e5ed28da4f8537d0e1",
+  "theirs": "2c9982cbb311b24af4554bbc66fe1c66f449993e"
+ },
+ "src/Core/OOJoystickManager.h": {
+  "base": "52d256eeae0846ed3065fc4cf74073f1a4c6604d",
+  "deleted": false,
+  "ours": "dd1aa91ca11c4c7427c5b9409d15ec1820ee03b8",
+  "theirs": "46e328b1127c54b25f73d58ac3e64424129e98bc"
+ },
+ "src/Core/Scripting/OOJavaScriptEngine.h": {
+  "base": "1abe9db2227500d82db7d156052ea080932ce7d9",
+  "deleted": false,
+  "ours": "f81fade294c852a7a69a9b4c679f98ace94aeea2",
+  "theirs": "7e41f417ff837e8c57635bb2be3a4c188c0eb32e"
+ }
+}

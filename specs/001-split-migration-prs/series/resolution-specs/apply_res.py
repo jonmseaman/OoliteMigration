@@ -65,8 +65,14 @@ for path in DELETE:
         trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path, None)
 # WHOLE = {path: "theirs" | "ours"}: record that side's whole file (an extra if not a conflict path)
 for path, side in ns.get("WHOLE", {}).items():
-    tree_side = {"theirs": t, "ours": o}[side]
+    fn = side if callable(side) else None
+    tree_side = {"theirs": t, "ours": o}["theirs" if fn else side]
     data = trees._git(S.GAME, "cat-file", "-p", f"{tree_side}:{path}").stdout
-    print(f"{path}: whole file from {side}")
+    if fn:
+        new = fn(data.decode("utf-8", "surrogateescape")).encode("utf-8", "surrogateescape")
+        if new == data:
+            raise SystemExit(f"{path}: the whole-file function changed nothing")
+        data = new
+    print(f"{path}: whole file from {'theirs (edited)' if fn else side}")
     if not dry:
         trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path, data)
