@@ -44,7 +44,7 @@
  "src/Core/Entities/ShipEntity.mm": {
   "base": "42ce75d0233352b55a47c43a62e4b4b6dd1e5586",
   "deleted": false,
-  "ours": "5d283e1cbc9fa0029c5782ea0d5ffece9db7087c",
+  "ours": "18b38bbde256417a5eee414c5dabebeb66d83bde",
   "theirs": "c7ba67d20a4d907b2f0446f4d95ce0a2d47c6ac1"
  },
  "src/Core/OOOXZManager.mm": {
@@ -76,6 +76,12 @@
   "deleted": false,
   "ours": "02013a60e094be930095eb6fc8f1622d6669afa4",
   "theirs": "96d58a857d32454f9440f99968015830ff9b0772"
+ },
+ "src/SDL/main.mm": {
+  "base": "d0e72e55c0c03c011a5fff16eac24ec996b2b4af",
+  "deleted": false,
+  "ours": "33e0f1d1ba563a3f9a29390ff1407040484f4c47",
+  "theirs": "1d0a9795b5db6a11f82083e5132fe456088abb54"
  },
  "src/meson.build": {
   "base": "69caf31b4a6cc45ce171c9873f58fe724e7cab79",

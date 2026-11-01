@@ -43,3 +43,12 @@ POST["src/Core/Entities/ShipEntity.mm"] = [
     ("\n    ::Entity* my_entities[ent_count];\n", "\n    std::vector<::Entity*> my_entities(ent_count);\n"),
     ("\n    ::ShipEntity* my_entities[ent_count];\n", "\n    std::vector<::ShipEntity*> my_entities(ent_count);\n"),
 ]
+
+
+# step 5's C++20 enum/float casts re-applied to the history's slice form of these lines
+def _enum_cast(ours, theirs):
+    assert theirs.count(" * UNIVERSE_MAX_ENTITIES") == 1
+    return theirs.replace(" * UNIVERSE_MAX_ENTITIES", " * static_cast<double>(UNIVERSE_MAX_ENTITIES)")
+
+
+RES["src/Core/Entities/ShipEntity.mm"] = ["theirs", _enum_cast, _enum_cast, "theirs", "theirs", "theirs"]

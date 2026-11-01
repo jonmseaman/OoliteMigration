@@ -186,3 +186,23 @@ game repo only gets local branches.
     says to sample rows by hand. Default: no generator is added to the series.
   - From step 4 the build fetches QuickJS-ng through `subprojects/quickjs-ng.wrap` (network at
     configure time); described, not changed.
+- T023 (2026-11-01), decisions taken while verifying:
+  - Clang 23 warns about constructs the history built past with an older compiler (variable-length
+    arrays in C++, C++20 enum/float arithmetic, set-but-unused globals, string literals as `char*`).
+    FR-003 asks for none and rule 2 forbids silencing, so each step gets the fix in the form the
+    history itself reaches later, carried forward by the merges. Kept upstream bugs stay kept (the
+    HDR brightness not-found branch that never runs: the comparison is made explicit, as the history
+    does).
+  - The normaliser N sorts includes (upstream's .clang-format) in `.m`/`.mm` files too, which upstream's
+    CI does not check. Where an include depends on order (OOJSShipGroup.h at step 4, main.mm at step 5)
+    the order is restored by a stored resolution, the needed header in a block of its own. N itself is
+    unchanged: changing it would invalidate every stored resolution.
+  - Build fixes the history made later are brought forward where an earlier step first needs them:
+    `ar = 'llvm-ar'` in clang.ini (LTO archives, step 4), llvm-tools in the Windows dependency script,
+    the Windows threads override for QuickJS-ng, a 0.16.2 wrap patch for its void-return warnings
+    (develop has the 0.17.0 one).
+  - The automatic merge's "upstream deleted the block" rule now conflicts instead of dropping a line
+    the history adds inside or at the edge of the block (a reorder reads as a deletion). Every
+    remaining use of the rule was checked.
+  - The isolated MSYS2 gained `mingw-w64-ucrt-x86_64-llvm-tools` (llvm-ar), as the history's
+    dependency script installs.

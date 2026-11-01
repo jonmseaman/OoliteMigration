@@ -537,13 +537,29 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "0cd283d4583f2d4cb3069050a332bfca92a3db38",
+   "merge_tree": "01eb31970882f99a4d8be03a662430e5ba694d2b",
    "n": 5,
    "parent": "series/004-quickjs-switch",
    "resolutions": [
     {
+     "how": "stored",
+     "path": "src/Core/Entities/OOParticleSystem.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/ShipEntity.mm"
+    },
+    {
      "how": "auto",
      "path": "src/Core/OOFoundation.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOJoystickManager.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOMesh.mm"
     },
     {
      "how": "stored",
@@ -558,7 +574,7 @@
      "path": "src/SDL/MyOpenGLView.mm"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/SDL/main.mm"
     }
    ],
@@ -573,7 +589,7 @@
     "to": "916311e66db2e9d025c763b9d028a9ff26d33ff0",
     "type": "history"
    },
-   "target_tree": "0cd283d4583f2d4cb3069050a332bfca92a3db38",
+   "target_tree": "01eb31970882f99a4d8be03a662430e5ba694d2b",
    "temporaries": [],
    "title": "Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation",
    "verification": null
@@ -594,7 +610,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "65bd64c907ea4a54e9e7c500da6ce93944223a10",
+   "merge_tree": "51eac01a1f6d28db8b2f9724c1320045206466dc",
    "n": 6,
    "parent": "series/005-oofnd-core",
    "resolutions": [
@@ -662,7 +678,7 @@
     "to": "bc9a02ca7b948001da5824b9c073b42b3e24ca08",
     "type": "history"
    },
-   "target_tree": "65bd64c907ea4a54e9e7c500da6ce93944223a10",
+   "target_tree": "51eac01a1f6d28db8b2f9724c1320045206466dc",
    "temporaries": [],
    "title": "Move most oo_*ForKey dictionary accessors to typed PListView::get",
    "verification": null
@@ -683,7 +699,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "ca542e0f324227aa40f0da6576af5c1b5951b00d",
+   "merge_tree": "93ae9b37027d4efd08e5268f49bfb66b188f1575",
    "n": 7,
    "parent": "series/006-typed-accessors",
    "resolutions": [
@@ -847,7 +863,7 @@
     "to": "ecfafab47981c8224790752d96f2340d6b07c833",
     "type": "history"
    },
-   "target_tree": "ca542e0f324227aa40f0da6576af5c1b5951b00d",
+   "target_tree": "93ae9b37027d4efd08e5268f49bfb66b188f1575",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 1",
    "verification": null
@@ -869,7 +885,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "ddb97ac0e498988cf7247f96ce2dd7a8f22ea5b1",
+   "merge_tree": "34c56204f8cddd8cfd9c7b596fda928b67174788",
    "n": 8,
    "parent": "series/007-foundation-wave-1",
    "resolutions": [
@@ -1054,7 +1070,7 @@
      "path": "src/SDL/MyOpenGLView.mm"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/SDL/main.mm"
     },
     {
@@ -1077,7 +1093,7 @@
     "to": "fa9cbc6c24fec4d77881a47e47e7b2591ece94d4",
     "type": "history"
    },
-   "target_tree": "b2c862e3467df144a31639f6f791db32ec182d78",
+   "target_tree": "d2f74cc049a65a945564f2de472d72571b81b198",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 2",
    "verification": null
@@ -1099,7 +1115,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "d20e793f11b4b45c76cf2ba4a094dbb0fae47268",
+   "merge_tree": "40843403118cd8c68c08da540cfcfb4468526953",
    "n": 9,
    "parent": "series/008-foundation-wave-2",
    "resolutions": [
@@ -1267,7 +1283,7 @@
     "to": "e0b9e24b22ab4f7373ccf71dbf4d58ac5553c4be",
     "type": "history"
    },
-   "target_tree": "c9bdd481641d9e86b6bd8a5ac5bf891a44812cb7",
+   "target_tree": "e861a19aca2f68ca21728e6277add4a35d723724",
    "temporaries": [],
    "title": "Retire the remaining Foundation selectors and their bridge callers",
    "verification": null
@@ -1291,7 +1307,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "dede78812b2e729e2aac0be403e94c269f03e576",
+   "merge_tree": "460de5cf66999f23f270911f71211107a955142b",
    "n": 10,
    "parent": "series/009-selector-families",
    "resolutions": [
@@ -1407,7 +1423,7 @@
     "to": "67027c84d11fe03fcf208697938023d05d13f63c",
     "type": "history"
    },
-   "target_tree": "c909a5943c3ff5dc344f9d911e5817b12c35499e",
+   "target_tree": "90dd834e1d2aa9b365351977172852941fdf6483",
    "temporaries": [],
    "title": "Drop gnustep-base, then convert the first classes to C++: maths, leaf utilities, OXP verifier",
    "verification": null
@@ -1431,7 +1447,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "7f788b3ba246fd7c6d2c7aeedde20859fbb42a29",
+   "merge_tree": "919e8ea4aaa9d5fbaad134399e57266c5db6ef20",
    "n": 11,
    "parent": "series/010-leaf-conversions",
    "resolutions": [
@@ -1556,6 +1572,10 @@
      "path": "src/Core/OODrawable.mm"
     },
     {
+     "how": "auto",
+     "path": "src/Core/OOJoystickManager.mm"
+    },
+    {
      "how": "transplant",
      "path": "src/Core/OOPlanetDrawable.mm"
     },
@@ -1595,7 +1615,7 @@
     "to": "ab5dc6cd728a5b26951c588d3d6e0ef99049009c",
     "type": "history"
    },
-   "target_tree": "462ffa6af5e9ff54a761fd3fff5da49d4f886b56",
+   "target_tree": "a731f96cea643ba0d15d95551a7ae65988cdbdba",
    "temporaries": [],
    "title": "Convert scripting, entities, audio and materials classes to C++",
    "verification": null
@@ -1618,7 +1638,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "2dc10669c4ab2b9356ac1e23c4024d3a6c5ba7b9",
+   "merge_tree": "351529fd4d60f96158cba17eee421dfa0a9282cb",
    "n": 12,
    "parent": "series/011-module-conversions",
    "resolutions": [
@@ -1694,7 +1714,7 @@
     "to": "0c01939de79a4ac04237390d93dc78437057c5e0",
     "type": "history"
    },
-   "target_tree": "e97c5f6ac2b5ba73411224e99693da4cc679e8e3",
+   "target_tree": "b54567688469b3544543ebcc39dd727043690d6d",
    "temporaries": [],
    "title": "Convert the large files in slices; delete the first Objective-C facades",
    "verification": null
@@ -1715,7 +1735,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "f813ca3fb2946b3dd23d309c3cf8304b6081a93a",
+   "merge_tree": "e66166767f321cf9ecabb368dc8038ebc8139ec6",
    "n": 13,
    "parent": "series/012-first-slices",
    "resolutions": [
@@ -1767,7 +1787,7 @@
     "to": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
     "type": "history"
    },
-   "target_tree": "92353d3d012ea90e7a2b7209026edd458ecd2d78",
+   "target_tree": "6e4f6876ce42a1f14515b11a50255e5dee3afac8",
    "temporaries": [],
    "title": "Convert ShipEntity to C++",
    "verification": null
@@ -1789,7 +1809,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "d83ea9e18bcb1333576ee9fcbf19c9eb0ead4044",
+   "merge_tree": "df8a09ac65fff6a2921fc9bea16bb22a42422b4d",
    "n": 14,
    "parent": "series/013-shipentity-slices",
    "resolutions": [
@@ -1833,7 +1853,7 @@
     "to": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
     "type": "history"
    },
-   "target_tree": "972685d23bdfb40d95b2c3a789e663d16b89938b",
+   "target_tree": "0512b8173722b3d4238e7efc2f9aba1f5c2683ea",
    "temporaries": [],
    "title": "Convert Universe and PlayerEntity to C++",
    "verification": null
@@ -1854,7 +1874,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "9e383709ab837a9bca7e8123d6b88d23d35481b1",
+   "merge_tree": "e886de29c7ecccbb2e402a65ae774230c8092ca0",
    "n": 15,
    "parent": "series/014-universe-player-slices",
    "resolutions": [
@@ -1946,7 +1966,7 @@
     "to": "2c2aae1316b5a125038a797c213162ffba389279",
     "type": "history"
    },
-   "target_tree": "73e137b9cd30878cf1eed107fc0ad71c91ecabd0",
+   "target_tree": "bab8a571072f2a7f094bc65c90317ee7b7845845",
    "temporaries": [],
    "title": "Delete the Objective-C facades",
    "verification": null

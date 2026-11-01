@@ -46,3 +46,5 @@ RES["src/Core/Universe.mm"] = ["theirs"] * 6
 RES["src/Core/Scripting/OOJSEngineTimeManagement.mm"] = ["theirs"]
 # the history re-lists texture includes that the series already has lower down (its block once sorted)
 RES["src/Core/Materials/OOConcreteTexture.mm"] = ["ours"]
+# the history adds the same enum/float casts here (step 5 had them first) and converts the arrays
+RES["src/Core/Entities/ShipEntity.mm"] = ["theirs"] * 4

@@ -1,4 +1,24 @@
 {
+ "src/Core/Entities/OOParticleSystem.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "11b00f85c77d9d0e4781636b38202063f9437409"
+ },
+ "src/Core/Entities/ShipEntity.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "9321d3d8915e1158eac2d0253313015d1c223f99"
+ },
+ "src/Core/OOJoystickManager.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "ac1708c0e261b28876ca62cbac27704e2e44f3dc"
+ },
+ "src/Core/OOMesh.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "c1453d2e9946bd92d03efcc2a625551b4db49ce3"
+ },
  "src/Core/OOStringParsing.mm": {
   "base": "2bf22b86ed7b07b0d80c5161313f66ce8de214b0",
   "deleted": false,
@@ -10,5 +30,11 @@
   "deleted": false,
   "ours": "84d7193bf5b4266598c918ab341c8a3624d138d2",
   "theirs": "9e9f6c9310686f5fa1fa9d941c499b3ec5207098"
+ },
+ "src/SDL/main.mm": {
+  "base": "4c91dcad23cf9fd61ce2dc8b83ac228a69624b09",
+  "deleted": false,
+  "ours": "b5c895f717140a56d13e61d48ddb78cc27b26095",
+  "theirs": "35a153c9f071237f766790f24fb10ec88004e2a2"
  }
 }

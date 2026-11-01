@@ -8554,7 +8554,7 @@ void ShipEntity::becomeExplosion()
                 [UNIVERSE addEntity:oo::NewEntityFacade(ring)];
             }
 
-            BOOL add_debris = (UNIVERSE->_cxxUniverse->n_entities < 0.95 * UNIVERSE_MAX_ENTITIES) && ([UNIVERSE getTimeDelta] < 0.125); // FPS > 8
+            BOOL add_debris = (UNIVERSE->_cxxUniverse->n_entities < 0.95 * static_cast<double>(UNIVERSE_MAX_ENTITIES)) && ([UNIVERSE getTimeDelta] < 0.125); // FPS > 8
 
             // There are several parts to explosions, show only the main
             // explosion effect if UNIVERSE is almost full.
@@ -8660,7 +8660,7 @@ void ShipEntity::becomeExplosion()
                 if ((n_alloys && canFragment) || canReleaseSubWreckage) {
                     NSUInteger n_wreckage = 0;
 
-                    if (UNIVERSE->_cxxUniverse->n_entities < 0.50 * UNIVERSE_MAX_ENTITIES) {
+                    if (UNIVERSE->_cxxUniverse->n_entities < 0.50 * static_cast<double>(UNIVERSE_MAX_ENTITIES)) {
                         // Create wreckage only when UNIVERSE is less than half full.
                         // (condition set in r906 - was < 0.75 before) --Kaks 2011.10.17
                         NSUInteger maxWrecks = 3;

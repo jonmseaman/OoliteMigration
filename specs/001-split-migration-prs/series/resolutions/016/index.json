@@ -14,7 +14,7 @@
  "src/Core/Entities/ShipEntity.mm": {
   "base": "ad605c9a9e5d78998f187d715da5f0b06153bef5",
   "deleted": false,
-  "ours": "38e9f420cf13d7535d566ec36117255be3a0389c",
+  "ours": "7ec7bc226107836a1a75358968eac6cbb6f0c739",
   "theirs": "ad368b9efa6468c05fcb32b808c7eebb53f3c98a"
  },
  "src/Core/Materials/OOConcreteTexture.mm": {

@@ -8003,7 +8003,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
                 [UNIVERSE addEntity:oo::NewEntityFacade(ring)];
             }
 
-            BOOL add_debris = (UNIVERSE->n_entities < 0.95 * UNIVERSE_MAX_ENTITIES) && ([UNIVERSE getTimeDelta] < 0.125); // FPS > 8
+            BOOL add_debris = (UNIVERSE->n_entities < 0.95 * static_cast<double>(UNIVERSE_MAX_ENTITIES)) && ([UNIVERSE getTimeDelta] < 0.125); // FPS > 8
 
             // There are several parts to explosions, show only the main
             // explosion effect if UNIVERSE is almost full.
@@ -8109,7 +8109,7 @@ OOComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
                 if ((n_alloys && _cxxShip->canFragment) || canReleaseSubWreckage) {
                     NSUInteger n_wreckage = 0;
 
-                    if (UNIVERSE->n_entities < 0.50 * UNIVERSE_MAX_ENTITIES) {
+                    if (UNIVERSE->n_entities < 0.50 * static_cast<double>(UNIVERSE_MAX_ENTITIES)) {
                         // Create wreckage only when UNIVERSE is less than half full.
                         // (condition set in r906 - was < 0.75 before) --Kaks 2011.10.17
                         NSUInteger maxWrecks = 3;

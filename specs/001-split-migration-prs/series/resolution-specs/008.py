@@ -80,3 +80,6 @@ def _threads_008(ours, theirs):
 
 
 RES["src/meson.build"] = [_threads_008]
+# main.mm: the history drops the runtime and NSDate imports from the head (the game headers come first
+# now); upstream's guard (#766) stays
+RES["src/SDL/main.mm"] = ["#if defined(GNUSTEP_BASE_LIBRARY) || defined(OOLITE_SDL_MAC)\n"]
