@@ -19,12 +19,12 @@ UCRT64 (`tools/series` invokes `C:/Users/jon/scoop/apps/msys2/current/usr/bin/ba
 
 ```bash
 python tools/series/series.py inventory          # writes series/inventory.tsv
-python tools/series/series.py cut --limit 3000   # writes planned steps to manifest.json
+python tools/series/series.py cut --chapters     # writes R14's 25 steps to manifest.json
 python tools/series/series.py check              # exit 1 until steps are built
 ```
 
-Expected: the manifest lists the steps with sizes, and nothing over 3,000 counted lines has no
-`oversize_reason`.
+Expected: 25 planned steps (001–019 history chapters, 020–025 the `develop` tail), each with its
+chapter, history range and measured size.
 
 ## 2. Build the stack
 

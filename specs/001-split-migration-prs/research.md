@@ -98,8 +98,7 @@ Measured on 2026-11-01. Commit ids are OoliteMigration's for the history and `oo
 
 ### R6. Cutting the history into steps
 
-*Superseded in part by R13: cuts are made at chapter boundaries first. The size rule below applies
-only inside a chapter.*
+*Superseded by R14: one PR per chapter, with no size rule. Kept for the record of the options.*
 
 - **Decision:** Walk the first-parent history in order and cut greedily. Each step's **counted**
   size is the normalised diff from the previous cut, without vendored paths (`subprojects/`),
@@ -221,7 +220,7 @@ bridges, which is redoing the migration.
 | Conflict work | R4 only | R4 only | low (taken from the final tree) | R4 only |
 | Fidelity to how it was done | high | high | none | high |
 
-**Decision: D.** Cut first at chapter boundaries: the first-parent position closest to each
+**Decision (first draft): D. Superseded on 2026-11-01: Jon chose B; see R14.** Cut first at chapter boundaries: the first-parent position closest to each
 work-item transition listed below. The range stays contiguous, so no reordering, and every cut is a
 historical snapshot. Inside a chapter, split at merge boundaries with the R6 size rule. Allowed
 reordering is limited to (1) hoisting independent fixes (R7) and (2) the P0 test-tier additions,
@@ -293,3 +292,57 @@ Reviewed size ranges from 2k to 79k; the median is about 20k. The largest are 11
 unit tests) and 15 (78k plus 22k of deleted facade files), then 8 (51k), 16 (48k), 10 (46k) and 12
 (39k). Normalising does not undo the Google reformat (include regrouping and comment reflow are not
 reversible), so T1 stays a mechanical PR.
+
+### R14. Decision: option B, one PR per chapter (Jon, 2026-11-01)
+
+The series is the 19 history chapters below, then the `develop` tail. History commits are
+OoliteMigration's; "first..last" are first-parent merges under `upstream/oolite/`. A step's target
+tree is the snapshot at **last** (R1), carried onto the base (R3, R4). The only reordering is R7:
+fixes that upstream can take alone (for example `OO_RANDOM_SEED`, the iteration-order fixes, and
+bug fixes the tests found) are hoisted out of their chapters into separate `independent` PRs ahead
+of the first chapter (FR-008). Step numbers below are therefore provisional; `renumber` assigns
+the final ones once the hoisted PRs are known. The series is 25 PRs plus the hoisted ones.
+
+| Step | Chapter | first..last | Dates | Merges |
+|---:|---|---|---|---:|
+| 001 | P0 safety net: determinism, `OO_RANDOM_SEED`, goldens, JS API snapshot, GUI and component tiers | `7555b5d425`..`8af7966e7d` | 09-11..09-18 | 41 |
+| 002 | P1 the `ooscript` façade; call sites retargeted; QuickJS-ng backend beside SpiderMonkey | `3ca73e5a13`..`7bc686c0af` | 09-19..09-22 | 55 |
+| 003 | P2 `.m` → `.mm`: the build becomes Objective-C++ (mechanical, one commit) | `c9c0525383` | 09-22 | 1 |
+| 004 | P1 the game on QuickJS-ng; SpiderMonkey and NSPR deleted | `3b6aec8c6f`..`a7e3ed1efc` | 09-22 | 6 |
+| 005 | P2 `oofnd` core (`Expected`, `Ref`, `FileSystem`, `PList`, `Defaults`) and the Objective-C floor | `e31130fa0d`..`916311e66d` | 09-23 | 19 |
+| 006 | P2 typed accessors: `oo_*ForKey` retired for `PList::get` | `b73f2cd400`..`bc9a02ca7b` | 09-23 | 108 |
+| 007 | P2 Foundation → `oofnd`, wave 1 (per file) | `931bee60e9`..`ecfafab479` | 09-23 | 210 |
+| 008 | P2 Foundation → `oofnd`, wave 2 (sweeps; OOLog, NSAssert, NSUserDefaults gaps) | `5faa477a34`..`fa9cbc6c24` | 09-23..09-27 | 240 |
+| 009 | P2 selector families, last bridge callers; gnustep-base gone | `b75b5d1bc6`..`e0b9e24b22` | 09-27..09-29 | 199 |
+| 010 | P3 C-only files to `.c`; leaf, oomath and OXPVerifier conversions | `66914fbbed`..`67027c84d1` | 09-29..09-30 | 61 |
+| 011 | P3 Scripting, Entities, audio and Materials conversions | `1964f76209`..`ab5dc6cd72` | 09-30..10-05 | 120 |
+| 012 | P3 slice plans, first slices and first facade deletions | `ad82bd1efe`..`0c01939de7` | 10-05..10-06 | 80 |
+| 013 | P3 `ShipEntity` slices | `477a4919bc`..`9a7a14fe2b` | 10-06..10-07 | 60 |
+| 014 | P3 `Universe` and `PlayerEntity` slices | `4b272b165e`..`33abe86219` | 10-07 | 40 |
+| 015 | P3 facade-deletion batches | `d01d45e47c`..`2c2aae1316` | 10-07..10-10 | 51 |
+| 016 | P3 the root `Entity` facade | `d012b77f21`..`473facf469` | 10-10..10-18 | 70 |
+| 017 | P4 deferred release, Objective-C runtime out, `.mm` → `.cpp` | `1248d43e1b`..`af1f220542` | 10-18..10-21 | 32 |
+| 018 | P4 the GCC build | `5fda5e404c`..`903e52cbdd` | 10-21 | 3 |
+| 019 | Upstream `9ee8ff22f` (#369…#765) ported into the C++ code | `883d339f93`..`6504faa3b9` | 10-25..10-27 | 4 |
+
+The `develop` tail is fork commits after the squash, in `oolite-dev`. Its commits interleave
+content and formatting, so the tail is grouped by purpose. The reformat goes **last**, so every
+content step reads in upstream's style:
+
+| Step | Purpose | `develop` commits |
+|---:|---|---|
+| 020 | Small fixes and the squash gap | 6 files of `935aedb20` vs `6504faa3b9`; `5346a1800`, `66567dc26`, `736572b67`, `c971f1641`, `ec2462f6f` |
+| 021 | Source hygiene: comments explain code; `#pragma once` | `2ceced1f8`, `c9c225c78`, `0b49abd31` |
+| 022 | C sources as C++: `bool`, `nullptr`; QuickJS-ng upgrade | `448aa6d20`, `6e1654a6b` |
+| 023 | Upstream `49a5eb9fc` merged and #766, #774, #781 ported (the base already has upstream's side) | `7912222ed` (its resolution only), `f80c74210`, `a1e2ce889`, `ac193cfe7` |
+| 024 | Tests and tooling: component tests from `origin/master`, test script, editor setup, `mk.sh format` | `51d05af43`, `517abcfcd`, `119e29325`, `70c176921`, `4ef61a09d`, `35d0ef8a0` (`.zed/`, `.vscode/` and the `3aa8d65e8` CI filter excluded) |
+| 025 | Google-style clang-format (mechanical): `.clang-format` and `clang-format -i` with version 22 | `13eb19ee7`, `266118a39`, `21c3048a2`; tree = `3aa8d65e8` minus exclusions |
+
+Tail trees 020–024 are `develop` snapshots normalised back to upstream's style (R3), with each
+group's commits applied. Step 025's tree is exactly `develop` outside the exclusions (FR-002).
+Header include order matters less since `736572b67` made headers self-contained, so a tree in
+upstream style should still build. Verification decides. If one doesn't, that group merges into
+025, and the manifest says so.
+
+Step 025 asks upstream to change its style. Its description says it is optional and that every
+step before it already passes upstream's own clang-format check.

@@ -12,8 +12,8 @@ an ordered Git Town stack of one-commit PR branches that a maintainer can merge 
 steps come from this repo's own iterative history: 1,935 commits under `upstream/oolite/`, from
 2026-09-05 to 10-27. Each step is a **target tree**: the history snapshot at a cut point, with
 formatting normalised by clang-format 22, carried onto upstream by a 3-way merge
-(research R1–R4), cut at phase and work-item boundaries ("chapters", R13) and split by size
-only inside a chapter. A small stdlib Python tool (`tools/series/series.py`) plans cuts, builds the
+(research R1–R4), cut into one PR per phase work-item chapter (option B, research R14): 19 history chapters plus
+6 `develop`-tail steps, 25 PRs. A small stdlib Python tool (`tools/series/series.py`) plans cuts, builds the
 branches, verifies each one in order for its era (R5, R9), writes the PR descriptions, and checks
 the manifest, branches and Git Town lineage against each other. Jon pushes and opens the PRs.
 
@@ -43,7 +43,7 @@ upstream CI (G0)
 **Constraints**: never push, sync or propose; never touch `develop`, `master` or `main`; never edit a
 test; scratch only under `.agent-tmp/`; GUI and smoke tests run one at a time
 
-**Scale/Scope**: 1,935 history commits → ~20–25 chapters, ~60–120 steps (R13); about 30 files with real conflicts
+**Scale/Scope**: 1,935 history commits → 19 chapters + 6 tail steps = 25 PRs (R14), 2k–79k reviewed lines each; about 30 files with real conflicts
 between upstream and the migration (R4)
 
 ## Constitution Check
@@ -115,8 +115,8 @@ game repo only gets local branches.
   `cxx`-era steps can be verified locally. Fallback: CI on the fork after Jon pushes.
 - **G1, tool:** `series.py` unit tests pass on fixture repos (inventory, normalise, merge,
   build, lineage, check, renumber).
-- **G2, plan of cuts:** `inventory` and `cut` run on the real history; step count, oversize list
-  and hoist candidates are written to the notes below.
+- **G2, chapters:** `inventory` and `cut --chapters` write R14's 25 steps into the manifest; the
+  boundary snapshots are confirmed and the hoist candidates in chapter 1 are listed in the notes below.
 - **G3, build:** every step is `built`; `check` passes (lineage, trees, ledger, descriptions).
 - **G4, verify:** `check --verified` passes; the last step equals `develop` outside exclusions.
 - **G5, re-anchor (when Jon asks):** rebuild on upstream's tip (R12).
@@ -127,7 +127,7 @@ game repo only gets local branches.
 |---|---|---|
 | Rule 6 interpreted, not applied literally, to intermediate steps | The series base is upstream, which uses GNUstep and SpiderMonkey; the migration removes them step by step | Removing them in step 1 is the one-big-PR the feature exists to avoid |
 | A second MSYS2 install under `.agent-tmp/` | The installed GNUstep headers fail with Clang 23 even on upstream's own base; upstream CI uses newer packages | Upgrading Jon's MSYS2 changes his working toolchain (`pacman -Syu`) without his say |
-| A custom tool instead of plain git commands | ~150 steps × (normalise, merge, resolutions, lineage, verify) must be repeatable when upstream moves (R12) | Hand-made branches can't be rebuilt or checked |
+| A custom tool instead of plain git commands | 25 steps × (normalise, merge, resolutions, lineage, verify) must be repeatable when upstream moves (R12) | Hand-made branches can't be rebuilt or checked |
 
 ## Notes (decisions and state that outlive the session)
 
@@ -136,7 +136,8 @@ game repo only gets local branches.
 - 2026-11-01: Lineage via `git town append`, branches `series/NNN-slug` (Jon). Three digits because
   the step count may exceed 99.
 - 2026-11-01: FR-003 amended (R5): GCC is required only from steps whose parent builds with GCC.
-- 2026-11-01: Size counting excludes pure renames and whole-file deletions (R6).
+- 2026-11-01: **Option B** (Jon): one PR per chapter, with no line limit; chapters and tail pinned in R14.
+  This supersedes the 3,000-line rule (R6) and option D (R13).
 - 2026-11-01: The base stays `49a5eb9fc` while building; re-anchor on upstream's tip (`7437f22a5`
   today) is a separate, final gate (R12).
 - 2026-11-01: Default exclusions: `.zed/`, `.vscode/`, the fork-only CI branch filter (R10).
@@ -145,5 +146,5 @@ game repo only gets local branches.
 - 2026-11-01: Cuts follow phases and work items first ("chapters"), size second (research R13,
   option D), after Jon asked for a logical split. A history-free split was rejected: 75% of `src`
   is one include cycle, so it would need a ~210k-line flip PR.
-- To fill at G2: step count, number of oversize steps (target ≤ 10% of hand-written), hoisted
-  fixes.
+- To fill at G2: boundary moves (if a snapshot doesn't build), hoisted fixes in chapter 1, and
+  whether the tail groups 020–024 build in upstream style (else they fold into 025).

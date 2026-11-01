@@ -33,24 +33,25 @@ accept one at a time, and that together arrive at the same game as `develop`.
 ### User Story 1 - A maintainer reviews the migration one step at a time (Priority: P1)
 
 An Oolite maintainer opens the first PR of the series. It is based on upstream `master`, explains
-in its description what it changes and why, and is small or mechanical enough to review in one
-sitting. They accept it (or ask for changes) without having to look at any later PR. Then they
-move to the next.
+in its description what it changes and why, and is one chapter of the migration: one phase work
+item from the phase plan, or a wave of them. They accept it (or ask for changes) without having to
+look at any later PR. Then they move to the next.
 
 **Why this priority**: This is the whole point. Without it the migration does not go upstream.
 
 **Independent Test**: Take the series manifest; for each PR in order, check out its branch and
 confirm it is based on its predecessor (the first on upstream `master`), that `git town`
-records the same parent, that its size is within
-the limit for its kind, and that its description has the required sections.
+records the same parent, that its tree is its chapter's boundary snapshot, and that its
+description has the required sections.
 
 **Acceptance Scenarios**:
 
 1. **Given** the series is prepared, **When** a reviewer opens PR *n*, **Then** its base is PR
    *n−1* (PR 1's base is upstream `master` at the recorded commit) and its diff contains only that
    step's change.
-2. **Given** a PR whose change is hand-written, **When** its diff is measured, **Then** it is within
-   the hand-written size limit (FR-006).
+2. **Given** a PR whose change is hand-written, **When** the reviewer reads its description,
+   **Then** it names its phase and work items, its history range, its size, and where to start
+   reading (FR-006).
 3. **Given** a PR whose change is mechanical (a reformat, a rename sweep, a vendored library, a
    generated file), **When** the reviewer reads its description, **Then** it names the command that
    reproduces the change, and running that command on the predecessor reproduces the diff exactly.
@@ -143,9 +144,9 @@ listed branch and file exists and the bases chain correctly.
 
 ### Edge Cases
 
-- **A step cannot be made to build on its own** (for example, two classes that only compile
-  together): the two belong in one PR. If the merged PR then exceeds the size limit, it is allowed
-  to, and the manifest says why.
+- **A chapter boundary snapshot does not build** on the series base: the boundary moves to the
+  nearest later merge whose snapshot does, and the manifest records the move. Boundaries never
+  move backwards past a work item's last merge.
 - **The intermediate state needs code the final tree does not have** (an Objective-C/C++ bridge, a
   compatibility shim): it is allowed in the intermediate PRs and is removed by a later PR in the
   series; the manifest names the PR that adds it and the PR that removes it.
@@ -192,9 +193,12 @@ listed branch and file exists and the bases chain correctly.
   those scenarios.
 - **FR-005**: No branch MAY modify or delete an existing test in order to pass; tests are added in
   the step that makes them pass.
-- **FR-006**: A hand-written PR MUST be at most 3,000 changed lines (additions plus deletions,
-  excluding mechanical, generated and vendored files), unless the manifest records why it cannot be
-  split (see Edge Cases).
+- **FR-006**: Each history PR MUST be exactly one **chapter**: the contiguous history range that
+  holds one phase work item, or one wave of interleaved work items, from the phase plan
+  (`archive/phase-0-4-docs:docs/phases/`). It ends at a recorded boundary merge. There is no line
+  limit. The description names the chapter's phase, its work items, its history range and its
+  measured size, and gives a reading order. The chapter list is pinned in research R14. (Amended
+  2026-11-01: Jon chose option B over a 3,000-line limit.)
 - **FR-007**: A mechanical PR (reformat, rename sweep, comment sweep, vendored import, generated
   file) MUST contain only that mechanical change and MUST name a command that reproduces its diff
   exactly from its base.
@@ -213,8 +217,8 @@ listed branch and file exists and the bases chain correctly.
   description file, kind, size, and verification result with date; plus the upstream and `develop`
   commits it was built from and the exclusions list.
 - **FR-013**: A check MUST exist that exits nonzero unless every manifest entry's branch exists, the
-  bases chain as listed, sizes are within limits or justified, and the last tree matches `develop`
-  apart from exclusions.
+  bases chain as listed, each history step's tree is its chapter boundary snapshot carried onto the
+  base, and the last tree matches `develop` apart from exclusions.
 - **FR-014**: Preparing the series MUST NOT change `develop`, `master` or `main`, MUST NOT push,
   and MUST NOT open PRs; those are Jon's steps.
 - **FR-015**: Steps MUST be derived from the iterative migration history in this repo
@@ -252,10 +256,12 @@ listed branch and file exists and the bases chain correctly.
   compilers; the verification record shows it for every step.
 - **SC-002**: The last branch matches `develop` exactly outside the exclusions list (zero
   unexplained differences).
-- **SC-003**: Every hand-written PR is within the size limit or carries a recorded justification;
-  at most 10% of hand-written PRs need one.
-- **SC-004**: A reviewer can read any single hand-written PR, including its description, in under
-  an hour.
+- **SC-003**: Every history PR maps to exactly one chapter of the phase plan, and every phase work
+  item appears in exactly one PR's description.
+- **SC-004**: The series has 25 PRs (19 history chapters and 6 `develop`-tail steps), plus the
+  hoisted independent fixes. A reviewer
+  can tell from the title and first paragraph of any PR which phase and work item it is and why it
+  comes where it does.
 - **SC-005**: Every mechanical PR's diff is reproduced exactly by its stated command.
 - **SC-006**: At least the independent fixes can be offered upstream as PRs that apply to upstream
   `master` alone.
@@ -276,17 +282,19 @@ Defaults taken where the request did not say (recorded per CLAUDE.md rule 8; Jon
   is appended.
 - **The series is replayed from the iterative history in this repo** (`upstream/oolite/`, 1,940
   non-merge commits) because those commits are already small, ordered and tested, and the
-  history's end is 6 files from the squash. Commits are grouped into steps of reviewable size.
+  history's end is 6 files from the squash. Commits are grouped into chapters by phase and work
+  item.
   The fork's `origin/migration/phase-*` branches are a fallback for any range the subtree history
   lacks. `develop` stays the authority on the final tree (FR-002).
-- **Size limit** of 3,000 hand-written changed lines per PR is a default chosen for "reviewable in
-  one sitting"; mechanical PRs have no size limit because their review is "rerun the command".
+- **Granularity is the chapter, not a line count** (Jon, 2026-11-01, option B in research R13).
+  Measured sizes run from 2k to 79k reviewed lines (median about 20k). Reviewers get structure in
+  place of small diffs.
 - **Verification platform** is Windows x64 (Clang and GCC), the only platform the fork builds today.
   Linux is reported where it builds; macOS is Phase 5 and is stated as not verified.
 - **Fork-only content** (fork CI tweaks, migration-only tooling if any remains in `oolite-dev`) goes
   in the exclusions list rather than upstream; deciding each item is part of the plan.
-- **Branch naming and lineage**: `series/NNN-slug` with three digits, because the 1,940 history
-  commits could produce more than 99 steps. The stack is built with `git town append` (per Jon,
+- **Branch naming and lineage**: `series/NNN-slug` with three digits, kept although about 24 steps
+  fit in two, so names stay stable if chapters are split later. The stack is built with `git town append` (per Jon,
   2026-11-01). In `oolite-dev`, Git Town's main branch is `develop`, so the stack's root is a local
   base branch `series/000-upstream-base` at `49a5eb9fc`, made Git Town's parent of step 001.
   Pushing (`git town sync`/`propose`) stays Jon's step.

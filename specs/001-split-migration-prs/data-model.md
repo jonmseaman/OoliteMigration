@@ -29,8 +29,9 @@ One entry per PR, in series order.
 | `kind` | `independent` \| `hand-written` \| `mechanical` \| `reconcile` | see below |
 | `source` | object | where the step's target tree comes from (below) |
 | `target_tree` | git tree id | the tree the step's single commit must have; recomputed by `build` |
-| `size` | `{counted, mechanical, vendored, generated}` lines | `counted` is FR-006's measure (research R6) |
-| `oversize_reason` | string or null | required iff `kind` = `hand-written` and `size.counted` > 3,000 |
+| `chapter` | `{phase, work_items[], first, last}` or null | required for `source` = `history`: the R14 row; `last` is the boundary merge |
+| `size` | `{src, tests, other, deleted_files}` lines | measured on normalised trees, reported in the description; no limit |
+| `boundary_moved` | `{from, to, reason}` or null | set if the boundary had to move to a later merge to build |
 | `mechanical_command` | string or null | required iff `kind` = `mechanical`; reproduces the diff from `parent` exactly (FR-007) |
 | `description` | path | `series/pr/NNN-slug.md`, sections per `contracts/pr-description.md` |
 | `era` | `objc-spidermonkey` \| `objc-quickjs` \| `cxx` | decides the verification matrix (research R5) |
@@ -40,17 +41,20 @@ One entry per PR, in series order.
 
 ### `source` variants
 
-- `history`: `{from: <history commit>, to: <history commit>}`. The step's target is the history
-  snapshot at `to`, normalised and merged onto upstream (research R4). `from` is the previous cut.
+- `history`: `{from: <history commit>, to: <history commit>}`, the chapter's first and last
+  first-parent merges (R14). The target is the snapshot at `to`, normalised and merged onto
+  upstream (research R4).
 - `hoisted`: `{commits: [<history commit>…]}`. An independent fix moved forward; its effect is
   added to every target tree between here and its original place.
-- `develop`: `{commits: [<develop commit>…]}`. Fork commits after the squash, replayed.
+- `develop`: `{commits: [<develop commit>…]}`. Fork commits after the squash, grouped by purpose
+  (R14 tail table). The target is `develop` after the group's last commit, normalised to upstream's
+  style, except in the final mechanical reformat step.
 - `reconcile`: `{tree: develop_target}`. The last step: the tree is `develop_target` minus exclusions.
 
 ### Kinds
 
 - `independent`: applies to `upstream_base` alone and builds there (FR-008). Placed first.
-- `hand-written`: the default for history ranges; size-limited.
+- `hand-written`: the default for history chapters.
 - `mechanical`: one tool-driven change only; has `mechanical_command`.
 - `reconcile`: closes the gap to `develop_target`; at most one, last.
 
@@ -91,7 +95,8 @@ recomputed and its parent tip changed), so verification runs in order.
 2. Every branch exists in `oolite-dev`; each branch's single commit has `parent`'s tip as its only
    parent; and `git config git-town-branch.<branch>.parent` equals `parent`.
 3. Each branch's tree equals its `target_tree`.
-4. `oversize_reason` set iff required; `mechanical_command` set iff `kind` = `mechanical`.
+4. `chapter` set iff `source` = `history`, and chapters are contiguous: each `first` follows the
+   previous `last`. `mechanical_command` set iff `kind` = `mechanical`.
 5. Independent steps come before all non-independent steps.
 6. The ledger balances.
 7. The last step's tree equals `develop_target` outside the exclusions.

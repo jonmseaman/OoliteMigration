@@ -8,11 +8,11 @@ check or verification failed, `2` usage or environment error. Never pushes, neve
 | Command | Does | Exit 0 when |
 |---|---|---|
 | `inventory` | Lists the history's first-parent commits under `history_prefix` with normalised size, paths, and the upstream commit each sits on. Writes `series/inventory.tsv`. | always (read-only) |
-| `cut [--limit 3000]` | Proposes cut points from the inventory (research R6) and writes `planned` steps into the manifest. Does not overwrite steps already `built`. | manifest written |
+| `cut --chapters` | Writes R14's chapters and tail groups as `planned` steps, resolving each boundary to its first-parent merge and checking that the chapters tile the history with no gaps. Does not overwrite steps already `built`. | manifest written, chapters contiguous |
 | `hoist <history-commit>… --slug S` | Turns history commits into an `independent` step at the front, if they apply to `upstream_base` alone. | the commits apply and the step is planned |
 | `tree <n>` | Computes step *n*'s target tree (normalise, 3-way merge onto upstream, apply resolutions); prints the tree id, or the conflicting paths. | no unresolved conflicts |
 | `build [<n>…\|--from n]` | For each step in order: creates or resets `series/NNN-slug` to one commit on the parent tip with the target tree; sets Git Town lineage (`git town append --prototype --no-sync --no-push` on first creation, `git town set-parent` after). | every requested step is `built` |
-| `verify <n>\|--from n [--clean]` | Runs the verification matrix for the step's era in the shared verification worktree (research R7); writes the verification record. | every check is `pass` or justified `n/a` |
+| `verify <n>\|--from n [--clean]` | Runs the verification matrix for the step's era in the shared verification worktree (research R9); writes the verification record. | every check is `pass` or justified `n/a` |
 | `describe <n>` | Writes or refreshes the generated parts of `series/pr/NNN-slug.md` (size, source range, verification, position); keeps the hand-written sections. | file has every required section |
 | `check [--verified]` | Validates the manifest, branches, lineage and trees against `data-model.md`'s rules. | all rules hold |
 | `renumber` | After inserting or removing a step: renames branches and description files, and rewrites the manifest and lineage to keep `NNN` = `n`. | `check` passes afterwards |

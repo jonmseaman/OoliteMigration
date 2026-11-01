@@ -35,5 +35,5 @@
   suites is part of the "what" (the reviewer's deliverable), not implementation leakage. How
   history ranges are grouped, replayed and verified is left to the plan.
 - No clarification markers: every open choice (prepare vs open PRs, upstream vs fork target,
-  3,000-line limit, Windows-only verification, replay from this repo's `upstream/oolite/` history)
+  one PR per chapter (option B), Windows-only verification, replay from this repo's `upstream/oolite/` history)
   has a recorded default in Assumptions, per CLAUDE.md rule 8.
