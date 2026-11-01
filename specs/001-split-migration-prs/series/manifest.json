@@ -1452,14 +1452,43 @@
    "mechanical_command": null,
    "n": 14,
    "parent": "series/013-shipentity-slices",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "transplant",
+     "path": "src/Core/Entities/Entity.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Entities/PlayerEntity.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/PlayerEntityControls.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Universe.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/MyOpenGLView+Input.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/MyOpenGLView+Input.mm"
+    },
+    {
+     "how": "upstream-deleted",
+     "path": "src/SDL/MyOpenGLView.mm"
+    }
+   ],
    "size": null,
    "source": {
     "from": "4b272b165ececbc7e183a328c4962cfbc65e4d78",
     "to": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
     "type": "history"
    },
-   "target_tree": null,
+   "target_tree": "acbaf70609bc0f6d623d3052fd59c5e922d3996c",
    "temporaries": [],
    "title": "Convert Universe and PlayerEntity to C++",
    "verification": null

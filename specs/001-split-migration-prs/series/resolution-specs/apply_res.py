@@ -53,6 +53,10 @@ for path, specs in RES.items():
         pos = mt.end()
     out.append(text[pos:])
     result = "".join(out)
+    for old, new in ns.get("POST", {}).get(path, []):  # replacements on the resolved file
+        if result.count(old) != 1:
+            raise SystemExit(f"{path}: POST pattern found {result.count(old)} times: {old[:60]!r}")
+        result = result.replace(old, new)
     if re.search(r"^(<<<<<<<|=======$|>>>>>>>)", result, re.M):
         raise SystemExit(f"{path}: markers left")
     print(f"{path}: {len(hunks)} hunks resolved")
