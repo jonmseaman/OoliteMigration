@@ -29,6 +29,12 @@
   "ours": "f57d87aea50ac409b89d08050856907e9ff245af",
   "theirs": "d3837d611e2c7d1bbb75f1dbcafe526ced33a2ab"
  },
+ "src/Core/Scripting/OOJSEngineTimeManagement.mm": {
+  "base": "d17567a22d41678030cb16563293031756caa0e1",
+  "deleted": false,
+  "ours": "d192a8f8fba2cd5e53c4574215b8cb4bd622072e",
+  "theirs": "25b99a84dcb7e2da86bfb5649fb1164cf769de5c"
+ },
  "src/Core/Scripting/OOJSFunction.mm": {
   "base": "a763e84de60d118b3f8415aa2de8520233409da0",
   "deleted": false,

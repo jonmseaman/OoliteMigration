@@ -1,4 +1,19 @@
 {
+ "ShellScripts/Windows/install_deps.sh": {
+  "deleted": false,
+  "extra": true,
+  "merged": "4ed7efeaea6ad375771aa6a1347bbb6c76964463"
+ },
+ "clang.ini": {
+  "deleted": false,
+  "extra": true,
+  "merged": "5c63d72128e7193989593cfd3da2f40a5229e2ca"
+ },
+ "src/Core/Scripting/OOJSEngineTimeManagement.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "3edd233c51264daafe9fa6457b84d1a3a0e3894b"
+ },
  "src/Core/Scripting/OOJSFunction.mm": {
   "base": "c48ae1fd909139b2f0455632f65a0db90c68b56f",
   "deleted": false,
@@ -10,5 +25,29 @@
   "deleted": false,
   "ours": "49c7a17410078ab5ed1471640933a71185c64be4",
   "theirs": "2d72eb47ba3a8f3bfac70a7efcb1c26b5d1d8f7a"
+ },
+ "src/Core/Scripting/OOJSShipGroup.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "8f6b6f06943c831c9f9216e626adb8cf52c3d6ca"
+ },
+ "src/Core/Scripting/ooscript/JSEngine_quickjs.cpp": {
+  "deleted": false,
+  "extra": true,
+  "merged": "e5a5ab354a8ea4533c119fe66ddbf67ccaac7c81"
+ },
+ "src/meson.build": {
+  "deleted": false,
+  "extra": true,
+  "merged": "9dfe0954fdbefb9cc6242fcf7ae279471c129680"
+ },
+ "subprojects/packagefiles/quickjs-ng-void-return.patch": {
+  "deleted": false,
+  "extra": true
+ },
+ "subprojects/quickjs-ng.wrap": {
+  "deleted": false,
+  "extra": true,
+  "merged": "2f4e0b80ec6c8381e82157c3fac2d3e747654df5"
  }
 }

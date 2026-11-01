@@ -87,6 +87,12 @@ class WarningCountTest(unittest.TestCase):
     def test_no_warnings(self):
         self.assertEqual(verify.warning_count("[1/1] Linking target oolite.exe\n1 warning generated? no\n"), 0)
 
+    def test_driver_warnings_count(self):
+        log = ("clang++: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]\n"
+               "clang: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]\n"
+               "g++: warning: switch '-fobjc-exceptions' is no longer supported\n")
+        self.assertEqual(verify.warning_count(log), 3)
+
     def test_meson_warnings_are_not_compiler_warnings(self):
         self.assertEqual(verify.warning_count("WARNING: Project targets '>=1.1' but uses feature ...\n"), 0)
 

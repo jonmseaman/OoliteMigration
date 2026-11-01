@@ -64,9 +64,6 @@ using ooscript::Value;
 namespace {
 static ooscript::Object sManifestPrototype;
 } // namespace
-namespace {
-static ooscript::Object sManifestObject;
-} // namespace
 
 namespace {
 static bool ManifestComment(ooscript::Context cx, ooscript::CallArgs& oojsArgs);
@@ -175,7 +172,6 @@ void InitOOJSManifest(ooscript::Context context, ooscript::Object global)
 
     // Create manifest object as a property of the player.ship object.
     Object manifestObj = ooscript::defineObject((context), (JSPlayerShipObject()), "manifest", &sManifestClass, proto, OOJS_PROP_READONLY);
-    sManifestObject = (manifestObj);
     ooscript::setPrivate((context), manifestObj, NULL);
 
     // Also define manifest object as a property of the global object.

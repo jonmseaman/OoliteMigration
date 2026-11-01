@@ -396,10 +396,18 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "d2b07f0bd677930f927d1af7ca18bc5d9b816b7a",
+   "merge_tree": "37819fadc539c29d9b3fa1ab31737de4813e37a8",
    "n": 4,
    "parent": "series/003-objective-cxx",
    "resolutions": [
+    {
+     "how": "stored",
+     "path": "ShellScripts/Windows/install_deps.sh"
+    },
+    {
+     "how": "stored",
+     "path": "clang.ini"
+    },
     {
      "how": "auto",
      "path": "src/Core/Debug/OOJSConsole.mm"
@@ -407,6 +415,10 @@
     {
      "how": "transplant",
      "path": "src/Core/Scripting/OOJSDock.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSEngineTimeManagement.mm"
     },
     {
      "how": "auto",
@@ -435,6 +447,10 @@
     {
      "how": "transplant",
      "path": "src/Core/Scripting/OOJSShip.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSShipGroup.h"
     },
     {
      "how": "transplant",
@@ -467,6 +483,22 @@
     {
      "how": "auto",
      "path": "src/Core/Scripting/OOJavaScriptEngine.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/ooscript/JSEngine_quickjs.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/meson.build"
+    },
+    {
+     "how": "stored",
+     "path": "subprojects/packagefiles/quickjs-ng-void-return.patch"
+    },
+    {
+     "how": "stored",
+     "path": "subprojects/quickjs-ng.wrap"
     }
    ],
    "size": {
@@ -480,7 +512,7 @@
     "to": "a7e3ed1efcf202eb22d16951be73c23e3b2b264c",
     "type": "history"
    },
-   "target_tree": "d2b07f0bd677930f927d1af7ca18bc5d9b816b7a",
+   "target_tree": "37819fadc539c29d9b3fa1ab31737de4813e37a8",
    "temporaries": [],
    "title": "Run the game on QuickJS-ng and remove SpiderMonkey and NSPR",
    "verification": null
@@ -505,7 +537,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "6ddbc1bb07cb4b9f0d358f35a41b201dbce4c388",
+   "merge_tree": "bc786b7754606cda4f8e7654c83ac18d5db86576",
    "n": 5,
    "parent": "series/004-quickjs-switch",
    "resolutions": [
@@ -541,7 +573,7 @@
     "to": "916311e66db2e9d025c763b9d028a9ff26d33ff0",
     "type": "history"
    },
-   "target_tree": "6ddbc1bb07cb4b9f0d358f35a41b201dbce4c388",
+   "target_tree": "bc786b7754606cda4f8e7654c83ac18d5db86576",
    "temporaries": [],
    "title": "Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation",
    "verification": null
@@ -562,7 +594,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "264ec6f3b2011bc9fae7a36ccec3f37339bff843",
+   "merge_tree": "65890cd7f2c5fb54f2a8fb4db426473de46994a7",
    "n": 6,
    "parent": "series/005-oofnd-core",
    "resolutions": [
@@ -630,7 +662,7 @@
     "to": "bc9a02ca7b948001da5824b9c073b42b3e24ca08",
     "type": "history"
    },
-   "target_tree": "264ec6f3b2011bc9fae7a36ccec3f37339bff843",
+   "target_tree": "65890cd7f2c5fb54f2a8fb4db426473de46994a7",
    "temporaries": [],
    "title": "Move most oo_*ForKey dictionary accessors to typed PListView::get",
    "verification": null
@@ -651,7 +683,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "606202a00e0f37cf620922fcfe8a1e491a55af12",
+   "merge_tree": "a7c5cafd3eec18931c2ef505090bcf1da0d37d2b",
    "n": 7,
    "parent": "series/006-typed-accessors",
    "resolutions": [
@@ -815,7 +847,7 @@
     "to": "ecfafab47981c8224790752d96f2340d6b07c833",
     "type": "history"
    },
-   "target_tree": "606202a00e0f37cf620922fcfe8a1e491a55af12",
+   "target_tree": "a7c5cafd3eec18931c2ef505090bcf1da0d37d2b",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 1",
    "verification": null
@@ -837,7 +869,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "8fa06e0b24239a260608e032e68dc40fe13018f9",
+   "merge_tree": "502656d2d2ba533a84be326ce43d648d1e23d45b",
    "n": 8,
    "parent": "series/007-foundation-wave-1",
    "resolutions": [
@@ -1024,6 +1056,14 @@
     {
      "how": "auto",
      "path": "src/SDL/main.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/meson.build"
+    },
+    {
+     "how": "transplant",
+     "path": "subprojects/quickjs-ng.wrap"
     }
    ],
    "size": {
@@ -1037,7 +1077,7 @@
     "to": "fa9cbc6c24fec4d77881a47e47e7b2591ece94d4",
     "type": "history"
    },
-   "target_tree": "24906d44d55b3cd5beec5514a93e6926fd1a401e",
+   "target_tree": "a6569e4f673b82dc5d9e18659b95c3c293e3f35f",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 2",
    "verification": null
@@ -1059,7 +1099,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "c816e1a8616fb2db1a43de005363819d9040499c",
+   "merge_tree": "7c9b2a02bcb2064e5777ba424efffe59a77e7df2",
    "n": 9,
    "parent": "series/008-foundation-wave-2",
    "resolutions": [
@@ -1231,7 +1271,7 @@
     "to": "e0b9e24b22ab4f7373ccf71dbf4d58ac5553c4be",
     "type": "history"
    },
-   "target_tree": "d3f36603a06d0b16556d0d0875bb3e7f73689656",
+   "target_tree": "0876665593ea5a0950b1148f67138834f36c34db",
    "temporaries": [],
    "title": "Retire the remaining Foundation selectors and their bridge callers",
    "verification": null
@@ -1255,7 +1295,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "db9bef6a9995d42fbe8b48e98242230322438e04",
+   "merge_tree": "80598a72572c7c31a5f7a9124b8b3f9c4fb592fd",
    "n": 10,
    "parent": "series/009-selector-families",
    "resolutions": [
@@ -1371,7 +1411,7 @@
     "to": "67027c84d11fe03fcf208697938023d05d13f63c",
     "type": "history"
    },
-   "target_tree": "bffe6e374ddd1a8b56536c2d90f7496020349104",
+   "target_tree": "8d79699fa4bc0e24592c06431b24dd9206329c1d",
    "temporaries": [],
    "title": "Drop gnustep-base, then convert the first classes to C++: maths, leaf utilities, OXP verifier",
    "verification": null
@@ -1395,7 +1435,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "cc3b72ea4b036f546b340cc11c1d2b92efa4271f",
+   "merge_tree": "589a770932af6b684e51526b67fcdb9fa872e4ba",
    "n": 11,
    "parent": "series/010-leaf-conversions",
    "resolutions": [
@@ -1536,6 +1576,10 @@
      "path": "src/Core/Scripting/OOJSFlasher.h"
     },
     {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSShipGroup.h"
+    },
+    {
      "how": "stored",
      "path": "src/Core/Scripting/OOJavaScriptEngine.h"
     },
@@ -1555,7 +1599,7 @@
     "to": "ab5dc6cd728a5b26951c588d3d6e0ef99049009c",
     "type": "history"
    },
-   "target_tree": "0c39f9e0b0acc9bdf1d6b8cc4e26032fdd05d22e",
+   "target_tree": "d02743b37a290c58f29941bb548efb5673aad218",
    "temporaries": [],
    "title": "Convert scripting, entities, audio and materials classes to C++",
    "verification": null
@@ -1578,7 +1622,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "82d71d989da512a5932722c30c347b4159fcc9c7",
+   "merge_tree": "2ba37ff07d65860b01ccb7a6ee5d7bdf073726fc",
    "n": 12,
    "parent": "series/011-module-conversions",
    "resolutions": [
@@ -1654,7 +1698,7 @@
     "to": "0c01939de79a4ac04237390d93dc78437057c5e0",
     "type": "history"
    },
-   "target_tree": "c98a5c1de1b3d6323cf2fe30ad3ddbd9fa16f0bd",
+   "target_tree": "a70cf6f725ced1471bd8e5b68cd4beb211ef1c2c",
    "temporaries": [],
    "title": "Convert the large files in slices; delete the first Objective-C facades",
    "verification": null
@@ -1675,7 +1719,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "fe72305a7565e883d17a0131e973f67d12ac4547",
+   "merge_tree": "80c4898d3a5361a8e098ab37fa6e0af9bb02da20",
    "n": 13,
    "parent": "series/012-first-slices",
    "resolutions": [
@@ -1727,7 +1771,7 @@
     "to": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
     "type": "history"
    },
-   "target_tree": "872b83e6ea008330baa6e4975c65cf87f02cbc71",
+   "target_tree": "375f3987cc42718785ddc63d498f20dc000c175a",
    "temporaries": [],
    "title": "Convert ShipEntity to C++",
    "verification": null
@@ -1749,7 +1793,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "1258a0fb86d7efe72e7936c8a09ddc8d005aa693",
+   "merge_tree": "732e2005f82b9f2c4352b4c5e4a1e4d5cf874b67",
    "n": 14,
    "parent": "series/013-shipentity-slices",
    "resolutions": [
@@ -1764,6 +1808,10 @@
     {
      "how": "stored",
      "path": "src/Core/Entities/PlayerEntityControls.mm"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Scripting/ooscript/JSEngine_quickjs.cpp"
     },
     {
      "how": "stored",
@@ -1793,7 +1841,7 @@
     "to": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
     "type": "history"
    },
-   "target_tree": "5572348cb56342d16bb52dc80c78db5a3a94e155",
+   "target_tree": "bb6e608a2777aacd2fee409c8f3363e50b1b395f",
    "temporaries": [],
    "title": "Convert Universe and PlayerEntity to C++",
    "verification": null
@@ -1814,7 +1862,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "0ec847c97e5565e04504608f9899973355d87780",
+   "merge_tree": "94c5e6994ee3ddc6e94d32dc8903f11cd12b48a7",
    "n": 15,
    "parent": "series/014-universe-player-slices",
    "resolutions": [
@@ -1906,7 +1954,7 @@
     "to": "2c2aae1316b5a125038a797c213162ffba389279",
     "type": "history"
    },
-   "target_tree": "65ea4bb9f3c049b92a253d759548c2bc0a2a771d",
+   "target_tree": "c71f6381ab4f5085097e0fca7e727b06565abc0c",
    "temporaries": [],
    "title": "Delete the Objective-C facades",
    "verification": null
@@ -1927,7 +1975,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "9e0725da3f8d3b69ddcbc56a6bc0f8eea350764d",
+   "merge_tree": "4ae6a9855daeebdfc18ebe77fe90401123f98329",
    "n": 16,
    "parent": "series/015-facade-deletions",
    "resolutions": [
@@ -2040,6 +2088,10 @@
      "path": "src/Core/OOSkyDrawable.mm"
     },
     {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSEngineTimeManagement.mm"
+    },
+    {
      "how": "transplant",
      "path": "src/Core/Scripting/OOJSEntity.h"
     },
@@ -2062,6 +2114,10 @@
     {
      "how": "stored",
      "path": "src/SDL/MyOpenGLView.mm"
+    },
+    {
+     "how": "transplant",
+     "path": "src/meson.build"
     }
    ],
    "size": {
@@ -2075,7 +2131,7 @@
     "to": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
     "type": "history"
    },
-   "target_tree": "35c875a525bf69f0a1e91116eb9afab3e1b6a3ac",
+   "target_tree": "b90d4088a8e2aff0384127df16d6d8acef2dee1d",
    "temporaries": [],
    "title": "Delete the root Entity facade",
    "verification": null
@@ -2097,10 +2153,14 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "8f7432b9f36345f15a06b0641e703993d971f856",
+   "merge_tree": "5edaef61d6ef8b78e5d7378bc799c47c794d4e8a",
    "n": 17,
    "parent": "series/016-entity-facade",
    "resolutions": [
+    {
+     "how": "hunks",
+     "path": "clang.ini"
+    },
     {
      "how": "stored",
      "path": "src/Core/CollisionRegion.cpp"
@@ -2322,6 +2382,10 @@
      "path": "src/Core/Scripting/OOJSShip.h"
     },
     {
+     "how": "transplant",
+     "path": "src/Core/Scripting/OOJSShipGroup.h"
+    },
+    {
      "how": "stored",
      "path": "src/Core/Scripting/OOJSSound.cpp"
     },
@@ -2397,7 +2461,7 @@
     "to": "af1f220542e4917a23833902e8efc313a8eb463b",
     "type": "history"
    },
-   "target_tree": "8c58887f7c77b9ed3a8fb38694f357ead7a0100e",
+   "target_tree": "ac13a0b7c775293bb750b7ee13a55991fe30cdad",
    "temporaries": [],
    "title": "Remove the Objective-C runtime and rename the sources to .cpp",
    "verification": null
@@ -2418,7 +2482,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "b02823a1c4df1bca3f2885555796e9dfd111c471",
+   "merge_tree": "df17fc8f127f1947871b529ce407d949b44a74ad",
    "n": 18,
    "parent": "series/017-objc-runtime-out",
    "resolutions": [],
@@ -2433,7 +2497,7 @@
     "to": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
     "type": "history"
    },
-   "target_tree": "3a8b30255f8dc01c010f104cc71b2edb496dd855",
+   "target_tree": "e9a74fcf8cb5e5c076d813aaf9b70fcaf9e6f103",
    "temporaries": [],
    "title": "Build with GCC as well as Clang",
    "verification": null
@@ -2454,7 +2518,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "d8a4c5f41f93e825e04ef522dd53d7ffa3677b37",
+   "merge_tree": "06499189056d535c0fdd51989e82242c787d5ff1",
    "n": 19,
    "parent": "series/018-gcc-build",
    "resolutions": [
@@ -2500,6 +2564,14 @@
     },
     {
      "how": "stored",
+     "path": "src/Core/Scripting/OOJSManifest.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSShipGroup.h"
+    },
+    {
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSSystem.cpp"
     },
     {
@@ -2513,6 +2585,10 @@
     {
      "how": "auto",
      "path": "src/SDL/main.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/meson.build"
     }
    ],
    "size": {
@@ -2526,7 +2602,7 @@
     "to": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
     "type": "history"
    },
-   "target_tree": "d93d9c3a79a371e7450abcd5a1b06f37f84f8837",
+   "target_tree": "bf04f8a934be760c65f3ec9d7616fcbc65991301",
    "temporaries": [],
    "title": "Port upstream changes #369 to #765 into the C++ code",
    "verification": null

@@ -163,3 +163,11 @@ for path, fn in FIX_LATE.items():
     if not dry:
         trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path,
                                 new.encode("utf-8", "surrogateescape"), key_merged=True)
+# ADD = {path: source file under the spec's directory}: a new file the step adds (not in the merge)
+for path, src in ns.get("ADD", {}).items():
+    if trees._blob_at(S.GAME, tree, path):
+        raise SystemExit(f"{path}: already in the merge; use CHANGES")
+    data = open(os.path.join(os.path.dirname(spec_file), src), "rb").read()
+    print(f"{path}: added")
+    if not dry:
+        trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path, data)

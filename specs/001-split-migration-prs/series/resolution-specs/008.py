@@ -60,3 +60,23 @@ DELETE = []
 # the history converts these functions; its forms supersede step 3's Clang 23 fixes
 RES["src/Core/Entities/ShipEntity.mm"] = ["theirs"]
 RES["src/Core/OOStringExpander.mm"] = ["theirs", "theirs"]
+
+
+# the history rewrites the QuickJS-ng subproject call; step 4's Windows threads override stays before it
+_THREADS_008 = (
+    "# QuickJS-ng adds dependency('threads') (-pthread) to its link line, and every target\n"
+    "# that links it. The MinGW clang driver does not use -pthread when linking (cutils.h takes Win32\n"
+    "# threads under _WIN32), so each link printed \"argument unused during compilation: '-pthread'\".\n"
+    "# On Windows the threads dependency is the same compile flag without the unused link flag, so the\n"
+    "# objects and the links are unchanged and the driver has nothing to report.\n"
+    "if host_machine.system() == 'windows'\n"
+    "    meson.override_dependency('threads', declare_dependency(compile_args: ['-pthread']))\n"
+    "endif\n")
+
+
+def _threads_008(ours, theirs):
+    assert theirs.count("quickjs_ng_proj = subproject(") == 1
+    return theirs.replace("quickjs_ng_proj = subproject(", _THREADS_008 + "quickjs_ng_proj = subproject(")
+
+
+RES["src/meson.build"] = [_threads_008]

@@ -30,8 +30,9 @@ CHECKS = ("build_clang", "warnings_clang", "build_gcc", "unit", "smoke", "compon
 SPIDERMONKEY_RE = re.compile(r"\bwin_js_suffix\b|\bjs_static\b|dependency\('nspr'\)|js32ECMAv5|mozjs")
 DARWIN_MESON = "src/meson/darwin/"
 OBJC_RE = re.compile(r"^src/.*\.(m|mm)$")
-# a compiler or linker diagnostic: "path:line:col: warning:" or "ld.lld: warning:"
-WARNING_RE = re.compile(r"^(?:\S.*?:\d+(?::\d+)?|[\w.+-]*ld[\w.+-]*): warning: ", re.M)
+# a compiler, driver or linker diagnostic: "path:line:col: warning:", "clang++: warning:", "ld.lld: warning:"
+WARNING_RE = re.compile(r"^(?:\S.*?:\d+(?::\d+)?|[\w.+-]*ld[\w.+-]*|(?:clang|gcc|g)(?:\+\+)?(?:\.exe)?|cc1\w*): warning: ",
+                        re.M)
 FEATURES = "tests/component/features/"
 COMPONENT_SUPPORT = ("tests/component/steps/", "tests/component/conftest.py", "tests/component/support/")
 
@@ -210,7 +211,9 @@ def ensure_worktree(repo, path, commit):
         _git(repo, "worktree", "add", "-q", "--detach", path, commit)
     else:
         _git(path, "checkout", "-q", "--detach", "--force", commit)
-        _git(path, "clean", "-q", "-d", "-f", "-e", "build/")  # untracked leftovers, never build/
+        # untracked and ignored leftovers too (a subproject extracted under an older wrap or patch),
+        # but never the build directory or the downloaded subproject archives
+        _git(path, "clean", "-q", "-d", "-f", "-f", "-x", "-e", "build/", "-e", "subprojects/packagecache/")
     return path
 
 

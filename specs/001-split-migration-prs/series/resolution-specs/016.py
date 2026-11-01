@@ -42,3 +42,5 @@ RES["src/Core/Entities/ShipEntity.mm"] = ["theirs", "theirs"]
 RES["src/Core/Materials/OOShaderProgram.mm"] = ["ours"]
 RES["src/Core/Scripting/OOJSFunction.mm"] = ["theirs"]
 RES["src/Core/Universe.mm"] = ["theirs"] * 6
+# the history turns the profiling #warning into a comment here (step 4 did the same, earlier)
+RES["src/Core/Scripting/OOJSEngineTimeManagement.mm"] = ["theirs"]
