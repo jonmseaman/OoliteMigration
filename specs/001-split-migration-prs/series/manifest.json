@@ -3091,7 +3091,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "620833d9556cff49c80eafc39acd6e340d749514",
+   "merge_tree": "5cfb51aa1206af573909111d6dcd297af84b596e",
    "n": 20,
    "parent": "series/019-upstream-9ee8ff22f-port",
    "resolutions": [
@@ -3120,7 +3120,12 @@
      "path": "src/Core/OOVoxel.h"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 9,
+    "src": 600,
+    "tests": 386
+   },
    "source": {
     "commits": [
      "935aedb20fe3f6390bdcddea6d420eb1d95dfe81",
@@ -3131,7 +3136,7 @@
     ],
     "type": "develop"
    },
-   "target_tree": "d574c1181aae0934322db4afe8136708518c4cff",
+   "target_tree": "2944c826b889a3ad8b38063a7ee04efe165c4cb7",
    "temporaries": [],
    "title": "Small fixes after the migration",
    "verification": null
@@ -3144,7 +3149,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "f93524283c29e154222bd59f766bab8f19dbfcf7",
+   "merge_tree": "e01c3608da8e85f38c1f398b5ea05a8445cee542",
    "n": 21,
    "parent": "series/020-develop-fixes",
    "resolutions": [
@@ -3201,7 +3206,12 @@
      "path": "src/Core/UniverseVirtualMembers.h"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 48,
+    "src": 80668,
+    "tests": 153167
+   },
    "source": {
     "commits": [
      "2ceced1f837a9863f99fd5a95a8cbf6b640f033c",
@@ -3210,7 +3220,7 @@
     ],
     "type": "develop"
    },
-   "target_tree": "009d1a7d01829d2f5b01e4f40732596d1d4e6b2c",
+   "target_tree": "a03c034e13b466587c20e3ff7d7bfdee879ec054",
    "temporaries": [],
    "title": "Make comments describe the code; use #pragma once",
    "verification": null
@@ -3223,11 +3233,16 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "ccd046492e17819bccb73d0d55b53fc5a146ae40",
+   "merge_tree": "fd9cdba115f48918fd46a62284cafe37832eea0e",
    "n": 22,
    "parent": "series/021-source-hygiene",
    "resolutions": [],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 13,
+    "src": 35,
+    "tests": 1094
+   },
    "source": {
     "commits": [
      "51d05af43920429a37f2ffe19de758146ef715aa",
@@ -3237,7 +3252,7 @@
     ],
     "type": "develop"
    },
-   "target_tree": "66d668d257b3ded7ee1f3098792dee7ce7e847af",
+   "target_tree": "fe5b9250fa3075bf18da08ce72bd99ed3f8b09aa",
    "temporaries": [],
    "title": "Tests and developer tooling",
    "verification": null
@@ -3250,7 +3265,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "8fa32fd9dd008baea486fdb3c15a15133a3b885c",
+   "merge_tree": "f1358315f4c28a67dc7f3506894cd861284d0bd5",
    "n": 23,
    "parent": "series/022-tests-and-tooling",
    "resolutions": [
@@ -3303,7 +3318,12 @@
      "path": "subprojects/quickjs-ng.wrap"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 48153,
+    "other": 3052,
+    "src": 31705,
+    "tests": 5698
+   },
    "source": {
     "commits": [
      "448aa6d208d2b36b96a611e760cb4f131433b811",
@@ -3311,7 +3331,7 @@
     ],
     "type": "develop"
    },
-   "target_tree": "ede914f3f8bb3a7fb53b1738c9619ea65f04ad8e",
+   "target_tree": "46c70e3f471a17b7e52c9868f82b764a90885867",
    "temporaries": [],
    "title": "Compile the remaining C sources as C++; upgrade QuickJS-ng",
    "verification": null
@@ -3324,7 +3344,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "2dd55300c25ab5e06e1668ef3baa7884a84626e8",
+   "merge_tree": "914085cf6a2ebca3c256a79f4b6c4aa4c700068a",
    "n": 24,
    "parent": "series/023-c-as-cxx",
    "resolutions": [
@@ -3345,6 +3365,14 @@
      "path": "src/Core/Entities/EntityVirtualMembers.h"
     },
     {
+     "how": "hunks",
+     "path": "src/Core/Entities/OOFlasherEntity.cpp"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/Entities/PlayerEntityContracts.cpp"
+    },
+    {
      "how": "prefer-theirs",
      "path": "src/Core/Entities/PlayerEntityControls.cpp"
     },
@@ -3363,6 +3391,14 @@
     {
      "how": "prefer-theirs",
      "path": "src/Core/Materials/OOShaderProgram.cpp"
+    },
+    {
+     "how": "converge",
+     "path": "src/Core/MiniZip/unzip.cpp"
+    },
+    {
+     "how": "hunks",
+     "path": "src/Core/OODataFromOXZFile.cpp"
     },
     {
      "how": "prefer-theirs",
@@ -3386,10 +3422,6 @@
     },
     {
      "how": "auto",
-     "path": "src/Core/OOJoystickProfile.h"
-    },
-    {
-     "how": "converge",
      "path": "src/Core/OOJoystickProfile.h"
     },
     {
@@ -3437,6 +3469,10 @@
      "path": "src/Core/OOQuaternion.h"
     },
     {
+     "how": "prefer-theirs",
+     "path": "src/Core/OOSystemDescriptionManager.cpp"
+    },
+    {
      "how": "converge",
      "path": "src/Core/OOTriangle.h"
     },
@@ -3455,6 +3491,10 @@
     {
      "how": "transplant",
      "path": "src/Core/OOVoxel.h"
+    },
+    {
+     "how": "hunks",
+     "path": "src/Core/OXPVerifier/OOFileScannerVerifierStage.h"
     },
     {
      "how": "prefer-theirs",
@@ -3477,6 +3517,14 @@
      "path": "src/Core/Scripting/OOJSWaypoint.h"
     },
     {
+     "how": "hunks",
+     "path": "src/Core/Scripting/OOScript.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/Scripting/ooscript/JSEngine.hpp"
+    },
+    {
      "how": "prefer-theirs",
      "path": "src/Core/Universe.cpp"
     },
@@ -3486,10 +3534,6 @@
     },
     {
      "how": "converge",
-     "path": "src/Core/UniverseVirtualMembers.h"
-    },
-    {
-     "how": "prefer-theirs",
      "path": "src/Core/UniverseVirtualMembers.h"
     },
     {
@@ -3505,7 +3549,12 @@
      "path": "src/SDL/main.cpp"
     }
    ],
-   "size": null,
+   "size": {
+    "deleted_files": 223,
+    "other": 169,
+    "src": 1063,
+    "tests": 198
+   },
    "source": {
     "commits": [
      "7912222ed5ecc6cb17bad4d2ef8789aa28365919",
@@ -3517,7 +3566,7 @@
     ],
     "type": "develop"
    },
-   "target_tree": "6c20c18de5491fba9683bd5367f30263b110a8e8",
+   "target_tree": "7ba55f51bffb631321b05b131ccdd2f42509f05b",
    "temporaries": [],
    "title": "Port upstream #766, #774 and #781",
    "verification": null
@@ -3534,7 +3583,12 @@
    "n": 25,
    "parent": "series/024-upstream-49a5eb9fc-ports",
    "resolutions": [],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 55,
+    "src": 378259,
+    "tests": 658
+   },
    "source": {
     "commits": [
      "13eb19ee7e6e9881161c4e99a232ececa6c28bbd",

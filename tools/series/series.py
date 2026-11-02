@@ -218,11 +218,12 @@ def develop_order(m):
     return [squash] + [c for c in line if c != squash and c != full(f"{squash}^")]
 
 
-def develop_inputs(m, step):
-    """[(label, before, after)] for a tail step: its commits in develop's order, in the tail's space.
-    The squash's `before` is the history's last snapshot, so its pair is the squash gap (research
-    R14). A merge commit counts as its change against its first parent."""
+def develop_inputs(m, step, space=None):
+    """[(label, before, after)] for a tail step: its commits in develop's order, in the tail's space
+    (or `space(m, tree)`). The squash's `before` is the history's last snapshot, so its pair is the
+    squash gap (research R14). A merge commit counts as its change against its first parent."""
     from tools.series import history
+    space = space or tail_space
     order = develop_order(m)
     commits = sorted(step["source"]["commits"], key=order.index)
     base_commit = history.git(GAME, "rev-parse", f"{m['anchors']['upstream_base']}^{{commit}}")
@@ -233,15 +234,15 @@ def develop_inputs(m, step):
             before = history.snapshot(GAME, last, m["anchors"]["history_prefix"])
         else:
             before = history.git(GAME, "rev-parse", f"{c}^1^{{tree}}")
-        after = tail_space(m, history.git(GAME, "rev-parse", f"{c}^{{tree}}"))
-        out.append((c[:10], tail_space(m, before), after))
+        after = space(m, history.git(GAME, "rev-parse", f"{c}^{{tree}}"))
+        out.append((c[:10], space(m, before), after))
         if history.git(GAME, "rev-parse", "-q", "--verify", f"{c}^2", check=False).stdout.strip() == base_commit:
             # develop's merge of the series' own base: the series already has upstream's side, so
             # the merge's resolution is its change against that side. Where the series and the
             # resolution differ on the same lines, the resolution is the fork's decision.
             # It also holds what develop did before it in commits of later steps (13eb19ee7's
             # .clang-format): those paths are left as they are.
-            res_base = tail_space(m, f"{base_commit}^{{tree}}")
+            res_base = space(m, f"{base_commit}^{{tree}}")
             later = [x for x in order[:order.index(c)] if step_of_commit(m, x) > step["n"]]
             # (non-source files only: a later reformat's sources differ here only where clang-format
             # is not idempotent, and those are develop's resolution too)
@@ -249,7 +250,7 @@ def develop_inputs(m, step):
             paths = set()
             for x in later:
                 paths |= {p for p in history.git(GAME, "diff", "--name-only", "--no-renames",
-                                                 tail_space(m, f"{x}^1^{{tree}}"), tail_space(m, f"{x}^{{tree}}")).splitlines()
+                                                 space(m, f"{x}^1^{{tree}}"), space(m, f"{x}^{{tree}}")).splitlines()
                           if not (normalise.is_source(p) or normalise.is_test_source(p))}
             from tools.series import trees
             res_after = trees.take_paths(GAME, after, res_base, [glob_escape(p) for p in sorted(paths)])
@@ -302,7 +303,37 @@ def compute_merge_tree(m, step, report=None):
     if nxt is not None and nxt["kind"] == "mechanical":
         tree = converge(m, nxt, tree, report)
     tree = trees.keep_unchanged(GAME, tree, ours_t, ours)
+    tree = upstream_layout(m, step, ours, tree)
     return trees.take_paths(GAME, tree, base_tree, exclusion_globs(m)), []
+
+
+def upstream_space(m, tree):
+    """N_upstream(tree): upstream's style and names, as for the history's snapshots."""
+    from tools.series import normalise, selectors
+    return normalise.normalise_tree(GAME, tree, m["anchors"]["format"]["style_file_from"],
+                                    transform=selectors.upstream_renames, transform_id=selectors.TRANSFORM_VERSION)
+
+
+def upstream_layout(m, step, ours, tree):
+    """`tree` (the replay in the tail's space) with each file the step changes in upstream's layout
+    where that is the same content: the step's commits replayed in upstream's style, with no rules,
+    merge that file cleanly and give `tree`'s text once put in the tail's style. Otherwise the file
+    keeps the tail's layout (Google style's 80-column breaks, which upstream's style keeps)."""
+    from tools.series import history, trees
+    import tempfile
+    cur, dirty = ours, set()
+    with tempfile.TemporaryDirectory() as no_resolutions:
+        for _label, before, after, *_ in develop_inputs(m, step, space=upstream_space):
+            rep = []
+            cur, left = trees.target_tree(GAME, before, cur, after, no_resolutions, report=rep, partial=True)
+            # a test takes only clean merges here, never a rule's resolution (rule 1)
+            dirty |= set(left) | {p for p, _how in rep if p.startswith("tests/")}
+    changed = set(history.git(GAME, "diff", "--name-only", "--no-renames", ours, tree).splitlines())
+    cur = trees.dedupe_tree(GAME, cur, sorted(changed))
+    cur_t = tail_space(m, cur)
+    blob = lambda t, p: trees._blob_at(GAME, t, p)
+    take = [p for p in sorted(changed) if p not in dirty and blob(cur_t, p) == blob(tree, p)]
+    return trees.take_paths(GAME, tree, cur, [glob_escape(p) for p in take])
 
 
 def converge(m, mechanical, tree, report=None):
@@ -542,23 +573,28 @@ def integrity_tail(m, step, tree, parent):
     else:
         # the text of each changed test in some commit of the step, or develop's in the converging step
         sources = [after for _l, _b, after, *_ in develop_inputs(m, step)]
+        sources += [after for _l, _b, after, *_ in develop_inputs(m, step, space=upstream_space)]
         nxt = step_by_n(m, step["n"] + 1) if step["n"] < len(m["steps"]) else None
         if nxt is not None and nxt["kind"] == "mechanical":
             sources.append(tail_space(m, compute_merge_tree(m, nxt)[0]))
-        pairs = develop_inputs(m, step)
-        start = tail_space(m, parent)
+        # or the step's commits merged cleanly, in turn, into the parent's text of it: in the tail's
+        # style, or in upstream's (where a test keeps its own layout)
+        spaces = [(develop_inputs(m, step), tail_space(m, parent)),
+                  (develop_inputs(m, step, space=upstream_space), parent)]
         for p in changed:
             blob = verify._blob(GAME, tree, p)
             if any(verify._blob(GAME, s, p) == blob for s in sources):
                 continue
-            # or the step's commits merged cleanly, in turn, into the parent's text of it
-            text = trees_text(start, p)
-            for _l, before, after, *_ in pairs:
-                if text is None or verify._blob(GAME, before, p) == verify._blob(GAME, after, p):
-                    continue
-                text = merge_text(trees_text(before, p), text, trees_text(after, p))
             got = trees_text(tree, p)
-            if text is None or got is None or text != got:
+            ok = False
+            for pairs, start in spaces:
+                text = trees_text(start, p)
+                for _l, before, after, *_ in pairs:
+                    if text is None or verify._blob(GAME, before, p) == verify._blob(GAME, after, p):
+                        continue
+                    text = merge_text(trees_text(before, p), text, trees_text(after, p))
+                ok = ok or (text is not None and got is not None and text == got)
+            if not ok:
                 bad.append(p)
     out["tests_untouched"] = "pass" if not bad else "fail: " + ", ".join(sorted(set(bad))[:8])
     out["no_new_suppressions"] = verify.check_no_new_suppressions(GAME, parent, tree, latest)
@@ -580,6 +616,8 @@ def trees_text(tree, path):
 def merge_text(base, ours, theirs):
     """A conflict-free `git merge-file` of three texts (None meaning absent), or None."""
     import tempfile
+    if ours == theirs:
+        return ours
     if base is None or ours is None or theirs is None:
         return theirs if ours == base else (ours if theirs == base else None)
     with tempfile.TemporaryDirectory() as tmp:

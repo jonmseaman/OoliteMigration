@@ -40,8 +40,8 @@ steps so that they build on code that matches upstream's behaviour at `9ee8ff22f
 
 Carried here: #369, #737, #740, #742, #744, #745, #747, #748, #749, #751, #756, #758, #765. Deferred
 from this step: #766's macOS changes (the app-bundle resource path, the `GameController` Cocoa-UI
-code and the front-buffer screenshot), which come back, dormant, in step 23 since macOS is not
-converted; and #774 (the Linux/X11 blank window after the splash screen), also in step 23. #766's
+code and the front-buffer screenshot), which come back, dormant, in step 24 since macOS is not
+converted; and #774 (the Linux/X11 blank window after the splash screen), also in step 24. #766's
 plain-socket debug console client for macOS is not needed: the C++ client already uses a plain
 socket on every platform, so this step removes the Mac-only copy. #742's move of the joystick
 event decoders into `OOSDLJoystickManager` is not taken; the decoders stay in `OOJoystickManager`.

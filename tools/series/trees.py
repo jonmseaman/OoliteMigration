@@ -373,13 +373,15 @@ def deleted_earlier(res_dir):
     return out
 
 
-def target_tree(repo, base, ours, theirs, res_dir, report=None, ignore=(), prefer=None):
+def target_tree(repo, base, ours, theirs, res_dir, report=None, ignore=(), prefer=None, partial=False):
     """Return (tree, []) when every conflict is resolved, else (None, unresolved paths).
 
     `report`, if a list, receives (path, how) for each resolved conflict. Stored resolutions for the
     paths in `ignore` are not used (to see what the automatic rules alone give for them). With
     prefer="theirs", a file the rules and stored resolutions leave is theirs' whole file (for a merge
-    whose theirs is a decision already made, such as develop's own resolution).
+    whose theirs is a decision already made, such as develop's own resolution). With partial=True,
+    the tree is returned even when some paths are left unresolved (as the merge left them, with
+    conflict markers), together with those paths.
     """
     tree, conflicts = merge(repo, base, ours, theirs)
     if not conflicts:
@@ -442,7 +444,7 @@ def target_tree(repo, base, ours, theirs, res_dir, report=None, ignore=(), prefe
                 unresolved.append(path)
                 continue
             apply.append((path, "stored", rec, None))
-    if unresolved:
+    if unresolved and not partial:
         return None, sorted(unresolved)
     with tempfile.TemporaryDirectory() as tmp:
         env = {"GIT_INDEX_FILE": os.path.join(tmp, "index")}
@@ -460,7 +462,7 @@ def target_tree(repo, base, ours, theirs, res_dir, report=None, ignore=(), prefe
             mode = _mode(repo, theirs, path) or _mode(repo, tree, path) or "100644"
             _git(repo, "update-index", "--add", "--cacheinfo", f"{mode},{sha},{path}", env=env)
         out = _git(repo, "write-tree", env=env).stdout.decode().strip()
-    return out, []
+    return out, sorted(unresolved)
 
 
 def replay(repo, ours, pairs, res_root, report=None):
@@ -560,6 +562,35 @@ def dedupe_header(text):
             out += run
             i = j
             continue
+        out.append(lines[i])
+        i += 1
+    return _drop_repeated_includes(out)
+
+
+def _drop_repeated_includes(lines):
+    """An #include line the file already has, with no preprocessor conditional between the two,
+    goes; a run of them that goes entirely takes the `//` comment just above it along."""
+    seen, out = set(), []
+    i = 0
+    while i < len(lines):
+        s = lines[i].strip()
+        if s.startswith(("#if", "#else", "#elif", "#endif")):
+            seen = set()
+        if s.startswith("#include") and s in seen:
+            j = i
+            while j < len(lines) and lines[j].strip().startswith("#include") and lines[j].strip() in seen:
+                j += 1
+            whole_run = (j >= len(lines) or not lines[j].strip().startswith("#include")) and \
+                (not out or not out[-1].strip().startswith("#include"))
+            if whole_run:
+                while out and out[-1].lstrip().startswith("//"):
+                    out.pop()
+                if j < len(lines) and not lines[j].strip() and out and not out[-1].strip():
+                    j += 1  # no double blank line where the run was
+            i = j
+            continue
+        if s.startswith("#include"):
+            seen.add(s)
         out.append(lines[i])
         i += 1
     return "".join(out)

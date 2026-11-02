@@ -118,6 +118,15 @@ class DedupeTest(unittest.TestCase):
                          "/* licence */\n\n#pragma once\n\n#ifndef X\n#else\n"
                          "#include \"A.h\"\n#include \"B.h\"\n\nint x;\n")
 
+    def test_a_repeated_include_line_goes_and_a_new_one_stays(self):
+        text = ("#include \"A.h\"\n\n// Each header includes what it uses.\n#include \"A.h\"\n#include \"B.h\"\n\n"
+                "#if X\n#include \"A.h\"\n#endif\n")
+        self.assertEqual(trees.dedupe_header(text),
+                         "#include \"A.h\"\n\n// Each header includes what it uses.\n#include \"B.h\"\n\n"
+                         "#if X\n#include \"A.h\"\n#endif\n")  # under a conditional it is not a repeat
+        text2 = "#include \"A.h\"\n\n// Each header includes what it uses.\n#include \"A.h\"\n\nint x;\n"
+        self.assertEqual(trees.dedupe_header(text2), "#include \"A.h\"\n\nint x;\n")
+
     def test_different_include_runs_and_a_single_pragma_stay(self):
         text = "#pragma once\n\n#include \"A.h\"\n\n// more\n#include \"B.h\"\n"
         self.assertEqual(trees.dedupe_header(text), text)

@@ -1,0 +1,44 @@
+# Tests and developer tooling
+
+**Series:** step 22 of 25 · base `series/021-source-hygiene` · next `series/023-c-as-cxx` **(gen)**
+
+**From:** `develop` commits `51d05af43`, `517abcfcd`, `119e29325`, `70c176921` · 35 src, 1.1k tests, 13 other changed lines; 0 lines in deleted files **(gen)**
+
+## What this changes
+
+- A component scenario that walks the tutorial (`t1_tutorial_walkthrough.feature`), with its
+  keyboard driver and steps, and an offline test of the steps.
+- `tests/run.sh`, one entry point for the unit, component, smoke and GUI tiers.
+- Two fixes found by comparing the C++ code with upstream's Objective-C, file by file:
+  `ShipEntity::update` updates every subentity, not only ship subentities (flashers and exhaust
+  plumes of NPC and demo ships were frozen), and deleting a JavaScript property that a class
+  handles (mission variables, system-info overrides, console settings) reaches the class's
+  delete hook even when the object has no own slot, as it did under SpiderMonkey.
+- Editor setup: `.clangd` points clangd at the meson compile database.
+
+## Why
+
+The tutorial scenario covers the keyboard path end to end. The two fixes restore upstream's
+behaviour; each comes with a test that fails before it.
+
+## Behaviour changes
+
+- Subentities that are not ships (flashers, exhaust plumes) animate again. Pinned by
+  `updateReachesNonShipSubentities` in `tests/unit/core/test_ShipEntity.cpp`.
+- `delete missionVariables.x` for a variable loaded from a save or set by a legacy script, and
+  `delete` on a system-info override or a console setting, now clear it. Pinned by
+  `deletingAVariableTheScriptNeverSet` in `tests/unit/core/test_OOJSMissionVariables.cpp` and the
+  delete test in `tests/unit/test_jsengine_quickjs.cpp`; `test_OOJSConsole` expects the fourth
+  configuration call that upstream's console makes on such a delete.
+
+## How to review
+
+The two fixes are small (`ShipEntity.cpp`, `JSEngine_quickjs.cpp`); start there, with their
+tests. The component tier's additions are new files. The editor settings for VS Code and Zed
+are not part of the series.
+
+## Verified **(gen)**
+
+Not verified yet.
+
+macOS (its platform code is not converted yet) and Linux are not verified by this series.

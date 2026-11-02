@@ -326,3 +326,13 @@ game repo only gets local branches.
     artefacts: OOHPVector.cpp's `!OOMATHS_STANDALONE` guard, ShipEntity.h's comments, the two
     virtual-member macros' layout, three maths headers) take develop's text, so step 025 is the
     reformat plus its own `.clang-format`, `mk.sh` and readme lines, nothing else.
+  - Files a tail step changes keep upstream's layout where they can: the step's commits are also
+    replayed in upstream's style (the automatic rules, no stored resolutions), and a file that
+    merges there and has the same text once put in develop's style takes that version. Others
+    keep develop's 80-column layout (most of step 021, whose commits rewrap comments). A test
+    takes only a clean merge in either style, never a rule's resolution.
+  - Step 025 against its command: running the reformat on step 024 gives step 025 except for 88
+    files, which keep develop's layout or include order (clang-format's output depends on its
+    input's layout, and develop's tests were sorted by an earlier version); `verify` checks they
+    differ in nothing else. Step 025 is develop exactly (FR-002), so it cannot be the command's
+    output byte for byte.
