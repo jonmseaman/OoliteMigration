@@ -2,7 +2,7 @@
 
 **Series:** step 5 of 25 · base `series/004-quickjs-switch` · next `series/006-typed-accessors` **(gen)**
 
-**Chapter:** P2 · 2.2 Ref/WeakRef/AutoreleaseScope, 2.2 PList, 2.2 FileSystem, 2.2 Defaults, Objective-C floor · history `e31130fa0d`..`916311e66d` (19 merges) · 10.0k src, 6.5k tests, 3 other changed lines; 460 lines in deleted files **(gen)**
+**Chapter:** P2 · 2.2 Ref/WeakRef/AutoreleaseScope, 2.2 PList, 2.2 FileSystem, 2.2 Defaults, Objective-C floor · history `e31130fa0d`..`916311e66d` (19 merges) · 10.0k src, 6.4k tests, 3 other changed lines; 460 lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -84,6 +84,19 @@ the GNUstep behaviour it replaces:
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `128bf7ca03`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | pass: oofnd |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

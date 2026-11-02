@@ -53,6 +53,11 @@
   "ours": "784e0527db751f46852360e5ed28da4f8537d0e1",
   "theirs": "2c9982cbb311b24af4554bbc66fe1c66f449993e"
  },
+ "src/Core/OOFastArithmetic.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "8a404379e64e4158d0a8a6ec80f193b2c865f539"
+ },
  "src/Core/OOJoystickManager.h": {
   "base": "52d256eeae0846ed3065fc4cf74073f1a4c6604d",
   "deleted": false,

@@ -2,7 +2,7 @@
 
 **Series:** step 9 of 25 · base `series/008-foundation-wave-2` · next `series/010-leaf-conversions` **(gen)**
 
-**Chapter:** P2 · selector families, bridge callers · history `b75b5d1bc6`..`e0b9e24b22` (199 merges) · 18.6k src, 1.0k tests, 12 other changed lines; 10.5k lines in deleted files **(gen)**
+**Chapter:** P2 · selector families, bridge callers · history `b75b5d1bc6`..`e0b9e24b22` (199 merges) · 18.6k src, 1.1k tests, 12 other changed lines; 10.5k lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -62,6 +62,19 @@ replacements.
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `608d86cf38`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | pass: oofnd |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

@@ -266,3 +266,9 @@ game repo only gets local branches.
     the #endif of its OOMATHS_STANDALONE block (the history's include-guard #endif goes, as #748).
   - Build-only results (Clang, test flavour), T023: steps 1-19 compile; their only warnings are the
     listed ones in the history's tests.
+  - Full verify (T023), first pass: steps 1-10 pass. Step 11's unit run failed test_OOTextureLoader
+    and test_OOConcreteTexture: the history's tests pin 4 x 2 -> 2 x 2, which needs
+    OORoundUpToPowerOf2_32(1) == 2, and the unfixed expression is undefined there (__builtin_clz(0));
+    the history's tests passed only in its -O2 build. The history's own fix (f4fc8a0dd, oo-lglaq,
+    which the history makes at step 16) is brought forward to step 11 as the conservative default:
+    no test changes, steps 11-15 differ in OOFastArithmetic.h only, steps 16-19 are unchanged.

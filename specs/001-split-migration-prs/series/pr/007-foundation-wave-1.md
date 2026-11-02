@@ -2,7 +2,7 @@
 
 **Series:** step 7 of 25 · base `series/006-typed-accessors` · next `series/008-foundation-wave-2` **(gen)**
 
-**Chapter:** P2 · 2.3 Foundation -> oofnd, per file · history `931bee60e9`..`ecfafab479` (210 merges) · 35.5k src, 1.3k tests, 0 other changed lines; 0 lines in deleted files **(gen)**
+**Chapter:** P2 · 2.3 Foundation -> oofnd, per file · history `931bee60e9`..`ecfafab479` (210 merges) · 35.3k src, 1.2k tests, 0 other changed lines; 0 lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -67,6 +67,19 @@ spawns a fixed hull for each role so the component scenarios don't depend on a r
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `dfa465e94a`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| clang_format | pass |
+| component | pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | pass: oofnd |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

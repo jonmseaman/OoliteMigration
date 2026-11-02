@@ -2,7 +2,7 @@
 
 **Series:** step 4 of 25 · base `series/003-objective-cxx` · next `series/005-oofnd-core` **(gen)**
 
-**Chapter:** P1 · 1.4 differential test, 1.5 delete SpiderMonkey · history `3b6aec8c6f`..`a7e3ed1efc` (6 merges) · 11.8k src, 4 tests, 235 other changed lines; 1.5k lines in deleted files **(gen)**
+**Chapter:** P1 · 1.4 differential test, 1.5 delete SpiderMonkey · history `3b6aec8c6f`..`a7e3ed1efc` (6 merges) · 11.9k src, 4 tests, 275 other changed lines; 1.5k lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -73,6 +73,19 @@ verified.
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `9d311ad871`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | n/a: the tree has no unit suites |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

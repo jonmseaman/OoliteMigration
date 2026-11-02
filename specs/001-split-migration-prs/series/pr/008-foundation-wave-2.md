@@ -2,7 +2,7 @@
 
 **Series:** step 8 of 25 · base `series/007-foundation-wave-1` · next `series/009-selector-families` **(gen)**
 
-**Chapter:** P2 · 2.3 Foundation sweeps, OOLog, NSAssert and NSUserDefaults gaps · history `5faa477a34`..`fa9cbc6c24` (240 merges) · 48.3k src, 2.9k tests, 39 other changed lines; 1.7k lines in deleted files **(gen)**
+**Chapter:** P2 · 2.3 Foundation sweeps, OOLog, NSAssert and NSUserDefaults gaps · history `5faa477a34`..`fa9cbc6c24` (240 merges) · 48.3k src, 2.8k tests, 40 other changed lines; 1.7k lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -76,6 +76,19 @@ a C string.
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `9704b7a66f`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | pass: oofnd |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

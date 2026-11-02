@@ -2,7 +2,7 @@
 
 **Series:** step 6 of 25 · base `series/005-oofnd-core` · next `series/007-foundation-wave-1` **(gen)**
 
-**Chapter:** P2 · 2.2 typed accessors, first sweep · history `b73f2cd400`..`bc9a02ca7b` (108 merges) · 11.1k src, 2.2k tests, 43 other changed lines; 0 lines in deleted files **(gen)**
+**Chapter:** P2 · 2.2 typed accessors, first sweep · history `b73f2cd400`..`bc9a02ca7b` (108 merges) · 11.1k src, 2.1k tests, 43 other changed lines; 0 lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -75,6 +75,19 @@ These need a real read:
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `ef3196aaa5`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | pass: oofnd |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

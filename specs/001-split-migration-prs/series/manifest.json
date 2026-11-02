@@ -93,10 +93,10 @@
      "warnings_clang": "pass: 0 warnings"
     },
     "clean": true,
-    "commit": "f0fe9e68720c7c173ab80d08079081b884aad6cb",
-    "date": "2026-11-01",
+    "commit": "1d9fcd9d8ca9e52be61ac4f3df3dc1e72f9fac0c",
+    "date": "2026-11-02",
     "era": "objc-spidermonkey",
-    "tree": "cd407f9726d25e0704152feca3848b0820cfb013"
+    "tree": "5e07f03c78988e0d31501dbba0ff2e5d6ed1b3c5"
    }
   },
   {
@@ -194,10 +194,10 @@
      "warnings_clang": "pass: 0 warnings"
     },
     "clean": false,
-    "commit": "011b6c95f9fc46479536dc6a6f6ee2898a637df3",
-    "date": "2026-11-01",
+    "commit": "a0bc6f4a03694c0b2f5e154cb444e7b9dd8fd402",
+    "date": "2026-11-02",
     "era": "objc-spidermonkey",
-    "tree": "8758933ec326ed45e93e5ed878e1d971481a4c3f"
+    "tree": "6eb60fbb90db75b922cf4081d59b4cce6ef5d05d"
    }
   },
   {
@@ -361,22 +361,22 @@
    "title": "Compile the game as Objective-C++",
    "verification": {
     "checks": {
-     "build_clang": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\003-build_clang.log)",
+     "build_clang": "pass",
      "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
      "clang_format": "pass",
      "component": "n/a: no component scenario touched",
      "no_new_spidermonkey_or_gnustep": "pass",
      "no_new_suppressions": "pass",
-     "smoke": "fail: not run, the build failed",
+     "smoke": "pass",
      "tests_untouched": "pass",
      "unit": "n/a: the tree has no unit suites",
-     "warnings_clang": "n/a: the build failed"
+     "warnings_clang": "pass: 0 warnings"
     },
     "clean": false,
-    "commit": "68763d885b686fe7ca45bd1c1869f18db1c002e4",
-    "date": "2026-11-01",
+    "commit": "74de248ea44941d495bee81679feb00203f57bca",
+    "date": "2026-11-02",
     "era": "objc-spidermonkey",
-    "tree": "f21f04c76c578e584eded3aaec912372cd0b9b0c"
+    "tree": "a4c23e8dfae359d096f76ce158566e533d9095ae"
    }
   },
   {
@@ -393,7 +393,7 @@
     ]
    },
    "description": "series/pr/004-quickjs-switch.md",
-   "era": null,
+   "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "746edac9306e96b12ea8b662487bd295bb47ce3c",
@@ -515,7 +515,25 @@
    "target_tree": "746edac9306e96b12ea8b662487bd295bb47ce3c",
    "temporaries": [],
    "title": "Run the game on QuickJS-ng and remove SpiderMonkey and NSPR",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "n/a: the tree has no unit suites",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": true,
+    "commit": "9d311ad8717b19417fd6d96eec045f34f2a19520",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "746edac9306e96b12ea8b662487bd295bb47ce3c"
+   }
   },
   {
    "boundary_moved": null,
@@ -534,7 +552,7 @@
     ]
    },
    "description": "series/pr/005-oofnd-core.md",
-   "era": null,
+   "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "5662fd31227f2084370c00fa2bb20c42680641c4",
@@ -592,7 +610,25 @@
    "target_tree": "5662fd31227f2084370c00fa2bb20c42680641c4",
    "temporaries": [],
    "title": "Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "128bf7ca0335056717bd8cb2541ebcc5cd5c050f",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "5662fd31227f2084370c00fa2bb20c42680641c4"
+   }
   },
   {
    "boundary_moved": null,
@@ -607,7 +643,7 @@
     ]
    },
    "description": "series/pr/006-typed-accessors.md",
-   "era": null,
+   "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "95b08a26eaf35c50f6e33fabc3d2024418d1c182",
@@ -685,7 +721,25 @@
    "target_tree": "95b08a26eaf35c50f6e33fabc3d2024418d1c182",
    "temporaries": [],
    "title": "Move most oo_*ForKey dictionary accessors to typed PListView::get",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "ef3196aaa5af0f94da51ed31f92853dcd40da97e",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "95b08a26eaf35c50f6e33fabc3d2024418d1c182"
+   }
   },
   {
    "boundary_moved": null,
@@ -700,7 +754,7 @@
     ]
    },
    "description": "series/pr/007-foundation-wave-1.md",
-   "era": null,
+   "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "79e2a544397ccad999ba3b93091a4d27db25ba0b",
@@ -870,7 +924,25 @@
    "target_tree": "79e2a544397ccad999ba3b93091a4d27db25ba0b",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 1",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "dfa465e94aa438e59737e5da6820fbf1ac70677f",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "79e2a544397ccad999ba3b93091a4d27db25ba0b"
+   }
   },
   {
    "boundary_moved": null,
@@ -886,7 +958,7 @@
     ]
    },
    "description": "series/pr/008-foundation-wave-2.md",
-   "era": null,
+   "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "70ffc99b34e85b9f291db273e5c6a3104dc35fbe",
@@ -1116,7 +1188,25 @@
    "target_tree": "cd7122b813b0d014b9bf69e9fdc7d4b1ee0d851c",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 2",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "9704b7a66fd79bdb106b0365bac6a6df35899880",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "cd7122b813b0d014b9bf69e9fdc7d4b1ee0d851c"
+   }
   },
   {
    "boundary_moved": null,
@@ -1132,7 +1222,7 @@
     ]
    },
    "description": "series/pr/009-selector-families.md",
-   "era": null,
+   "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "aa7f14925dfdbdc22cc12e1f895a4f73b740d91b",
@@ -1326,7 +1416,25 @@
    "target_tree": "7f2f7ddbe2d08a57b346511139e7122b0cd69525",
    "temporaries": [],
    "title": "Retire the remaining Foundation selectors and their bridge callers",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "608d86cf38eb7c3eaadebdd29e5450546e96af69",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "7f2f7ddbe2d08a57b346511139e7122b0cd69525"
+   }
   },
   {
    "boundary_moved": null,
@@ -1344,7 +1452,7 @@
     ]
    },
    "description": "series/pr/010-leaf-conversions.md",
-   "era": null,
+   "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "e77df90feb55c597e25b9b9d5ba67bacb710838c",
@@ -1478,7 +1586,25 @@
    "target_tree": "b1cbce007d9de7fbebc6590661559a3c0922ec65",
    "temporaries": [],
    "title": "Drop gnustep-base, then convert the first classes to C++: maths, leaf utilities, OXP verifier",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "8607b075cf748251f499f24b023dce540da76997",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "b1cbce007d9de7fbebc6590661559a3c0922ec65"
+   }
   },
   {
    "boundary_moved": null,
@@ -1496,10 +1622,10 @@
     ]
    },
    "description": "series/pr/011-module-conversions.md",
-   "era": null,
+   "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "461a166796112bc645bc2a29f94ae68861ae052f",
+   "merge_tree": "35fdbf16dcab29e615e557164292219fbf0d9989",
    "n": 11,
    "parent": "series/010-leaf-conversions",
    "resolutions": [
@@ -1628,6 +1754,10 @@
      "path": "src/Core/OODrawable.mm"
     },
     {
+     "how": "stored",
+     "path": "src/Core/OOFastArithmetic.h"
+    },
+    {
      "how": "auto",
      "path": "src/Core/OOJoystickManager.mm"
     },
@@ -1723,18 +1853,36 @@
    "size": {
     "deleted_files": 2354,
     "other": 112,
-    "src": 38935,
-    "tests": 40044
+    "src": 38971,
+    "tests": 40623
    },
    "source": {
     "from": "1964f76209e19f37b8f7311a6057e469cb919c7e",
     "to": "ab5dc6cd728a5b26951c588d3d6e0ef99049009c",
     "type": "history"
    },
-   "target_tree": "c8e1efbb99dbdf00474673c5b48567f8fcea6a33",
+   "target_tree": "1e29e295c53850a22f97a788ea579d1b7731892e",
    "temporaries": [],
    "title": "Convert scripting, entities, audio and materials classes to C++",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\011-unit.log)",
+     "warnings_clang": "pass: 0 warnings outside the history's tests (3 listed in test-warnings.md)"
+    },
+    "clean": false,
+    "commit": "98b3f356fa59f15743b54490b064193f5c735877",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "c8e1efbb99dbdf00474673c5b48567f8fcea6a33"
+   }
   },
   {
    "boundary_moved": null,
@@ -1754,7 +1902,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "81ac0d2598eab65e1bfef0633ab219c9b8923440",
+   "merge_tree": "0d6dd12ddb5299f271381c8017ac61e86a22785c",
    "n": 12,
    "parent": "series/011-module-conversions",
    "resolutions": [
@@ -1830,7 +1978,7 @@
     "to": "0c01939de79a4ac04237390d93dc78437057c5e0",
     "type": "history"
    },
-   "target_tree": "06cc72698110d6dd08e38e620e5aa3f250eb01c2",
+   "target_tree": "3c630b3bfd66493816cd66150a0b0b7eca8c97f8",
    "temporaries": [],
    "title": "Convert the large files in slices; delete the first Objective-C facades",
    "verification": null
@@ -1851,7 +1999,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "6d16fd55cd2a0ea4d62bf245a6354a0304bcba78",
+   "merge_tree": "5fd81726699272aa3c9b5ff14de706ad0a0f3144",
    "n": 13,
    "parent": "series/012-first-slices",
    "resolutions": [
@@ -1911,7 +2059,7 @@
     "to": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
     "type": "history"
    },
-   "target_tree": "b3a5ba40b27b63d1a6691d8e7c6face1ea8812be",
+   "target_tree": "a1b006edc582f1b30a3b525a4703e18b163d0218",
    "temporaries": [],
    "title": "Convert ShipEntity to C++",
    "verification": null
@@ -1933,7 +2081,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "a62e269132590f7c89c8c23089de23bedbb4618e",
+   "merge_tree": "3961df291e7b45eb04d45f7561a9246f81869ab5",
    "n": 14,
    "parent": "series/013-shipentity-slices",
    "resolutions": [
@@ -1985,7 +2133,7 @@
     "to": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
     "type": "history"
    },
-   "target_tree": "5137d1d52b80fdc20a523e05ef000b7ce16eb89f",
+   "target_tree": "efb510bc688a62ca5e178260948cf12e2daddeca",
    "temporaries": [],
    "title": "Convert Universe and PlayerEntity to C++",
    "verification": null
@@ -2006,7 +2154,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "4eb3514a28e2ad61e0da922bdf80619bc89f02c6",
+   "merge_tree": "321d021de6c6cff1de2507624d2832d713ee882f",
    "n": 15,
    "parent": "series/014-universe-player-slices",
    "resolutions": [
@@ -2110,7 +2258,7 @@
     "to": "2c2aae1316b5a125038a797c213162ffba389279",
     "type": "history"
    },
-   "target_tree": "fe5f67697b090688b6c7f9265027c0958b651176",
+   "target_tree": "82b31502611aeaa79dd58b786ec5391123250de1",
    "temporaries": [],
    "title": "Delete the Objective-C facades",
    "verification": null

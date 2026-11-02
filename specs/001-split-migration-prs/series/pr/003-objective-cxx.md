@@ -2,7 +2,7 @@
 
 **Series:** step 3 of 25 · base `series/002-js-facade` · next `series/004-quickjs-switch` **(gen)**
 
-**Chapter:** P2 · 2.1 the .m -> .mm switch · history `c9c0525383`..`c9c0525383` (1 merges) · 454 src, 0 tests, 1.7k other changed lines; 0 lines in deleted files **(gen)**
+**Chapter:** P2 · 2.1 the .m -> .mm switch · history `c9c0525383`..`c9c0525383` (1 merges) · 745 src, 0 tests, 1.9k other changed lines; 290 lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -56,19 +56,19 @@ scope or an `extern "C"` block. The ones that deserve a real read:
 
 ## Verified **(gen)**
 
-Windows x64, `68763d885b`, 2026-11-01.
+Windows x64, `74de248ea4`, 2026-11-02.
 
 | Check | Result |
 |---|---|
-| build_clang | fail: exit 1 (see .agent-tmp\series-verify-logs\003-build_clang.log) |
+| build_clang | pass |
 | build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
 | clang_format | pass |
 | component | n/a: no component scenario touched |
 | no_new_spidermonkey_or_gnustep | pass |
 | no_new_suppressions | pass |
-| smoke | fail: not run, the build failed |
+| smoke | pass |
 | tests_untouched | pass |
 | unit | n/a: the tree has no unit suites |
-| warnings_clang | n/a: the build failed |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

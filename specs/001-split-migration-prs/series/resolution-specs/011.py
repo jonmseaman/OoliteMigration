@@ -79,3 +79,23 @@ CHANGES["src/Core/Scripting/OOJSManifest.mm"] = [
     ("namespace {\nstatic ooscript::Object sManifestPrototype;\n} // namespace\n", ""),
     ("    sManifestPrototype = (proto);\n", ""),
 ]
+
+
+# The history's own fix (f4fc8a0dd, oo-lglaq) is brought forward from step 16: the history's
+# texture tests that arrive here pin the optimised build's 2 for OORoundUpToPowerOf2_32(1), which
+# the unfixed expression leaves undefined (__builtin_clz(0)), and the series' test build is not -O2.
+_RU_OLD_NOTE = "/* Round integer up to nearest power of 2. NOTE: these return 0 if the high bit of value is set. */\n"
+_RU_NEW_NOTE = ("/* Round integer up to nearest power of 2.\n"
+                "   The expression has no defined value for 1 (__builtin_clz(0)) nor for 0 and values above the\n"
+                "   high bit (a shift by -1). Those inputs return what the optimised x86-64 build has always\n"
+                "   returned for them, so debug and release agree (bead oo-lglaq): 2 for 1, and 1 for 0 and for\n"
+                "   values above the high bit (not 0, as an older note here said). */\n")
+CHANGES["src/Core/OOFastArithmetic.h"] = [
+    (_RU_OLD_NOTE, _RU_NEW_NOTE),
+    ("    return 0x80000000U >> (__builtin_clz(value - 1) - 1);\n",
+     "    if (value == 1)\n        return 2;\n    int zeros = __builtin_clz(value - 1);\n"
+     "    return (zeros == 0) ? 1 : 0x80000000U >> (zeros - 1);\n"),
+    ("    return 0x8000000000000000ULL >> (__builtin_clzll(value - 1) - 1);\n",
+     "    if (value == 1)\n        return 2;\n    int zeros = __builtin_clzll(value - 1);\n"
+     "    return (zeros == 0) ? 1 : 0x8000000000000000ULL >> (zeros - 1);\n"),
+]
