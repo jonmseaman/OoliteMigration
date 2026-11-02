@@ -2,7 +2,7 @@
 
 **Series:** step 19 of 25 · base `series/018-gcc-build` · next `series/020-develop-fixes` **(gen)**
 
-**Chapter:** P4 · upstream 9ee8ff22f pulled and ported · history `883d339f93`..`6504faa3b9` (4 merges) · 12.5k src, 348 tests, 49 other changed lines; 0 lines in deleted files **(gen)**
+**Chapter:** P4 · upstream 9ee8ff22f pulled and ported · history `883d339f93`..`6504faa3b9` (4 merges) · 12.4k src, 303 tests, 45 other changed lines; 0 lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -80,6 +80,19 @@ AppImage, which upstream dropped in #782; a later step in the series removes it.
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `8bbb632453`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: does not build with GCC yet (exit 1); the parent does not either |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | pass: oofnd, core |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

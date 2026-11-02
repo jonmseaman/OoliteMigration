@@ -2,7 +2,7 @@
 
 **Series:** step 17 of 25 · base `series/016-entity-facade` · next `series/018-gcc-build` **(gen)**
 
-**Chapter:** P4 · 4.1 deferred release, 4.2 runtime and rename · history `1248d43e1b`..`af1f220542` (32 merges) · 6.6k src, 1.8k tests, 11.6k other changed lines; 8.5k lines in deleted files **(gen)**
+**Chapter:** P4 · 4.1 deferred release, 4.2 runtime and rename · history `1248d43e1b`..`af1f220542` (32 merges) · 6.6k src, 1.8k tests, 10.3k other changed lines; 8.5k lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -53,6 +53,19 @@ code and the tests of that code only (`tests/unit/oofnd/test_objc_*`, `test_OOWe
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `7758d79177`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: does not build with GCC yet (exit 1); the parent does not either |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | pass: oofnd, core |
+| warnings_clang | pass: 0 warnings outside the history's tests (1 listed in test-warnings.md) |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

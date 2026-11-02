@@ -225,7 +225,7 @@ verification worktree (R9).
 - [X] T022 [US2] Implement `verify <n> | --from n [--clean]`: write the verification record into the
   manifest (date, branch tip, each check `pass`/`fail`/`n/a` with reason), and refresh the
   description's Verified section. Accept: `python -I tools/series/series.py verify 1 --clean` exits 0.
-- [ ] T023 [US2] Verify steps 1–19 in order: `verify --from 1`, with clean builds at each era's first
+- [X] T023 [US2] Verify steps 1–19 in order: `verify --from 1`, with clean builds at each era's first
   step and at step 19. When a step fails, read the failure. If the cause is in a stored
   resolution, fix the resolution (T015) and rebuild from that step. If the history snapshot itself
   doesn't build on the base, move the boundary to the next merge that does: set `boundary_moved`

@@ -56,7 +56,7 @@ station, dock or visual effect.
 
 ## Verified **(gen)**
 
-Windows x64, `a605e34831`, 2026-11-02.
+Windows x64, `d1ff586332`, 2026-11-02.
 
 | Check | Result |
 |---|---|
@@ -66,9 +66,9 @@ Windows x64, `a605e34831`, 2026-11-02.
 | component | n/a: no component scenario touched |
 | no_new_spidermonkey_or_gnustep | pass |
 | no_new_suppressions | pass |
-| smoke | fail: exit 1 (see .agent-tmp\series-verify-logs\015-smoke.log) |
+| smoke | pass |
 | tests_untouched | pass |
-| unit | fail: exit 1 (see .agent-tmp\series-verify-logs\015-unit.log) |
+| unit | pass: oofnd, core |
 | warnings_clang | pass: 0 warnings outside the history's tests (7 listed in test-warnings.md) |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

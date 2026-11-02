@@ -2335,16 +2335,16 @@
      "component": "n/a: no component scenario touched",
      "no_new_spidermonkey_or_gnustep": "pass",
      "no_new_suppressions": "pass",
-     "smoke": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\015-smoke.log)",
+     "smoke": "pass",
      "tests_untouched": "pass",
-     "unit": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\015-unit.log)",
+     "unit": "pass: oofnd, core",
      "warnings_clang": "pass: 0 warnings outside the history's tests (7 listed in test-warnings.md)"
     },
     "clean": false,
-    "commit": "a605e348318254e0fb83d7583b5536172b6f63f7",
+    "commit": "d1ff5863329220d5877e8a618d255f2e702cbf50",
     "date": "2026-11-02",
     "era": "objc-quickjs",
-    "tree": "82b31502611aeaa79dd58b786ec5391123250de1"
+    "tree": "3b7513516f4b933ef3655b98f8460c581baf6cd7"
    }
   },
   {
@@ -2360,7 +2360,7 @@
     ]
    },
    "description": "series/pr/016-entity-facade.md",
-   "era": null,
+   "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "4191fa81826d4067aa5de1448a1ad895947caa73",
@@ -2538,7 +2538,25 @@
    "target_tree": "d418116cf21e09dcae99be7ed8aa632430e422a3",
    "temporaries": [],
    "title": "Delete the root Entity facade",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core",
+     "warnings_clang": "pass: 0 warnings outside the history's tests (1 listed in test-warnings.md)"
+    },
+    "clean": false,
+    "commit": "c95a488c3e664e1ab37e7840bc46793872a7303d",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "d418116cf21e09dcae99be7ed8aa632430e422a3"
+   }
   },
   {
    "boundary_moved": null,
@@ -2554,7 +2572,7 @@
     ]
    },
    "description": "series/pr/017-objc-runtime-out.md",
-   "era": null,
+   "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "e2355654bca33a27f44f51b95c19c82cfc24663b",
@@ -2852,7 +2870,25 @@
    "target_tree": "3a43ad9bb3bbb0ab2d5decfea937fcf6383720e1",
    "temporaries": [],
    "title": "Remove the Objective-C runtime and rename the sources to .cpp",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core",
+     "warnings_clang": "pass: 0 warnings outside the history's tests (1 listed in test-warnings.md)"
+    },
+    "clean": true,
+    "commit": "7758d7917751109e50a75a07bf44a3f7ae9e698a",
+    "date": "2026-11-02",
+    "era": "cxx",
+    "tree": "3a43ad9bb3bbb0ab2d5decfea937fcf6383720e1"
+   }
   },
   {
    "boundary_moved": null,
@@ -2867,7 +2903,7 @@
     ]
    },
    "description": "series/pr/018-gcc-build.md",
-   "era": null,
+   "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "50ef95cc2c748bc56c5b7a1fe81fb48cc3304090",
@@ -2888,7 +2924,25 @@
    "target_tree": "b32b54df22a9bae43b043a0772f7823bbe899b38",
    "temporaries": [],
    "title": "Build with GCC as well as Clang",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core",
+     "warnings_clang": "pass: 0 warnings outside the history's tests (1 listed in test-warnings.md)"
+    },
+    "clean": false,
+    "commit": "9e5a1f6512c839629ffcdaf72ee473546e6f4d0d",
+    "date": "2026-11-02",
+    "era": "cxx",
+    "tree": "b32b54df22a9bae43b043a0772f7823bbe899b38"
+   }
   },
   {
    "boundary_moved": null,
@@ -2903,7 +2957,7 @@
     ]
    },
    "description": "series/pr/019-upstream-9ee8ff22f-port.md",
-   "era": null,
+   "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "2512356cc7adff0beeea7feb61bb302c644ab0eb",
@@ -2997,9 +3051,9 @@
    ],
    "size": {
     "deleted_files": 0,
-    "other": 49,
-    "src": 12463,
-    "tests": 348
+    "other": 45,
+    "src": 12392,
+    "tests": 303
    },
    "source": {
     "from": "883d339f93708db1a74f9a7f6426ed77622c449c",
@@ -3009,7 +3063,25 @@
    "target_tree": "e04d95cd58769ce5e87900717093601d653ea14a",
    "temporaries": [],
    "title": "Port upstream changes #369 to #765 into the C++ code",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": true,
+    "commit": "8bbb632453508124571de28daf3dd95152519492",
+    "date": "2026-11-02",
+    "era": "cxx",
+    "tree": "e04d95cd58769ce5e87900717093601d653ea14a"
+   }
   },
   {
    "boundary_moved": null,

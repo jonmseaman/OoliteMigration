@@ -290,3 +290,9 @@ game repo only gets local branches.
     Objective-C controller before (5 of 5 smoke runs pass); step 16 drops the line with the facades.
     (+sharedController was tried first: it makes a second controller, as the constructor does not
     record the shared one.) Steps 16-19 are unchanged by both.
+  - Steps 15-19 verified (2026-11-02); `check --verified --steps 1-19` passes. GCC is n/a through
+    step 19 (R5): from step 17 the GCC build compiles, but the core unit tests fail to link
+    (`oo::EntityDescription[abi:cxx11](Entity*)` undefined, 27 times at step 18). The history has
+    the same test meson.build at step 18, so the failure is the history's, not a resolution's.
+    The develop tail (020+) is expected to bring the GCC fix; the first step that builds with GCC
+    makes GCC required from the next one.

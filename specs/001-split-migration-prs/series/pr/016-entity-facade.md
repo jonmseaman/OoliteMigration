@@ -2,7 +2,7 @@
 
 **Series:** step 16 of 25 · base `series/015-facade-deletions` · next `series/017-objc-runtime-out` **(gen)**
 
-**Chapter:** P3 · the root Entity facade · history `d012b77f21`..`473facf469` (70 merges) · 29.9k src, 18.1k tests, 59 other changed lines; 17.8k lines in deleted files **(gen)**
+**Chapter:** P3 · the root Entity facade · history `d012b77f21`..`473facf469` (70 merges) · 29.7k src, 17.1k tests, 59 other changed lines; 17.8k lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -62,6 +62,19 @@ stand-ins rewritten as C++. The three fixes above are small and stand alone:
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `c95a488c3e`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | pass: oofnd, core |
+| warnings_clang | pass: 0 warnings outside the history's tests (1 listed in test-warnings.md) |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

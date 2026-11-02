@@ -48,6 +48,19 @@ GCC: `./mk.sh build test --native-file=gcc.ini`.
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `9e5a1f6512`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: does not build with GCC yet (exit 1); the parent does not either |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | pass: oofnd, core |
+| warnings_clang | pass: 0 warnings outside the history's tests (1 listed in test-warnings.md) |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.
