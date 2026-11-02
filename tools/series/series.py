@@ -195,6 +195,17 @@ def cmd_hoist(args):
     return 0
 
 
+def cmd_renumber(args):
+    from tools.series import manifest, renumber
+    m = load_manifest()
+    moved = renumber.apply(GAME, SERIES_DIR, m, manifest.ROOT_BRANCH)
+    manifest.save(MANIFEST, m)
+    for old, new in moved:
+        print(f"renumber: {old:03d} -> {new}")
+    print(f"renumber: {len(moved)} step(s) moved")
+    return 0
+
+
 def merge_inputs(m, step):
     """(base, ours, theirs) trees for a history step: an incremental, rebase-style merge (research R15).
 
@@ -530,6 +541,8 @@ def commit_message(step):
     ch = step.get("chapter")
     if ch:
         body = f"Migration phase {ch['phase'].lstrip('P')}: " + "; ".join(ch["work_items"]) + "."
+    elif step["source"]["type"] == "hoisted":
+        body = "An independent fix from the migration's first phase, ahead of the migration."
     else:
         body = "Changes made on the fork after the migration: " + ", ".join(c[:10] for c in step["source"]["commits"]) + "."
     return f"{step['title']}\n\n{body}\n"
@@ -588,13 +601,21 @@ def integrity(m, step):
     parent = parent_tree_of(m, step)
     if step["source"]["type"] == "develop":
         return integrity_tail(m, step, tree, parent)
-    base, ours, source = merge_inputs(m, step)
+    if step["source"]["type"] == "hoisted":
+        from tools.series import history, hoist
+        commits = step["source"]["commits"]
+        snap = history_snap(m)
+        upstream = history.git(GAME, "rev-parse", f"{m['anchors']['upstream_base']}^{{tree}}")
+        ours = hoist.series_base({"steps": [s for s in m["steps"] if s["n"] < step["n"]]}, upstream)
+        base, source = snap(hoist.first_parent(GAME, commits[0])), snap(commits[-1])
+    else:
+        base, ours, source = merge_inputs(m, step)
     out = {
         "tests_untouched": verify.check_tests_untouched(GAME, tree, source, ours, resolution_paths(step), base),
         "no_new_suppressions": verify.check_no_new_suppressions(GAME, parent, tree, source),
         "no_new_spidermonkey_or_gnustep": verify.check_no_new_legacy(GAME, parent, tree),
     }
-    if step["n"] <= 24:
+    if step["kind"] != "mechanical":
         out["clang_format"] = verify.check_clang_format(GAME, tree, normalise.normalise_tree(GAME, tree, tree))
     else:
         out["clang_format"] = "n/a: the reformat step changes the style; upstream's check follows it"
@@ -873,11 +894,40 @@ def cmd_check(args):
             bad = [k for k, r in (v.get("checks") or {}).items() if not str(r).startswith(("pass", "n/a"))]
             if not v or bad:
                 problems.append(f"rule 10: step {n} is not verified" + (f" ({', '.join(bad)})" if bad else ""))
+            else:
+                stale = record_stale(m, step)
+                if stale:
+                    problems.append(f"rule 10: step {n}'s verification is stale: {stale}")
     for p in problems:
         print(p)
     print(f"check: {len(problems)} problem(s) in {', '.join(sorted(groups))} for steps "
           f"{args.steps or f'1-{len(steps)}'}", file=sys.stderr)
     return 1 if problems else 0
+
+
+def record_stale(m, step):
+    """Why the step's verification record no longer describes its branch, or None.
+
+    A record is for the tip commit it names. After a rebuild that changes no tree (say, a step
+    inserted earlier whose tree the next step already contained), it still holds when the step's tree
+    is the record's and the parent's tree is the one the parent's own record was made for: every
+    check reads only those two trees and the parent's record."""
+    from tools.series import stack
+    v = step["verification"]
+    tip = stack.git(GAME, "rev-parse", f"refs/heads/{step['branch']}")
+    if v.get("commit") == tip:
+        return None
+    if v.get("tree") != stack.git(GAME, "rev-parse", f"{tip}^{{tree}}"):
+        return f"made for tree {str(v.get('tree'))[:10]}, the branch has another"
+    if step["n"] == 1:
+        return "made for another commit, and the first step has no parent record"
+    pv = step_by_n(m, step["n"] - 1).get("verification") or {}
+    parent_tree = stack.git(GAME, "rev-parse", f"{tip}^^{{tree}}")
+    if pv.get("tree") != parent_tree:
+        return "made on another parent"
+    if pv.get("commit") != stack.git(GAME, "rev-parse", f"{tip}^") and record_stale(m, step_by_n(m, step["n"] - 1)):
+        return "the parent's record is stale"
+    return None
 
 
 HAND_SECTIONS = ("What this changes", "Why", "Behaviour changes", "How to review")
@@ -947,7 +997,8 @@ def render_description(m, step, kept):
                   f"`{ch['first'][:10]}`..`{ch['last'][:10]}` ({ch['merges']} merges) · {size_txt} **(gen)**", ""]
     else:
         src = step["source"]
-        lines += [f"**From:** `develop` commits {', '.join(f'`{c[:9]}`' for c in src.get('commits', []))} · "
+        where = "the migration's history (an independent fix, ahead of it)" if src["type"] == "hoisted" else "`develop`"
+        lines += [f"**From:** {where} commits {', '.join(f'`{c[:9]}`' for c in src.get('commits', []))} · "
                   f"{size_txt} **(gen)**", ""]
     for h in HAND_SECTIONS:
         lines += [f"## {h}", "", kept.get(h) or TODO, ""]
@@ -999,7 +1050,7 @@ def cmd_handover(m):
     raise SystemExit("describe --handover: not implemented yet (T031)")
 
 
-HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut, "hoist": cmd_hoist, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
+HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut, "hoist": cmd_hoist, "renumber": cmd_renumber, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
 
 
 def main(argv=None):

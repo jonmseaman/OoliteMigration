@@ -1,48 +1,42 @@
 {
- "src/Core/Entities/PlayerEntity.mm": {
-  "base": "cf3440008195a1a3c59d7aeba4e9fc56455a3e27",
+ "src/Core/Entities/ShipEntity.mm": {
+  "base": "472c83e50b211e532d6ea07de4673127aa5761f5",
   "deleted": false,
-  "ours": "facd4b10b953a265d13726d1533541cd6ae75798",
-  "theirs": "e016ffac3c53108eeb420ed542b111c103cec0e5"
+  "ours": "7a718faf3e8e351f6d52b50bcedb91eb74557e96",
+  "theirs": "d7538439bf064dba59be59bca17f5768b0ef088e"
  },
- "src/Core/Entities/PlayerEntityControls.mm": {
-  "base": "e0118bd3934d0260d499773eb34bff2d340e04c4",
+ "src/Core/GameController.h": {
+  "base": "11cdc7062ea3dbfd662f842397dfbb47728f10a8",
   "deleted": false,
-  "ours": "13854530636adeef34ad3dc68dcfb64886d68700",
-  "theirs": "482e30ec87e8905e73b0ff9648e4b9931fd7cb3f"
+  "ours": "609d526795f2173b355509714a5a5fbfd37bc685",
+  "theirs": "f69de78ed276c84bea26eee3b1419a917c1631c3"
  },
- "src/Core/Scripting/ooscript/JSEngine_quickjs.cpp": {
-  "base": "9a9cfba8d76812025fa4d6e24a4cdacc1892e34b",
+ "src/Core/OOConvertCubeMapToLatLong.cpp": {
+  "base": "5af3a991b6c49393bc1fcf39e2c90cf23f9a00e9",
   "deleted": false,
-  "ours": "a102e53e3bb6142d81349b36a967570eb8cfc84f",
-  "theirs": "ae8241eeb692a9ccdc4a659f60c32d9cdfb5016b"
+  "ours": "68818919c016a236db923d37103b41ed8a0387d6",
+  "theirs": "5ac4e3983a08dcda5f570d096eb352842237df90"
  },
- "src/Core/Universe+ObjCBridge.mm": {
+ "src/Core/OOOXZManager.mm": {
   "deleted": false,
   "extra": true,
-  "merged": "59eb7342ee0dcdf947ea5c8a908f0c7f43e5a59e"
+  "merged": "f2fce318aa833cf5e4be375b37132d56c6720d48"
+ },
+ "src/Core/Universe+ObjCBridge.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "61e869e1650d00ddcf8757d7373facd70727f110"
+ },
+ "src/Core/Universe.h": {
+  "base": "a2f19beb0624c1be0a6b1bbe682a2ad8dd0ecc42",
+  "deleted": false,
+  "ours": "65e2f617e4e3a3d3180ef97f5d70fb148ba16b77",
+  "theirs": "82c9cd03982abf715e251619af71fc0c8175d0ff"
  },
  "src/Core/Universe.mm": {
-  "base": "da70527c288606187cfe3643e7d9c0d7f7375e77",
+  "base": "31b7bdc9df416be74ee559619f2a2c6e639f4352",
   "deleted": false,
-  "ours": "820869269a60b6e2525bb36e1de3c4f82cef8538",
-  "theirs": "573dc5f3ac73dc84f094bd82a12f4adfe0267335"
- },
- "src/SDL/MyOpenGLView+Input.h": {
-  "base": "6f685320c3c80f7a84a098843123c162cb49efea",
-  "deleted": true,
-  "ours": "f9dc352587de26ee2b238ed96ae5c271c91349db",
-  "theirs": null
- },
- "src/SDL/MyOpenGLView+Input.mm": {
-  "base": "2adb65a445ba6398e288daea312cc890f5f13384",
-  "deleted": false,
-  "ours": "f5c8e937e477e4d6673005f98bebacaf35548bee",
-  "theirs": "9866eca3fdf20b4b26dd238e6651e6c6be5d77fc"
- },
- "src/SDL/MyOpenGLView.mm": {
-  "deleted": false,
-  "extra": true,
-  "merged": "b471a64695f2fe5853a1657a179c4f7005a9928b"
+  "ours": "6c1e42ce8f162f118cfc6901145f4e8ee9118a4a",
+  "theirs": "da70527c288606187cfe3643e7d9c0d7f7375e77"
  }
 }

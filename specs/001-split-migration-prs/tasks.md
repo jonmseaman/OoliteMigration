@@ -278,7 +278,7 @@ and builds there with Clang.
   an `independent` step before step 1, and remove the same change from later steps' diffs by
   carrying it into every target tree up to its original chapter. Add a test with the fixture.
   Accept: `python -m unittest tools.series.tests.test_hoist` exits 0.
-- [ ] T028 [US4] Pick the candidates: from `inventory.tsv`, list merges whose subjects or bead
+- [X] T028 [US4] Pick the candidates: from `inventory.tsv`, list merges whose subjects or bead
   titles name determinism, `OO_RANDOM_SEED`, iteration order, or a bug fix in code that upstream
   also has. Read each diff, keeping only changes outside test-harness and migration code, and
   write the list with a one-line reason each to plan.md Notes. Defaults: `oo-scnp`
@@ -300,7 +300,7 @@ and builds there with Clang.
 `specs/001-split-migration-prs/series/HANDOVER.md` lists, per step in order, the exact push and
 `gh pr create` commands with no placeholders.
 
-- [ ] T030 [P] [US5] Implement `renumber`: after a step is inserted or removed, rename the branches
+- [X] T030 [P] [US5] Implement `renumber`: after a step is inserted or removed, rename the branches
   (`git branch -m`), description files and resolution directories so that NNN = `n`. Rewrite the
   manifest and reset Git Town lineage with `git town set-parent` for every moved branch. Add a test
   with the fixture. Accept: `python -m unittest tools.series.tests.test_renumber` exits 0.

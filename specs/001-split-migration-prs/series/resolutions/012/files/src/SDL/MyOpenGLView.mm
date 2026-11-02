@@ -58,28 +58,9 @@ extern "C" int SaveEXRSnapshot(const char* outfilename, int width, int height, c
 #include "oofnd/Date.hpp"
 #include <ctype.h>
 
-#if OOLITE_WINDOWS
-#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
-#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
-#endif
-extern "C" HRESULT WINAPI DwmSetWindowAttribute(HWND hwnd, DWORD dwAttribute, LPCVOID pvAttribute, DWORD cbAttribute);
+@interface MyOpenGLView (OOPrivate)
 
-#define USE_UNDOCUMENTED_DARKMODE_API 1
-
-#if USE_UNDOCUMENTED_DARKMODE_API
-#ifndef LOAD_LIBRARY_SEARCH_SYSTEM32
-#define LOAD_LIBRARY_SEARCH_SYSTEM32 0x00000800
-#endif
-typedef DWORD(WINAPI* pfnSetPreferredAppMode)(DWORD appMode);
-enum PreferredAppMode {
-    Default,
-    AllowDark,
-    ForceDark,
-    ForceLight,
-    Max
-};
-#endif
-#endif // OOLITE_WINDOWS
+@end
 
 namespace {
 
@@ -111,7 +92,9 @@ bool SameMode(const oo::PList& a, const oo::PList& b)
 
 } // namespace
 
-SDL_DisplayID cxx::MyOpenGLView::getDisplayId()
+@implementation MyOpenGLView
+
+- (SDL_DisplayID)getDisplayId
 {
     SDL_DisplayID displayId = 0;
     if (window) {
@@ -129,13 +112,13 @@ SDL_DisplayID cxx::MyOpenGLView::getDisplayId()
     return displayId;
 }
 
-oo::PList cxx::MyOpenGLView::getNativeSize()
+- (oo::PList)getNativeSize
 {
     oo::PList::Dict mode;
     int nativeDisplayWidth = 1024;
     int nativeDisplayHeight = 768;
 
-    SDL_DisplayID displayId = getDisplayId();
+    SDL_DisplayID displayId = [self getDisplayId];
     SDL_Rect boundsRect;
     if (displayId && SDL_GetDisplayUsableBounds(displayId, &boundsRect)) {
         nativeDisplayWidth = boundsRect.w;
@@ -152,12 +135,12 @@ oo::PList cxx::MyOpenGLView::getNativeSize()
     return oo::PList(std::move(mode));
 }
 
-std::optional<std::string> cxx::MyOpenGLView::getWindowCaption()
+- (std::optional<std::string>)getWindowCaption
 {
     return oo::str::format("Oolite v%s by %s - %s", OO_VERSION_FULL, OO_BUILDER, OO_BUILD_DATE);
 }
 
-void cxx::MyOpenGLView::createWindowWithSize(NSSize size)
+- (void)createWindowWithSize:(NSSize)size
 {
     oo::Defaults& prefs = oo::Defaults::standard();
 
@@ -189,7 +172,7 @@ void cxx::MyOpenGLView::createWindowWithSize(NSSize size)
         SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
     }
 
-    const std::string windowCaption = getWindowCaption().value_or(std::string());
+    const std::string windowCaption = [self getWindowCaption].value_or(std::string());
     Uint32 windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     if (glContext) {
         // Game window replacing the splash window: create it hidden with its final
@@ -360,8 +343,10 @@ void cxx::MyOpenGLView::createWindowWithSize(NSSize size)
     return;
 }
 
-bool cxx::MyOpenGLView::init()
+- (id)init
 {
+    self = [super init];
+
     std::string cmdLineArgsStr = "Startup command: ";
 
     // SDL splash screen  settings
@@ -376,7 +361,7 @@ bool cxx::MyOpenGLView::init()
 
     BOOL noSplashArgFound = NO;
 
-    [oo::ToObjC(this) initKeyMappingData];
+    [self initKeyMappingData];
 
     // preload the printscreen key into our translation array because SDLK_PRINTSCREEN isn't available
     scancode2Unicode[55] = gvPrintScreenKey;
@@ -408,40 +393,41 @@ bool cxx::MyOpenGLView::init()
 #if OOLITE_SPEECH_SYNTH
 #if OOLITE_ESPEAK
     if (!SDL_getenv("ESPEAK_DATA_PATH")) {
-        espeak_Initialize(AUDIO_OUTPUT_PLAYBACK, 100, [::ResourceManager cxx_builtInPath].value_or(std::string()).c_str(), 0);
+        espeak_Initialize(AUDIO_OUTPUT_PLAYBACK, 100, [ResourceManager cxx_builtInPath].value_or(std::string()).c_str(), 0);
     } else {
         espeak_Initialize(AUDIO_OUTPUT_PLAYBACK, 100, NULL, 0);
     }
 #endif
 #endif
 
-    matrixManager = oo::makeRef<cxx::OOOpenGLMatrixManager>();
+    matrixManager = [[OOOpenGLMatrixManager alloc] init];
 
     // TODO: This code up to and including stickHandler really ought
     // not to be in this class.
     OO_LOG("sdl.init", "{}", "initialising SDL");
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMEPAD)) {
         OO_LOG("sdl.init.failed", "Unable to init SDL: {}\n", SDL_GetError());
-        return false; // the facade releases itself: -dealloc's body is the destructor
+        [self dealloc];
+        return nil;
     }
 
-    populateFullScreenModelist();
+    [self populateFullScreenModelist];
 
     // Find what the full screen and windowed settings are.
     fullScreen = NO;
     currentSize = 0;
-    loadWindowSize();
-    loadFullscreenSettings();
+    [self loadWindowSize];
+    [self loadFullscreenSettings];
 
     // Set up the drawing surface's dimensions.
-    firstScreen = (fullScreen) ? modeAsSize(currentSize) : currentWindowSize;
+    firstScreen = (fullScreen) ? [self modeAsSize:currentSize] : currentWindowSize;
     viewSize = firstScreen; // viewSize must be set prior to splash screen initialization
 
-    [::OOJoystickManager setStickHandlerClass:[::OOSDLJoystickManager class]];
+    [OOJoystickManager setStickHandlerClass:[OOSDLJoystickManager class]];
     // end TODO
 
-    OOSound::setUp();
-    if (!OOSound::isSoundOK())
+    [OOSound setUp];
+    if (![OOSound isSoundOK])
         OO_LOG("sound.init", "{}", "Sound system disabled.");
 
     grabMouseStatus = NO;
@@ -450,10 +436,10 @@ bool cxx::MyOpenGLView::init()
 
     if (!showSplashScreen) {
         // blank the surface / go to fullscreen
-        initialiseGLWithSize(firstScreen);
+        [self initialiseGLWithSize:firstScreen];
     }
 
-    [oo::ToObjC(this) autoShowMouse];
+    [self autoShowMouse];
 
     virtualJoystickPosition = NSMakePoint(0.0, 0.0);
     mouseWarped = NO;
@@ -472,15 +458,15 @@ bool cxx::MyOpenGLView::init()
 
     _mouseWheelDelta = 0.0f;
 
-    return true;
+    return self;
 }
 
-void cxx::MyOpenGLView::endSplashScreen()
+- (void)endSplashScreen
 {
 #if OOLITE_WINDOWS
     // we need to get through here even if splash screen has not
     // been shown - this method also prepares the main game window
-    if (hdrOutput() && !isOutputDisplayHDREnabled()) {
+    if ([self hdrOutput] && ![self isOutputDisplayHDREnabled]) {
         if (MessageBox(NULL, "No primary display in HDR mode was detected.\n\n"
                              "If you continue, graphics will not be rendered as intended.\n"
                              "Click OK to launch anyway, or Cancel to exit.",
@@ -510,7 +496,7 @@ void cxx::MyOpenGLView::endSplashScreen()
         // is shown, so no other Oolite window holds focus when the new one is mapped.
         SDL_Window* previousWindow = window; // the window in use so far, which showed the splash
         window = NULL;
-        createWindowWithSize(firstScreen);
+        [self createWindowWithSize:firstScreen];
         SDL_DestroyWindow(previousWindow);
         // createWindowWithSize: left glContext current, and SDL_DestroyWindow does not destroy
         // it. But destroying the old window frees the GL context of its SDL framebuffer renderer,
@@ -538,12 +524,12 @@ void cxx::MyOpenGLView::endSplashScreen()
         */
     }
 
-    initialiseGLWithSize(firstScreen);
-    updateScreen();
-    [oo::ToObjC(this) autoShowMouse];
+    [self initialiseGLWithSize:firstScreen];
+    [self updateScreen];
+    [self autoShowMouse];
 }
 
-void cxx::MyOpenGLView::updateGLSize(NSSize size)
+- (void)updateGLSize:(NSSize)size
 {
     bounds.size = size;
     viewSize = size;
@@ -566,9 +552,9 @@ void cxx::MyOpenGLView::updateGLSize(NSSize size)
     OOGLFrustum(-ratio, ratio, -aspect * ratio, aspect * ratio, 1.0, MAX_CLEAR_DEPTH);
 }
 
-void cxx::MyOpenGLView::setUpBasicOpenGLStateWithSize()
+- (void)setUpBasicOpenGLStateWithSize
 {
-    OOOpenGLExtensionManager* extMgr = OOOpenGLExtensionManager::sharedManager();
+    OOOpenGLExtensionManager* extMgr = [OOOpenGLExtensionManager sharedManager];
 
     OOGL(glClearColor(0.0, 0.0, 0.0, 0.0));
     OOGL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
@@ -589,11 +575,11 @@ void cxx::MyOpenGLView::setUpBasicOpenGLStateWithSize()
         OOGL(glLightModelfv(GL_LIGHT_MODEL_AMBIENT, stars_ambient));
     }
 
-    if (extMgr->usePointSmoothing()) {
+    if ([extMgr usePointSmoothing]) {
         OOGL(glEnable(GL_POINT_SMOOTH));
     }
 
-    if (extMgr->useLineSmoothing()) {
+    if ([extMgr useLineSmoothing]) {
         OOGL(glEnable(GL_LINE_SMOOTH));
     }
 
@@ -603,10 +589,10 @@ void cxx::MyOpenGLView::setUpBasicOpenGLStateWithSize()
     OOGL(glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SEPARATE_SPECULAR_COLOR));
 }
 
-void cxx::MyOpenGLView::initialiseGLWithSize(NSSize v_size)
+- (void)initialiseGLWithSize:(NSSize)v_size
 {
     if (!window) {
-        createWindowWithSize(v_size);
+        [self createWindowWithSize:v_size];
     }
 
     viewSize = v_size;
@@ -633,20 +619,20 @@ void cxx::MyOpenGLView::initialiseGLWithSize(NSSize v_size)
     int pixelWidth, pixelHeight;
     SDL_GetWindowSizeInPixels(window, &pixelWidth, &pixelHeight);
 
-    updateGLSize(NSMakeSize(pixelWidth, pixelHeight));
+    [self updateGLSize:NSMakeSize(pixelWidth, pixelHeight)];
 
     OO_LOG("display.initGL", "Created a new surface of {} x {}, {}.", static_cast<int>((int)viewSize.width), static_cast<int>((int)viewSize.height), std::string((fullScreen ? "fullscreen" : "windowed")));
 
-    [oo::ToObjC(this) autoShowMouse];
+    [self autoShowMouse];
 
-    setUpBasicOpenGLStateWithSize();
+    [self setUpBasicOpenGLStateWithSize];
 
     SDL_GL_SwapWindow(window);
 
     squareX = 0.0f;
 }
 
-cxx::MyOpenGLView::~MyOpenGLView()
+- (void)dealloc
 {
     if (window) {
         SDL_DestroyWindow(window);
@@ -658,10 +644,113 @@ cxx::MyOpenGLView::~MyOpenGLView()
 
     SDL_Quit();
 
-    // matrixManager is released with the members, after SDL_Quit() as before.
+    if (matrixManager) {
+        [matrixManager release];
+    }
+
+    [super dealloc];
 }
 
-void cxx::MyOpenGLView::updateScreen()
+- (NSRect)bounds
+{
+    return bounds;
+}
+
+- (NSSize)viewSize
+{
+    return viewSize;
+}
+
+- (NSSize)backingViewSize
+{
+    return bounds.size;
+}
+
+- (GLfloat)display_z
+{
+    return display_z;
+}
+
+- (GLfloat)x_offset
+{
+    return x_offset;
+}
+
+- (GLfloat)y_offset
+{
+    return y_offset;
+}
+
+- (GameController*)gameController
+{
+    return gameController;
+}
+
+- (void)setGameController:(GameController*)controller
+{
+    gameController = controller;
+}
+
+- (BOOL)inFullScreenMode
+{
+    return fullScreen;
+}
+
+#if OOLITE_SDL
+- (void)setFullScreenMode:(BOOL)fsm
+{
+    fullScreen = fsm;
+
+    // Save the settings for later.
+    oo::Defaults::standard().setBool("fullscreen", fullScreen);
+    oo::Defaults::standard().synchronize();
+}
+
+- (void)toggleScreenMode
+{
+    [self setFullScreenMode:!fullScreen];
+    if (fullScreen) {
+        [self initialiseGLWithSize:[self modeAsSize:currentSize]];
+    } else {
+        [self initialiseGLWithSize:currentWindowSize];
+#if OOLITE_LINUX
+        SDL_HideWindow(window);
+        SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+        SDL_ShowWindow(window);
+#endif
+    }
+}
+
+- (void)setDisplayMode:(int)mode fullScreen:(BOOL)fsm
+{
+    [self setFullScreenMode:fsm];
+    currentSize = mode;
+    if (fullScreen)
+        [self initialiseGLWithSize:[self modeAsSize:mode]];
+}
+
+- (void)setScreenSize:(int)sizeIndex
+{
+    currentSize = sizeIndex;
+    if (fullScreen)
+        [self initialiseGLWithSize:[self modeAsSize:currentSize]];
+}
+
+- (std::vector<oo::PList>)getScreenSizeArray
+{
+    return screenSizes;
+}
+
+- (NSSize)modeAsSize:(int)sizeIndex
+{
+    const oo::PList& mode = screenSizes.at(sizeIndex);
+    return NSMakeSize(mode.get<int>(std::string(kOODisplayWidth)),
+        mode.get<int>(std::string(kOODisplayHeight)));
+}
+
+#endif
+
+- (void)updateScreen
 {
     if (UNIVERSE) {
         [UNIVERSE drawUniverse]; // do all the drawing!
@@ -673,7 +762,7 @@ void cxx::MyOpenGLView::updateScreen()
     SDL_GL_SwapWindow(window);
 }
 
-void cxx::MyOpenGLView::initSplashScreen()
+- (void)initSplashScreen
 {
     if (!showSplashScreen)
         return;
@@ -682,14 +771,14 @@ void cxx::MyOpenGLView::initSplashScreen()
     SDL_Surface* image = NULL;
     SDL_Rect dest;
 
-    const std::string imagesDir = oo::str::appendingPathComponent([::ResourceManager cxx_builtInPath].value_or(std::string()), "Images");
+    const std::string imagesDir = oo::str::appendingPathComponent([ResourceManager cxx_builtInPath].value_or(std::string()), "Images");
 
     image = SDL_LoadBMP(oo::str::appendingPathComponent(imagesDir, "splash.bmp").c_str());
 
     if (image == NULL) {
         SDL_DestroySurface(image);
         OO_LOG_WARN("sdl.gameStart", "{}", "image 'splash.bmp' not found!");
-        endSplashScreen();
+        [self endSplashScreen];
         return;
     }
 
@@ -698,7 +787,7 @@ void cxx::MyOpenGLView::initSplashScreen()
     dest.w = image->w;
     dest.h = image->h;
 
-    createWindowWithSize(NSMakeSize(image->w, image->h));
+    [self createWindowWithSize:NSMakeSize(image->w, image->h)];
     OOSetOpenGLState(OPENGL_STATE_OVERLAY);
     float pixelDensity = SDL_GetWindowPixelDensity(window);
     if (pixelDensity == 0.0f) {
@@ -711,12 +800,12 @@ void cxx::MyOpenGLView::initSplashScreen()
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    matrixManager->resetProjection();
-    matrixManager->orthoLeft(0.0f, 1.0f, 1.0f, 0.0f, -1.0f, 1.0f);
-    matrixManager->syncProjection();
+    [matrixManager resetProjection];
+    [matrixManager orthoLeft:0.0f right:1.0f bottom:1.0f top:0.0f near:-1.0f far:1.0f];
+    [matrixManager syncProjection];
 
-    matrixManager->resetModelView();
-    matrixManager->syncModelView();
+    [matrixManager resetModelView];
+    [matrixManager syncModelView];
 
     GLuint texture;
     GLenum texture_format;
@@ -740,7 +829,7 @@ void cxx::MyOpenGLView::initSplashScreen()
     } else {
         SDL_DestroySurface(image);
         OO_LOG("Sdl.GameStart", "{}", "----- Encoding error within image 'splash.bmp'");
-        endSplashScreen();
+        [self endSplashScreen];
         return;
     }
 
@@ -771,8 +860,8 @@ void cxx::MyOpenGLView::initSplashScreen()
     glFinish();
 
     SDL_GL_SwapWindow(window);
-    matrixManager->resetModelView();
-    matrixManager->syncModelView();
+    [matrixManager resetModelView];
+    [matrixManager syncModelView];
 
     if (image) {
         SDL_DestroySurface(image);
@@ -786,109 +875,7 @@ void cxx::MyOpenGLView::initSplashScreen()
     return;
 }
 
-// Slice 2 of docs/phases/3-slices/MyOpenGLView.md (bead oo-72cz): accessors, display modes, settings,
-// display / HDR, FOV and MSAA.
-
-NSRect cxx::MyOpenGLView::getBounds()
-{
-    return bounds;
-}
-
-NSSize cxx::MyOpenGLView::getViewSize()
-{
-    return viewSize;
-}
-
-NSSize cxx::MyOpenGLView::backingViewSize()
-{
-    return bounds.size;
-}
-
-GLfloat cxx::MyOpenGLView::getDisplay_z()
-{
-    return display_z;
-}
-
-GLfloat cxx::MyOpenGLView::getX_offset()
-{
-    return x_offset;
-}
-
-GLfloat cxx::MyOpenGLView::getY_offset()
-{
-    return y_offset;
-}
-
-::GameController* cxx::MyOpenGLView::getGameController()
-{
-    return gameController;
-}
-
-void cxx::MyOpenGLView::setGameController(::GameController* controller)
-{
-    gameController = controller;
-}
-
-bool cxx::MyOpenGLView::inFullScreenMode()
-{
-    return fullScreen;
-}
-
-#if OOLITE_SDL
-void cxx::MyOpenGLView::setFullScreenMode(bool fsm)
-{
-    fullScreen = fsm;
-
-    // Save the settings for later.
-    oo::Defaults::standard().setBool("fullscreen", fullScreen);
-    oo::Defaults::standard().synchronize();
-}
-
-void cxx::MyOpenGLView::toggleScreenMode()
-{
-    setFullScreenMode(!fullScreen);
-    if (fullScreen) {
-        initialiseGLWithSize(modeAsSize(currentSize));
-    } else {
-        initialiseGLWithSize(currentWindowSize);
-#if OOLITE_LINUX
-        SDL_HideWindow(window);
-        SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-        SDL_ShowWindow(window);
-#endif
-    }
-}
-
-void cxx::MyOpenGLView::setDisplayMode(int mode, bool fsm)
-{
-    setFullScreenMode(fsm);
-    currentSize = mode;
-    if (fullScreen)
-        initialiseGLWithSize(modeAsSize(mode));
-}
-
-void cxx::MyOpenGLView::setScreenSize(int sizeIndex)
-{
-    currentSize = sizeIndex;
-    if (fullScreen)
-        initialiseGLWithSize(modeAsSize(currentSize));
-}
-
-std::vector<oo::PList> cxx::MyOpenGLView::getScreenSizeArray()
-{
-    return screenSizes;
-}
-
-NSSize cxx::MyOpenGLView::modeAsSize(int sizeIndex)
-{
-    const oo::PList& mode = screenSizes.at(sizeIndex);
-    return NSMakeSize(mode.get<int>(std::string(kOODisplayWidth)),
-        mode.get<int>(std::string(kOODisplayHeight)));
-}
-
-#endif
-
-void cxx::MyOpenGLView::getDisplayDimensions(unsigned* width, unsigned* height)
+- (void)getDisplayDimensions:(unsigned*)width height:(unsigned*)height
 {
     SDL_DisplayID displayID = SDL_GetDisplayForWindow(window);
 
@@ -901,7 +888,7 @@ void cxx::MyOpenGLView::getDisplayDimensions(unsigned* width, unsigned* height)
     }
 }
 
-bool cxx::MyOpenGLView::isRunningOnPrimaryDisplayDevice()
+- (BOOL)isRunningOnPrimaryDisplayDevice
 {
     if (!window) {
         return NO;
@@ -913,13 +900,13 @@ bool cxx::MyOpenGLView::isRunningOnPrimaryDisplayDevice()
     return (windowDisplayID != 0 && windowDisplayID == primaryDisplayID);
 }
 
-void cxx::MyOpenGLView::grabMouseInsideGameWindow(bool value)
+- (void)grabMouseInsideGameWindow:(BOOL)value
 {
     SDL_SetWindowMouseGrab(window, value);
     grabMouseStatus = value;
 }
 
-void cxx::MyOpenGLView::stringToClipboard(const std::string& stringToCopy)
+- (void)cxx_stringToClipboard:(const std::string&)stringToCopy
 {
     {
         const char* clipboardText = stringToCopy.c_str();
@@ -930,42 +917,18 @@ void cxx::MyOpenGLView::stringToClipboard(const std::string& stringToCopy)
 }
 
 #if OOLITE_WINDOWS
-void cxx::MyOpenGLView::refreshDarKOrLightMode()
-{
-    int shouldSetDarkMode = isDarkModeOn();
-    DwmSetWindowAttribute(windowHandle, DWMWA_USE_IMMERSIVE_DARK_MODE, &shouldSetDarkMode, sizeof(shouldSetDarkMode));
-}
 
-bool cxx::MyOpenGLView::isDarkModeOn()
-{
-    char buffer[4];
-    DWORD bufferSize = sizeof(buffer);
-
-    // reading a REG_DWORD value from the Registry
-    HRESULT resultRegGetValue = RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-        L"AppsUseLightTheme", RRF_RT_REG_DWORD, NULL, buffer, &bufferSize);
-    if (resultRegGetValue != ERROR_SUCCESS) {
-        return NO;
-    }
-
-    // get our 4 obtained bytes into integer little endian format
-    int i = (int)(buffer[3] << 24 | buffer[2] << 16 | buffer[1] << 8 | buffer[0]);
-
-    // dark mode is 0, light mode is 1
-    return i == 0;
-}
-
-bool cxx::MyOpenGLView::getAtDesktopResolution()
+- (BOOL)atDesktopResolution
 {
     return atDesktopResolution;
 }
 
-bool cxx::MyOpenGLView::hdrOutput()
+- (BOOL)hdrOutput
 {
     return _hdrOutput;
 }
 
-bool cxx::MyOpenGLView::isOutputDisplayHDREnabled()
+- (BOOL)isOutputDisplayHDREnabled
 {
     BOOL result = NO;
     SDL_DisplayID displayID = SDL_GetPrimaryDisplay(); // Get the primary display ID
@@ -983,12 +946,12 @@ bool cxx::MyOpenGLView::isOutputDisplayHDREnabled()
     return result;
 }
 
-float cxx::MyOpenGLView::hdrMaxBrightness()
+- (float)hdrMaxBrightness
 {
     return _hdrMaxBrightness;
 }
 
-void cxx::MyOpenGLView::setHDRMaxBrightness(float newMaxBrightness)
+- (void)setHDRMaxBrightness:(float)newMaxBrightness
 {
     if (newMaxBrightness < MIN_HDR_MAXBRIGHTNESS)
         newMaxBrightness = MIN_HDR_MAXBRIGHTNESS;
@@ -999,12 +962,12 @@ void cxx::MyOpenGLView::setHDRMaxBrightness(float newMaxBrightness)
     oo::Defaults::standard().setFloat("hdr-max-brightness", _hdrMaxBrightness);
 }
 
-float cxx::MyOpenGLView::hdrPaperWhiteBrightness()
+- (float)hdrPaperWhiteBrightness
 {
     return _hdrPaperWhiteBrightness;
 }
 
-void cxx::MyOpenGLView::setHDRPaperWhiteBrightness(float newPaperWhiteBrightness)
+- (void)setHDRPaperWhiteBrightness:(float)newPaperWhiteBrightness
 {
     if (newPaperWhiteBrightness < MIN_HDR_PAPERWHITE)
         newPaperWhiteBrightness = MIN_HDR_PAPERWHITE;
@@ -1015,12 +978,12 @@ void cxx::MyOpenGLView::setHDRPaperWhiteBrightness(float newPaperWhiteBrightness
     oo::Defaults::standard().setFloat("hdr-paperwhite-brightness", _hdrPaperWhiteBrightness);
 }
 
-OOHDRToneMapper cxx::MyOpenGLView::hdrToneMapper()
+- (OOHDRToneMapper)hdrToneMapper
 {
     return (OOHDRToneMapper)_hdrToneMapper;
 }
 
-void cxx::MyOpenGLView::setHDRToneMapper(OOHDRToneMapper newToneMapper)
+- (void)setHDRToneMapper:(OOHDRToneMapper)newToneMapper
 {
     if (newToneMapper > OOHDR_TONEMAPPER_REINHARD)
         newToneMapper = OOHDR_TONEMAPPER_REINHARD;
@@ -1031,24 +994,24 @@ void cxx::MyOpenGLView::setHDRToneMapper(OOHDRToneMapper newToneMapper)
 
 #else // Linus stub methods
 
-bool cxx::MyOpenGLView::hdrOutput()
+- (BOOL)hdrOutput
 {
     return NO;
 }
 
-bool cxx::MyOpenGLView::isOutputDisplayHDREnabled()
+- (BOOL)isOutputDisplayHDREnabled
 {
     return NO;
 }
 
 #endif // OOLITE_WINDOWS
 
-OOSDRToneMapper cxx::MyOpenGLView::sdrToneMapper()
+- (OOSDRToneMapper)sdrToneMapper
 {
     return (OOSDRToneMapper)_sdrToneMapper;
 }
 
-void cxx::MyOpenGLView::setSDRToneMapper(OOSDRToneMapper newToneMapper)
+- (void)setSDRToneMapper:(OOSDRToneMapper)newToneMapper
 {
     if (newToneMapper > OOSDR_TONEMAPPER_REINHARD)
         newToneMapper = OOSDR_TONEMAPPER_REINHARD;
@@ -1057,191 +1020,26 @@ void cxx::MyOpenGLView::setSDRToneMapper(OOSDRToneMapper newToneMapper)
     _sdrToneMapper = newToneMapper;
 }
 
-float cxx::MyOpenGLView::colorSaturation()
+- (float)colorSaturation
 {
     return _colorSaturation;
 }
 
-void cxx::MyOpenGLView::adjustColorSaturation(float colorSaturationAdjustment)
+- (void)adjustColorSaturation:(float)colorSaturationAdjustment;
 {
     _colorSaturation += colorSaturationAdjustment;
     _colorSaturation = OOClamp_0_max_f(_colorSaturation, MAX_COLOR_SATURATION);
 }
 
-// Full screen mode enumerator.
-void cxx::MyOpenGLView::populateFullScreenModelist()
-{
-    int i;
-    SDL_DisplayMode** modes;
-    SDL_DisplayID displayId = getDisplayId();
-
-    screenSizes.clear();
-
-    // The default resolution (slot 0) is the resolution we are
-    // already in since this is guaranteed to work.
-    screenSizes.push_back(getNativeSize());
-
-    int displayModeCount;
-    modes = SDL_GetFullscreenDisplayModes(displayId, &displayModeCount);
-    if (!displayModeCount) {
-        OO_LOG("display.mode.list.none", "{}", "SDL didn't return any screen modes");
-        return;
-    }
-
-    for (i = 0; i < displayModeCount; i++) {
-        oo::PList::Dict modeDict;
-        modeDict[std::string(kOODisplayWidth)] = oo::PList(std::int64_t((int)modes[i]->w));
-        modeDict[std::string(kOODisplayHeight)] = oo::PList(std::int64_t((int)modes[i]->h));
-        modeDict[std::string(kOODisplayRefreshRate)] = oo::PList::singleReal((float)(int)modes[i]->refresh_rate); // +numberWithFloat:
-        const oo::PList mode(std::move(modeDict));
-        if (std::find_if(screenSizes.begin(), screenSizes.end(), [&](const oo::PList& m) { return SameMode(m, mode); }) == screenSizes.end()) {
-            screenSizes.push_back(mode);
-            OO_LOG("display.mode.list", "Added res {} x {}", static_cast<int>(modes[i]->w), static_cast<int>(modes[i]->h));
-        }
-    }
-    SDL_free(modes);
-}
-
-// Save and restore window sizes to/from defaults.
-void cxx::MyOpenGLView::saveWindowSize(NSSize windowSize)
-{
-    oo::Defaults& defaults = oo::Defaults::standard();
-    defaults.setInteger("window_width", (int)windowSize.width);
-    defaults.setInteger("window_height", (int)windowSize.height);
-    currentWindowSize = windowSize;
-}
-
-NSSize cxx::MyOpenGLView::loadWindowSize()
-{
-    NSSize windowSize;
-    oo::Defaults& defaults = oo::Defaults::standard();
-    if (!defaults.object("window_width").isNull() && !defaults.object("window_height").isNull()) {
-        windowSize = NSMakeSize(defaults.integerForKey("window_width"),
-            defaults.integerForKey("window_height"));
-    } else {
-        windowSize = NSMakeSize(WINDOW_SIZE_DEFAULT_WIDTH, WINDOW_SIZE_DEFAULT_HEIGHT);
-    }
-    currentWindowSize = windowSize;
-    return windowSize;
-}
-
-int cxx::MyOpenGLView::loadFullscreenSettings()
-{
-    currentSize = 0;
-    int width = 0, height = 0, refresh = 0;
-    unsigned i;
-
-    const std::vector<std::string>& cmdline_arguments = oo::process::arguments();
-
-    oo::Defaults& userDefaults = oo::Defaults::standard();
-    if (!userDefaults.object("display_width").isNull())
-        width = (int)userDefaults.integerForKey("display_width");
-    if (!userDefaults.object("display_height").isNull())
-        height = (int)userDefaults.integerForKey("display_height");
-    if (!userDefaults.object("display_refresh").isNull())
-        refresh = (int)userDefaults.integerForKey("display_refresh");
-    if (!userDefaults.object("fullscreen").isNull())
-        fullScreen = userDefaults.boolForKey("fullscreen") ? YES : NO;
-
-    // Check if -fullscreen or -windowed has been passed on the command line. If yes,
-    // set it regardless of what is set by .GNUstepDefaults. If both are found in the
-    // arguments list, the one that comes last wins.
-    for (i = 0; i < cmdline_arguments.size(); i++) {
-        if (cmdline_arguments[i] == "-fullscreen")
-            fullScreen = YES;
-        if (cmdline_arguments[i] == "-windowed")
-            fullScreen = NO;
-    }
-
-    if (width && height) {
-        currentSize = indexOfDisplayModeForWidth(width, height, refresh);
-        return currentSize;
-    }
-    return currentSize;
-}
-
-int cxx::MyOpenGLView::indexOfDisplayModeForWidth(unsigned int d_width, unsigned int d_height, unsigned int d_refresh)
-{
-    int i, modeCount;
-    unsigned int modeWidth, modeHeight, modeRefresh;
-
-    modeCount = (int)screenSizes.size();
-
-    for (i = 0; i < modeCount; i++) {
-        const oo::PList& mode = screenSizes[i];
-        modeWidth = mode.get<int>(std::string(kOODisplayWidth));
-        modeHeight = mode.get<int>(std::string(kOODisplayHeight));
-        modeRefresh = mode.get<int>(std::string(kOODisplayRefreshRate));
-        if ((modeWidth == d_width) && (modeHeight == d_height) && (modeRefresh == d_refresh)) {
-            OO_LOG("display.mode.found", "Found mode {}", oo::DescriptionOf(mode));
-            return i;
-        }
-    }
-
-    OO_LOG("display.mode.found.failed", "Failed to find mode: width={} height={} refresh={}", static_cast<int>(d_width), static_cast<int>(d_height), static_cast<int>(d_refresh));
-    OO_LOG("display.mode.found.failed.list", "Contents of list: {}", oo::DescriptionOf(oo::PList(oo::PList::Array(screenSizes))));
-    return 0;
-}
-
-NSSize cxx::MyOpenGLView::currentScreenSize()
-{
-    const oo::PList& mode = screenSizes.at(currentSize);
-
-    if (mode) {
-        return NSMakeSize(mode.get<int>(std::string(kOODisplayWidth)),
-            mode.get<int>(std::string(kOODisplayHeight)));
-    }
-    OO_LOG("display.mode.unknown", "{}", "Screen size unknown!");
-    return NSMakeSize(WINDOW_SIZE_DEFAULT_WIDTH, WINDOW_SIZE_DEFAULT_HEIGHT);
-}
-
-oo::PList cxx::MyOpenGLView::currentScreenMode()
-{
-    return screenSizes.at(currentSize);
-}
-
-void cxx::MyOpenGLView::setFov(float value, bool fromFraction)
-{
-    _fov = fromFraction ? value : tan((value / 2) * M_PI / 180);
-}
-
-float cxx::MyOpenGLView::fov(bool inFraction)
-{
-    return inFraction ? _fov : 2 * atan(_fov) * 180 / M_PI;
-}
-
-bool cxx::MyOpenGLView::msaa()
-{
-    return _msaa;
-}
-
-void cxx::MyOpenGLView::setMsaa(bool newMsaa)
-{
-    _msaa = !!newMsaa;
-}
-
-cxx::OOOpenGLMatrixManager* cxx::MyOpenGLView::getOpenGLMatrixManager()
-{
-    return matrixManager.get(); // borrowed
-}
-
-bool cxx::MyOpenGLView::pollShiftKey()
-{
-#if !OOLITE_WINDOWS
-    return 0 != (SDL_GetModState() & (SDL_KMOD_LSHIFT | SDL_KMOD_RSHIFT));
-#else
-    // SDL_GetModState() does not seem to do exactly what is intended under Windows. For this reason,
-    // the GetKeyState Windows API call is used to detect the Shift keypress. -- Nikos.
-    return 0 != (GetKeyState(VK_SHIFT) & 0x100);
-#endif
-}
-
-// Slice 3 of docs/phases/3-slices/MyOpenGLView.md (bead oo-299r): snapshots and debug image dumps.
-
-bool cxx::MyOpenGLView::snapShot(const std::optional<std::string>& filename)
+- (BOOL)cxx_snapShot:(const std::optional<std::string>&)filename
 {
     BOOL snapShotOK = YES;
     SDL_Surface* tmpSurface;
+
+#if OOLITE_MAC_OS_X
+    // The back buffer is undefined after a swap on macOS, so read the frame currently on screen.
+    OOGL(glReadBuffer(GL_FRONT));
+#endif
 
     // backup the previous directory
     const auto originalDirectory = oo::fs::currentDirectory();
@@ -1292,7 +1090,17 @@ bool cxx::MyOpenGLView::snapShot(const std::optional<std::string>& filename)
         imageNo = tmpImageNo;
     }
 
+#if OOLITE_MAC_OS_X
+    // No window surface on macOS (see createWindowWithSize:); describe the GL drawable instead.
+    SDL_Surface* surface = NULL;
+    {
+        int pixelWidth, pixelHeight;
+        SDL_GetWindowSizeInPixels(window, &pixelWidth, &pixelHeight);
+        surface = SDL_CreateSurface(pixelWidth, pixelHeight, SDL_PIXELFORMAT_ARGB8888);
+    }
+#else
     SDL_Surface* surface = SDL_GetWindowSurface(window);
+#endif
     OO_LOG("screenshot", "Saving screen shot \"{}\" ({} x {} pixels).", *pathToPic, static_cast<unsigned>(surface->w), static_cast<unsigned>(surface->h));
 
     int pitch = surface->pitch;
@@ -1324,7 +1132,7 @@ bool cxx::MyOpenGLView::snapShot(const std::optional<std::string>& filename)
     free(pixls);
 
     // if outputting HDR signal, save also either an .exr or a Radiance .hdr snapshot
-    if (hdrOutput()) {
+    if ([self hdrOutput]) {
         std::string fileExtension = DefaultsString("hdr-snapshot-format", std::string(SNAPSHOTHDR_EXTENSION_DEFAULT));
 
         // we accept file extension with or without a leading dot; if it is without, insert it at the beginning now
@@ -1352,14 +1160,191 @@ bool cxx::MyOpenGLView::snapShot(const std::optional<std::string>& filename)
         free(pixlsf);
     }
 
+#if OOLITE_MAC_OS_X
+    SDL_DestroySurface(surface);
+    OOGL(glReadBuffer(GL_BACK));
+#endif
+
     // return to the previous directory
     if (originalDirectory)
         (void)oo::fs::setCurrentDirectory(*originalDirectory);
     return snapShotOK;
 }
 
+// Full screen mode enumerator.
+- (void)populateFullScreenModelist
+{
+    int i;
+    SDL_DisplayMode** modes;
+    SDL_DisplayID displayId = [self getDisplayId];
+
+    screenSizes.clear();
+
+    // The default resolution (slot 0) is the resolution we are
+    // already in since this is guaranteed to work.
+    screenSizes.push_back([self getNativeSize]);
+
+    int displayModeCount;
+    modes = SDL_GetFullscreenDisplayModes(displayId, &displayModeCount);
+    if (!displayModeCount) {
+        OO_LOG("display.mode.list.none", "{}", "SDL didn't return any screen modes");
+        return;
+    }
+
+    for (i = 0; i < displayModeCount; i++) {
+        oo::PList::Dict modeDict;
+        modeDict[std::string(kOODisplayWidth)] = oo::PList(std::int64_t((int)modes[i]->w));
+        modeDict[std::string(kOODisplayHeight)] = oo::PList(std::int64_t((int)modes[i]->h));
+        modeDict[std::string(kOODisplayRefreshRate)] = oo::PList::singleReal((float)(int)modes[i]->refresh_rate); // +numberWithFloat:
+        const oo::PList mode(std::move(modeDict));
+        if (std::find_if(screenSizes.begin(), screenSizes.end(), [&](const oo::PList& m) { return SameMode(m, mode); }) == screenSizes.end()) {
+            screenSizes.push_back(mode);
+            OO_LOG("display.mode.list", "Added res {} x {}", static_cast<int>(modes[i]->w), static_cast<int>(modes[i]->h));
+        }
+    }
+    SDL_free(modes);
+}
+
+// Save and restore window sizes to/from defaults.
+- (void)saveWindowSize:(NSSize)windowSize
+{
+    oo::Defaults& defaults = oo::Defaults::standard();
+    defaults.setInteger("window_width", (int)windowSize.width);
+    defaults.setInteger("window_height", (int)windowSize.height);
+    currentWindowSize = windowSize;
+}
+
+- (NSSize)loadWindowSize
+{
+    NSSize windowSize;
+    oo::Defaults& defaults = oo::Defaults::standard();
+    if (!defaults.object("window_width").isNull() && !defaults.object("window_height").isNull()) {
+        windowSize = NSMakeSize(defaults.integerForKey("window_width"),
+            defaults.integerForKey("window_height"));
+    } else {
+        windowSize = NSMakeSize(WINDOW_SIZE_DEFAULT_WIDTH, WINDOW_SIZE_DEFAULT_HEIGHT);
+    }
+    currentWindowSize = windowSize;
+    return windowSize;
+}
+
+- (int)loadFullscreenSettings
+{
+    currentSize = 0;
+    int width = 0, height = 0, refresh = 0;
+    unsigned i;
+
+    const std::vector<std::string>& cmdline_arguments = oo::process::arguments();
+
+    oo::Defaults& userDefaults = oo::Defaults::standard();
+    if (!userDefaults.object("display_width").isNull())
+        width = (int)userDefaults.integerForKey("display_width");
+    if (!userDefaults.object("display_height").isNull())
+        height = (int)userDefaults.integerForKey("display_height");
+    if (!userDefaults.object("display_refresh").isNull())
+        refresh = (int)userDefaults.integerForKey("display_refresh");
+    if (!userDefaults.object("fullscreen").isNull())
+        fullScreen = userDefaults.boolForKey("fullscreen") ? YES : NO;
+
+    // Check if -fullscreen or -windowed has been passed on the command line. If yes,
+    // set it regardless of what is set by .GNUstepDefaults. If both are found in the
+    // arguments list, the one that comes last wins.
+    for (i = 0; i < cmdline_arguments.size(); i++) {
+        if (cmdline_arguments[i] == "-fullscreen")
+            fullScreen = YES;
+        if (cmdline_arguments[i] == "-windowed")
+            fullScreen = NO;
+    }
+
+    if (width && height) {
+        currentSize = [self indexOfDisplayModeForWidth:width Height:height Refresh:refresh];
+        return currentSize;
+    }
+    return currentSize;
+}
+
+- (int)indexOfDisplayModeForWidth:(unsigned int)d_width Height:(unsigned int)d_height Refresh:(unsigned int)d_refresh
+{
+    int i, modeCount;
+    unsigned int modeWidth, modeHeight, modeRefresh;
+
+    modeCount = (int)screenSizes.size();
+
+    for (i = 0; i < modeCount; i++) {
+        const oo::PList& mode = screenSizes[i];
+        modeWidth = mode.get<int>(std::string(kOODisplayWidth));
+        modeHeight = mode.get<int>(std::string(kOODisplayHeight));
+        modeRefresh = mode.get<int>(std::string(kOODisplayRefreshRate));
+        if ((modeWidth == d_width) && (modeHeight == d_height) && (modeRefresh == d_refresh)) {
+            OO_LOG("display.mode.found", "Found mode {}", oo::DescriptionOf(mode));
+            return i;
+        }
+    }
+
+    OO_LOG("display.mode.found.failed", "Failed to find mode: width={} height={} refresh={}", static_cast<int>(d_width), static_cast<int>(d_height), static_cast<int>(d_refresh));
+    OO_LOG("display.mode.found.failed.list", "Contents of list: {}", oo::DescriptionOf(oo::PList(oo::PList::Array(screenSizes))));
+    return 0;
+}
+
+- (NSSize)currentScreenSize
+{
+    const oo::PList& mode = screenSizes.at(currentSize);
+
+    if (mode) {
+        return NSMakeSize(mode.get<int>(std::string(kOODisplayWidth)),
+            mode.get<int>(std::string(kOODisplayHeight)));
+    }
+    OO_LOG("display.mode.unknown", "{}", "Screen size unknown!");
+    return NSMakeSize(WINDOW_SIZE_DEFAULT_WIDTH, WINDOW_SIZE_DEFAULT_HEIGHT);
+}
+
+- (oo::PList)currentScreenMode
+{
+    return screenSizes.at(currentSize);
+}
+
+- (void)setFov:(float)value fromFraction:(BOOL)fromFraction
+{
+    _fov = fromFraction ? value : tan((value / 2) * M_PI / 180);
+}
+
+- (float)fov:(BOOL)inFraction
+{
+    return inFraction ? _fov : 2 * atan(_fov) * 180 / M_PI;
+}
+
+- (BOOL)msaa
+{
+    return _msaa;
+}
+
+- (void)setMsaa:(BOOL)newMsaa
+{
+    _msaa = !!newMsaa;
+}
+
+- (OOOpenGLMatrixManager*)getOpenGLMatrixManager
+{
+    return matrixManager;
+}
+
++ (BOOL)pollShiftKey
+{
+#if !OOLITE_WINDOWS
+    return 0 != (SDL_GetModState() & (SDL_KMOD_LSHIFT | SDL_KMOD_RSHIFT));
+#else
+    // SDL_GetModState() does not seem to do exactly what is intended under Windows. For this reason,
+    // the GetKeyState Windows API call is used to detect the Shift keypress. -- Nikos.
+    return 0 != (GetKeyState(VK_SHIFT) & 0x100);
+#endif
+}
+
 #ifndef NDEBUG
-void cxx::MyOpenGLView::dumpRGBAToFileNamed(const std::string& name, uint8_t* bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes)
+- (void)cxx_dumpRGBAToFileNamed:(const std::string&)name
+                          bytes:(uint8_t*)bytes
+                          width:(NSUInteger)width
+                         height:(NSUInteger)height
+                       rowBytes:(NSUInteger)rowBytes
 {
     if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 4)
         return;
@@ -1373,7 +1358,11 @@ void cxx::MyOpenGLView::dumpRGBAToFileNamed(const std::string& name, uint8_t* by
     SDL_DestroySurface(tmpSurface);
 }
 
-void cxx::MyOpenGLView::dumpRGBToFileNamed(const std::string& name, uint8_t* bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes)
+- (void)cxx_dumpRGBToFileNamed:(const std::string&)name
+                         bytes:(uint8_t*)bytes
+                         width:(NSUInteger)width
+                        height:(NSUInteger)height
+                      rowBytes:(NSUInteger)rowBytes
 {
     if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 3)
         return;
@@ -1387,7 +1376,11 @@ void cxx::MyOpenGLView::dumpRGBToFileNamed(const std::string& name, uint8_t* byt
     SDL_DestroySurface(tmpSurface);
 }
 
-void cxx::MyOpenGLView::dumpGrayToFileNamed(const std::string& name, uint8_t* bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes)
+- (void)cxx_dumpGrayToFileNamed:(const std::string&)name
+                          bytes:(uint8_t*)bytes
+                          width:(NSUInteger)width
+                         height:(NSUInteger)height
+                       rowBytes:(NSUInteger)rowBytes
 {
     if (bytes == NULL || width == 0 || height == 0 || rowBytes < width)
         return;
@@ -1411,7 +1404,11 @@ void cxx::MyOpenGLView::dumpGrayToFileNamed(const std::string& name, uint8_t* by
     SDL_DestroySurface(tmpSurface);
 }
 
-void cxx::MyOpenGLView::dumpGrayAlphaToFileNamed(const std::string& name, uint8_t* bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes)
+- (void)cxx_dumpGrayAlphaToFileNamed:(const std::string&)name
+                               bytes:(uint8_t*)bytes
+                               width:(NSUInteger)width
+                              height:(NSUInteger)height
+                            rowBytes:(NSUInteger)rowBytes
 {
     if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 2)
         return;
@@ -1435,7 +1432,12 @@ void cxx::MyOpenGLView::dumpGrayAlphaToFileNamed(const std::string& name, uint8_
     SDL_DestroySurface(tmpSurface);
 }
 
-void cxx::MyOpenGLView::dumpRGBAToRGBFileNamed(const std::optional<std::string>& rgbName, const std::optional<std::string>& grayName, uint8_t* bytes, NSUInteger width, NSUInteger height, NSUInteger rowBytes)
+- (void)cxx_dumpRGBAToRGBFileNamed:(const std::optional<std::string>&)rgbName
+                  andGrayFileNamed:(const std::optional<std::string>&)grayName
+                             bytes:(uint8_t*)bytes
+                             width:(NSUInteger)width
+                            height:(NSUInteger)height
+                          rowBytes:(NSUInteger)rowBytes
 {
     if ((!rgbName.has_value() && !grayName.has_value()) || bytes == NULL || width == 0 || height == 0 || rowBytes < width * 4)
         return;
@@ -1467,13 +1469,23 @@ void cxx::MyOpenGLView::dumpRGBAToRGBFileNamed(const std::optional<std::string>&
     }
 
     if (rgbName.has_value()) {
-        dumpRGBToFileNamed(*rgbName, rgbBytes, width, height, width * 3);
+        [self cxx_dumpRGBToFileNamed:*rgbName
+                               bytes:rgbBytes
+                               width:width
+                              height:height
+                            rowBytes:width * 3];
     }
     free(rgbBytes);
 
     if (!trivalAlpha && grayName.has_value()) {
-        dumpGrayToFileNamed(*grayName, grayBytes, width, height, width);
+        [self cxx_dumpGrayToFileNamed:*grayName
+                                bytes:grayBytes
+                                width:width
+                               height:height
+                             rowBytes:width];
     }
     free(grayBytes);
 }
 #endif
+
+@end

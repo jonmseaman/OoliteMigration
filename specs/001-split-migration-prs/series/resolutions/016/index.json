@@ -1,92 +1,91 @@
 {
- "src/Core/Debug/OODebugSupport.mm": {
-  "base": "781d2ddf4dbc997a7b62803455818136f389d0bc",
-  "deleted": false,
-  "ours": "5de6b92d311d2f01a6e782fa387436e16989dd4f",
-  "theirs": "206e1a8e8160577911a94b8b41401377d9d97f25"
- },
  "src/Core/Entities/PlayerEntity.mm": {
-  "base": "25e6b1cf48ffb328fcd72b6d353e0a1372c37afd",
+  "base": "e016ffac3c53108eeb420ed542b111c103cec0e5",
   "deleted": false,
-  "ours": "a8afb0c7690b1de89ba3405af5826a4608543866",
-  "theirs": "4d8f72d77eecc738987535d10dbbe2a5428ec092"
+  "ours": "120145c9e0abd2f2bb9d6c040808beb512c7311b",
+  "theirs": "25e6b1cf48ffb328fcd72b6d353e0a1372c37afd"
+ },
+ "src/Core/Entities/PlayerEntityControls.mm": {
+  "base": "482e30ec87e8905e73b0ff9648e4b9931fd7cb3f",
+  "deleted": false,
+  "ours": "880b1e10efddaef0bfefcead77e74b69e59ddb74",
+  "theirs": "d39dddb534961b22969c34dd963cc16b99346d95"
+ },
+ "src/Core/Entities/PlayerEntityLoadSave.h": {
+  "base": "bf07438c63bfc0b409898d2974cd27dde266ce4f",
+  "deleted": false,
+  "ours": "ea5a4d3381353e9562476ca24fd6036b24e64b93",
+  "theirs": "000421bda2470f87b02e5d4fdbb284ef01945a15"
+ },
+ "src/Core/Entities/PlayerEntityLoadSave.mm": {
+  "base": "4c7420cd8046cbe7316cc05150a050c6fef36c3a",
+  "deleted": false,
+  "ours": "d951dc0d4fd5e2d2a35d0bf9f8a1016dffb40990",
+  "theirs": "c2dc2c497c1ee2e5c5d3d54dba914ba3c3593c26"
  },
  "src/Core/Entities/ShipEntity.mm": {
-  "base": "ad605c9a9e5d78998f187d715da5f0b06153bef5",
+  "base": "dffbde5ca00dd4fb47c261756355c1b168868241",
   "deleted": false,
-  "ours": "7ec7bc226107836a1a75358968eac6cbb6f0c739",
-  "theirs": "ad368b9efa6468c05fcb32b808c7eebb53f3c98a"
+  "ours": "36fd895dbe47365977fc74cdd785dc2aab16693e",
+  "theirs": "ad605c9a9e5d78998f187d715da5f0b06153bef5"
  },
- "src/Core/Materials/OOConcreteTexture.mm": {
-  "base": "6ec645e7bab6ff07a9dd5ba754a41b35bcfb2072",
-  "deleted": false,
-  "ours": "b0ce931e80f814a363f05846a36b4ede91fa2ee8",
-  "theirs": "b15d7f1f62b8a8b11916b742c5f8030ad8a11865"
+ "src/Core/OOOXZManager+ObjCBridge.h": {
+  "base": "193467b4e84c63c2b9203206d257ead6d4300ad9",
+  "deleted": true,
+  "ours": "3f6d3fd3b3d8c23af0f4203ac4edc5236e5a5c20",
+  "theirs": null
  },
- "src/Core/Materials/OOShaderProgram.mm": {
-  "base": "7c83f04aa29d0f52a83b36cb088814d01cc6a2c7",
-  "deleted": false,
-  "ours": "450b2208800ba5812a9a119e89d16463b281c076",
-  "theirs": "4a7f43868895854ae64e5b5e7816177aaaa2e179"
+ "src/Core/OOOXZManager+ObjCBridge.mm": {
+  "base": "78ef52471bf19846bde4543560ed8d2d5adf816d",
+  "deleted": true,
+  "ours": "7a54ad84ef587f1a68c9852619021f934d961566",
+  "theirs": null
  },
  "src/Core/OOOXZManager.mm": {
-  "base": "46027cff87c7f2c87cb55c5c87ad5235be086d00",
+  "base": "ef8295c89c0cb1c3c6288fec9b63f3acc1dbf9dc",
   "deleted": false,
-  "ours": "3a8171f85047fb3d776699d1c26360b270b57fe2",
-  "theirs": "d3837d611e2c7d1bbb75f1dbcafe526ced33a2ab"
+  "ours": "1f749d14fe85cb126e210606f5ea5fff5a75be74",
+  "theirs": "46027cff87c7f2c87cb55c5c87ad5235be086d00"
  },
- "src/Core/Scripting/OOJSEngineTimeManagement.mm": {
-  "base": "d17567a22d41678030cb16563293031756caa0e1",
+ "src/Core/OOVector.h": {
+  "base": "be7fed239e3fe8fa2e29ba2fe2405ace6a27cf5a",
   "deleted": false,
-  "ours": "d192a8f8fba2cd5e53c4574215b8cb4bd622072e",
-  "theirs": "25b99a84dcb7e2da86bfb5649fb1164cf769de5c"
- },
- "src/Core/Scripting/OOJSFunction.mm": {
-  "base": "a763e84de60d118b3f8415aa2de8520233409da0",
-  "deleted": false,
-  "ours": "85554a551ad8ff44c09a66c8b300f07b92546a09",
-  "theirs": "71823c95b7ef992d93906f5c352fd613721c0678"
+  "ours": "f14a3827b15aa6ccf330d481977257e546571a29",
+  "theirs": "7f732e4161e2149fc72961305666b70725696325"
  },
  "src/Core/Scripting/OOJSShip.mm": {
-  "base": "be5888d102dcfd290a6055cbdd0687e2530ed0d5",
+  "base": "edc94c835b4cf3cfdcfc6fc2b8f97100010ece3e",
   "deleted": false,
-  "ours": "902e2f8c7781276d8c6de48f2b4d6285558a1122",
-  "theirs": "9309b71c597d1c447f0d28686dcc85456863a091"
+  "ours": "75745ca5655edc74127e5a5d5c2a620336e653fa",
+  "theirs": "be5888d102dcfd290a6055cbdd0687e2530ed0d5"
+ },
+ "src/Core/Scripting/OOJSSound.h": {
+  "base": "c496006c4b864aa0b7809cde0809c8e6ebf6462b",
+  "deleted": false,
+  "ours": "c8d755646be57fcc40410d8e38777fc47655ef12",
+  "theirs": "f651230038a1cb8efd4b530ea89e8f4c4e4116cd"
  },
  "src/Core/Universe+ObjCBridge.h": {
-  "base": "2498c60205f9a04620ea9e486557aaaa8868c767",
-  "deleted": true,
-  "ours": "02793b8bc763b98aa8130577228a585ec48e896c",
-  "theirs": null
+  "base": "0ad894b96417d130a4e7a68e0ed8e3a8800bf07e",
+  "deleted": false,
+  "ours": "5710fe27b33f46cf649243c3d5af20085f9cd54e",
+  "theirs": "2498c60205f9a04620ea9e486557aaaa8868c767"
  },
  "src/Core/Universe+ObjCBridge.mm": {
-  "base": "9271a76b9c13ac7780af45efc89d30ea9fc3f589",
-  "deleted": true,
-  "ours": "99535d03704649e8aaa2c6b48d1d7005a1646b09",
-  "theirs": null
+  "base": "59eb7342ee0dcdf947ea5c8a908f0c7f43e5a59e",
+  "deleted": false,
+  "ours": "a0bc2411876aba388c7970b08672883de2adc5d2",
+  "theirs": "9271a76b9c13ac7780af45efc89d30ea9fc3f589"
  },
  "src/Core/Universe.mm": {
-  "base": "38d9069f729e93243ee4014ab493e6a48ea33dbc",
+  "base": "573dc5f3ac73dc84f094bd82a12f4adfe0267335",
   "deleted": false,
-  "ours": "8954b9e0118a10c2623b4815b030e21c9173a3e7",
-  "theirs": "cc10b98da17009dd96c97942c5cd5374fd46cd3a"
- },
- "src/SDL/MyOpenGLView.mm": {
-  "base": "83c5a27d1aa3cfce90a824fc1b8975021dae6f94",
-  "deleted": false,
-  "ours": "8c3528767ff5f0fcb442f9df1f60bc25fc5c0b0f",
-  "theirs": "9060b8d220fecc8cc51469c230bbb4b77671ab26"
+  "ours": "cf074c53ba2c79a8a6a3e15cecc62444452811ec",
+  "theirs": "38d9069f729e93243ee4014ab493e6a48ea33dbc"
  },
  "src/SDL/main.mm": {
-  "base": "e74eda08d452a8d667fcf3a67837830725d383ef",
   "deleted": false,
-  "ours": "6ab145e62711f3d748ab2f7c2492a8edd924a14c",
-  "theirs": "279d9187e17cf491d6fa0e416a65ec53ea844bbc"
- },
- "src/meson.build": {
-  "base": "945b84cf57ee8c74cf7fb77c782aca947b7297a3",
-  "deleted": false,
-  "ours": "a925839378a66d8179197852dfd04eb7937a5dda",
-  "theirs": "cfa551ec719d3b97ef7e3bc22b8df9724e95d454"
+  "extra": true,
+  "merged": "4fca39877442661b8e9bcd1831fb1f6f8858df91"
  }
 }

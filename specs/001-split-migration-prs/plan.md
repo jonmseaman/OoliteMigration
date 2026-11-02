@@ -159,6 +159,35 @@ game repo only gets local branches.
   instead of applied. `git rerere` does not apply to `merge-tree` and is unused.
 - 2026-11-01: merges are incremental, rebase-style, with a 30% rename threshold (research R15), after
   the from-scratch merge gave ~2,300 recurring conflicts.
+- Hoist candidates: the history's Objective-C-era merges (P0, P1) that change game sources
+  outside the migration's own code (`ooscript/`, `.m` to `.mm` conversions, meson lists), read
+  diff by diff (T028):
+  - in: `7555b5d42` (oo-scnp), `OO_RANDOM_SEED` pins the RANROT seed so a run can be
+    reproduced; unset keeps the wall-clock seed. One file, `GameController.m`.
+  - candidate, stays in chapter 1: `15029fee0` (oo-r3r); `hoist` reports a conflict with
+    upstream's `src/Core/OOFoundation.h` (`OOCocoa.h` in the history), so by R7 it is not
+    hoisted. It is the enumeration-order shuffle: in a debug build,
+    `OO_SHUFFLE_ENUMERATION` enumerates dictionaries and sets in a seeded order, so code that
+    depends on GNUstep's hash order fails; compiled out of every other build. Its own files plus
+    `OOCocoa.h`, `GameController.m`, `meson.build` and a unit test.
+  - out: `346fdd83f` (oo-jou1), `ship.speed` writable from scripts: a scripting API change made
+    for the test harness, not a fix.
+  - out: `34b268ae5` (oo-5mj), casts and a `static` in `PlayerEntityLoadSave.m`: warning fixes
+    for the migration's flags, no behaviour change.
+  - `hoist` checks that the change applies to `49a5eb9fc` alone and to the series base; whether
+    it builds there is `verify`'s check on the new step (the step runs the Objective-C matrix).
+- T029: `7555b5d42` is step 001 (`series/001-random-seed-env`); the chapters moved up by one
+  (step 026 is the reformat). Step 002 (chapter 1) needed one stored resolution, its own earlier
+  `GameController.m` (oo-r3r's hunk sits next to the hoisted one), so its tree, and every later
+  tree, is what it was before the hoist.
+- `renumber` moves Git Town's `git-town-branch.<branch>.*` keys with the branch and sets
+  `.parent` with `git config`, not `git town set-parent` (which needs a checkout per branch); the
+  keys are the same ones `set-parent` writes, and `check --only lineage` reads them.
+- `check --verified` now also requires a record to describe the branch: its commit is the tip, or
+  (after a rebuild that changed no tree) its tree is the tip's tree and the parent's tree is the
+  one the parent's own record, itself current, was made for. Every check reads only the step's
+  tree, its parent's tree and the parent's record, so after the hoist only steps 001 and 002 were
+  re-verified.
 - To fill at G2: boundary moves (if a snapshot doesn't build), hoisted fixes in chapter 1, and
   whether the tail groups 020–024 build in upstream style (else they fold into 025).
 - T020: verification shells per era (default, conservative): Objective-C eras in the isolated

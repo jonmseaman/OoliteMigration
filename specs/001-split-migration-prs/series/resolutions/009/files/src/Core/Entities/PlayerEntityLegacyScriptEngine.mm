@@ -26,15 +26,16 @@ MA 02110-1301, USA.
 
 #include <vector>
 #import "AI.h"
+#import "Comparison.h"
 #import "GuiDisplayGen.h"
 #import "HeadUpDisplay.h"
 #import "MyOpenGLView+Input.h"
-#import "OOCallByName.h"
 #import "OOColor.h"
 #import "OOConstToString.h"
 #import "OOEntityFilterPredicate.h"
 #import "OOEquipmentType.h"
 #import "OOFoundationBridge.h"
+#import "OOFoundationException.h"
 #import "OOJavaScriptEngine.h"
 #import "OOLegacyScriptWhitelist.h"
 #import "OOLoggingExtended.h"
@@ -56,7 +57,6 @@ MA 02110-1301, USA.
 #import "ShipEntityScriptMethods.h"
 #import "StationEntity.h"
 #import "Universe.h"
-#include "oofnd/objc/OOException.h"
 #include "oofnd/objc/OORuntime.h"
 
 #include "oofnd/Log.hpp"
@@ -161,9 +161,7 @@ bool IsWhitespaceNotNewline(char16_t c)
 // [UNIVERSE missiontext]'s entry as -oo_stringForKey: read it: a string, or a number's text.
 std::optional<std::string> MissionTextForKey(const std::string& key)
 {
-    const oo::PList missionText = [UNIVERSE cxx_missiontext];
-    const oo::PList* entry = missionText.find(key);
-    const oo::PList value = (entry != nullptr) ? *entry : oo::PList();
+    const oo::PList value = oo::PListFrom([[UNIVERSE missiontext] objectForKey:oo::NSStringFrom(key)]);
     if (const std::string* string = value.getIf<std::string>())
         return *string;
     if (value.isNumber())
@@ -220,21 +218,22 @@ std::string TrimWhitespace(std::string_view s)
         nullopt. Anything else (a variable holding an array, say) compares as its description; the old
         code sent it -isEqualToString: and raised.
 */
+std::optional<std::string> ConditionString(id value)
+{
+    if (value == nil)
+        return std::nullopt;
+    if (oo::IsNSString(value))
+        return oo::OptionalString(value);
+    return oo::DescriptionOf(value);
+}
+
 std::optional<std::string> ConditionString(const oo::PList& value)
 {
     if (value.isNull())
         return std::nullopt;
     if (const std::string* string = value.getIf<std::string>())
         return *string;
-    return oo::DescriptionOf(value);
-}
-
-// A *_number query's result as -doubleValue read it: a number's value, a string parsed, 0 for nil.
-double QueryDoubleValue(const oo::PList& value)
-{
-    if (const std::string* string = value.getIf<std::string>())
-        return oo::str::doubleValue(*string);
-    return value.doubleValue();
+    return oo::DescriptionOf(oo::ObjectFromPList(value));
 }
 
 void PerformScriptActions(const oo::PList& actions, Entity* target);
@@ -308,15 +307,11 @@ void PerformActionStatment(const oo::PList& statement, Entity* target)
 
     if (argumentString.has_value()) {
         // Method with argument; substitute [description] expressions. The action is called by
-        // name with the expanded string (ADR-0055 item 5); a failed expansion passes nil, as before.
-        const std::optional<std::string> expanded = cxx_OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), *argumentString, oo::PList(), [player localVariablesForMission:sCurrentMissionKey], std::nullopt, kOOExpandNoOptions);
-        if (expanded.has_value())
-            OOCallByName(target, selector, *expanded);
-        else
-            OOCallByName(target, selector, oo::PList());
+        // name, so its argument stays a string object (ADR-0043 item 21).
+        [target performSelector:selector withObject:OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(*argumentString), nil, oo::ObjectFromPList([player localVariablesForMission:sCurrentMissionKey]), nil, kOOExpandNoOptions)];
     } else {
         // Method without argument.
-        OOCallByName(target, selector);
+        [target performSelector:selector];
     }
 }
 
@@ -358,22 +353,24 @@ OOINLINE OOEntityStatus RecursiveRemapStatus(OOEntityStatus status)
 
 static BOOL sRunningScript = NO;
 
-// Return the world scripts that care about -checkScript, by name, in the world scripts' (load) order.
-- (std::vector<std::pair<std::string, oo::ObjCRef<OOScript*>>>)worldScriptsRequiringTickle
+// Return the world scripts that care about -checkScript, by name (a Dict of Object nodes).
+- (oo::PList)worldScriptsRequiringTickle
 {
-    // The cache ivar is PlayerEntity.h's; it is built once per script load.
-    if (worldScriptsRequiringTickle.has_value())
-        return *worldScriptsRequiringTickle;
+    // The cache ivar is PlayerEntity.h's (a dictionary of the scripts); it is kept that way.
+    if (worldScriptsRequiringTickle != nil)
+        return oo::PListFrom(worldScriptsRequiringTickle);
 
-    std::vector<std::pair<std::string, oo::ObjCRef<OOScript*>>> tickleScripts;
-    for (const auto& entry : worldScripts) {
-        if ([entry.second.get() requiresTickle]) {
-            tickleScripts.push_back(entry);
+    oo::PList::Dict tickleScripts;
+    for (const std::string& scriptName : oo::StringsFrom([worldScripts allKeys])) {
+        OOScript* candidateScript = [worldScripts objectForKey:oo::NSStringFrom(scriptName)];
+        if ([candidateScript requiresTickle]) {
+            tickleScripts[scriptName] = oo::PListObject(candidateScript);
         }
     }
 
-    worldScriptsRequiringTickle = tickleScripts;
-    return tickleScripts;
+    oo::PList result(std::move(tickleScripts));
+    worldScriptsRequiringTickle = [oo::ObjectFromPList(result) retain];
+    return result;
 }
 
 - (void)checkScript
@@ -381,8 +378,8 @@ static BOOL sRunningScript = NO;
     BOOL wasRunningScript = sRunningScript;
     OOEntityStatus status, restoreStatus;
 
-    const std::vector<std::pair<std::string, oo::ObjCRef<OOScript*>>> tickleScripts = [self worldScriptsRequiringTickle];
-    if (tickleScripts.empty()) {
+    const oo::PList tickleScripts = [self worldScriptsRequiringTickle];
+    if (tickleScripts.count() == 0) {
         // Quick exit if we only have JS scripts.
         return;
     }
@@ -418,14 +415,17 @@ static BOOL sRunningScript = NO;
         }
         sRunningScript = YES;
 
-        // After all that, actually running the scripts is trivial. ORDER-SENSITIVE (decision D):
-        // load order (was script-name byte order, and before that the hash order of -allValues).
-        for (const auto& entry : tickleScripts) {
-            [entry.second.get() runWithTarget:self];
+        // After all that, actually running the scripts is trivial. (Order: script name, byte
+        // order; it was the hash order of -allValues.)
+        for (const auto& [scriptName, tickleScript] : *tickleScripts.getIf<oo::PList::Dict>()) {
+            [(OOScript*)oo::ObjectIn(tickleScript) runWithTarget:self];
         }
     }
     @catch (OOException* exception) {
-        OO_LOG(cxx_kOOLogException, "***** Exception running world scripts: {} : {}", [exception name], [exception reason]);
+        OOLog(kOOLogException, @"***** Exception running world scripts: %@ : %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+    }
+    @catch (OOFoundationException* exception) {
+        OOLog(kOOLogException, @"***** Exception running world scripts: %@ : %@", [exception name], [exception reason]);
     }
 
     // Restore anti-recursion measures.
@@ -447,11 +447,20 @@ static BOOL sRunningScript = NO;
             PerformScriptActions(actions, target);
         }
         @catch (OOException* exception) {
-            OO_LOG("script.error.exception",
-                "***** EXCEPTION {}: {} while handling legacy script actions for {}",
+            OOLog(@"script.error.exception",
+                @"***** EXCEPTION %@: %@ while handling legacy script actions for %@",
+                oo::NSStringFrom([exception name]),
+                oo::NSStringFrom([exception reason]),
+                (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? [target shortDescription] : oo::NSStringOrNil(contextName));
+            // Suppress exception
+        }
+        @catch (OOFoundationException* exception) {
+            // (a nil context printed "(null)")
+            OOLog(@"script.error.exception",
+                @"***** EXCEPTION %@: %@ while handling legacy script actions for %@",
                 [exception name],
                 [exception reason],
-                (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? oo::ShortDescriptionOf(target) : contextName.value_or("(null)"));
+                (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? [target shortDescription] : oo::NSStringOrNil(contextName));
             // Suppress exception
         }
 
@@ -474,8 +483,15 @@ static BOOL sRunningScript = NO;
         result = TestScriptConditions(array);
     }
     @catch (OOException* exception) {
-        OO_LOG("script.error.exception",
-            "***** EXCEPTION {}: {} while testing legacy script conditions.",
+        OOLog(@"script.error.exception",
+            @"***** EXCEPTION %@: %@ while testing legacy script conditions.",
+            oo::NSStringFrom([exception name]),
+            oo::NSStringFrom([exception reason]));
+        // Suppress exception
+    }
+    @catch (OOFoundationException* exception) {
+        OOLog(@"script.error.exception",
+            @"***** EXCEPTION %@: %@ while testing legacy script conditions.",
             [exception name],
             [exception reason]);
         // Suppress exception
@@ -547,8 +563,8 @@ static BOOL sRunningScript = NO;
     expandedRHS = [self expandScriptRightHandSide:operandArray].value_or(std::string());
 
     if (opType == OP_STRING) {
-        // The query is called by name and answers a PList (ADR-0055 item 5).
-        lhsString = ConditionString(OOCallByName(self, selector));
+        // The query is called by name and answers an object (ADR-0043 item 21).
+        lhsString = ConditionString([self performSelector:selector]);
 
 #define DOUBLEVAL(x) ((x).has_value() ? oo::str::doubleValue(*(x)) : 0.0)
 
@@ -582,7 +598,7 @@ static BOOL sRunningScript = NO;
             return NO;
         }
     } else if (opType == OP_NUMBER) {
-        lhsValue = QueryDoubleValue(OOCallByName(self, selector));
+        lhsValue = [[self performSelector:selector] doubleValue];
 
         if (comparator == COMPARISON_ONEOF) {
             for (const std::string& rhsItem : oo::str::split(expandedRHS, ",")) {
@@ -613,12 +629,12 @@ static BOOL sRunningScript = NO;
             case COMPARISON_UNDEFINED:
             case COMPARISON_ONEOF:
                 // "Can't happen" - undefined should have been caught by the sanitizer, oneof is handled above.
-                OO_LOG("script.error.unexpectedOperator", "***** SCRIPT ERROR: in {}, operator {} is not valid for numbers, evaluating to false.", CurrentScriptDescription(), cxx_OOComparisonTypeToString(comparator));
+                OOLog(@"script.error.unexpectedOperator", @"***** SCRIPT ERROR: in %@, operator %@ is not valid for numbers, evaluating to false.", oo::NSStringFrom(CurrentScriptDescription()), oo::NSStringFrom(cxx_OOComparisonTypeToString(comparator)));
                 return NO;
             }
         }
     } else if (opType == OP_BOOL) {
-        lhsFlag = ConditionString(OOCallByName(self, selector)) == std::optional<std::string>("YES");
+        lhsFlag = ConditionString([self performSelector:selector]) == std::optional<std::string>("YES");
         rhsFlag = expandedRHS == "YES";
 
         switch (comparator) {
@@ -633,7 +649,7 @@ static BOOL sRunningScript = NO;
         case COMPARISON_UNDEFINED:
         case COMPARISON_ONEOF:
             // "Can't happen" - should have been caught by the sanitizer.
-            OO_LOG("script.error.unexpectedOperator", "***** SCRIPT ERROR: in {}, operator {} is not valid for booleans, evaluating to false.", CurrentScriptDescription(), cxx_OOComparisonTypeToString(comparator));
+            OOLog(@"script.error.unexpectedOperator", @"***** SCRIPT ERROR: in %@, operator %@ is not valid for booleans, evaluating to false.", oo::NSStringFrom(CurrentScriptDescription()), oo::NSStringFrom(cxx_OOComparisonTypeToString(comparator)));
             return NO;
         }
     }
@@ -643,7 +659,7 @@ static BOOL sRunningScript = NO;
     std::string conditionDescription = conditionText.has_value() ? std::string(conditionText->stringView()) : std::string();
     if (!conditionDescription.empty() && conditionDescription.back() == '\n')
         conditionDescription.pop_back();
-    OO_LOG("script.error.fallthrough", "***** SCRIPT ERROR: in {}, unhandled condition '{}' ({}). {}", CurrentScriptDescription(), scriptCondition.at<std::string>(1), conditionDescription, "This is an internal error, please report it.");
+    OOLog(@"script.error.fallthrough", @"***** SCRIPT ERROR: in %@, unhandled condition '%@' (%@). %@", oo::NSStringFrom(CurrentScriptDescription()), oo::NSStringFrom(scriptCondition.at<std::string>(1)), oo::NSStringFrom(conditionDescription), @"This is an internal error, please report it.");
     return NO;
 }
 
@@ -667,7 +683,7 @@ static BOOL sRunningScript = NO;
 
             if (ElementAt(component, 0).boolValue()) {
                 // (nil prints "(null)", for backwards compatibility)
-                value = oo::DescriptionOf(OOCallByName(self, OOSelectorFromName(value.c_str())));
+                value = oo::DescriptionOf([self performSelector:OOSelectorFromName(value.c_str())]);
             }
 
             if (!first)
@@ -682,38 +698,32 @@ static BOOL sRunningScript = NO;
 
 - (oo::PList)cxx_missionVariables
 {
-    return mission_variables; // a snapshot
+    return oo::PListFrom(mission_variables); // a snapshot
 }
 
 - (oo::PList)cxx_missionVariableForKey:(const std::string&)key
 {
-    const oo::PList* value = mission_variables.find(key);
-    return (value != nullptr) ? *value : oo::PList();
+    return oo::PListFrom([mission_variables objectForKey:oo::NSStringFrom(key)]);
 }
 
-// Before set-up (no store yet) nothing is stored, as messaging the nil dictionary did.
 - (void)cxx_setMissionVariable:(const oo::PList&)value forKey:(const std::string&)key
 {
-    oo::PList::Dict* store = mission_variables.getIf<oo::PList::Dict>();
-    if (store == nullptr)
-        return;
     if (!value.isNull())
-        (*store)[key] = value;
+        [mission_variables setObject:oo::ObjectFromPList(value) forKey:oo::NSStringFrom(key)];
     else
-        store->erase(key);
+        [mission_variables removeObjectForKey:oo::NSStringFrom(key)];
 }
 
 /*	A mission's local variables, as a snapshot Dict (null for no mission). The per-mission tables in
-        the localVariables ivar (PlayerEntity.h's) are replaced on write; nothing else reads or saves
-        them, so the old create-an-empty-table-on-read side effect is not kept.
+        the localVariables ivar (PlayerEntity.h's) are immutable dictionaries replaced on write; nothing
+        else reads or saves them, so the old create-an-empty-table-on-read side effect is not kept.
 */
 - (oo::PList)localVariablesForMission:(const std::optional<std::string>&)missionKey
 {
     if (!missionKey.has_value())
         return oo::PList();
 
-    const auto found = localVariables.find(*missionKey);
-    oo::PList result = (found != localVariables.end()) ? found->second : oo::PList();
+    oo::PList result = oo::PListFrom([localVariables objectForKey:oo::NSStringFrom(*missionKey)]);
     if (!result.isDict())
         result = oo::PList(oo::PList::Dict { });
     return result;
@@ -740,7 +750,7 @@ static BOOL sRunningScript = NO;
         } else {
             table->erase(variableName);
         }
-        localVariables[*missionKey] = std::move(locals);
+        [localVariables setObject:oo::ObjectFromPList(locals) forKey:oo::NSStringFrom(*missionKey)];
     }
 }
 
@@ -749,28 +759,28 @@ static BOOL sRunningScript = NO;
     oo::PList::Array result1; // strings
     oo::PList::Array result2; // arrays: a header, then entries
 
-    // The manifests (PlayerEntityContracts), their entries' strings.
-    const std::vector<std::string> passengerManifest = [self cxx_passengerList];
-    const std::vector<std::string> contractManifest = [self cxx_contractList];
-    const std::vector<std::string> parcelManifest = [self cxx_parcelList];
+    // The manifests (PlayerEntityContracts, not migrated) as oo::PList arrays.
+    const oo::PList passengerManifest = oo::PListFrom([self passengerList]);
+    const oo::PList contractManifest = oo::PListFrom([self contractList]);
+    const oo::PList parcelManifest = oo::PListFrom([self parcelList]);
 
-    auto addManifest = [&result2](const std::string& header, const std::vector<std::string>& entries) {
-        if (entries.empty())
+    auto addManifest = [&result2](const std::string& header, const oo::PList& manifest) {
+        const oo::PList::Array* entries = manifest.getIf<oo::PList::Array>();
+        if (entries == nullptr || entries->empty())
             return;
         oo::PList::Array list { oo::PList(header) };
-        for (const std::string& entry : entries)
-            list.push_back(oo::PList(entry));
+        list.insert(list.end(), entries->begin(), entries->end());
         result2.push_back(oo::PList(std::move(list)));
     };
 
-    addManifest(OO_DESC("manifest-passengers"), passengerManifest);
-    addManifest(OO_DESC("manifest-parcels"), parcelManifest);
-    addManifest(OO_DESC("manifest-contracts"), contractManifest);
+    addManifest(oo::StdString(DESC(@"manifest-passengers")), passengerManifest);
+    addManifest(oo::StdString(DESC(@"manifest-parcels")), parcelManifest);
+    addManifest(oo::StdString(DESC(@"manifest-contracts")), contractManifest);
 
     /* For proper display, array entries need to all be after string
      * entries, so sort them now */
-    // ORDER-SENSITIVE (decision D): world scripts in load order (was -allKeys order)
-    for (const std::string& scriptName : [self cxx_worldScriptNames]) {
+    // (world scripts in -allKeys order, which is the -keyEnumerator order the loop used)
+    for (const std::string& scriptName : oo::StringsFrom([worldScripts allKeys])) {
         const oo::PList vars = [self cxx_missionVariableForKey:scriptName];
 
         if (vars.isString()) {
@@ -823,10 +833,10 @@ static BOOL sRunningScript = NO;
             SEL valueselector = OOSelectorFromName(valueString.c_str());
             if ([self respondsToSelector:valueselector]) {
                 // called by name; "%@" of the result, as +stringWithFormat: printed it
-                replace(valueString, oo::DescriptionOf(OOCallByName(self, valueselector)));
+                replace(valueString, oo::DescriptionOf([self performSelector:valueselector]));
             }
         } else if (oo::str::hasPrefix(valueString, "[") && oo::str::hasSuffix(valueString, "]")) {
-            replace(valueString, cxx_OOExpand(valueString).value_or(std::string()));
+            replace(valueString, oo::StdString(OOExpand(oo::NSStringFrom(valueString))));
         }
     }
 
@@ -847,7 +857,7 @@ static BOOL sRunningScript = NO;
     const std::optional<std::string> text = MissionTextForKey(textKey);
 
     if (!text.has_value()) {
-        OO_LOG_ERR(kOOLogScriptMissionDescNoText, "in {}, no mission text set for key '{}' [UNIVERSE missiontext] is:\n{} ", CurrentScriptDescription(), textKey, oo::DescriptionOf([UNIVERSE cxx_missiontext]));
+        OO_LOG_ERR(kOOLogScriptMissionDescNoText, "in {}, no mission text set for key '{}' [UNIVERSE missiontext] is:\n{} ", CurrentScriptDescription(), textKey, oo::DescriptionOf([UNIVERSE missiontext]));
         return;
     }
 
@@ -862,7 +872,7 @@ static BOOL sRunningScript = NO;
         return;
     }
 
-    const std::string expanded = cxx_OOExpand(text).value_or(std::string());
+    const std::string expanded = oo::StdString(OOExpand(oo::NSStringFrom(text)));
     [self cxx_setMissionVariable:oo::PList([self replaceVariablesInString:expanded].value_or(std::string())) forKey:*key];
 }
 
@@ -878,7 +888,7 @@ static BOOL sRunningScript = NO;
     for (i = 0; i < ct; i++) {
         const std::optional<std::string> text = StringAtIndex(list, i);
         if (text.has_value()) {
-            const std::string expanded = cxx_OOExpand(*text).value_or(std::string());
+            const std::string expanded = oo::StdString(OOExpand(oo::NSStringFrom(*text)));
             expandedList.push_back(oo::PList([self replaceVariablesInString:expanded].value_or(std::string())));
         }
     }
@@ -909,12 +919,12 @@ static BOOL sRunningScript = NO;
 
 - (id)status_string // called by name (ADR-0043 item 21)
 {
-    return oo::NSStringFrom(cxx_OOStringFromEntityStatus([self status]));
+    return OOStringFromEntityStatus([self status]);
 }
 
 - (id)gui_screen_string // called by name (ADR-0043 item 21)
 {
-    return oo::NSStringFrom(cxx_OOStringFromGUIScreenID(gui_screen));
+    return OOStringFromGUIScreenID(gui_screen);
 }
 
 - (id)galaxy_number // called by name (ADR-0043 item 21)
@@ -960,7 +970,7 @@ static int shipsFound;
 
 - (id)commanderLegalStatus_string // called by name (ADR-0043 item 21)
 {
-    return oo::NSStringOrNil(cxx_OODisplayStringFromLegalStatus(legalStatus));
+    return OODisplayStringFromLegalStatus(legalStatus);
 }
 
 - (id)d100_number // called by name (ADR-0043 item 21)
@@ -1062,54 +1072,54 @@ static int shipsFound;
     if ([self status] != STATUS_DOCKED)
         return @"NONE";
 
-    return oo::NSStringFrom([self cxx_dockedStationName].value_or("UNKNOWN"));
+    return oo::NSStringFrom(oo::OptionalString([self dockedStationName]).value_or("UNKNOWN"));
 }
 
 - (id)systemGovernment_string // called by name (ADR-0043 item 21)
 {
     int government = [[self systemGovernment_number] intValue]; // 0 .. 7 (0 anarchic .. 7 most stable)
-    return oo::NSStringFrom(cxx_OODisplayStringFromGovernmentID(government).value_or("UNKNOWN"));
+    return oo::NSStringFrom(oo::OptionalString(OODisplayStringFromGovernmentID(government)).value_or("UNKNOWN"));
 }
 
 - (id)systemGovernment_number // called by name (ADR-0043 item 21)
 {
-    return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:oo::NSStringFrom(KEY_GOVERNMENT)];
+    return [[UNIVERSE currentSystemData] objectForKey:KEY_GOVERNMENT];
 }
 
 - (id)systemEconomy_string // called by name (ADR-0043 item 21)
 {
     int economy = [[self systemEconomy_number] intValue]; // 0 .. 7 (0 rich industrial .. 7 poor agricultural)
-    return oo::NSStringFrom(cxx_OODisplayStringFromEconomyID(economy).value_or("UNKNOWN"));
+    return oo::NSStringFrom(oo::OptionalString(OODisplayStringFromEconomyID(economy)).value_or("UNKNOWN"));
 }
 
 - (id)systemEconomy_number // called by name (ADR-0043 item 21)
 {
-    return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:oo::NSStringFrom(KEY_ECONOMY)];
+    return [[UNIVERSE currentSystemData] objectForKey:KEY_ECONOMY];
 }
 
 - (id)systemTechLevel_number // called by name (ADR-0043 item 21)
 {
-    return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:oo::NSStringFrom(KEY_TECHLEVEL)];
+    return [[UNIVERSE currentSystemData] objectForKey:KEY_TECHLEVEL];
 }
 
 - (id)systemPopulation_number // called by name (ADR-0043 item 21)
 {
-    return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:oo::NSStringFrom(KEY_POPULATION)];
+    return [[UNIVERSE currentSystemData] objectForKey:KEY_POPULATION];
 }
 
 - (id)systemProductivity_number // called by name (ADR-0043 item 21)
 {
-    return [oo::ObjectFromPList([UNIVERSE cxx_currentSystemData]) objectForKey:oo::NSStringFrom(KEY_PRODUCTIVITY)];
+    return [[UNIVERSE currentSystemData] objectForKey:KEY_PRODUCTIVITY];
 }
 
 - (id)commanderName_string // called by name (ADR-0043 item 21)
 {
-    return oo::NSStringOrNil([self cxx_commanderName]);
+    return [self commanderName];
 }
 
 - (id)commanderRank_string // called by name (ADR-0043 item 21)
 {
-    return oo::NSStringOrNil(cxx_OODisplayRatingStringFromKillCount([self score]));
+    return OODisplayRatingStringFromKillCount([self score]);
 }
 
 - (id)commanderShip_string // called by name (ADR-0043 item 21)
@@ -1119,7 +1129,7 @@ static int shipsFound;
 
 - (id)commanderShipDisplayName_string // called by name (ADR-0043 item 21)
 {
-    return oo::NSStringOrNil([self displayName]);
+    return [self displayName];
 }
 
 /*-----------------------------------------------------*/
@@ -1134,12 +1144,12 @@ static int shipsFound;
     very_random_seed.e = rand() & 255;
     very_random_seed.f = rand() & 255;
     seed_RNG_only_for_planet_description(very_random_seed);
-    return [self replaceVariablesInString:cxx_OOExpand(valueString).value_or(std::string())];
+    return [self replaceVariablesInString:oo::StdString(OOExpand(oo::NSStringFrom(valueString)))];
 }
 
 - (void)commsMessage:(id)valueString // called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 {
-    [UNIVERSE cxx_addCommsMessage:[self expandMessage:oo::StdString(valueString)] forCount:4.5];
+    [UNIVERSE addCommsMessage:oo::NSStringOrNil([self expandMessage:oo::StdString(valueString)]) forCount:4.5];
 }
 
 // Enabled on 02-May-2008 - Nikos
@@ -1152,12 +1162,12 @@ static int shipsFound;
 
 - (void)consoleMessage3s:(id)valueString // called by name (ADR-0043 item 21)
 {
-    [UNIVERSE cxx_addMessage:[self expandMessage:oo::StdString(valueString)] forCount:3];
+    [UNIVERSE addMessage:oo::NSStringOrNil([self expandMessage:oo::StdString(valueString)]) forCount:3];
 }
 
 - (void)consoleMessage6s:(id)valueString // called by name (ADR-0043 item 21)
 {
-    [UNIVERSE cxx_addMessage:[self expandMessage:oo::StdString(valueString)] forCount:6];
+    [UNIVERSE addMessage:oo::NSStringOrNil([self expandMessage:oo::StdString(valueString)]) forCount:6];
 }
 
 - (void)awardCredits:(id)valueString // called by name (ADR-0043 item 21)
@@ -1197,10 +1207,10 @@ static int shipsFound;
         [self setFuel:[self fuelCapacity]];
     }
 
-    OOEquipmentType* eqType = (equipString != nil) ? [OOEquipmentType cxx_equipmentTypeWithIdentifier:equipKey] : nil;
+    OOEquipmentType* eqType = [OOEquipmentType equipmentTypeWithIdentifier:equipString];
 
     if ([eqType isMissileOrMine]) {
-        [self cxx_mountMissileWithRole:equipKey];
+        [self mountMissileWithRole:equipString];
     } else if (oo::str::hasPrefix(equipKey, "EQ_WEAPON") && !oo::str::hasSuffix(equipKey, "_DAMAGED")) {
         OO_LOG(kOOLogSyntaxAwardEquipment, "***** SCRIPT ERROR: in {}, CANNOT award undamaged weapon:'{}'. Damaged weapons can be awarded instead.", CurrentScriptDescription(), equipKey);
     }
@@ -1208,7 +1218,7 @@ static int shipsFound;
     else if (oo::str::hasSuffix(equipKey, "_DAMAGED") && [self hasEquipmentItem:oo::NSStringFrom(equipKey.substr(0, equipKey.size() - 8))]) {
         OO_LOG(kOOLogSyntaxAwardEquipment, "***** SCRIPT ERROR: in {}, CANNOT award damaged equipment:'{}'. Undamaged version already equipped.", CurrentScriptDescription(), equipKey);
     } else if ([eqType canCarryMultiple] || ![self hasEquipmentItem:equipString]) {
-        [self addEquipmentItem:equipKey withValidation:YES inContext:"scripted"];
+        [self addEquipmentItem:equipString withValidation:YES inContext:@"scripted"];
     }
 }
 
@@ -1229,7 +1239,7 @@ static int shipsFound;
         return;
     }
     if ([self hasEquipmentItem:equipString] || [self hasEquipmentItem:oo::NSStringFrom(equipKey + "_DAMAGED")]) {
-        [self removeEquipmentItem:equipKey];
+        [self removeEquipmentItem:equipString];
     }
 }
 
@@ -1249,7 +1259,7 @@ static int shipsFound;
     /* Legacy script planetinfo settings are now non-persistent over save/load
      * Virtually nothing uses them any more, and expecting them to have a
      * manifest and identifying what it is if so seems unnecessary */
-    [UNIVERSE cxx_setSystemDataKey:keyString value:oo::NSStringFrom(valueString) fromManifest:std::string()];
+    [UNIVERSE setSystemDataKey:oo::NSStringFrom(keyString) value:oo::NSStringFrom(valueString) fromManifest:@""];
 }
 
 - (void)setSpecificPlanetInfo:(id)key_valueString // called by name (ADR-0043 item 21); uses galaxy#=planet#=key=value
@@ -1269,7 +1279,7 @@ static int shipsFound;
     const std::string keyString = TrimWhitespace(tokens[2]);
     const std::string valueString = TrimWhitespace(tokens[3]);
 
-    [UNIVERSE cxx_setSystemDataForGalaxy:gnum planet:pnum key:keyString value:oo::NSStringFrom(valueString) fromManifest:std::string() forLayer:OO_LAYER_OXP_DYNAMIC];
+    [UNIVERSE setSystemDataForGalaxy:gnum planet:pnum key:oo::NSStringFrom(keyString) value:oo::NSStringFrom(valueString) fromManifest:@"" forLayer:OO_LAYER_OXP_DYNAMIC];
 }
 
 - (void)awardCargo:(id)amount_typeString // called by name (ADR-0043 item 21)
@@ -1289,7 +1299,7 @@ static int shipsFound;
 
     const oo::PList tokenArray = TokenArray(tokens);
     const std::string& type = tokens[1]; // the good (Amendment 1 item 10: a std::string)
-    if (![[UNIVERSE commodities] cxx_goodDefined:type]) {
+    if (![[UNIVERSE commodities] goodDefined:oo::NSStringFrom(type)]) {
         OO_LOG(kOOLogSyntaxAwardCargo, "***** SCRIPT ERROR: in {}, CANNOT awardCargo: '{}' ({})", CurrentScriptDescription(), argument, "unknown type");
         return;
     }
@@ -1300,13 +1310,13 @@ static int shipsFound;
         return;
     }
 
-    unit = [shipCommodityData massUnitForGood:type];
+    unit = [shipCommodityData massUnitForGood:oo::NSStringFrom(type)];
     if (specialCargo && unit == UNITS_TONS) {
         OO_LOG(kOOLogSyntaxAwardCargo, "***** SCRIPT ERROR: in {}, CANNOT awardCargo: '{}' ({})", CurrentScriptDescription(), argument, "cargo hold full with special cargo");
         return;
     }
 
-    [self cxx_awardCommodityType:type amount:amount];
+    [self awardCommodityType:oo::NSStringFrom(type) amount:amount];
 }
 
 - (void)removeAllCargo
@@ -1327,8 +1337,8 @@ static int shipsFound;
 
     OO_LOG(kOOLogNoteRemoveAllCargo, "{} removeAllCargo", forceRemoval ? "Forcing" : "Going to");
 
-    for (const std::string& type : [shipCommodityData goods]) {
-        if ([shipCommodityData massUnitForGood:type] == UNITS_TONS) {
+    for (const std::string& type : oo::StringsFrom([shipCommodityData goods])) {
+        if ([shipCommodityData massUnitForGood:oo::NSStringFrom(type)] == UNITS_TONS) {
             [shipCommodityData cxx_setQuantity:0 forGood:type];
         }
     }
@@ -1358,7 +1368,7 @@ static int shipsFound;
     const std::string description = oo::StdString(descriptionString);
     [self removeAllCargo:YES];
     OO_LOG(kOOLogNoteUseSpecialCargo, "Going to useSpecialCargo:'{}'", description);
-    specialCargo = cxx_OOExpand(description);
+    specialCargo = oo::OptionalString(OOExpand(oo::NSStringFrom(description)));
 }
 
 - (void)testForEquipment:(id)equipString // called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
@@ -1388,14 +1398,14 @@ static int shipsFound;
         return;
     }
 
-    std::string roleString = tokens[0];
+    const std::string& roleString = tokens[0];
     const std::string messageString = JoinedFrom(tokens, 1);
 
-    for (const auto& target : [UNIVERSE cxx_findShipsMatchingPredicate:HasPrimaryRolePredicate
-                                                             parameter:&roleString
-                                                               inRange:-1
-                                                              ofEntity:nil]) {
-        [[(ShipEntity*)target.get() getAI] cxx_reactToMessage:messageString context:std::string("messageShipAIs:")];
+    for (const auto& target : oo::ObjCRefsFrom<ShipEntity*>([UNIVERSE findShipsMatchingPredicate:HasPrimaryRolePredicate
+                                                                                       parameter:oo::NSStringFrom(roleString)
+                                                                                         inRange:-1
+                                                                                        ofEntity:nil])) {
+        [[target.get() getAI] cxx_reactToMessage:messageString context:std::string("messageShipAIs:")];
     }
 }
 
@@ -1427,7 +1437,7 @@ static int shipsFound;
     OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ships with role '{}'", number, roleString);
 
     while (number--)
-        [UNIVERSE cxx_witchspaceShipWithPrimaryRole:roleString];
+        [UNIVERSE witchspaceShipWithPrimaryRole:oo::NSStringFrom(roleString)];
 }
 
 - (void)addSystemShips:(id)roles_number_position // called by name (ADR-0043 item 21)
@@ -1452,7 +1462,7 @@ static int shipsFound;
     OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ships with role '{}' at a point {:.3f} along route1", number, roleString, posn);
 
     while (number--)
-        [UNIVERSE cxx_addShipWithRole:roleString nearRouteOneAt:posn];
+        [UNIVERSE addShipWithRole:oo::NSStringFrom(roleString) nearRouteOneAt:posn];
 }
 
 - (void)addShipsAt:(id)roles_number_system_x_y_z // called by name (ADR-0043 item 21)
@@ -1478,7 +1488,7 @@ static int shipsFound;
 
     OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ship(s) with role '{}' at point ({:.3f}, {:.3f}, {:.3f}) using system {}", number, roleString, posn.x, posn.y, posn.z, systemString);
 
-    if (![UNIVERSE cxx_addShips:number withRole:roleString nearPosition:posn withCoordinateSystem:systemString]) {
+    if (![UNIVERSE addShips:number withRole:oo::NSStringFrom(roleString) nearPosition:posn withCoordinateSystem:oo::NSStringFrom(systemString)]) {
         OO_LOG(kOOLogScriptAddShipsFailed, "***** SCRIPT ERROR: in {}, {} could not add {} ships with role \"{}\"", CurrentScriptDescription(), "addShipsAt:", (unsigned)number, roleString);
     }
 }
@@ -1506,7 +1516,7 @@ static int shipsFound;
 
     OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ship(s) with role '{}' precisely at point ({:.3f}, {:.3f}, {:.3f}) using system {}", number, roleString, posn.x, posn.y, posn.z, systemString);
 
-    if (![UNIVERSE cxx_addShips:number withRole:roleString atPosition:posn withCoordinateSystem:systemString]) {
+    if (![UNIVERSE addShips:number withRole:oo::NSStringFrom(roleString) atPosition:posn withCoordinateSystem:oo::NSStringFrom(systemString)]) {
         OO_LOG(kOOLogScriptAddShipsFailed, "***** SCRIPT ERROR: in {}, {} could not add {} ships with role '{}'", CurrentScriptDescription(), "addShipsAtPrecisely:", (unsigned)number, roleString);
     }
 }
@@ -1537,7 +1547,7 @@ static int shipsFound;
 
     OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ship(s) with role '{}' within {:.2f} radius about point ({:.3f}, {:.3f}, {:.3f}) using system {}", number, roleString, (double)r, x, y, z, systemString);
 
-    if (![UNIVERSE cxx_addShips:number withRole:roleString nearPosition:posn withCoordinateSystem:systemString withinRadius:r]) {
+    if (![UNIVERSE addShips:number withRole:oo::NSStringFrom(roleString) nearPosition:posn withCoordinateSystem:oo::NSStringFrom(systemString) withinRadius:r]) {
         OO_LOG(kOOLogScriptAddShipsFailed, "***** SCRIPT ERROR :in {}, {} could not add {} ships with role \"{}\"", CurrentScriptDescription(), "addShipsWithinRadius:", (unsigned)number, roleString);
     }
 }
@@ -1713,7 +1723,7 @@ static int shipsFound;
 
 - (void)checkForShips:(id)roleString // called by name (ADR-0043 item 21)
 {
-    shipsFound = (roleString != nil) ? [UNIVERSE cxx_countShipsWithPrimaryRole:oo::StdString(roleString)] : 0; // a nil role counted nothing
+    shipsFound = [UNIVERSE countShipsWithPrimaryRole:roleString];
 }
 
 - (void)resetScriptTimer
@@ -1735,7 +1745,7 @@ static int shipsFound;
     const std::optional<std::string> text = MissionTextForKey(key.value_or(std::string()));
     if (!key.has_value() || !text.has_value())
         return;
-    const std::string expanded = cxx_OOExpandWithOptions(OOStringExpanderDefaultRandomSeed(), kOOExpandBackslashN, *text).value_or(std::string());
+    const std::string expanded = oo::StdString(OOExpandWithOptions(OOStringExpanderDefaultRandomSeed(), kOOExpandBackslashN, oo::NSStringFrom(*text)));
 
     [self addLiteralMissionText:oo::NSStringOrNil([self replaceVariablesInString:expanded])];
 }
@@ -1760,9 +1770,7 @@ static int shipsFound;
 
 - (void)setMissionChoices:(id)choicesKey // called by name (ADR-0043 item 21); choicesKey is a key for a dictionary of
 { // choices/choice phrases in missiontext.plist and also..
-    const oo::PList missionText = [UNIVERSE cxx_missiontext];
-    const oo::PList* choicesEntry = missionText.find(oo::StdString(choicesKey));
-    const oo::PList choicesDict = (choicesEntry != nullptr) ? *choicesEntry : oo::PList();
+    const oo::PList choicesDict = oo::PListFrom([[UNIVERSE missiontext] objectForKey:oo::NSStringFrom(oo::StdString(choicesKey))]);
     if (!choicesDict.isDict() || choicesDict.count() == 0) {
         return;
     }
@@ -1801,7 +1809,7 @@ static int shipsFound;
 
     NSInteger keysCount = choiceKeys.size();
     if ((end_row + 1) < choiceKeys.size()) {
-        OO_LOG_ERR(cxx_kOOLogException, "in mission.runScreen choices: number of choices defined ({}) is greater than available lines ({}). Check HUD settings for allowBigGui.", choiceKeys.size(), (end_row + 1));
+        OOLogERR(kOOLogException, @"in mission.runScreen choices: number of choices defined (%zu) is greater than available lines (%zu). Check HUD settings for allowBigGui.", choiceKeys.size(), (end_row + 1));
         keysCount = end_row + 1;
     }
 
@@ -1847,7 +1855,7 @@ static int shipsFound;
         } else {
             continue; // invalid type
         }
-        choiceText = cxx_OOExpand(choiceText).value_or(std::string());
+        choiceText = oo::StdString(OOExpand(oo::NSStringFrom(choiceText)));
         choiceText = [self replaceVariablesInString:choiceText].value_or(std::string());
         // allow blank rows
         if (choiceText != "  ") {
@@ -1855,7 +1863,7 @@ static int shipsFound;
             if (selectable) {
                 [gui cxx_setKey:choiceKey forRow:choicesRow];
             } else {
-                [gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:choicesRow];
+                [gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:choicesRow];
             }
             [gui setColor:rowColor forRow:choicesRow];
             if (selectable && !selectableRowExists) {
@@ -1863,7 +1871,7 @@ static int shipsFound;
                 firstSelectableRow = choicesRow;
             }
         } else {
-            [gui cxx_setKey:std::string(GUI_KEY_SKIP) forRow:choicesRow];
+            [gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:choicesRow];
         }
         choicesRow++;
         if (choicesRow > (end_row + 1))
@@ -1885,14 +1893,14 @@ static int shipsFound;
 
 - (void)resetMissionChoice
 {
-    [self cxx_setMissionChoice:std::nullopt];
+    [self setMissionChoice:nil];
 }
 
 - (void)clearMissionScreen
 {
-    [self cxx_setMissionOverlayDescriptor:oo::PList()];
-    [self cxx_setMissionBackgroundDescriptor:oo::PList()];
-    [self cxx_setMissionBackgroundSpecial:""];
+    [self setMissionOverlayDescriptor:nil];
+    [self setMissionBackgroundDescriptor:nil];
+    [self setMissionBackgroundSpecial:nil];
     [self cxx_setMissionTitle:std::nullopt];
     [self setMissionMusic:nil];
     [self showShipModel:nil];
@@ -1905,7 +1913,7 @@ static int shipsFound;
         if (dest < 0 || dest > 255)
             continue;
 
-        [self cxx_addMissionDestinationMarker:[self cxx_defaultMarker:dest]];
+        [self addMissionDestinationMarker:[self defaultMarker:dest]];
     }
 }
 
@@ -1916,7 +1924,7 @@ static int shipsFound;
         if (dest < 0 || dest > 255)
             continue;
 
-        [self cxx_removeMissionDestinationMarker:[self cxx_defaultMarker:dest]];
+        [self removeMissionDestinationMarker:[self defaultMarker:dest]];
     }
 }
 
@@ -1928,8 +1936,8 @@ static int shipsFound;
         return;
     }
 
-    ShipEntity* ship = [UNIVERSE cxx_makeDemoShipWithRole:roleString spinning:YES];
-    OO_LOG(kOOLogNoteShowShipModel, "::::: showShipModel:'{}' ({}) ({})", roleString, oo::DescriptionOf(ship), [ship cxx_name].value_or("(null)"));
+    ShipEntity* ship = [UNIVERSE makeDemoShipWithRole:role spinning:YES];
+    OO_LOG(kOOLogNoteShowShipModel, "::::: showShipModel:'{}' ({}) ({})", roleString, oo::DescriptionOf(ship), oo::DescriptionOf([ship name]));
 }
 
 - (void)setMissionMusic:(id)value // called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
@@ -1954,9 +1962,9 @@ static int shipsFound;
 {
     const std::string imageName = oo::StdString(value);
     if (!IsNoneValue(imageName)) {
-        [self cxx_setMissionOverlayDescriptor:oo::PList(oo::PList::Dict { { "name", oo::PList(imageName) } })];
+        [self setMissionOverlayDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict { { "name", oo::PList(imageName) } }))];
     } else {
-        [self cxx_setMissionOverlayDescriptor:oo::PList()];
+        [self setMissionOverlayDescriptor:nil];
     }
 }
 
@@ -1965,9 +1973,9 @@ static int shipsFound;
 {
     const std::string backgroundName = oo::StdString(value);
     if (!IsNoneValue(backgroundName)) {
-        [self cxx_setMissionBackgroundDescriptor:oo::PList(oo::PList::Dict { { "name", oo::PList(backgroundName) } })];
+        [self setMissionBackgroundDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict { { "name", oo::PList(backgroundName) } }))];
     } else {
-        [self cxx_setMissionBackgroundDescriptor:oo::PList()];
+        [self setMissionBackgroundDescriptor:nil];
     }
 }
 
@@ -1981,7 +1989,7 @@ static int shipsFound;
     fuel_leak_rate = oo::str::doubleValue(oo::StdString(value));
     if (fuel_leak_rate > 0) {
         [self playFuelLeak];
-        [UNIVERSE cxx_addMessage:OO_DESC("danger-fuel-leak") forCount:6];
+        [UNIVERSE addMessage:DESC(@"danger-fuel-leak") forCount:6];
         OO_LOG(kOOLogNoteFuelLeak, "{}", "FUEL LEAK activated!");
     }
 }
@@ -2014,7 +2022,7 @@ static int shipsFound;
     mainStation = [UNIVERSE station];
     if (mainStation != nil) {
         [UNIVERSE unMagicMainStation];
-        [mainStation takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:std::string()]; // 500 million should do it!
+        [mainStation takeEnergyDamage:500000000.0 from:nil becauseOf:nil weaponIdentifier:@""]; // 500 million should do it!
     }
 }
 
@@ -2040,7 +2048,7 @@ static int shipsFound;
                 AI* se1AI = [se1 getAI];
                 [se1 setFuel:MAX(PLAYER_MAX_FUEL, [se1 fuelCapacity])];
                 [se1 setAITo:@"exitingTraderAI.plist"]; // lets them return to their previous state after the jump
-                [se1AI cxx_setState:"EXIT_SYSTEM"];
+                [se1AI setState:@"EXIT_SYSTEM"];
                 // The following should prevent all ships leaving at once (freezes oolite on slower machines)
                 [se1AI setNextThinkTime:[UNIVERSE getTime] + 3 + (ranrot_rand() & 15)];
                 [se1 setPrimaryRole:@"oolite-none"]; // prevents new ship from appearing at witchpoint when this one leaves!
@@ -2060,7 +2068,7 @@ static int shipsFound;
     if (!UNIVERSE)
         return nil;
     // The system properties, once, as an oo::PList (null when there are none).
-    const oo::PList dict = [[UNIVERSE systemManager] cxx_getPropertiesForSystemKey:oo::StdString(planetKey)];
+    const oo::PList dict = oo::PListFrom([[UNIVERSE systemManager] getPropertiesForSystemKey:planetKey]);
     if (dict.isNull()) {
         OO_LOG("script.error.addPlanet.keyNotFound", "***** ERROR: could not find an entry in planetinfo.plist for '{}'", oo::DescriptionOf(planetKey));
         return nil;
@@ -2068,12 +2076,12 @@ static int shipsFound;
 
     /*- add planet -*/
     // ("%@" of the dictionary: the round trip prints the same description)
-    OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initPlanetFromDictionary: {}", oo::DescriptionOf(dict));
+    OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initPlanetFromDictionary: {}", oo::DescriptionOf(oo::ObjectFromPList(dict)));
     OOPlanetEntity* planet = [[[OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:YES andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
 
     Quaternion planetOrientation;
     const oo::PList* orientationValue = dict.find("orientation");
-    if (cxx_ScanQuaternionFromString((orientationValue != nullptr && orientationValue->isString()) ? std::optional<std::string>(*orientationValue->getIf<std::string>()) : std::nullopt, &planetOrientation)) {
+    if (ScanQuaternionFromString(orientationValue != nullptr ? oo::ObjectFromPList(*orientationValue) : nil, &planetOrientation)) {
         [planet setOrientation:planetOrientation];
     }
 
@@ -2088,11 +2096,11 @@ static int shipsFound;
         OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.", "position", "planet", oo::DescriptionOf(planetKey));
     }
 
-    HPVector posn = [UNIVERSE cxx_coordinatesFromCoordinateSystemString:positionString];
+    HPVector posn = [UNIVERSE coordinatesFromCoordinateSystemString:oo::NSStringFrom(positionString)];
     if (posn.x || posn.y || posn.z) {
         OO_LOG(kOOLogDebugAddPlanet, "planet position ({:.2f} {:.2f} {:.2f}) derived from {}", posn.x, posn.y, posn.z, positionString);
     } else {
-        cxx_ScanHPVectorFromString(positionString, &posn);
+        ScanHPVectorFromString(oo::NSStringFrom(positionString), &posn);
         OO_LOG(kOOLogDebugAddPlanet, "planet position ({:.2f} {:.2f} {:.2f}) derived from {}", posn.x, posn.y, posn.z, positionString);
     }
     [planet setPosition:posn];
@@ -2108,7 +2116,7 @@ static int shipsFound;
     if (!UNIVERSE)
         return nil;
     // The system properties, once, as an oo::PList (null when there are none).
-    const oo::PList dict = [[UNIVERSE systemManager] cxx_getPropertiesForSystemKey:oo::StdString(moonKey)];
+    const oo::PList dict = oo::PListFrom([[UNIVERSE systemManager] getPropertiesForSystemKey:moonKey]);
     if (dict.isNull()) {
         OO_LOG("script.error.addPlanet.keyNotFound", "***** ERROR: could not find an entry in planetinfo.plist for '{}'", oo::DescriptionOf(moonKey));
         return nil;
@@ -2116,12 +2124,12 @@ static int shipsFound;
 
     /*- add planet -*/
     // ("%@" of the dictionary: the round trip prints the same description)
-    OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initMoonFromDictionary: {}", oo::DescriptionOf(dict));
+    OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initMoonFromDictionary: {}", oo::DescriptionOf(oo::ObjectFromPList(dict)));
     OOPlanetEntity* planet = [[[OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:NO andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
 
     Quaternion planetOrientation;
     const oo::PList* orientationValue = dict.find("orientation");
-    if (cxx_ScanQuaternionFromString((orientationValue != nullptr && orientationValue->isString()) ? std::optional<std::string>(*orientationValue->getIf<std::string>()) : std::nullopt, &planetOrientation)) {
+    if (ScanQuaternionFromString(orientationValue != nullptr ? oo::ObjectFromPList(*orientationValue) : nil, &planetOrientation)) {
         [planet setOrientation:planetOrientation];
     }
 
@@ -2136,11 +2144,11 @@ static int shipsFound;
         OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.", "position", "moon", oo::DescriptionOf(moonKey));
     }
 
-    HPVector posn = [UNIVERSE cxx_coordinatesFromCoordinateSystemString:positionString];
+    HPVector posn = [UNIVERSE coordinatesFromCoordinateSystemString:oo::NSStringFrom(positionString)];
     if (posn.x || posn.y || posn.z) {
         OO_LOG(kOOLogDebugAddPlanet, "moon position ({:.2f} {:.2f} {:.2f}) derived from {}", posn.x, posn.y, posn.z, positionString);
     } else {
-        cxx_ScanHPVectorFromString(positionString, &posn);
+        ScanHPVectorFromString(oo::NSStringFrom(positionString), &posn);
         OO_LOG(kOOLogDebugAddPlanet, "moon position ({:.2f} {:.2f} {:.2f}) derived from {}", posn.x, posn.y, posn.z, positionString);
     }
     [planet setPosition:posn];
@@ -2210,7 +2218,7 @@ static int shipsFound;
 {
     // reset special background as legacy scripts can't use it, and this
     // is only called by legacy scripts
-    [self cxx_setMissionBackgroundSpecial:""];
+    [self setMissionBackgroundSpecial:nil];
     // likewise exit screen target
     [self setMissionExitScreen:GUI_SCREEN_STATUS];
 
@@ -2228,7 +2236,7 @@ static int shipsFound;
 
     // The DESC entry is the format (data): ADR-0043 item 19.
     const std::optional<std::string> typed = [gameView cxx_typedString];
-    [gui cxx_setText:oo::str::formatRuntime(OO_DESC("mission-screen-text-prompt-@"), { typed.has_value() ? oo::str::FormatArg(*typed) : oo::str::FormatArg::null() }) forRow:end_row align:GUI_ALIGN_LEFT];
+    [gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"mission-screen-text-prompt-@")), { typed.has_value() ? oo::str::FormatArg(*typed) : oo::str::FormatArg::null() }) forRow:end_row align:GUI_ALIGN_LEFT];
     [gui setColor:[OOColor cyanColor] forRow:end_row];
 
     [gui setShowTextCursor:YES];
@@ -2247,10 +2255,10 @@ static int shipsFound;
     // GUI stuff
     {
         [gui clear];
-        [gui cxx_setTitle:[self cxx_missionTitle].value_or(OO_DESC("mission-information"))];
+        [gui setTitle:oo::NSStringFrom([self cxx_missionTitle].value_or(oo::StdString(DESC(@"mission-information"))))];
 
         if (!_missionTextEntry) {
-            [gui cxx_setText:OO_DESC("press-space-commander") forRow:end_row align:GUI_ALIGN_CENTER];
+            [gui cxx_setText:oo::OptionalString(DESC(@"press-space-commander")) forRow:end_row align:GUI_ALIGN_CENTER];
             [gui setColor:[OOColor yellowColor] forRow:end_row];
             [gui cxx_setKey:"spacebar" forRow:end_row];
             [gui setShowTextCursor:NO];
@@ -2259,10 +2267,10 @@ static int shipsFound;
         }
         [gui setSelectableRange:NSMakeRange(0, 0)];
 
-        [gui cxx_setForegroundTextureDescriptor:[self cxx_missionOverlayDescriptorOrDefault]];
-        [gui cxx_setBackgroundTextureDescriptor:[self cxx_missionBackgroundDescriptorOrDefault]];
+        [gui cxx_setForegroundTextureDescriptor:oo::PListFrom([self missionOverlayDescriptorOrDefault])];
+        [gui cxx_setBackgroundTextureDescriptor:oo::PListFrom([self missionBackgroundDescriptorOrDefault])];
         // must set special second as setting the descriptor resets it
-        BOOL overridden = [self cxx_missionBackgroundDescriptor] ? YES : NO;
+        BOOL overridden = ([self missionBackgroundDescriptor] != nil);
         [gui setBackgroundTextureSpecial:[self missionBackgroundSpecial] withBackground:!overridden];
     }
     /* ends */
@@ -2285,8 +2293,7 @@ static int shipsFound;
 
 - (void)cxx_setBackgroundFromDescriptionsKey:(const std::string&)d_key
 {
-    const oo::PList* itemsEntry = [UNIVERSE cxx_descriptions]->find(d_key);
-    const oo::PList items = (itemsEntry != nullptr) ? *itemsEntry : oo::PList();
+    const oo::PList items = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(d_key)]);
     //
     if (items.isNull())
         return;
@@ -2325,10 +2332,10 @@ static int shipsFound;
     BOOL success = YES;
     // ("%@" of the dictionaries: their round-tripped descriptions, the same text)
     if (conditions == nullptr) {
-        OO_LOG("script.scene.couplet.badConditions", "***** SCENE ERROR: {} - conditions not {}, returning {}.", oo::DescriptionOf(couplet), " found", "YES and performing 'do' actions");
+        OO_LOG("script.scene.couplet.badConditions", "***** SCENE ERROR: {} - conditions not {}, returning {}.", oo::DescriptionOf(oo::ObjectFromPList(couplet)), " found", "YES and performing 'do' actions");
     } else {
         if (!conditions->isArray()) {
-            OO_LOG("script.scene.couplet.badConditions", "***** SCENE ERROR: {} - conditions not {}, returning {}.", oo::DescriptionOf(*conditions), "an array", "NO");
+            OO_LOG("script.scene.couplet.badConditions", "***** SCENE ERROR: {} - conditions not {}, returning {}.", oo::DescriptionOf(oo::ObjectFromPList(*conditions)), "an array", "NO");
             return NO;
         }
     }
@@ -2379,12 +2386,11 @@ static int shipsFound;
             return NO; //		   0.... 1.. 2 3 4
         const std::string& scene_key = i_info[1];
         Vector scene_offset = { 0 };
-        cxx_ScanVectorFromString(joined(2, 3), &scene_offset);
+        ScanVectorFromString(oo::NSStringFrom(joined(2, 3)), &scene_offset);
         scene_offset.x += off.x;
         scene_offset.y += off.y;
         scene_offset.z += off.z;
-        const oo::PList* sceneEntry = [UNIVERSE cxx_descriptions]->find(scene_key);
-        const oo::PList scene_items = (sceneEntry != nullptr) ? *sceneEntry : oo::PList();
+        const oo::PList scene_items = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(scene_key)]);
         OO_LOG(kOOLogDebugProcessSceneStringAddScene, "::::: adding scene: '{}'", scene_key);
         //
         if (!scene_items.isNull()) {
@@ -2405,16 +2411,16 @@ static int shipsFound;
         ShipEntity* ship = nil;
 
         if (i_key == "ship" || i_key == "model") {
-            ship = [UNIVERSE cxx_newShipWithName:i_info[1]];
+            ship = [UNIVERSE newShipWithName:oo::NSStringFrom(i_info[1])];
         } else if (i_key == "role") {
-            ship = [UNIVERSE cxx_newShipWithRole:i_info[1]];
+            ship = [UNIVERSE newShipWithRole:oo::NSStringFrom(i_info[1])];
         }
         if (!ship)
             return NO;
 
-        cxx_ScanVectorAndQuaternionFromString(joined(2, 7), &model_p0, &model_q);
+        ScanVectorAndQuaternionFromString(oo::NSStringFrom(joined(2, 7)), &model_p0, &model_q);
 
-        Vector model_offset = cxx_positionOffsetForShipInRotationToAlignment(ship, model_q, i_info[9]);
+        Vector model_offset = positionOffsetForShipInRotationToAlignment(ship, model_q, oo::NSStringFrom(i_info[9]));
         model_p0 = vector_add(model_p0, vector_subtract(off, model_offset));
 
         OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::DescriptionOf(ship));
@@ -2440,13 +2446,13 @@ static int shipsFound;
         if (i_info.size() != 9) // must be player_x_y_z_W_X_Y_Z_align
             return NO; //		   0..... 1 2 3 4 5 6 7 8....
 
-        ShipEntity* doppelganger = [UNIVERSE cxx_newShipWithName:[self cxx_shipDataKey].value_or(std::string())]; // retain count = 1
+        ShipEntity* doppelganger = [UNIVERSE newShipWithName:[self shipDataKey]]; // retain count = 1
         if (!doppelganger)
             return NO;
 
-        cxx_ScanVectorAndQuaternionFromString(joined(1, 7), &model_p0, &model_q);
+        ScanVectorAndQuaternionFromString(oo::NSStringFrom(joined(1, 7)), &model_p0, &model_q);
 
-        Vector model_offset = cxx_positionOffsetForShipInRotationToAlignment(doppelganger, model_q, i_info[8]);
+        Vector model_offset = positionOffsetForShipInRotationToAlignment(doppelganger, model_q, oo::NSStringFrom(i_info[8]));
         model_p0.x += off.x - model_offset.x;
         model_p0.y += off.y - model_offset.y;
         model_p0.z += off.z - model_offset.z;
@@ -2497,7 +2503,7 @@ static int shipsFound;
 #else
         // (the planet info is a mixed configuration: plist data and the texture object, Amendment 2)
         OOPlanetEntity* doppelganger = nil;
-        oo::PList planetInfo = [UNIVERSE cxx_generateSystemData:target_system_seed];
+        oo::PList planetInfo = oo::PListFrom([UNIVERSE generateSystemData:target_system_seed]);
         if (!planetInfo.isDict())
             planetInfo = oo::PList(oo::PList::Dict { });
 
@@ -2521,7 +2527,7 @@ static int shipsFound;
             return NO;
 #endif
 
-        cxx_ScanVectorFromString(joined(1, 3), &model_p0);
+        ScanVectorFromString(oo::NSStringFrom(joined(1, 3)), &model_p0);
 
         // miniature radii are roughly between 60 and 120. Place miniatures with a radius bigger than 60 a bit futher away.
         model_p0 = vector_multiply_scalar(model_p0, 1 - 0.5 * ((60 - [doppelganger radius]) / 60));
@@ -2555,9 +2561,9 @@ static int shipsFound;
 
 - (BOOL)cxx_addEqScriptForKey:(const std::string&)eq_key
 {
-    const std::optional<std::string> scriptName = [[OOEquipmentType cxx_equipmentTypeWithIdentifier:eq_key] cxx_scriptName];
+    const std::optional<std::string> scriptName = oo::OptionalString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eq_key)] scriptName]);
 
-    OO_LOG("player.equipmentScript", "Added equipment {}, with the following script property: '{}'.", eq_key, scriptName.value_or("(null)"));
+    OOLog(@"player.equipmentScript", @"Added equipment %@, with the following script property: '%@'.", oo::NSStringFrom(eq_key), oo::NSStringOrNil(scriptName));
 
     if (!scriptName.has_value())
         return NO;
@@ -2570,16 +2576,16 @@ static int shipsFound;
     oo::PList::Dict properties;
     properties["ship"] = oo::PListObject(self);
     properties["equipmentKey"] = oo::PList(eq_key);
-    OOScript* s = [OOScript cxx_jsScriptFromFileNamed:*scriptName properties:oo::PList(std::move(properties))];
+    OOScript* s = [OOScript jsScriptFromFileNamed:oo::NSStringFrom(*scriptName) properties:oo::ObjectFromPList(oo::PList(std::move(properties)))];
     if (s == nil)
         return NO;
 
-    OO_LOG("player.equipmentScript", "Script '{}': installation {}successful.", *scriptName, (s == nil ? "un" : ""));
+    OOLog(@"player.equipmentScript", @"Script '%@': installation %@successful.", oo::NSStringFrom(*scriptName), (s == nil ? @"un" : @""));
 
     eqScripts.emplace_back(eq_key, oo::ObjCRef<OOJSScript*>(static_cast<OOJSScript*>(s)));
     if (primedEquipment == eqScripts.size() - 1)
         primedEquipment++; // if primed-none, keep it as primed-none.
-    OO_LOG("player.equipmentScript", "Scriptable equipment available: {}.", eqScripts.size());
+    OOLog(@"player.equipmentScript", @"Scriptable equipment available: %zu.", eqScripts.size());
     return YES;
 }
 
@@ -2599,7 +2605,7 @@ static int shipsFound;
             if (count == primedEquipment)
                 primedEquipment--; // the array has shrunk by one!
 
-            OO_LOG("player.equipmentScript", "Removed equipment {}, with the following script property: '{}'.", eq_key, [[OOEquipmentType cxx_equipmentTypeWithIdentifier:eq_key] cxx_scriptName].value_or("(null)"));
+            OOLog(@"player.equipmentScript", @"Removed equipment %@, with the following script property: '%@'.", oo::NSStringFrom(eq_key), [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eq_key)] scriptName]);
         }
     }
 }
@@ -2640,10 +2646,10 @@ static int shipsFound;
 
 - (void)setGalacticHyperspaceBehaviourTo:(id)galacticHyperspaceBehaviourString // called by name (ADR-0043 item 21)
 {
-    OOGalacticHyperspaceBehaviour ghBehaviour = cxx_OOGalacticHyperspaceBehaviourFromString(oo::StdString(galacticHyperspaceBehaviourString));
+    OOGalacticHyperspaceBehaviour ghBehaviour = OOGalacticHyperspaceBehaviourFromString(galacticHyperspaceBehaviourString);
     if (ghBehaviour == GALACTIC_HYPERSPACE_BEHAVIOUR_UNKNOWN) {
-        OO_LOG("player.setGalacticHyperspaceBehaviour.invalidInput",
-            "setGalacticHyperspaceBehaviourTo: called with unknown behaviour {}.", oo::DescriptionOf(galacticHyperspaceBehaviourString));
+        OOLog(@"player.setGalacticHyperspaceBehaviour.invalidInput",
+            @"setGalacticHyperspaceBehaviourTo: called with unknown behaviour %@.", galacticHyperspaceBehaviourString);
     }
     [self setGalacticHyperspaceBehaviour:ghBehaviour];
 }
@@ -2653,8 +2659,8 @@ static int shipsFound;
     const oo::PList coord_vals = TokenArray(oo::str::tokens(oo::StdString(galacticHyperspaceFixedCoordsString)));
     if (coord_vals.count() < 2) // Will be 0 if string is nil
     {
-        OO_LOG("player.setGalacticHyperspaceFixedCoords.invalidInput", "{}",
-            "setGalacticHyperspaceFixedCoords: called with bad specifier. Defaulting to Oolite standard.");
+        OOLog(@"player.setGalacticHyperspaceFixedCoords.invalidInput", @"%@",
+            @"setGalacticHyperspaceFixedCoords: called with bad specifier. Defaulting to Oolite standard.");
         galacticHyperspaceFixedCoords.x = galacticHyperspaceFixedCoords.y = 0x60;
     }
 

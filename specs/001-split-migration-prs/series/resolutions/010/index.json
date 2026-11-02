@@ -1,34 +1,109 @@
 {
- "src/Core/OOFoundation.h": {
-  "base": "f32347da344b801c68d11de732cddd21acc96c98",
+ "src/Core/Entities/PlayerEntity.mm": {
+  "base": "688d3b2a0d4c3e3f8e7ba321e6187612602d88fb",
   "deleted": false,
-  "ours": "cafe262fb5b22b5fe95da4df36d46bca7b3a6fdd",
-  "theirs": "eca2d6e4aa7c34673f1c5fdefd8e4af0a0428cd1"
+  "ours": "6b409480777db9ba6b5737f741c6cb9a7045c607",
+  "theirs": "5200b57a220e67925f76d7133d0c2ee191fd48d7"
  },
- "src/Core/OOMaths.h": {
-  "base": "c0c864a12b089f8861e1d2e22c7a75d3d63bc2a3",
+ "src/Core/Entities/PlayerEntityLegacyScriptEngine.mm": {
+  "base": "16416f40e8d0d8203701ccfa9fa7ba57cb6e7ea2",
   "deleted": false,
-  "ours": "1a501c3144dbef8030af2db17ebf06656430dd44",
-  "theirs": "8744e9d7253228547bbcaf186174b734fbc38b67"
+  "ours": "3df7faf97d603925b50dc8ba4b9ef574456b3e1f",
+  "theirs": "6a8e8deaa2cfe96a780468d1dd949ac5efcf1f75"
  },
- "src/Core/OOOXZManager.h": {
+ "src/Core/Entities/PlayerEntityLoadSave.mm": {
+  "base": "09108f10c3824d72326b6b95494951557c7cf595",
   "deleted": false,
-  "extra": true,
-  "merged": "fa06aa76109e5a05c8480bfc9aa4af0ec4472d3c"
+  "ours": "cad1423599cf950016debe4fa8ca0fd3e6fad321",
+  "theirs": "d77873e1b6eab549665a8c87c8f9354a1d3675bb"
+ },
+ "src/Core/Entities/ShipEntity.mm": {
+  "base": "c7ba67d20a4d907b2f0446f4d95ce0a2d47c6ac1",
+  "deleted": false,
+  "ours": "47a9e655cd53bd6eda9e0eb73554df9280a9e34d",
+  "theirs": "512068e25c544d9692922449f7e24838f3f52de4"
+ },
+ "src/Core/Entities/ShipEntityAI.mm": {
+  "base": "043933387fa00108f49f6c27215b4f6836d49a1d",
+  "deleted": false,
+  "ours": "53afe2e2c5bdaa28e7733af05ccbe41df4cb1b53",
+  "theirs": "04dfa40f45c18fc7891ab90038b3824bc2aea156"
+ },
+ "src/Core/NSFileManagerOOExtensions.h": {
+  "base": "70f919a745a33ee081a575d9c24a309c2dc924e2",
+  "deleted": true,
+  "ours": "639a82cf8eb78bfe960cf8472d89c970b7d8ae98",
+  "theirs": null
+ },
+ "src/Core/NSObjectOOExtensions.h": {
+  "base": "7d27c6502de035258ed8f10ee5d6ba4e7f101fd8",
+  "deleted": false,
+  "ours": "447f6fbd2870f6a85bd754ac08fcfa795544700e",
+  "theirs": "83e43ae64cc69e98f5549d722fa165df7e009908"
+ },
+ "src/Core/NSObjectOOExtensions.mm": {
+  "base": "0292e06123e8f3a54a28867e894d5348e5689119",
+  "deleted": false,
+  "ours": "0864e2386e999ac357a86c95e22653d24d04be89",
+  "theirs": "2aee619c75836367afde35c8e4a140c44774aa31"
+ },
+ "src/Core/OOALSoundChannel.h": {
+  "base": "802571d65091b0210ea090534ad6dbad7f15b1e2",
+  "deleted": false,
+  "ours": "0afbcb6566ff9e4133685d0bdfd371b5965957ee",
+  "theirs": "5ff10c2033e3d02421d8bf47e56961bb4f34e371"
+ },
+ "src/Core/OOCache.mm": {
+  "base": "02269ddcdf8b7e4a1d9cbb5838d8950bf80f2da1",
+  "deleted": false,
+  "ours": "9ad6540eca1d471033bd8530d791eec4dd71a5c9",
+  "theirs": "15ce34cd937c98d3ca617c001d37963989e26bb9"
+ },
+ "src/Core/OOHPVector.h": {
+  "base": "096ea927c50312ff71194e80d82b1b95036fd0bd",
+  "deleted": false,
+  "ours": "22b33911fe51e35649c33a93413d1c95cfaeca67",
+  "theirs": "3562354b453ddf1484171e647837a3b5b7210b22"
  },
  "src/Core/OOOXZManager.mm": {
+  "base": "768a2a9c6a83a5bce71615b234bf54cda36dc702",
   "deleted": false,
-  "extra": true,
-  "merged": "f45060e2c060d8b7ab6544a19b94b2fb8b097645"
+  "ours": "57e1056dce0709e90eb553d021b10bf83609304a",
+  "theirs": "1c7ada3dce947efd567b8622e50581129623f9ad"
  },
- "src/Core/OOOpenGL.h": {
+ "src/Core/Scripting/OOJSShip.mm": {
   "deleted": false,
   "extra": true,
-  "merged": "9b5ab6975ac23b14dbac3d2ea94cb812dda41b18"
+  "merged": "7c186c73c6cf8881b300bba8d479dbf24cc9e419"
  },
- "src/oofnd/objc/OOObjCPeer.h": {
+ "src/Core/Scripting/OOJSStation.mm": {
+  "base": "526c9105dd3bb7f3621dfe66260258e1c7501533",
   "deleted": false,
-  "extra": true,
-  "merged": "817bb0b5a1bfd70faa793da0f89de8ea58149d99"
+  "ours": "0b1268b896851c3fb136658abced9411b21f989a",
+  "theirs": "e9345fd14b81fc1b2344b8eab18832f867c08261"
+ },
+ "src/Core/Scripting/OOJavaScriptEngine.h": {
+  "base": "39502a0fb00c1903c8bea7fbc2f3947eedc76203",
+  "deleted": false,
+  "ours": "b936ffed3196593615c34abe96a60771d871233a",
+  "theirs": "35d0155d2f6ef372cd88cffe157d9ffccd5d5ee4"
+ },
+ "src/Core/Universe+FoundationBridge.h": {
+  "base": "40886a62f6821b2f317ddd35e69f09c6f4b71b36",
+  "deleted": true,
+  "ours": "bcb11c904071b2856f13cf273d6dd09234c38be7",
+  "theirs": null
+ },
+ "src/Core/Universe+FoundationBridge.mm": {
+  "base": "0276391f7b44606207268f58328e49959aa20a78",
+  "deleted": true,
+  "ours": "9eb6d297a9d0e0ee3e5609335767cd6ac04d00fa",
+  "theirs": null
+ },
+ "src/SDL/MyOpenGLView.mm": {
+  "base": "96d58a857d32454f9440f99968015830ff9b0772",
+  "deleted": false,
+  "ours": "e1091eed79fdd182c27fd8d7973af169c958740d",
+  "theirs": "cdb219c3f88b6b69b4851e7a42143a4af2a329cb"
  }
 }

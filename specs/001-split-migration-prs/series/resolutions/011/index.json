@@ -1,154 +1,34 @@
 {
- "src/Core/Debug/OODebugTCPConsoleClient.mm": {
-  "base": "166cf2ee7ceb147acfa080c5ebf507f4a9b7e6c0",
+ "src/Core/OOFoundation.h": {
+  "base": "f32347da344b801c68d11de732cddd21acc96c98",
   "deleted": false,
-  "ours": "c6a545e950818d5490a660e3c4ee4481ec48b0f2",
-  "theirs": "7795d8b5f360cca525a991edc90db802ab3b16bd"
+  "ours": "cafe262fb5b22b5fe95da4df36d46bca7b3a6fdd",
+  "theirs": "eca2d6e4aa7c34673f1c5fdefd8e4af0a0428cd1"
  },
- "src/Core/Entities/Entity.mm": {
-  "base": "43c69c224b01ff690eef126ec1c137578e7b0d25",
+ "src/Core/OOMaths.h": {
+  "base": "c0c864a12b089f8861e1d2e22c7a75d3d63bc2a3",
   "deleted": false,
-  "ours": "f78d416561675b13e0e4da62189c9ba0379ef8c6",
-  "theirs": "4ce15025aced12e7e80ec83dbc5606963bcf1fd3"
+  "ours": "1a501c3144dbef8030af2db17ebf06656430dd44",
+  "theirs": "8744e9d7253228547bbcaf186174b734fbc38b67"
  },
- "src/Core/Entities/PlanetEntity.h": {
-  "base": "05aee26e4cbd106c6a7bc2f0042d62a23c94140d",
-  "deleted": true,
-  "ours": "eec37b19b17607fdb4c762ec2663e55a9d69e090",
-  "theirs": null
- },
- "src/Core/Entities/PlanetEntity.mm": {
-  "base": "eac456f8f7190c5e198a68fb09263f0fcdfb9e69",
-  "deleted": true,
-  "ours": "f4f8c0341334425292b29714040788714ef769e0",
-  "theirs": null
- },
- "src/Core/GameController.mm": {
-  "base": "a5a6b945ade3e148df7fedc468a9253022e2832e",
-  "deleted": false,
-  "ours": "b35febde6f854a279a0348e5e0752144e9b0a4c3",
-  "theirs": "6edab35a92b140bcd9c806db15b884f63a9f5cc0"
- },
- "src/Core/Materials/OOShaderMaterial.h": {
-  "base": "5985a1f7ee9041a0305f093a20742221d6941eea",
-  "deleted": false,
-  "ours": "ec629aec4e12c09bf74e7864b7a43ecd49909a47",
-  "theirs": "53fa68a52f4e09f0662b13decd74032262b3efaa"
- },
- "src/Core/Materials/OOShaderProgram.mm": {
-  "base": "2a0d1e30c9b30872ea725038869f8807679f56d7",
-  "deleted": false,
-  "ours": "926eb0b620d313cf3aa47b8cc025d2737b3e473f",
-  "theirs": "ac15b7bbe49120775c1ad7a7146d3e6374428189"
- },
- "src/Core/Materials/OOTexture.h": {
-  "base": "42c7a0e8153e82c106d535a7bf69619ebcfc6512",
-  "deleted": false,
-  "ours": "73e4306084c0ca1ab0048d94b4926ba86b2a0688",
-  "theirs": "87df99261fa40033d85cf870786863b3ef588ba0"
- },
- "src/Core/Materials/OOTexture.mm": {
-  "base": "07c57b8ba9ef7dc6a827721229d6a356dc65a442",
-  "deleted": false,
-  "ours": "784e0527db751f46852360e5ed28da4f8537d0e1",
-  "theirs": "2c9982cbb311b24af4554bbc66fe1c66f449993e"
- },
- "src/Core/OOFastArithmetic.h": {
+ "src/Core/OOOXZManager.h": {
   "deleted": false,
   "extra": true,
-  "merged": "8a404379e64e4158d0a8a6ec80f193b2c865f539"
+  "merged": "fa06aa76109e5a05c8480bfc9aa4af0ec4472d3c"
  },
- "src/Core/OOJoystickManager.h": {
-  "base": "52d256eeae0846ed3065fc4cf74073f1a4c6604d",
-  "deleted": false,
-  "ours": "dd1aa91ca11c4c7427c5b9409d15ec1820ee03b8",
-  "theirs": "46e328b1127c54b25f73d58ac3e64424129e98bc"
- },
- "src/Core/Scripting/OOJSDock.h": {
+ "src/Core/OOOXZManager.mm": {
   "deleted": false,
   "extra": true,
-  "merged": "4b1863b66418f9efa9d9c6fcbe339922a3a7a807"
+  "merged": "f45060e2c060d8b7ab6544a19b94b2fb8b097645"
  },
- "src/Core/Scripting/OOJSDock.mm": {
+ "src/Core/OOOpenGL.h": {
   "deleted": false,
   "extra": true,
-  "merged": "ece1b55d1b5a05d57d7dca8746a6a18830458afb"
+  "merged": "9b5ab6975ac23b14dbac3d2ea94cb812dda41b18"
  },
- "src/Core/Scripting/OOJSManifest.mm": {
+ "src/oofnd/objc/OOObjCPeer.h": {
   "deleted": false,
   "extra": true,
-  "merged": "1783344df2d4280528d4a50ed7a84cc6ee3f3c22"
- },
- "src/Core/Scripting/OOJSPlanet.h": {
-  "deleted": false,
-  "extra": true,
-  "merged": "9b71049abb5463de946aa8c79300ac6d857dff22"
- },
- "src/Core/Scripting/OOJSPlanet.mm": {
-  "deleted": false,
-  "extra": true,
-  "merged": "1c34d14b58e6ee195514714689cb4dfe0b436756"
- },
- "src/Core/Scripting/OOJSPlayer.h": {
-  "deleted": false,
-  "extra": true,
-  "merged": "2abb46ba294bc38977f8e9b3dc8af03bdbbda409"
- },
- "src/Core/Scripting/OOJSPlayer.mm": {
-  "deleted": false,
-  "extra": true,
-  "merged": "90e85d7bdd7ae9684b416fa265eafc6a206bf7e9"
- },
- "src/Core/Scripting/OOJSSound.h": {
-  "deleted": false,
-  "extra": true,
-  "merged": "a737719afb6aed8669ac52ff1d3a28824e50947f"
- },
- "src/Core/Scripting/OOJSSound.mm": {
-  "deleted": false,
-  "extra": true,
-  "merged": "a6a7ce3499298fe6013a86290cfc18f972c3f3c8"
- },
- "src/Core/Scripting/OOJSStation.h": {
-  "deleted": false,
-  "extra": true,
-  "merged": "e51330739f37c9137a0ad0543b02dc8939907c2e"
- },
- "src/Core/Scripting/OOJSStation.mm": {
-  "deleted": false,
-  "extra": true,
-  "merged": "772272d3a705fa0af54ca2b5c266be96671dbf96"
- },
- "src/Core/Scripting/OOJSWaypoint.h": {
-  "deleted": false,
-  "extra": true,
-  "merged": "48296157666df8ef9a96f9622c19574e965727f4"
- },
- "src/Core/Scripting/OOJSWaypoint.mm": {
-  "deleted": false,
-  "extra": true,
-  "merged": "86a5ddf24e82a1059ac82b5259d835085b2ccb76"
- },
- "src/Core/Scripting/OOJSWormhole.h": {
-  "deleted": false,
-  "extra": true,
-  "merged": "00de035fe1853b73b28e5661841efafaed42a6fe"
- },
- "src/Core/Scripting/OOJSWormhole.mm": {
-  "deleted": false,
-  "extra": true,
-  "merged": "f911138bac14b81bac3e04b6e0a3bc114bcb9f9a"
- },
- "src/Core/Scripting/OOJavaScriptEngine.h": {
-  "base": "1abe9db2227500d82db7d156052ea080932ce7d9",
-  "deleted": false,
-  "ours": "f81fade294c852a7a69a9b4c679f98ace94aeea2",
-  "theirs": "7e41f417ff837e8c57635bb2be3a4c188c0eb32e"
- },
- "src/SDL/MyOpenGLView.mm": {
-  "base": "598b650e0ac1ac2e4ffb883eef60bb9126eb36de",
-  "deleted": false,
-  "ours": "0cb87ff693d790d427155852dda316ead8cbe8ae",
-  "theirs": "714fbc07ecd244357374291e0c8c98e85f248ac5"
+  "merged": "817bb0b5a1bfd70faa793da0f89de8ea58149d99"
  }
 }

@@ -38,8 +38,36 @@
  "ledger": [],
  "steps": [
   {
+   "branch": "series/001-random-seed-env",
+   "chapter": null,
+   "description": "series/pr/001-random-seed-env.md",
+   "era": "objc-spidermonkey",
+   "kind": "independent",
+   "mechanical_command": null,
+   "merge_tree": "eeca18ebbf87ec2ddcf125397e693e47d6529c11",
+   "n": 1,
+   "parent": "series/000-upstream-base",
+   "resolutions": [],
+   "size": {
+    "deleted_files": 0,
+    "other": 0,
+    "src": 11,
+    "tests": 0
+   },
+   "source": {
+    "commits": [
+     "7555b5d4254e0a89cc609a5c2263385d2b54904e"
+    ],
+    "type": "hoisted"
+   },
+   "target_tree": "eeca18ebbf87ec2ddcf125397e693e47d6529c11",
+   "temporaries": [],
+   "title": "Let OO_RANDOM_SEED pin the random seed",
+   "verification": null
+  },
+  {
    "boundary_moved": null,
-   "branch": "series/001-safety-net",
+   "branch": "series/002-safety-net",
    "chapter": {
     "first": "7555b5d4254e0a89cc609a5c2263385d2b54904e",
     "last": "8af7966e7d95101c57ceea1f66b338f0abeec2a1",
@@ -52,14 +80,18 @@
      "0.13 component tier"
     ]
    },
-   "description": "series/pr/001-safety-net.md",
+   "description": "series/pr/002-safety-net.md",
    "era": "objc-spidermonkey",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "5e07f03c78988e0d31501dbba0ff2e5d6ed1b3c5",
-   "n": 1,
-   "parent": "series/000-upstream-base",
+   "n": 2,
+   "parent": "series/001-random-seed-env",
    "resolutions": [
+    {
+     "how": "stored",
+     "path": "src/Core/GameController.m"
+    },
     {
      "how": "auto",
      "path": "src/Core/OOFoundation.h"
@@ -101,7 +133,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/002-js-facade",
+   "branch": "series/003-js-facade",
    "chapter": {
     "first": "3ca73e5a13571246ceaabc4fa989b80f83031b06",
     "last": "7bc686c0af68d3b935bce3716a55b2e5dfbb82a4",
@@ -113,13 +145,13 @@
      "1.3 QuickJS-ng backend"
     ]
    },
-   "description": "series/pr/002-js-facade.md",
+   "description": "series/pr/003-js-facade.md",
    "era": "objc-spidermonkey",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "6eb60fbb90db75b922cf4081d59b4cce6ef5d05d",
-   "n": 2,
-   "parent": "series/001-safety-net",
+   "n": 3,
+   "parent": "series/002-safety-net",
    "resolutions": [
     {
      "how": "auto",
@@ -202,7 +234,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/003-objective-cxx",
+   "branch": "series/004-objective-cxx",
    "chapter": {
     "first": "c9c052538370b03b976c6b5ac615490a873e6b21",
     "last": "c9c052538370b03b976c6b5ac615490a873e6b21",
@@ -212,13 +244,13 @@
      "2.1 the .m -> .mm switch"
     ]
    },
-   "description": "series/pr/003-objective-cxx.md",
+   "description": "series/pr/004-objective-cxx.md",
    "era": "objc-spidermonkey",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "a4c23e8dfae359d096f76ce158566e533d9095ae",
-   "n": 3,
-   "parent": "series/002-js-facade",
+   "n": 4,
+   "parent": "series/003-js-facade",
    "resolutions": [
     {
      "how": "stored",
@@ -381,7 +413,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/004-quickjs-switch",
+   "branch": "series/005-quickjs-switch",
    "chapter": {
     "first": "3b6aec8c6ffca4445a742d4f9cd23251c9a5d57d",
     "last": "a7e3ed1efcf202eb22d16951be73c23e3b2b264c",
@@ -392,13 +424,13 @@
      "1.5 delete SpiderMonkey"
     ]
    },
-   "description": "series/pr/004-quickjs-switch.md",
+   "description": "series/pr/005-quickjs-switch.md",
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "746edac9306e96b12ea8b662487bd295bb47ce3c",
-   "n": 4,
-   "parent": "series/003-objective-cxx",
+   "n": 5,
+   "parent": "series/004-objective-cxx",
    "resolutions": [
     {
      "how": "stored",
@@ -537,7 +569,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/005-oofnd-core",
+   "branch": "series/006-oofnd-core",
    "chapter": {
     "first": "e31130fa0d6116abe5928624d276dfcf18eece16",
     "last": "916311e66db2e9d025c763b9d028a9ff26d33ff0",
@@ -551,13 +583,13 @@
      "Objective-C floor"
     ]
    },
-   "description": "series/pr/005-oofnd-core.md",
+   "description": "series/pr/006-oofnd-core.md",
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "5662fd31227f2084370c00fa2bb20c42680641c4",
-   "n": 5,
-   "parent": "series/004-quickjs-switch",
+   "n": 6,
+   "parent": "series/005-quickjs-switch",
    "resolutions": [
     {
      "how": "stored",
@@ -632,7 +664,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/006-typed-accessors",
+   "branch": "series/007-typed-accessors",
    "chapter": {
     "first": "b73f2cd400db84dd246061c8b9cd95cb478a9534",
     "last": "bc9a02ca7b948001da5824b9c073b42b3e24ca08",
@@ -642,13 +674,13 @@
      "2.2 typed accessors, first sweep"
     ]
    },
-   "description": "series/pr/006-typed-accessors.md",
+   "description": "series/pr/007-typed-accessors.md",
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "95b08a26eaf35c50f6e33fabc3d2024418d1c182",
-   "n": 6,
-   "parent": "series/005-oofnd-core",
+   "n": 7,
+   "parent": "series/006-oofnd-core",
    "resolutions": [
     {
      "how": "auto",
@@ -743,7 +775,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/007-foundation-wave-1",
+   "branch": "series/008-foundation-wave-1",
    "chapter": {
     "first": "931bee60e9e766df7298710946f16fb5f43038fa",
     "last": "ecfafab47981c8224790752d96f2340d6b07c833",
@@ -753,13 +785,13 @@
      "2.3 Foundation -> oofnd, per file"
     ]
    },
-   "description": "series/pr/007-foundation-wave-1.md",
+   "description": "series/pr/008-foundation-wave-1.md",
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "79e2a544397ccad999ba3b93091a4d27db25ba0b",
-   "n": 7,
-   "parent": "series/006-typed-accessors",
+   "n": 8,
+   "parent": "series/007-typed-accessors",
    "resolutions": [
     {
      "how": "stored",
@@ -946,7 +978,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/008-foundation-wave-2",
+   "branch": "series/009-foundation-wave-2",
    "chapter": {
     "first": "5faa477a34d862eb81b59a6fe3d2e74592e1cad2",
     "last": "fa9cbc6c24fec4d77881a47e47e7b2591ece94d4",
@@ -957,13 +989,13 @@
      "OOLog, NSAssert and NSUserDefaults gaps"
     ]
    },
-   "description": "series/pr/008-foundation-wave-2.md",
+   "description": "series/pr/009-foundation-wave-2.md",
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "70ffc99b34e85b9f291db273e5c6a3104dc35fbe",
-   "n": 8,
-   "parent": "series/007-foundation-wave-1",
+   "n": 9,
+   "parent": "series/008-foundation-wave-1",
    "resolutions": [
     {
      "how": "stored",
@@ -1210,7 +1242,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/009-selector-families",
+   "branch": "series/010-selector-families",
    "chapter": {
     "first": "b75b5d1bc6f7957740adab23f8f09e65901302b3",
     "last": "e0b9e24b22ab4f7373ccf71dbf4d58ac5553c4be",
@@ -1221,13 +1253,13 @@
      "bridge callers"
     ]
    },
-   "description": "series/pr/009-selector-families.md",
+   "description": "series/pr/010-selector-families.md",
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "aa7f14925dfdbdc22cc12e1f895a4f73b740d91b",
-   "n": 9,
-   "parent": "series/008-foundation-wave-2",
+   "n": 10,
+   "parent": "series/009-foundation-wave-2",
    "resolutions": [
     {
      "how": "auto",
@@ -1438,7 +1470,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/010-leaf-conversions",
+   "branch": "series/011-leaf-conversions",
    "chapter": {
     "first": "66914fbbede7e1b621fea3ffba830ac2130ccaf9",
     "last": "67027c84d11fe03fcf208697938023d05d13f63c",
@@ -1451,13 +1483,13 @@
      "3.3 leaf utilities"
     ]
    },
-   "description": "series/pr/010-leaf-conversions.md",
+   "description": "series/pr/011-leaf-conversions.md",
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "e77df90feb55c597e25b9b9d5ba67bacb710838c",
-   "n": 10,
-   "parent": "series/009-selector-families",
+   "n": 11,
+   "parent": "series/010-selector-families",
    "resolutions": [
     {
      "how": "transplant",
@@ -1608,7 +1640,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/011-module-conversions",
+   "branch": "series/012-module-conversions",
    "chapter": {
     "first": "1964f76209e19f37b8f7311a6057e469cb919c7e",
     "last": "ab5dc6cd728a5b26951c588d3d6e0ef99049009c",
@@ -1621,13 +1653,13 @@
      "3.7 entities"
     ]
    },
-   "description": "series/pr/011-module-conversions.md",
+   "description": "series/pr/012-module-conversions.md",
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "35fdbf16dcab29e615e557164292219fbf0d9989",
-   "n": 11,
-   "parent": "series/010-leaf-conversions",
+   "n": 12,
+   "parent": "series/011-leaf-conversions",
    "resolutions": [
     {
      "how": "auto",
@@ -1886,7 +1918,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/012-first-slices",
+   "branch": "series/013-first-slices",
    "chapter": {
     "first": "ad82bd1efe7e79a499cb62fc9ea52fc7f8123f08",
     "last": "0c01939de79a4ac04237390d93dc78437057c5e0",
@@ -1898,13 +1930,13 @@
      "facade deletions"
     ]
    },
-   "description": "series/pr/012-first-slices.md",
+   "description": "series/pr/013-first-slices.md",
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "679534352c21ab3ee84dc5d74ec8bdcefd95b04d",
-   "n": 12,
-   "parent": "series/011-module-conversions",
+   "n": 13,
+   "parent": "series/012-module-conversions",
    "resolutions": [
     {
      "how": "stored",
@@ -2011,7 +2043,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/013-shipentity-slices",
+   "branch": "series/014-shipentity-slices",
    "chapter": {
     "first": "477a4919bcb8c6160d4765ee9d225e920fbf241f",
     "last": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
@@ -2021,13 +2053,13 @@
      "3.7 ShipEntity slices"
     ]
    },
-   "description": "series/pr/013-shipentity-slices.md",
+   "description": "series/pr/014-shipentity-slices.md",
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "92e1d6d9d5f8bf98c9f6a8f573ef181299d20884",
-   "n": 13,
-   "parent": "series/012-first-slices",
+   "n": 14,
+   "parent": "series/013-first-slices",
    "resolutions": [
     {
      "how": "auto",
@@ -2110,7 +2142,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/014-universe-player-slices",
+   "branch": "series/015-universe-player-slices",
    "chapter": {
     "first": "4b272b165ececbc7e183a328c4962cfbc65e4d78",
     "last": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
@@ -2121,13 +2153,13 @@
      "3.8 Universe slices"
     ]
    },
-   "description": "series/pr/014-universe-player-slices.md",
+   "description": "series/pr/015-universe-player-slices.md",
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "3961df291e7b45eb04d45f7561a9246f81869ab5",
-   "n": 14,
-   "parent": "series/013-shipentity-slices",
+   "n": 15,
+   "parent": "series/014-shipentity-slices",
    "resolutions": [
     {
      "how": "transplant",
@@ -2202,7 +2234,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/015-facade-deletions",
+   "branch": "series/016-facade-deletions",
    "chapter": {
     "first": "d01d45e47c50bda1ebbfd44c5f94596519ba840b",
     "last": "2c2aae1316b5a125038a797c213162ffba389279",
@@ -2212,13 +2244,13 @@
      "facade-deletion batches"
     ]
    },
-   "description": "series/pr/015-facade-deletions.md",
+   "description": "series/pr/016-facade-deletions.md",
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "03e9e810cea0e282130ea1b65abba472bd33fcc5",
-   "n": 15,
-   "parent": "series/014-universe-player-slices",
+   "n": 16,
+   "parent": "series/015-universe-player-slices",
    "resolutions": [
     {
      "how": "auto",
@@ -2349,7 +2381,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/016-entity-facade",
+   "branch": "series/017-entity-facade",
    "chapter": {
     "first": "d012b77f217a361b096ab70d04aa848eb174b04f",
     "last": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
@@ -2359,13 +2391,13 @@
      "the root Entity facade"
     ]
    },
-   "description": "series/pr/016-entity-facade.md",
+   "description": "series/pr/017-entity-facade.md",
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "4191fa81826d4067aa5de1448a1ad895947caa73",
-   "n": 16,
-   "parent": "series/015-facade-deletions",
+   "n": 17,
+   "parent": "series/016-facade-deletions",
    "resolutions": [
     {
      "how": "stored",
@@ -2560,7 +2592,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/017-objc-runtime-out",
+   "branch": "series/018-objc-runtime-out",
    "chapter": {
     "first": "1248d43e1bbf6f5de945fe89d898630122a8e641",
     "last": "af1f220542e4917a23833902e8efc313a8eb463b",
@@ -2571,13 +2603,13 @@
      "4.2 runtime and rename"
     ]
    },
-   "description": "series/pr/017-objc-runtime-out.md",
+   "description": "series/pr/018-objc-runtime-out.md",
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "e2355654bca33a27f44f51b95c19c82cfc24663b",
-   "n": 17,
-   "parent": "series/016-entity-facade",
+   "n": 18,
+   "parent": "series/017-entity-facade",
    "resolutions": [
     {
      "how": "hunks",
@@ -2892,7 +2924,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/018-gcc-build",
+   "branch": "series/019-gcc-build",
    "chapter": {
     "first": "5fda5e404c04bbf37a5faadb2c685e3819a60662",
     "last": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
@@ -2902,13 +2934,13 @@
      "4.3 GCC"
     ]
    },
-   "description": "series/pr/018-gcc-build.md",
+   "description": "series/pr/019-gcc-build.md",
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "50ef95cc2c748bc56c5b7a1fe81fb48cc3304090",
-   "n": 18,
-   "parent": "series/017-objc-runtime-out",
+   "n": 19,
+   "parent": "series/018-objc-runtime-out",
    "resolutions": [],
    "size": {
     "deleted_files": 0,
@@ -2946,7 +2978,7 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/019-upstream-9ee8ff22f-port",
+   "branch": "series/020-upstream-9ee8ff22f-port",
    "chapter": {
     "first": "883d339f93708db1a74f9a7f6426ed77622c449c",
     "last": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
@@ -2956,13 +2988,13 @@
      "upstream 9ee8ff22f pulled and ported"
     ]
    },
-   "description": "series/pr/019-upstream-9ee8ff22f-port.md",
+   "description": "series/pr/020-upstream-9ee8ff22f-port.md",
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "2512356cc7adff0beeea7feb61bb302c644ab0eb",
-   "n": 19,
-   "parent": "series/018-gcc-build",
+   "n": 20,
+   "parent": "series/019-gcc-build",
    "resolutions": [
     {
      "how": "stored",
@@ -3085,15 +3117,15 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/020-develop-fixes",
+   "branch": "series/021-develop-fixes",
    "chapter": null,
-   "description": "series/pr/020-develop-fixes.md",
+   "description": "series/pr/021-develop-fixes.md",
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "c9c95aa42687f8ea148fece3c6c5b3ff4ef287c9",
-   "n": 20,
-   "parent": "series/019-upstream-9ee8ff22f-port",
+   "n": 21,
+   "parent": "series/020-upstream-9ee8ff22f-port",
    "resolutions": [
     {
      "how": "stored",
@@ -3193,15 +3225,15 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/021-source-hygiene",
+   "branch": "series/022-source-hygiene",
    "chapter": null,
-   "description": "series/pr/021-source-hygiene.md",
+   "description": "series/pr/022-source-hygiene.md",
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "962f14a5237174fcfd5c5e19d6297cd81a42e74f",
-   "n": 21,
-   "parent": "series/020-develop-fixes",
+   "n": 22,
+   "parent": "series/021-develop-fixes",
    "resolutions": [
     {
      "how": "auto",
@@ -3287,15 +3319,15 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/022-tests-and-tooling",
+   "branch": "series/023-tests-and-tooling",
    "chapter": null,
-   "description": "series/pr/022-tests-and-tooling.md",
+   "description": "series/pr/023-tests-and-tooling.md",
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "895a0718f631d17ff36ac552694ec1f6e8b7632a",
-   "n": 22,
-   "parent": "series/021-source-hygiene",
+   "n": 23,
+   "parent": "series/022-source-hygiene",
    "resolutions": [],
    "size": {
     "deleted_files": 0,
@@ -3337,15 +3369,15 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/023-c-as-cxx",
+   "branch": "series/024-c-as-cxx",
    "chapter": null,
-   "description": "series/pr/023-c-as-cxx.md",
+   "description": "series/pr/024-c-as-cxx.md",
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "c42baecfb2ed6f355890159a20e05b70c320859e",
-   "n": 23,
-   "parent": "series/022-tests-and-tooling",
+   "n": 24,
+   "parent": "series/023-tests-and-tooling",
    "resolutions": [
     {
      "how": "stored",
@@ -3430,15 +3462,15 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/024-upstream-49a5eb9fc-ports",
+   "branch": "series/025-upstream-49a5eb9fc-ports",
    "chapter": null,
-   "description": "series/pr/024-upstream-49a5eb9fc-ports.md",
+   "description": "series/pr/025-upstream-49a5eb9fc-ports.md",
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "27cb24da701420da0046e0d4ccdfc40d274259ff",
-   "n": 24,
-   "parent": "series/023-c-as-cxx",
+   "n": 25,
+   "parent": "series/024-c-as-cxx",
    "resolutions": [
     {
      "how": "stored",
@@ -3635,15 +3667,15 @@
   },
   {
    "boundary_moved": null,
-   "branch": "series/025-google-style-format",
+   "branch": "series/026-google-style-format",
    "chapter": null,
-   "description": "series/pr/025-google-style-format.md",
+   "description": "series/pr/026-google-style-format.md",
    "era": "cxx",
    "kind": "mechanical",
    "mechanical_command": "take .clang-format from 3aa8d65e8 and add mk.sh format/format-check (4ef61a09d), then run clang-format 22 -i on every .h/.hpp/.c/.cpp under src/ and tests/",
    "merge_tree": "d07634da3e3fb470ca36cb3172f75f5db4c16621",
-   "n": 25,
-   "parent": "series/024-upstream-49a5eb9fc-ports",
+   "n": 26,
+   "parent": "series/025-upstream-49a5eb9fc-ports",
    "resolutions": [],
    "size": {
     "deleted_files": 0,

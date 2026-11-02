@@ -54,11 +54,7 @@ __declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 1;
 #endif
 
 namespace {
-// The controller lives to the end of the process and is never destroyed, as upstream's
-// GameController *controller was never released (bead oo-h3sye): the game exits with exit(0) from
-// inside it, and a namespace-scope oo::Ref would tear the universe down during static destruction,
-// after function-local statics such as oo::log's logger have died.
-GameController* controller = nullptr;
+oo::Ref<cxx::GameController> controller;
 }
 #endif
 
@@ -198,7 +194,10 @@ int main(int argc, char* argv[])
     @try {
         // dajt: allocate and set the NSApplication delegate manually because not
         // using NIB to do this
-        controller = oo::makeRef<GameController>().leakRef(); // never released (see above)
+        controller = oo::makeRef<cxx::GameController>();
+        // The game view keeps the controller's facade unretained; it lives as long as the process,
+        // as the Objective-C controller main held did.
+        [oo::ToObjC(controller.get()) retain];
 
         for (i = 1; i < argc; i++) {
             if (strcmp("-load", argv[i]) == 0) {
