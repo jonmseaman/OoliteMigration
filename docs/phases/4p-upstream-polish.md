@@ -55,3 +55,6 @@ upstream has seen the faithful version, so reviewers can still compare it line f
 
 - 2026-10-28 — Phase doc created during the docs cleanup; phases 0–4 docs and ADRs moved to the
   `archive/phase-0-4-docs` tag.
+- 2026-11-02 — The migration is a 26-step PR series on upstream `49a5eb9fc` (spec
+  `specs/001-split-migration-prs`), each step built and verified; `series/HANDOVER.md` has the push
+  and PR commands.

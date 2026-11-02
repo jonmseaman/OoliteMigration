@@ -28,6 +28,19 @@ One hunk in `src/Core/GameController.m`. Run with `OO_RANDOM_SEED=42` twice and 
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `ee25fd156b`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | n/a: the tree has no unit suites |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

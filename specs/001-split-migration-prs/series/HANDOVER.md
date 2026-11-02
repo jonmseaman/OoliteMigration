@@ -25,7 +25,7 @@ None: no step adds a shim that a later step has to remove.
 | Step | Branch | Base | Title | Size (src / tests / other) | Verification |
 |---|---|---|---|---|---|
 | 1 | `series/001-random-seed-env` | `series/000-upstream-base` | Let OO_RANDOM_SEED pin the random seed | 11 / 0 / 0 | 7 pass, 3 n/a (2026-11-02) |
-| 2 | `series/002-safety-net` | `series/001-random-seed-env` | Add a test safety net: deterministic runs, GUI and component tests | 504 / 13.6k / 27 | 8 pass, 2 n/a (2026-11-02) |
+| 2 | `series/002-safety-net` | `series/001-random-seed-env` | Add a test safety net: deterministic runs, GUI and component tests | 493 / 13.6k / 27 | 8 pass, 2 n/a (2026-11-02) |
 | 3 | `series/003-js-facade` | `series/002-safety-net` | Put the game's JavaScript behind an engine façade, with a QuickJS-ng backend beside SpiderMonkey | 14.6k / 1.4k / 7.0k | 7 pass, 3 n/a (2026-11-02) |
 | 4 | `series/004-objective-cxx` | `series/003-js-facade` | Compile the game as Objective-C++ | 454 / 0 / 1.7k | 7 pass, 3 n/a (2026-11-02) |
 | 5 | `series/005-quickjs-switch` | `series/004-objective-cxx` | Run the game on QuickJS-ng and remove SpiderMonkey and NSPR | 11.8k / 4 / 235 | 7 pass, 3 n/a (2026-11-02) |

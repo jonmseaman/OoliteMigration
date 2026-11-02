@@ -72,7 +72,7 @@ existing `optimization=2` default explaining why it must stay fixed.
 
 ## Verified **(gen)**
 
-Windows x64, `1d9fcd9d8c`, 2026-11-02.
+Windows x64, `1256b471a7`, 2026-11-02.
 
 | Check | Result |
 |---|---|

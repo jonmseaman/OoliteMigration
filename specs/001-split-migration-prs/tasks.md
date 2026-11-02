@@ -285,7 +285,7 @@ and builds there with Clang.
   (`OO_RANDOM_SEED`) and `oo-r3r` (enumeration-order shuffle, debug build) are in; anything
   needing `oofnd` or the façade is out. Accept: `grep -q '^- Hoist candidates:'
   specs/001-split-migration-prs/plan.md`.
-- [ ] T029 [US4] Hoist each accepted candidate, `renumber`, rebuild and re-verify the stack from the
+- [X] T029 [US4] Hoist each accepted candidate, `renumber`, rebuild and re-verify the stack from the
   first changed step, and write the independent PRs' descriptions. Accept: `python -I
   tools/series/series.py check --verified` exits 0, and the manifest's first steps have `kind` =
   `independent`.
@@ -319,7 +319,7 @@ and builds there with Clang.
 
 - [ ] T032 [P] Run quickstart.md end to end against the built stack and fix any drift between it,
   contracts/series-cli.md and the tool. Accept: every command block in quickstart.md §1–4 exits 0.
-- [ ] T033 [P] Update plan.md's Notes "To fill at G2" items with the results (boundary moves,
+- [X] T033 [P] Update plan.md's Notes "To fill at G2" items with the results (boundary moves,
   hoisted fixes, tail folds), and the status log in `docs/phases/4p-upstream-polish.md` with one
   line. Accept: `! grep -q 'To fill at G2' specs/001-split-migration-prs/plan.md`.
 - [ ] T034 Re-anchor dry run (research R12, gate G5): in a copy of the manifest

@@ -188,8 +188,11 @@ game repo only gets local branches.
   one the parent's own record, itself current, was made for. Every check reads only the step's
   tree, its parent's tree and the parent's record, so after the hoist only steps 001 and 002 were
   re-verified.
-- To fill at G2: boundary moves (if a snapshot doesn't build), hoisted fixes in chapter 1, and
-  whether the tail groups 020–024 build in upstream style (else they fold into 025).
+- G2 results (2026-11-02): no chapter boundary moved (every snapshot built at its R14 boundary;
+  no step has `boundary_moved`). One fix is hoisted, `OO_RANDOM_SEED` (step 001); the
+  enumeration shuffle stays in chapter 1 (see Hoist candidates). No tail group folded into the
+  reformat: steps 021–025 each build and pass in upstream's style, and step 026 is the reformat
+  alone. The series is 26 steps.
 - T020: verification shells per era (default, conservative): Objective-C eras in the isolated
   `.agent-tmp/msys2-objc` (upstream's packages), the C++ era in Jon's MSYS2 (scoop), where `develop`
   builds; no step's `install_deps.sh` is run during verification, so no package changes. Clang and
@@ -379,3 +382,8 @@ game repo only gets local branches.
     step's only RNG change (`legacy_random`, `extern "C"` and initialiser order) changes no
     values. Taken as a flaky scenario: `verify` was re-run, the scenario is unchanged, and no
     retry was added to the tool. If it fails again, that decision is Jon's, not the tool's.
+  - After the hoist, step 002 (an unchanged tree) failed `s1_police_kills_pirate` once ("no ship
+    with role 'police' took a ship with role 'pirate' as a hostile target within 900 ticks"); three
+    reruns of the same build gave pass, pass, fail. Same handling: the scenario is unchanged,
+    `verify 2` was re-run. Both flakes are filed as a bug in the tracker ("Component scenarios s1
+    and s6 are flaky under OO_RANDOM_SEED").

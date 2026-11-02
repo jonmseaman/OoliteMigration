@@ -63,7 +63,25 @@
    "target_tree": "eeca18ebbf87ec2ddcf125397e693e47d6529c11",
    "temporaries": [],
    "title": "Let OO_RANDOM_SEED pin the random seed",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "n/a: the tree has no unit suites",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": true,
+    "commit": "ee25fd156bf6e98154c12ba55f4a96122aef8aaa",
+    "date": "2026-11-02",
+    "era": "objc-spidermonkey",
+    "tree": "eeca18ebbf87ec2ddcf125397e693e47d6529c11"
+   }
   },
   {
    "boundary_moved": null,
@@ -100,8 +118,8 @@
    "size": {
     "deleted_files": 0,
     "other": 27,
-    "src": 504,
-    "tests": 13620
+    "src": 493,
+    "tests": 13624
    },
    "source": {
     "from": "7555b5d4254e0a89cc609a5c2263385d2b54904e",
@@ -124,8 +142,8 @@
      "unit": "n/a: the tree has no unit suites",
      "warnings_clang": "pass: 0 warnings"
     },
-    "clean": true,
-    "commit": "1d9fcd9d8ca9e52be61ac4f3df3dc1e72f9fac0c",
+    "clean": false,
+    "commit": "1256b471a763993b0bca2f674f0d950116e84b3f",
     "date": "2026-11-02",
     "era": "objc-spidermonkey",
     "tree": "5e07f03c78988e0d31501dbba0ff2e5d6ed1b3c5"
