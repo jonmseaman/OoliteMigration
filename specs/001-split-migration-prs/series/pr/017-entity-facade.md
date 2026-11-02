@@ -1,6 +1,6 @@
 # Delete the root Entity facade
 
-**Series:** step 16 of 25 · base `series/015-facade-deletions` · next `series/017-objc-runtime-out` **(gen)**
+**Series:** step 17 of 26 · base `series/016-facade-deletions` · next `series/018-objc-runtime-out` **(gen)**
 
 **Chapter:** P3 · the root Entity facade · history `d012b77f21`..`473facf469` (70 merges) · 29.7k src, 17.1k tests, 59 other changed lines; 17.8k lines in deleted files **(gen)**
 
@@ -22,8 +22,8 @@ silenced) and the remaining C variable-length arrays become `std::vector`.
 ## Why
 
 `Entity` is the root of every in-game object, so its facade could only go after every entity
-subclass and every caller of entities was C++ (steps 13 to 15). Once it is gone nothing in the game
-needs an Objective-C object for an entity, which is what makes step 17, removing the Objective-C
+subclass and every caller of entities was C++ (steps 14 to 16). Once it is gone nothing in the game
+needs an Objective-C object for an entity, which is what makes step 18, removing the Objective-C
 runtime, possible.
 
 ## Behaviour changes
@@ -54,9 +54,9 @@ the member each calls, and use `tests/unit/core/test_OOEntityCalledByName.mm`, w
 table's names. The generator is not part of this tree.
 
 The rest is mechanical: deleting `Entity+ObjCBridge.*` and the other facades
-(`git diff --stat --diff-filter=D series/015-facade-deletions series/016-entity-facade`), and
+(`git diff --stat --diff-filter=D series/016-facade-deletions series/017-entity-facade`), and
 callers changing from an Objective-C entity pointer and `oo::ToCxx`/`oo::ToObjC` crossings to the
-C++ entity. Test changes follow the same pattern as step 15: facade cases removed, Objective-C
+C++ entity. Test changes follow the same pattern as step 16: facade cases removed, Objective-C
 stand-ins rewritten as C++. The three fixes above are small and stand alone:
 `OOFastArithmetic.h`, `OOTextureScaling.mm` and `GameController.mm`'s `loadPlayerIfRequired`.
 

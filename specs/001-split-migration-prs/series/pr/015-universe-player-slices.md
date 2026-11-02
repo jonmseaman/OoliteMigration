@@ -1,6 +1,6 @@
 # Convert Universe and PlayerEntity to C++
 
-**Series:** step 14 of 25 · base `series/013-shipentity-slices` · next `series/015-facade-deletions` **(gen)**
+**Series:** step 15 of 26 · base `series/014-shipentity-slices` · next `series/016-facade-deletions` **(gen)**
 
 **Chapter:** P3 · 3.7 PlayerEntity slices, 3.8 Universe slices · history `4b272b165e`..`33abe86219` (40 merges) · 17.6k src, 3.6k tests, 0 other changed lines; 1.2k lines in deleted files **(gen)**
 
@@ -9,7 +9,7 @@
 Two pieces of work share this step.
 
 - **Universe slices.** Slices 2 to 26 of `Universe.mm` move into `cxx::Universe`, whose shell came
-  in step 13: set-up of space and the system populator, adding ships by role and position,
+  in step 14: set-up of space and the system populator, adding ships by role and position,
   witchspace, the main station and beacons, drawing and the view frustum, the entity lists,
   targeting and collisions, `update:`, the shipyard, markets, routes, system data and
   descriptions, speech and message logs, sounds and wormholes.
@@ -28,10 +28,10 @@ a JS object's private slot), and has the music controller hold `OOMusic` as C++.
 ## Why
 
 The player and the universe are the two classes nearly every other file messages, and the
-player's methods override `ShipEntity`'s, so both had to wait for step 13. The player starts with
+player's methods override `ShipEntity`'s, so both had to wait for step 14. The player starts with
 its state alone because its methods are spread over the class file and nine category files: moving
 the ivars first lets every category keep compiling, and the player's method slices follow in
-step 15. The universe's slices are independent of the player's, so they land in the same step.
+step 16. The universe's slices are independent of the player's, so they land in the same step.
 
 ## Behaviour changes
 
@@ -47,12 +47,12 @@ For the Universe part, start with `src/Core/Universe.h` (`cxx::Universe`, inside
 and `Universe+ObjCBridge.h/.mm` (the facade's forwarders). `Universe.mm`'s bodies are the
 Objective-C ones with message syntax rewritten; `tests/unit/core/test_Universe.mm` has one block of
 cases per slice, written against the Objective-C API first. Spot-check a few methods with
-`git diff --word-diff -w series/013-shipentity-slices series/014-universe-player-slices -- src/Core/Universe.mm`.
+`git diff --word-diff -w series/014-shipentity-slices series/015-universe-player-slices -- src/Core/Universe.mm`.
 
 For the PlayerEntity part, read `src/Core/Entities/PlayerEntity.h` (the data members, all
 zero-initialised as the runtime zeroed the ivars) and `PlayerEntity+ObjCBridge.h`. The changes in
 `PlayerEntityControls.mm` and the other categories are almost all the insertion of `_cxxPlayer->`
-before an ivar name, which is mechanical: `git diff series/013-shipentity-slices series/014-universe-player-slices -- src/Core/Entities/PlayerEntityControls.mm | grep '^+' | grep -vc '_cxxPlayer->'`
+before an ivar name, which is mechanical: `git diff series/014-shipentity-slices series/015-universe-player-slices -- src/Core/Entities/PlayerEntityControls.mm | grep '^+' | grep -vc '_cxxPlayer->'`
 counts the added lines that are anything else (four). `tests/unit/core/test_PlayerEntity.mm`
 pins the player's answers against the Objective-C class.
 

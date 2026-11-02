@@ -1,8 +1,8 @@
 # Add a test safety net: deterministic runs, GUI and component tests
 
-**Series:** step 1 of 25 · base `series/000-upstream-base` · next `series/002-js-facade` **(gen)**
+**Series:** step 2 of 26 · base `series/001-random-seed-env` · next `series/003-js-facade` **(gen)**
 
-**Chapter:** P0 · 0.1 iteration-order determinism, 0.4 seed and floating-point hooks for reproducible runs, 0.8 GUI tier, 0.13 component tier · history `7555b5d425`..`8af7966e7d` (41 merges) · 504 src, 13.6k tests, 27 other changed lines; 0 lines in deleted files **(gen)**
+**Chapter:** P0 · 0.1 iteration-order determinism, 0.4 seed and floating-point hooks for reproducible runs, 0.8 GUI tier, 0.13 component tier · history `7555b5d425`..`8af7966e7d` (41 merges) · 493 src, 13.6k tests, 27 other changed lines; 0 lines in deleted files **(gen)**
 
 ## What this changes
 

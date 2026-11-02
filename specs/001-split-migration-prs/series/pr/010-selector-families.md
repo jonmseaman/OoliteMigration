@@ -1,19 +1,19 @@
 # Retire the remaining Foundation selectors and their bridge callers
 
-**Series:** step 9 of 25 · base `series/008-foundation-wave-2` · next `series/010-leaf-conversions` **(gen)**
+**Series:** step 10 of 26 · base `series/009-foundation-wave-2` · next `series/011-leaf-conversions` **(gen)**
 
 **Chapter:** P2 · selector families, bridge callers · history `b75b5d1bc6`..`e0b9e24b22` (199 merges) · 18.6k src, 1.1k tests, 12 other changed lines; 10.5k lines in deleted files **(gen)**
 
 ## What this changes
 
-This step removes the last Foundation-typed interfaces between game classes. Steps 7 and 8 left
+This step removes the last Foundation-typed interfaces between game classes. Steps 8 and 9 left
 these as `id` or behind a bridge. Each "selector family" (a selector that more than one class or
 protocol declares, such as `-cacheKey`, `-hasRole:` or `-initWithKey:definition:`) now takes C++
 types in one change that edits every declaration and every caller. The callers of the transitional
 bridges move to the `cxx_` APIs, so 35 `X+FoundationBridge` pairs are deleted, along with
 `NSUserDefaults+OODefaultsBridge` and its test. The remaining Foundation helpers also go: the
 `NSBundle`, `NSUserDefaults` and `NSFileManager` categories, `OODeepCopy`, `OOFilteringEnumerator`,
-`OOFoundationException`, `SDL/Comparison`, and the debug-only `OOEnumerationShuffle` that step 1
+`OOFoundationException`, `SDL/Comparison`, and the debug-only `OOEnumerationShuffle` that step 2
 added. Their replacements are Foundation-free:
 - `Core/OODescription.h`: `-description` as C++ text on the Objective-C root;
 - `oofnd/PListDescription.hpp`: what `%@` printed for a property list;
@@ -26,10 +26,10 @@ added. Their replacements are Foundation-free:
 
 gnustep-base can be unlinked only when no game code calls into it. The bridges and the `id`-typed
 shared selectors were the last places that still did. They could only go after every class had its
-C++ API (steps 7–8), and each family has to flip in one change, because its classes and callers
+C++ API (steps 8–9), and each family has to flip in one change, because its classes and callers
 must agree on one signature. The last few Foundation boundary headers (`OOFoundationBridge.h`,
 `OOStringBridge.h`, `OOPListView.h`, `OOCollectionExtractors`) and the `gnustep-base` entry on the
-Windows link line are removed in step 10's first part, together with the constant-string switch.
+Windows link line are removed in step 11's first part, together with the constant-string switch.
 
 ## Behaviour changes
 

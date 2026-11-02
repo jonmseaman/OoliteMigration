@@ -1,6 +1,6 @@
 # Make comments describe the code; use #pragma once
 
-**Series:** step 21 of 25 · base `series/020-develop-fixes` · next `series/022-tests-and-tooling` **(gen)**
+**Series:** step 22 of 26 · base `series/021-develop-fixes` · next `series/023-tests-and-tooling` **(gen)**
 
 **From:** `develop` commits `2ceced1f8`, `c9c225c78`, `0b49abd31` · 56.8k src, 153.2k tests, 48 other changed lines; 0 lines in deleted files **(gen)**
 

@@ -1,6 +1,6 @@
 # Convert the large files in slices; delete the first Objective-C facades
 
-**Series:** step 12 of 25 · base `series/011-module-conversions` · next `series/013-shipentity-slices` **(gen)**
+**Series:** step 13 of 26 · base `series/012-module-conversions` · next `series/014-shipentity-slices` **(gen)**
 
 **Chapter:** P3 · slice plans, slices, facade deletions · history `ad82bd1efe`..`0c01939de7` (80 merges) · 26.2k src, 12.9k tests, 51 other changed lines; 5.1k lines in deleted files **(gen)**
 
@@ -18,10 +18,10 @@ here, each as a C++ class with an `X+ObjCBridge` facade for its remaining Object
 
 `ShipEntity` only starts. Its state (every ivar) moves to `cxx::ShipEntity`, and its Objective-C
 interface moves, copied exactly, to `ShipEntity+ObjCBridge.h`. Most methods keep their Objective-C
-bodies for now and read the state through `_cxxShip->`. Later slices, in step 13, move them across
+bodies for now and read the state through `_cxxShip->`. Later slices, in step 14, move them across
 one group at a time. `PlayerEntityStickProfile` is partly converted the same way.
 
-**Facade deletions.** 30 facades from steps 10–11 are deleted, because no Objective-C code messages
+**Facade deletions.** 30 facades from steps 11–12 are deleted, because no Objective-C code messages
 those classes any more. Each class leaves `namespace cxx`, and its callers use it directly:
 - Materials: `OOBasicMaterial`, `OOConcreteTexture`, `OODefaultShaderSynthesizer`,
   `OOMaterialConvenienceCreators`, `OOMultiTextureMaterial`, `OONullTexture`, `OOShaderMaterial`,
@@ -33,8 +33,8 @@ those classes any more. Each class leaves `namespace cxx`, and its callers use i
 
 ## Why
 
-Steps 10 and 11 converted everything that the large files depend on, so the large files can now
-follow. They come before `PlayerEntity` and `Universe` (steps 13–14) because those two message
+Steps 11 and 12 converted everything that the large files depend on, so the large files can now
+follow. They come before `PlayerEntity` and `Universe` (steps 14–15) because those two message
 them most. The facade deletions belong here because converting the large files removed the last
 Objective-C callers of those classes. Deleting each facade as soon as it has no caller keeps the
 two-headed state short-lived.
@@ -46,9 +46,9 @@ two-headed state short-lived.
   answering one command every 15–60 s. Pinned by `tests/component/test_paused_console_priority.py`.
 - Linux/X11, not built or verified here: upstream's fix for the blank window (#774), which replaces
   the splash window with a new game window sharing its GL context, is not in this step. The C++
-  `MyOpenGLView` keeps the old splash window. Step 23 ports #774. No test pins this.
+  `MyOpenGLView` keeps the old splash window. Step 25 ports #774. No test pins this.
 - macOS only, not built or verified here: upstream's front-buffer screenshot path (#766) is not in
-  this step. Step 23 restores it.
+  this step. Step 25 restores it.
 
 ## How to review
 
@@ -62,7 +62,7 @@ describes the split state:
 
 So most of the 4,000-line `ShipEntity.mm` hunk, and the `ShipEntityAI.mm` and `PlayerEntity.mm`
 hunks, are `_cxxShip->` / `->_cxxShip->` insertions. To spot-check, strip that prefix
-from a hunk and compare with the base. The fully converted files read like step 10's classes: check
+from a hunk and compare with the base. The fully converted files read like step 11's classes: check
 `HeadUpDisplay.mm` against its base `@implementation` method by method, and read
 `tests/unit/core/test_HeadUpDisplay.mm`. Each of the 11 converted files has a matching test in
 `tests/unit/core`.

@@ -1,6 +1,6 @@
 # Remove the Objective-C runtime and rename the sources to .cpp
 
-**Series:** step 17 of 25 · base `series/016-entity-facade` · next `series/018-gcc-build` **(gen)**
+**Series:** step 18 of 26 · base `series/017-entity-facade` · next `series/019-gcc-build` **(gen)**
 
 **Chapter:** P4 · 4.1 deferred release, 4.2 runtime and rename · history `1248d43e1b`..`af1f220542` (32 merges) · 6.6k src, 1.8k tests, 10.3k other changed lines; 8.5k lines in deleted files **(gen)**
 
@@ -22,7 +22,7 @@ every `.mm` file is renamed `.cpp`, `#import` becomes `#include`, and `meson.bui
 ## Why
 
 This is the point of the series: after it the game needs no Objective-C compiler or runtime to
-build or run (GNUstep-base already left the build in earlier steps). It can only come after steps 15 and 16, because until the last facade was
+build or run (GNUstep-base already left the build in earlier steps). It can only come after steps 16 and 17, because until the last facade was
 deleted something still needed an Objective-C object. The rename is last so that each file is
 renamed once, after its contents stopped being Objective-C.
 
@@ -36,10 +36,10 @@ upstream's pools (`clearCacheReleasesAtTheNearestScopesDrain` in
 
 ## How to review
 
-Most of the diff is the rename: `git diff -M --stat series/016-entity-facade series/017-objc-runtime-out`
+Most of the diff is the rename: `git diff -M --stat series/017-entity-facade series/018-objc-runtime-out`
 shows 381 `.mm` to `.cpp` renames, most of them with small or no content changes. To see only
 what changed inside renamed files, use
-`git diff -M --diff-filter=R series/016-entity-facade series/017-objc-runtime-out`; the common edits
+`git diff -M --diff-filter=R series/017-entity-facade series/018-objc-runtime-out`; the common edits
 are `#import` to `#include`, `@autoreleasepool { }` to a plain block in the tests, and dropped
 `__OBJC__` guards.
 

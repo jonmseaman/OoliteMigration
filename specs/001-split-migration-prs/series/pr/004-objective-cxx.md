@@ -1,6 +1,6 @@
 # Compile the game as Objective-C++
 
-**Series:** step 3 of 25 · base `series/002-js-facade` · next `series/004-quickjs-switch` **(gen)**
+**Series:** step 4 of 26 · base `series/003-js-facade` · next `series/005-quickjs-switch` **(gen)**
 
 **Chapter:** P2 · 2.1 the .m -> .mm switch · history `c9c0525383`..`c9c0525383` (1 merges) · 745 src, 0 tests, 1.9k other changed lines; 290 lines in deleted files **(gen)**
 
@@ -23,11 +23,11 @@ forward-declare a `static const` object.
 ## Why
 
 Later steps adopt C++ types (the JavaScript façade's handles, then the `oofnd` library) directly
-inside Objective-C classes, and that needs Objective-C++ everywhere. Step 2 converted only the
+inside Objective-C classes, and that needs Objective-C++ everywhere. Step 3 converted only the
 script bindings it had to. This step converts the rest in one rename-only pass with no logic
 changes, so the edits needed to compile cleanly are reviewed apart from anything that changes
-behaviour. It comes before step 4 because step 4's binding and engine changes touch files, such as
-`OOJSShip`, that are still `.m` at step 2.
+behaviour. It comes before step 5 because step 5's binding and engine changes touch files, such as
+`OOJSShip`, that are still `.m` at step 3.
 
 ## Behaviour changes
 
@@ -38,7 +38,7 @@ unchanged.
 
 Most of the diff is renames. List the files that actually changed:
 
-    git diff -M --name-status series/003-objective-cxx^ series/003-objective-cxx | grep -v '^R100'
+    git diff -M --name-status series/004-objective-cxx^ series/004-objective-cxx | grep -v '^R100'
 
 Those are 77 renames under 100% similarity plus 13 modified headers and `meson.build` files.
 In each one, check that every hunk is one of the kinds listed above: a cast, a rename, an added
@@ -51,7 +51,7 @@ scope or an `extern "C"` block. The ones that deserve a real read:
   added scopes. Only the indentation should change.
 - `src/Core/OOJoystickManager.mm`: it gains `-decodeAxisEvent:`, `-decodeButtonEvent:` and
   `-decodeHatEvent:`, which upstream moved into `OOSDLJoystickManager`. This series keeps them in
-  the base class, as the rest of the migration does. Steps 3 to 6 carry both copies, and step 7
+  the base class, as the rest of the migration does. Steps 4 to 7 carry both copies, and step 8
   takes the SDL joystick manager over whole. The SDL subclass still dispatches to its own copies.
 
 ## Verified **(gen)**

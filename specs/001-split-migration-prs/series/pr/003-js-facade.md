@@ -1,6 +1,6 @@
 # Put the game's JavaScript behind an engine façade, with a QuickJS-ng backend beside SpiderMonkey
 
-**Series:** step 2 of 25 · base `series/001-safety-net` · next `series/003-objective-cxx` **(gen)**
+**Series:** step 3 of 26 · base `series/002-safety-net` · next `series/004-objective-cxx` **(gen)**
 
 **Chapter:** P1 · 1.1 define the façade, 1.2 retarget call sites, 1.3 QuickJS-ng backend · history `3ca73e5a13`..`7bc686c0af` (55 merges) · 14.6k src, 1.3k tests, 7.0k other changed lines; 5.6k lines in deleted files **(gen)**
 
@@ -24,9 +24,9 @@ The game uses a patched SpiderMonkey 1.8.5, which has no maintained build for cu
 for Apple Silicon. About 3,800 call sites used its API directly. Putting them behind one interface
 while SpiderMonkey is still underneath lets the retargeting be checked on its own: if the step-1
 tests and gameplay don't change, the façade is faithful. The engine swap then becomes one backend
-change (step 4), not a rewrite of every binding at once. This step comes straight after the safety
+change (step 5), not a rewrite of every binding at once. This step comes straight after the safety
 net because it is the first one to touch production code, and the first to bring Objective-C++ into
-the build. Step 3 then extends Objective-C++ to the rest of the game.
+the build. Step 4 then extends Objective-C++ to the rest of the game.
 
 ## Behaviour changes
 
@@ -58,10 +58,10 @@ The rest is mechanical:
 Several bindings appear as delete-plus-add, not renames. To review them as renames, use
 `git diff -M30% <base> <head> -- src/Core/Scripting`. To spot-check the retargeting, run
 `git grep -nE '\bJS_[A-Z][A-Za-z]*\(' -- 'src/Core/Scripting/*.mm'`: only
-`OOJavaScriptEngine.mm` still calls the engine directly; step 4 retargets it.
+`OOJavaScriptEngine.mm` still calls the engine directly; step 5 retargets it.
 
 `JSEngine_quickjs.cpp` (3.5k lines) and `tests/unit/test_jsengine_*.cpp` are not built by meson
-at this step. You can review them now or when step 4 links the backend.
+at this step. You can review them now or when step 5 links the backend.
 
 ## Verified **(gen)**
 

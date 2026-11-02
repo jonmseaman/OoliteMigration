@@ -1,6 +1,6 @@
 # Port upstream #766, #774 and #781
 
-**Series:** step 24 of 25 · base `series/023-c-as-cxx` · next `series/025-google-style-format` **(gen)**
+**Series:** step 25 of 26 · base `series/024-c-as-cxx` · next `series/026-google-style-format` **(gen)**
 
 **From:** `develop` commits `7912222ed`, `f80c74210`, `a1e2ce889`, `ac193cfe7`, `ec2462f6f`, `35d0ef8a0` · 6.0k src, 197 tests, 169 other changed lines; 223 lines in deleted files **(gen)**
 

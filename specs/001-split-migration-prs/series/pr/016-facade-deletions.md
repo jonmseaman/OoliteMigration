@@ -1,6 +1,6 @@
 # Delete the Objective-C facades
 
-**Series:** step 15 of 25 · base `series/014-universe-player-slices` · next `series/016-entity-facade` **(gen)**
+**Series:** step 16 of 26 · base `series/015-universe-player-slices` · next `series/017-entity-facade` **(gen)**
 
 **Chapter:** P3 · facade-deletion batches · history `d01d45e47c`..`2c2aae1316` (51 merges) · 50.3k src, 25.9k tests, 0 other changed lines; 22.1k lines in deleted files **(gen)**
 
@@ -18,7 +18,7 @@ and turns the remaining `[x foo]` sends into C++ calls. A ship made from C++ (`o
 `ProxyPlayerEntity::newProxyObject()`) now lives under the root `Entity` facade. About
 twenty-five facades remain (`Entity`, `Universe`, `GameController`, `MyOpenGLView`, the JS engine,
 `AI`, the texture and material roots and a few more); the next step removes all of them but
-`OOWeakReference`'s, which goes in step 17.
+`OOWeakReference`'s, which goes in step 18.
 
 ## Why
 
@@ -26,7 +26,7 @@ A facade can go only when nothing sends Objective-C messages to its class any mo
 entity classes that happened only once the player, the universe and the JS ship binding (their
 heaviest callers) were C++. So this step comes straight after the last slices, and the
 deletions run leaves first and roots last: the ship's facade goes after the player's, station's
-and dock's, and `Entity`'s own facade waits for step 16.
+and dock's, and `Entity`'s own facade waits for step 17.
 
 ## Behaviour changes
 
@@ -38,12 +38,12 @@ range, so neither is in the step: the player and the proxy player stay visible t
 ## How to review
 
 Read it in two parts. The conversions first: `src/Core/Entities/PlayerEntity.h` and
-`PlayerEntity.mm`, then the category files; as in step 13 the bodies are the Objective-C ones with
-message syntax rewritten (`git diff --word-diff -w series/014-universe-player-slices series/015-facade-deletions -- src/Core/Entities/PlayerEntity.mm`
+`PlayerEntity.mm`, then the category files; as in step 14 the bodies are the Objective-C ones with
+message syntax rewritten (`git diff --word-diff -w series/015-universe-player-slices series/016-facade-deletions -- src/Core/Entities/PlayerEntity.mm`
 for a spot-check). The new cases in `tests/unit/core/test_PlayerEntity.mm` and `test_OOJSShip.mm`
 were run on the Objective-C code first.
 
-Then the deletions, which are mechanical: `git diff --stat --diff-filter=D series/014-universe-player-slices series/015-facade-deletions`
+Then the deletions, which are mechanical: `git diff --stat --diff-filter=D series/015-universe-player-slices series/016-facade-deletions`
 lists the facade files removed. For any one class, check that its `X+ObjCBridge.*` entries are
 gone from its directory's `meson.build`, that `namespace cxx` is gone from `X.h`, and that the
 callers' hunks only turn `[x foo:y]` into `x->foo(y)` and drop `oo::ToObjC` / `oo::ToCxx`

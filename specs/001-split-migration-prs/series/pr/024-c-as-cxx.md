@@ -1,6 +1,6 @@
 # Compile the remaining C sources as C++; upgrade QuickJS-ng
 
-**Series:** step 23 of 25 · base `series/022-tests-and-tooling` · next `series/024-upstream-49a5eb9fc-ports` **(gen)**
+**Series:** step 24 of 26 · base `series/023-tests-and-tooling` · next `series/025-upstream-49a5eb9fc-ports` **(gen)**
 
 **From:** `develop` commits `448aa6d20`, `6e1654a6b` · 14.4k src, 5.3k tests, 167 other changed lines; 0 lines in deleted files **(gen)**
 

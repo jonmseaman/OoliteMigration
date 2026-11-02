@@ -1,6 +1,6 @@
 # Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation
 
-**Series:** step 5 of 25 · base `series/004-quickjs-switch` · next `series/006-typed-accessors` **(gen)**
+**Series:** step 6 of 26 · base `series/005-quickjs-switch` · next `series/007-typed-accessors` **(gen)**
 
 **Chapter:** P2 · 2.2 Ref/WeakRef/AutoreleaseScope, 2.2 PList, 2.2 FileSystem, 2.2 Defaults, Objective-C floor · history `e31130fa0d`..`916311e66d` (19 merges) · 10.0k src, 6.4k tests, 3 other changed lines; 460 lines in deleted files **(gen)**
 
@@ -36,7 +36,7 @@ plist parsing, number coercion, defaults search order and file paths. Each compo
 its own with GNUstep-captured expectations in its tests, before the game depends on it, so a
 mismatch shows up as a failing unit test rather than as a gameplay difference. Only a few call
 sites are switched in this step; that's enough to show each component works in the game, and the
-bulk adoption comes in steps 6 to 8. This step comes after the engine switch so that the
+bulk adoption comes in steps 7 to 9. This step comes after the engine switch so that the
 JavaScript layer underneath is already final.
 
 ## Behaviour changes
@@ -55,7 +55,7 @@ the GNUstep behaviour it replaces:
 
 `OORoleSet` keeps its `-description`. Other `OOObject` subclasses log as
 `<ClassName: 0x...>`, as `NSObject` did, through the temporary
-`src/Core/OOObjectGNUstepBridge.mm`. The game-level tiers from step 1 (`tests/component/`,
+`src/Core/OOObjectGNUstepBridge.mm`. The game-level tiers from step 2 (`tests/component/`,
 `tests/gui/`) also run against this step.
 
 ## How to review

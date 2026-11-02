@@ -1,6 +1,6 @@
 # Run the game on QuickJS-ng and remove SpiderMonkey and NSPR
 
-**Series:** step 4 of 25 · base `series/003-objective-cxx` · next `series/005-oofnd-core` **(gen)**
+**Series:** step 5 of 26 · base `series/004-objective-cxx` · next `series/006-oofnd-core` **(gen)**
 
 **Chapter:** P1 · 1.4 differential test, 1.5 delete SpiderMonkey · history `3b6aec8c6f`..`a7e3ed1efc` (6 merges) · 11.9k src, 4 tests, 275 other changed lines; 1.5k lines in deleted files **(gen)**
 
@@ -8,12 +8,12 @@
 
 The game now runs its scripts on QuickJS-ng. `ooscript/JSEngine_quickjs.cpp` fills in the rest of
 the façade and is compiled into the game. QuickJS-ng is linked statically from the meson subproject
-added in step 2, so the build fetches it through `subprojects/quickjs-ng.wrap`. The SpiderMonkey
+added in step 3, so the build fetches it through `subprojects/quickjs-ng.wrap`. The SpiderMonkey
 backend, its unit test, the `js_backend` and `oo_javascript_trace` options, the NSPR dependency, and
 the Mozilla JS install steps for Windows, Linux and CI are removed.
 
 The last direct engine users now speak only `ooscript` types: `OOJavaScriptEngine.{h,mm}`, the debug
-console, and the entity methods whose signatures took `jsid`/`jsval` (`-doScriptEvent:` and its family). Step 2's
+console, and the entity methods whose signatures took `jsid`/`jsval` (`-doScriptEvent:` and its family). Step 3's
 compatibility casts are gone. `OOJavaScriptEngine.h` no longer includes `jsapi.h`, and the `OOJS_*`
 macros expand to `ooscript::CallArgs` accessors. `Resources/Scripts/oolite-global-prefix.js` gains
 guarded polyfills for the Mozilla-only `toSource()`, `String.prototype.quote()` and `uneval()`.
@@ -22,9 +22,9 @@ Each one is installed only when the engine lacks it.
 ## Why
 
 SpiderMonkey 1.8.5 is the dependency that blocks newer toolchains and Apple Silicon. Once every
-call site went through the façade in step 2, replacing the engine is a backend change. This step
-comes after step 3 because removing the casts means editing binding files that only became
-Objective-C++ there. It also comes before the Foundation work in steps 5 and later, so those steps
+call site went through the façade in step 3, replacing the engine is a backend change. This step
+comes after step 4 because removing the casts means editing binding files that only became
+Objective-C++ there. It also comes before the Foundation work in steps 6 and later, so those steps
 are tested on the engine the game will ship with.
 
 `-ffp-contract=off` moves from project to global arguments, so it also reaches the QuickJS-ng
@@ -60,7 +60,7 @@ is built at the game's pinned `-O2` for the same reason.
 
 The binding files (`src/Core/Scripting/OOJS*.mm`, about 6k of the changed lines) are mechanical:
 they delete the step-2 shim functions and the casts, and declare the locals with `ooscript` types.
-The exception is `OOJSShip.mm`, which was still Objective-C at step 2: it is moved onto the façade
+The exception is `OOJSShip.mm`, which was still Objective-C at step 3: it is moved onto the façade
 for the first time here, so read it in full.
 To spot-check one, diff it against its base and confirm that every removed line is a shim or a
 `reinterpret_cast`, and that the function bodies keep their logic. To check the whole tree for

@@ -1,13 +1,13 @@
 # Move Foundation usage to oofnd, part 1
 
-**Series:** step 7 of 25 · base `series/006-typed-accessors` · next `series/008-foundation-wave-2` **(gen)**
+**Series:** step 8 of 26 · base `series/007-typed-accessors` · next `series/009-foundation-wave-2` **(gen)**
 
 **Chapter:** P2 · 2.3 Foundation -> oofnd, per file · history `931bee60e9`..`ecfafab479` (210 merges) · 35.3k src, 1.2k tests, 0 other changed lines; 0 lines in deleted files **(gen)**
 
 ## What this changes
 
 This is the first half of moving the game's own code off Foundation and onto `oofnd`, the C++20
-library added in step 5. File by file, the `NSString`, `NSArray`, `NSDictionary`, `NSSet`,
+library added in step 6. File by file, the `NSString`, `NSArray`, `NSDictionary`, `NSSet`,
 `NSNumber` and `NSData` values inside a class become `std::string`, `std::vector`, `std::map`,
 `std::optional`, `oo::PList` and `oo::Data`. The classes themselves are still Objective-C. A
 selector that only one class declares takes and returns the C++ types, and its callers change at the
@@ -15,7 +15,7 @@ call expression only. A selector that several classes declare (a "shared" select
 boundary for now and converts on the inside. Where a class has too many callers to adapt in the same
 change, it gets a `cxx_`-prefixed C++ API, and a transitional `X+FoundationBridge.h/.mm` category
 keeps its old Foundation-typed selectors working by forwarding to that API. This step adds 25 of
-these bridges; steps 8 and 9 delete them. `oofnd` also gains what the sweep needed, most of it in
+these bridges; steps 9 and 10 delete them. `oofnd` also gains what the sweep needed, most of it in
 `oo::str` (`String.hpp`: path components, GNUstep's `%p` text, run-time format strings with `%@` and
 positional arguments, Unicode file decoding), and `oo::PList` can now carry live objects and
 single-precision reals.
@@ -23,10 +23,10 @@ single-precision reals.
 ## Why
 
 Foundation (gnustep-base) can't be unlinked while game code still names its types, and the classes
-can't become C++ (steps 10–14) while their interfaces are Foundation-typed. Changing the types first,
+can't become C++ (steps 11–15) while their interfaces are Foundation-typed. Changing the types first,
 inside Objective-C, keeps each change small enough to check against the game's behaviour. The order
 follows dependencies: maths and Core leaf utilities, then Materials, the OXP verifier, scripting,
-entities and `Universe`. This step comes right after step 6, because many of these files had to stop
+entities and `Universe`. This step comes right after step 7, because many of these files had to stop
 using the `oo_*ForKey:` extractors before their collections could become `oo::PList`.
 
 ## Behaviour changes
@@ -37,7 +37,7 @@ captured from the real library and pinned in `tests/unit/oofnd/test_string_sweep
 `tests/unit/oofnd/test_unicode_file_decode.cpp` and `tests/unit/oofnd/test_plist_carrier.cpp`.
 
 - macOS only, not built or verified here: upstream's `builtInPath` under `OOLITE_MAC_COCOA_UI`
-  (#766) is not in this step, because the path code now goes through `oo::ResourcePaths`. Step 23
+  (#766) is not in this step, because the path code now goes through `oo::ResourcePaths`. Step 25
   restores it. No test pins it.
 
 ## How to review

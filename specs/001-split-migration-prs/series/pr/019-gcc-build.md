@@ -1,6 +1,6 @@
 # Build with GCC as well as Clang
 
-**Series:** step 18 of 25 · base `series/017-objc-runtime-out` · next `series/019-upstream-9ee8ff22f-port` **(gen)**
+**Series:** step 19 of 26 · base `series/018-objc-runtime-out` · next `series/020-upstream-9ee8ff22f-port` **(gen)**
 
 **Chapter:** P4 · 4.3 GCC · history `5fda5e404c`..`903e52cbdd` (3 merges) · 218 src, 1.7k tests, 0 other changed lines; 0 lines in deleted files **(gen)**
 
@@ -19,9 +19,9 @@ universe from the same seed. The `oofnd` tests keep `-Werror` under Clang only.
 
 ## Why
 
-With no Objective-C left after step 17, nothing ties the game to Clang any more; GCC is the
+With no Objective-C left after step 18, nothing ties the game to Clang any more; GCC is the
 compiler most Linux distributions build with, and a second compiler catches problems the first
-does not. It comes after step 17 because until then the game was Objective-C++ built against
+does not. It comes after step 18 because until then the game was Objective-C++ built against
 libobjc2, which the build supported only with Clang.
 
 ## Behaviour changes
@@ -36,7 +36,7 @@ branch with GCC's spelling (`tests/unit/core/test_OOJSConsole.cpp`,
 
 Start with `src/oofnd/PrintfFormat.h` and `src/oofnd/meson.build`, then the random-draw hunks,
 each marked by a comment
-(`git diff series/017-objc-runtime-out series/018-gcc-build -- src | grep -n 'Clang evaluates'`):
+(`git diff series/018-objc-runtime-out series/019-gcc-build -- src | grep -n 'Clang evaluates'`):
 in each, check that the locals are drawn in the order the arguments appeared. The other source
 hunks are small, one per GCC diagnostic, and say which in a comment.
 

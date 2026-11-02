@@ -1,6 +1,6 @@
 # Move most oo_*ForKey dictionary accessors to typed PListView::get
 
-**Series:** step 6 of 25 · base `series/005-oofnd-core` · next `series/007-foundation-wave-1` **(gen)**
+**Series:** step 7 of 26 · base `series/006-oofnd-core` · next `series/008-foundation-wave-1` **(gen)**
 
 **Chapter:** P2 · 2.2 typed accessors, first sweep · history `b73f2cd400`..`bc9a02ca7b` (108 merges) · 11.1k src, 2.1k tests, 43 other changed lines; 0 lines in deleted files **(gen)**
 
@@ -14,7 +14,7 @@ same. This is not yet the whole sweep. `PlayerEntity.mm`, `ShipEntity.mm`, `Univ
 stays.
 
 About 80 game classes are rerooted from `NSObject` onto the
-Foundation-free `OOObject` from step 5. Six new `oofnd` components arrive with their tests:
+Foundation-free `OOObject` from step 6. Six new `oofnd` components arrive with their tests:
 - `String` and `Encoding`: string operations and text encodings matching GNUstep's;
 - `Log`, which `OOLogging.mm` now delegates to;
 - `Date`, `Notification` and `StdLib`.
@@ -31,7 +31,7 @@ Typed lookups are the widest Foundation dependency in the game. Routing them thr
 changes from `oo::PListView(x).get<T>(k)` to `x.get<T>(k)` with nothing else to edit. The reroots,
 the logging port and the new components are the next layer that the later Foundation steps need:
 they stop classes depending on `NSObject`, and give string, log and notification code something
-to move to. They come after step 5, because they build on `OOObject`, `PList` and `Thread`, and
+to move to. They come after step 6, because they build on `OOObject`, `PList` and `Thread`, and
 before the bulk Foundation steps (7 and 8), which use them.
 
 ## Behaviour changes
@@ -60,7 +60,7 @@ and the `<type>` → `T` table. Then read `src/Core/OOPListView.h`. The call-sit
 mechanical. To spot-check a file, confirm that each removed `oo_*ForKey:`/`oo_*AtIndex:` line has
 a matching added `PListView` line with the same receiver, key and fallback:
 
-    git diff -U0 series/006-typed-accessors^ series/006-typed-accessors -- src/Core/OOShipRegistry.mm \
+    git diff -U0 series/007-typed-accessors^ series/007-typed-accessors -- src/Core/OOShipRegistry.mm \
       | grep -E '^[-+].*(oo_[a-zA-Z]+(ForKey|AtIndex)|PListView)'
 
 The reroots are also mechanical: an `@interface X : NSObject` becomes `: OOObject`, an

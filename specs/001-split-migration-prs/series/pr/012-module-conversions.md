@@ -1,12 +1,12 @@
 # Convert scripting, entities, audio and materials classes to C++
 
-**Series:** step 11 of 25 · base `series/010-leaf-conversions` · next `series/012-first-slices` **(gen)**
+**Series:** step 12 of 26 · base `series/011-leaf-conversions` · next `series/013-first-slices` **(gen)**
 
 **Chapter:** P3 · 3.4 Materials, 3.5 audio, 3.6 scripting bindings, 3.7 entities · history `1964f76209`..`ab5dc6cd72` (120 merges) · 39.0k src, 40.6k tests, 112 other changed lines; 2.4k lines in deleted files **(gen)**
 
 ## What this changes
 
-This step converts the next layer of classes to C++ in the house style of step 10, module by module:
+This step converts the next layer of classes to C++ in the house style of step 11, module by module:
 - Materials: textures, texture loaders and generators, shader material, program and uniforms;
 - audio: the `OOAL*` sound family, `OOSoundSource`, `OOMusicController`;
 - the JavaScript bindings and script classes: `OOScript`, `OOPListScript`, the `OOJS*` binding
@@ -23,10 +23,10 @@ to `tests/unit/core`. Three pieces of compiled-out code are deleted rather than 
 
 ## Why
 
-These modules depend on the leaves converted in step 10 (colours, vectors, caches, the Materials
+These modules depend on the leaves converted in step 11 (colours, vectors, caches, the Materials
 roots) and nothing much depends on them except the large classes (`ShipEntity`, `PlayerEntity`,
 `Universe`, `HeadUpDisplay`). So they convert next, and the large classes get converted dependencies
-to build on in steps 12–14. Each module has its own exemplar, because each raised a pattern the
+to build on in steps 13–15. Each module has its own exemplar, because each raised a pattern the
 leaves didn't:
 - `Entity`: a root whose ivars subclasses and callers read directly;
 - `OOALSound`: a root that is a class cluster;
@@ -40,7 +40,7 @@ leaves didn't:
   double-click into two single clicks. Pinned by `tests/gui/test_double_click_timing.py`.
 - macOS only, not built or verified here: upstream's `GameController` Cocoa-UI branches
   (`OOLITE_MAC_COCOA_UI`, #766) are not in this step, because the Mac methods moved into a
-  `GameController (MacOSX)` category. Step 23 restores them. No test pins this.
+  `GameController (MacOSX)` category. Step 25 restores them. No test pins this.
 
 ## How to review
 
@@ -53,9 +53,9 @@ Read one exemplar per module before its files:
 - `src/Core/Scripting/OOJSEngineTimeManagement.*`: a category only its own file sends, which becomes
   file-local functions.
 
-The JavaScript binding files follow `OOJSVector`, which step 10 converted.
+The JavaScript binding files follow `OOJSVector`, which step 11 converted.
 
-Every other file follows its module's exemplar. Spot-check the same way as step 10: compare
+Every other file follows its module's exemplar. Spot-check the same way as step 11: compare
 the old methods with the new members, then read the class's `tests/unit/core/test_X.mm`. In
 unconverted callers, the main mechanical edit is `ent->_cxxEntity->field` where the code used to
 read an ivar directly. The compiler finds each of these, because the ivar no longer exists.

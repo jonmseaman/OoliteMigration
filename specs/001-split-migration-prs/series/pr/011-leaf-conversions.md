@@ -1,6 +1,6 @@
 # Drop gnustep-base, then convert the first classes to C++: maths, leaf utilities, OXP verifier
 
-**Series:** step 10 of 25 · base `series/009-selector-families` · next `series/011-module-conversions` **(gen)**
+**Series:** step 11 of 26 · base `series/010-selector-families` · next `series/012-module-conversions` **(gen)**
 
 **Chapter:** P3 · 2.4 delete libgnustep-base, 3.1 oomath, 3.2 OXPVerifier, 3.3 leaf utilities · history `66914fbbed`..`67027c84d1` (61 merges) · 28.5k src, 17.8k tests, 20 other changed lines; 1.8k lines in deleted files **(gen)**
 
@@ -33,11 +33,11 @@ new meson suite, `core` (`tests/unit/core`), gets 55 test files, one per convert
 
 ## Why
 
-The first part is the end of the Foundation removal that steps 7–9 prepared. Once gnustep-base is
+The first part is the end of the Foundation removal that steps 8–10 prepared. Once gnustep-base is
 gone, the only Objective-C left is the language and the libobjc2 runtime. The class conversion
 starts with the leaves because nothing they depend on is still Objective-C, so each can convert on
 its own behind a facade. `OOColor` and the verifier stages set the house style (names, `Ref`
-ownership, the facade and its test) that steps 11–14 follow. The maths files and `OXPVerifier` have
+ownership, the facade and its test) that steps 12–15 follow. The maths files and `OXPVerifier` have
 few dependants and their own test data, which makes them the safest place to settle that style.
 
 ## Behaviour changes
@@ -55,7 +55,7 @@ few dependants and their own test data, which makes them the safest place to set
 
 For the first part, read the `src/meson.build`, `src/meson/windows/meson.build` and
 `src/SDL/main.mm` hunks. The rest of it is deletions, and `git grep` for the deleted headers' names
-should find only comments. `tests/unit/oofnd/test_objc_floor.mm` (from step 5) covers the floor that
+should find only comments. `tests/unit/oofnd/test_objc_floor.mm` (from step 6) covers the floor that
 `main()` now installs.
 
 For the conversions, start with the house-style exemplar: `src/Core/OOColor.h` / `OOColor.mm` (the

@@ -1,6 +1,6 @@
 # Reformat with Google-style clang-format (optional)
 
-**Series:** step 25 of 25 · base `series/024-upstream-49a5eb9fc-ports` · next `—` **(gen)**
+**Series:** step 26 of 26 · base `series/025-upstream-49a5eb9fc-ports` · next `—` **(gen)**
 
 **From:** `develop` commits `13eb19ee7`, `266118a39`, `4ef61a09d`, `21c3048a2` · 431.9k src, 5 tests, 55 other changed lines; 0 lines in deleted files **(gen)**
 

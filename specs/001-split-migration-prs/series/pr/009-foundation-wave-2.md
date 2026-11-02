@@ -1,6 +1,6 @@
 # Move Foundation usage to oofnd, part 2
 
-**Series:** step 8 of 25 · base `series/007-foundation-wave-1` · next `series/009-selector-families` **(gen)**
+**Series:** step 9 of 26 · base `series/008-foundation-wave-1` · next `series/010-selector-families` **(gen)**
 
 **Chapter:** P2 · 2.3 Foundation sweeps, OOLog, NSAssert and NSUserDefaults gaps · history `5faa477a34`..`fa9cbc6c24` (240 merges) · 48.3k src, 2.8k tests, 40 other changed lines; 1.7k lines in deleted files **(gen)**
 
@@ -23,9 +23,9 @@ A transitional `NSUserDefaults+OODefaultsBridge` points the game's standard `NSU
 
 ## Why
 
-These are the files and Foundation families that step 7's recipe couldn't handle with a type swap:
+These are the files and Foundation families that step 8's recipe couldn't handle with a type swap:
 they needed new `oofnd` components first (scanning, the log file, HTTP, assertions) or were too big
-to convert in one change. Step 9 can only delete the bridges and retire the shared selectors after
+to convert in one change. Step 10 can only delete the bridges and retire the shared selectors after
 every class has its C++ API, and that's done here.
 
 ## Behaviour changes
@@ -62,9 +62,9 @@ gnustep-base:
 - `src/oofnd/objc/OOAssert.h`, pinned by `test_objc_assert.mm`.
 
 Then read `src/Core/NSUserDefaults+OODefaultsBridge.h`. Its header comment explains how one store
-serves both APIs, and `tests/unit/game/test_defaults_bridge.mm` tests it. Both are deleted in step 9.
+serves both APIs, and `tests/unit/game/test_defaults_bridge.mm` tests it. Both are deleted in step 10.
 
-The file sweeps follow step 7's recipe. Spot-check them the same way: compare a header on the base
+The file sweeps follow step 8's recipe. Spot-check them the same way: compare a header on the base
 and here, and check that the caller hunks are conversions at the call. The deleted Foundation
 categories have no callers left. `git grep` for any selector they declared should find nothing
 outside comments. `tests/unit/expander/test_string_expander.mm` is a differential test: its digests were recorded

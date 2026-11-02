@@ -1,6 +1,6 @@
 # Tests and developer tooling
 
-**Series:** step 22 of 25 · base `series/021-source-hygiene` · next `series/023-c-as-cxx` **(gen)**
+**Series:** step 23 of 26 · base `series/022-source-hygiene` · next `series/024-c-as-cxx` **(gen)**
 
 **From:** `develop` commits `51d05af43`, `517abcfcd`, `119e29325`, `70c176921` · 35 src, 1.1k tests, 13 other changed lines; 0 lines in deleted files **(gen)**
 
