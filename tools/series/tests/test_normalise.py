@@ -41,6 +41,20 @@ class NormaliseTest(unittest.TestCase):
         self.assertFalse(normalise.is_source("tests/unit/oofnd/test_objc_ref.mm"))
         self.assertFalse(normalise.is_source("tests/unit/core/test_AI.cpp"))
 
+    def test_test_sources_get_the_rename_but_keep_their_layout(self):
+        game = self.fx["game"]
+        text = '#include "z.h"\n#include "a.h"\nint   oldName(void){return 1;}\n'
+        blob = git(game, "hash-object", "-w", "--stdin", input_text=text)
+        base = git(game, "rev-parse", f"{self.fx['u0']}^{{tree}}")
+        # NUL-separated (-z): text-mode input on Windows would add a CR to every path
+        tests_tree = git(game, "mktree", "-z", input_text=f"100644 blob {blob}\tt.cpp\0")
+        top = "".join(line + "\0" for line in git(game, "ls-tree", base).splitlines())
+        tree = git(game, "mktree", "-z", input_text=top + f"040000 tree {tests_tree}\ttests\0")
+        out = normalise.normalise_tree(game, tree, self.fx["u0"], cache_path=self.cache,
+                                       transform=lambda p, t: t.replace("oldName", "newName"), transform_id="t1")
+        self.assertEqual(git(game, "show", f"{out}:tests/t.cpp") + "\n",
+                         '#include "z.h"\n#include "a.h"\nint   newName(void){return 1;}\n')
+
     def test_cache_is_written(self):
         self.norm(f"{self.fx['u2']}^{{tree}}")
         self.assertTrue(os.path.exists(self.cache))

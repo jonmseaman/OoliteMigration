@@ -33,14 +33,21 @@ def is_source(path):
     return path.startswith(SOURCE_TOPS) and path.endswith(SOURCE_EXT)
 
 
+def is_test_source(path):
+    """Test sources get the transform (upstream's API renames) but are never formatted."""
+    return path.startswith("tests/") and path.endswith(SOURCE_EXT)
+
+
 def _version(clang_format):
     return subprocess.run([clang_format, "--version"], capture_output=True, text=True).stdout.strip()
 
 
 def normalise_tree(repo, tree, style_from, clang_format=CLANG_FORMAT, cache_path=DEFAULT_CACHE, jobs=8,
-                   transform=None, transform_id="", select=is_source):
+                   transform=None, transform_id="", select=is_source, rename_only=is_test_source):
     """`transform(path, text) -> text`, if given, runs on each source file before clang-format.
-    `select(path)` picks the files to format (default: sources under src/)."""
+    `select(path)` picks the files to format (default: sources under src/); files `rename_only`
+    picks (default: test sources) get the transform only, so a test changes only as an API rename
+    requires and keeps the history's layout and include order."""
     style_blob = _git(repo, "rev-parse", f"{style_from}:.clang-format").decode().strip()
     key_prefix = f"{_version(clang_format)}|{style_blob}|{transform_id}|"
     cache = {}
@@ -56,7 +63,7 @@ def normalise_tree(repo, tree, style_from, clang_format=CLANG_FORMAT, cache_path
         meta, path = line.split(b"\t", 1)
         mode, typ, sha = meta.decode().split()
         path = path.decode("utf-8")
-        if typ == "blob" and select(path):
+        if typ == "blob" and (select(path) or (transform is not None and rename_only(path))):
             entries.append((mode, sha, path))
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -66,7 +73,8 @@ def normalise_tree(repo, tree, style_from, clang_format=CLANG_FORMAT, cache_path
 
         def fmt(entry):
             mode, sha, path = entry
-            key = key_prefix + sha
+            only_rename = not select(path)
+            key = key_prefix + ("rename|" if only_rename else "") + sha
             with lock:
                 hit = cache.get(key)
             if hit:
@@ -74,6 +82,11 @@ def normalise_tree(repo, tree, style_from, clang_format=CLANG_FORMAT, cache_path
             data = _git(repo, "cat-file", "blob", sha)
             if transform is not None:
                 data = transform(path, data.decode("utf-8", "surrogateescape")).encode("utf-8", "surrogateescape")
+            if only_rename:
+                new = _git(repo, "hash-object", "-w", "--stdin", inp=data).decode().strip()
+                with lock:
+                    cache[key] = new
+                return mode, new, path
             r = subprocess.run([clang_format, f"--style=file:{style_file}", f"--assume-filename={path}"],
                                input=data, capture_output=True)
             if r.returncode:

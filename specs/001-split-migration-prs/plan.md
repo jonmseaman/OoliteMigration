@@ -216,3 +216,9 @@ game repo only gets local branches.
     history's later form where there is one (its step-9 local names; the declared parameter type), or
     minimally (a new local name). The unnamed part of -cxx_getContainersOfCommodity:: becomes
     how_much:, upstream's own label, for steps 8-15 (clang-format will not let a space fix a header).
+  - Test sources get the normaliser's transform (upstream's #745 selector and #737 include renames)
+    but no formatting: the history's tests call the history's API names, which the series renames
+    as upstream did, and a test changes only as far as that rename requires (the history makes the
+    same rename itself when it pulls #745 at step 19).
+  - Upstream's copy-URL state (#747) becomes std::optional<std::string> at step 10, where NSString
+    goes; its methods become members at step 12.

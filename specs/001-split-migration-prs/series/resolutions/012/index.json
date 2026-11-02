@@ -36,13 +36,13 @@
  "src/Core/OOOXZManager.h": {
   "base": "fe911c0c69ace09b131bd422c12cada440dc3d77",
   "deleted": false,
-  "ours": "fa06aa76109e5a05c8480bfc9aa4af0ec4472d3c",
+  "ours": "80dcc49e0adf4ee9b97c431f6e02e460a1a80a27",
   "theirs": "43f06edcc96ef0a147cf0318b2ff25175387bc11"
  },
  "src/Core/OOOXZManager.mm": {
   "base": "1cecbd61576b8239028f0d283a55da1b83b402b3",
   "deleted": false,
-  "ours": "f45060e2c060d8b7ab6544a19b94b2fb8b097645",
+  "ours": "4a523cd7440ffcea5545bcbc21da961074483b0c",
   "theirs": "731a0715c16207b4b453a83ae7cda74a11cc515d"
  },
  "src/SDL/MyOpenGLView+Input.mm": {

@@ -98,19 +98,16 @@ POST = {"src/Core/OOOXZManager.h": [  # a conflict path here: edits on the resol
     ("    void setFilter(const std::string& filter);\n",
      "    void setFilter(const std::string& filter);\n"
      "    void setOXPURL(const std::optional<std::string>& url); // lowercased; nullopt: none (was nil)\n"),
-    ("    NSString* _currentOXPURL;\n",
-     "    std::optional<std::string> _currentOXPURL; // lowercase; the info page's URL, nullopt: none (was nil)\n"),
+    # (_currentOXPURL is a std::optional<std::string> from step 10)
 ]}
 
 # the automatic resolution of the class file, with the port applied on top
 EDIT = {"src/Core/OOOXZManager.mm": subs(
-        ("- (void)setOXPURL:(NSString*)url\n{\n    DESTROY(_currentOXPURL);\n"
-         "    _currentOXPURL = [[url lowercaseString] copy]; // copy retains\n}\n",
-         "void OOOXZManager::setOXPURL(const std::optional<std::string>& url)\n{\n"
-         "    _currentOXPURL = url.has_value() ? std::optional<std::string>(oo::str::lowercase(*url)) : std::nullopt;\n}\n"),
-        ("            [self setOXPURL:oo::NSStringOrNil(infoURL)];\n", "            setOXPURL(infoURL);\n"),
-        (COPY_URL_OLD, COPY_URL_NEW),
-        # (the list branch is already C++ from step 8's port)
+        # step 10 ported the state to std::optional<std::string>; the methods become members here
+        ("- (void)setOXPURL:(const std::optional<std::string>&)url\n{\n",
+         "void OOOXZManager::setOXPURL(const std::optional<std::string>& url)\n{\n"),
+        ("            [self setOXPURL:infoURL];\n", "            setOXPURL(infoURL);\n"),
+        ("- (void)processCopyUrlKey\n{\n", "void OOOXZManager::processCopyUrlKey()\n{\n"),
 )}
 
 FIX = {

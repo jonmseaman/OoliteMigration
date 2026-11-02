@@ -889,7 +889,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "9dad9cfc384a5e9dfe23695a8af893b2a1277cf2",
+   "merge_tree": "70ffc99b34e85b9f291db273e5c6a3104dc35fbe",
    "n": 8,
    "parent": "series/007-foundation-wave-1",
    "resolutions": [
@@ -1113,7 +1113,7 @@
     "to": "fa9cbc6c24fec4d77881a47e47e7b2591ece94d4",
     "type": "history"
    },
-   "target_tree": "ba137b57e5da91c2277ab4d885928023b37f8c12",
+   "target_tree": "cd7122b813b0d014b9bf69e9fdc7d4b1ee0d851c",
    "temporaries": [],
    "title": "Move Foundation usage to oofnd, part 2",
    "verification": null
@@ -1135,7 +1135,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "03d69b40771ad119452c62f69eea2761d34bd6aa",
+   "merge_tree": "aa7f14925dfdbdc22cc12e1f895a4f73b740d91b",
    "n": 9,
    "parent": "series/008-foundation-wave-2",
    "resolutions": [
@@ -1323,7 +1323,7 @@
     "to": "e0b9e24b22ab4f7373ccf71dbf4d58ac5553c4be",
     "type": "history"
    },
-   "target_tree": "953dc53053f47889f5f33a649081b1b1887f247e",
+   "target_tree": "7f2f7ddbe2d08a57b346511139e7122b0cd69525",
    "temporaries": [],
    "title": "Retire the remaining Foundation selectors and their bridge callers",
    "verification": null
@@ -1347,7 +1347,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "52c67bc975a8782f5e40310af0bcba71087779e5",
+   "merge_tree": "e77df90feb55c597e25b9b9d5ba67bacb710838c",
    "n": 10,
    "parent": "series/009-selector-families",
    "resolutions": [
@@ -1392,7 +1392,7 @@
      "path": "src/Core/OOEquipmentType.h"
     },
     {
-     "how": "hunks",
+     "how": "stored",
      "path": "src/Core/OOFoundation.h"
     },
     {
@@ -1402,6 +1402,14 @@
     {
      "how": "stored",
      "path": "src/Core/OOMaths.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOOXZManager.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOOXZManager.mm"
     },
     {
      "how": "stored",
@@ -1467,7 +1475,7 @@
     "to": "67027c84d11fe03fcf208697938023d05d13f63c",
     "type": "history"
    },
-   "target_tree": "9db1ca81f6c16202ab04f39299cfa916baa745f3",
+   "target_tree": "b1cbce007d9de7fbebc6590661559a3c0922ec65",
    "temporaries": [],
    "title": "Drop gnustep-base, then convert the first classes to C++: maths, leaf utilities, OXP verifier",
    "verification": null
@@ -1491,7 +1499,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "a343ac7cbdfd0cedbb20ac0a0ec8e760e1389c5f",
+   "merge_tree": "6f5b5638f627ca9fd3998470bf95d20f3a047f24",
    "n": 11,
    "parent": "series/010-leaf-conversions",
    "resolutions": [
@@ -1663,7 +1671,7 @@
     "to": "ab5dc6cd728a5b26951c588d3d6e0ef99049009c",
     "type": "history"
    },
-   "target_tree": "c391d0e19a22cb8f5fe15494e69b7f249bab7c4c",
+   "target_tree": "297814d82d6dd0abe9d2951a20556bf0630eb5a3",
    "temporaries": [],
    "title": "Convert scripting, entities, audio and materials classes to C++",
    "verification": null
@@ -1686,7 +1694,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "0cc807554e65a45a0418af5c8cbd60e5c3a8a741",
+   "merge_tree": "f535462866f96f65a329f90137bb1682da5d031c",
    "n": 12,
    "parent": "series/011-module-conversions",
    "resolutions": [
@@ -1762,7 +1770,7 @@
     "to": "0c01939de79a4ac04237390d93dc78437057c5e0",
     "type": "history"
    },
-   "target_tree": "91b9ddaa2dcc2edb95e1fc0c1418dc1cbd6f9f47",
+   "target_tree": "365da4fc3b0f14c100c46771e7da91d62ef110c8",
    "temporaries": [],
    "title": "Convert the large files in slices; delete the first Objective-C facades",
    "verification": null
@@ -1783,7 +1791,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "3808b68ea3c4bc6faa158e73eeca796267bcd981",
+   "merge_tree": "c5b2d878dcbe06cd7b48f84656097d588ffe380e",
    "n": 13,
    "parent": "series/012-first-slices",
    "resolutions": [
@@ -1839,7 +1847,7 @@
     "to": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
     "type": "history"
    },
-   "target_tree": "2d9fda1941b4e8a6d4e3730d8501e49b56af5f3f",
+   "target_tree": "4b993a855f1e2d27b1fe96079b2793265e0019b4",
    "temporaries": [],
    "title": "Convert ShipEntity to C++",
    "verification": null
@@ -1861,7 +1869,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "843e9030e327cdc9958071bcadad4f3af90d61b4",
+   "merge_tree": "a6ad02798eba5006c28dd98da4bc33911c9f8d38",
    "n": 14,
    "parent": "series/013-shipentity-slices",
    "resolutions": [
@@ -1909,7 +1917,7 @@
     "to": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
     "type": "history"
    },
-   "target_tree": "a6685169ea7e2e6f9286cffd14641b5be137047e",
+   "target_tree": "5e24143cb7bb027917a7be7338038a69dfc2d784",
    "temporaries": [],
    "title": "Convert Universe and PlayerEntity to C++",
    "verification": null
@@ -1930,7 +1938,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "ceae3fd261088658d1f5b2ea4aa0f7c8150a3fab",
+   "merge_tree": "7ff3ddf85d60938869a9464b901e45573d74315a",
    "n": 15,
    "parent": "series/014-universe-player-slices",
    "resolutions": [
@@ -2034,7 +2042,7 @@
     "to": "2c2aae1316b5a125038a797c213162ffba389279",
     "type": "history"
    },
-   "target_tree": "daf8cc722ba144904f4f87947193f0879c0364e8",
+   "target_tree": "3a339b1359968f9b893d001ba8d222b80846e7f4",
    "temporaries": [],
    "title": "Delete the Objective-C facades",
    "verification": null
@@ -2055,7 +2063,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "3236c173638b2fff71e1b006458af3cf2fd93621",
+   "merge_tree": "48478229b0c59d60de845854f197ef0449f6d8e7",
    "n": 16,
    "parent": "series/015-facade-deletions",
    "resolutions": [
@@ -2227,7 +2235,7 @@
     "to": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
     "type": "history"
    },
-   "target_tree": "85d8eb1af78352de417d706c34d32bc9b1d1c667",
+   "target_tree": "400e12fa6a071d74174aaba1272708ee82a1f7cf",
    "temporaries": [],
    "title": "Delete the root Entity facade",
    "verification": null
@@ -2249,7 +2257,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "1cfb5480a6798ba2210a9db55890a021b9ae80a6",
+   "merge_tree": "25eee1cfb72071619281562fee0b060af4d61b8c",
    "n": 17,
    "parent": "series/016-entity-facade",
    "resolutions": [
@@ -2561,7 +2569,7 @@
     "to": "af1f220542e4917a23833902e8efc313a8eb463b",
     "type": "history"
    },
-   "target_tree": "37764f8379dcf080e140ffac90545c1a02ff76da",
+   "target_tree": "b17f187a990ed7baf073cecebd1a0abe0ee05c86",
    "temporaries": [],
    "title": "Remove the Objective-C runtime and rename the sources to .cpp",
    "verification": null
@@ -2582,7 +2590,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "d8286cd964591b4f632f6f78be580f52d7c5941e",
+   "merge_tree": "87ee3d64575b220b18357d85ddd3b0c3cf8a7eb6",
    "n": 18,
    "parent": "series/017-objc-runtime-out",
    "resolutions": [],
@@ -2597,7 +2605,7 @@
     "to": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
     "type": "history"
    },
-   "target_tree": "a6e150c3446a0d380545d4e34314f22b161c159d",
+   "target_tree": "f76dd168084d7f0462cd66786c80a2f93bb7fa0b",
    "temporaries": [],
    "title": "Build with GCC as well as Clang",
    "verification": null
@@ -2618,7 +2626,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "cb17930137e59c677222c1d84ce2891c96bb20d7",
+   "merge_tree": "1d6b93290eca41d57cd28637a536ea1a2778bf00",
    "n": 19,
    "parent": "series/018-gcc-build",
    "resolutions": [
@@ -2649,6 +2657,10 @@
     {
      "how": "stored",
      "path": "src/Core/Materials/OOTexture.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOFoundation.h"
     },
     {
      "how": "stored",
@@ -2698,7 +2710,7 @@
     "to": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
     "type": "history"
    },
-   "target_tree": "4dd1e64b837b80e1c929c0604a04ba0a5b30f960",
+   "target_tree": "7b38a1a87ecf3e45a868b8cee7c4c1062683d392",
    "temporaries": [],
    "title": "Port upstream changes #369 to #765 into the C++ code",
    "verification": null

@@ -47,6 +47,12 @@
   "ours": "1b6777852dc6aa1cce78b4e7d06a3dc920760cc8",
   "theirs": "e77076304e0625a709cc82b0a7a858e61506a898"
  },
+ "src/Core/OOFoundation.h": {
+  "base": "2d6b1e9222001c21312f0f910d976cf21a9c6f8c",
+  "deleted": false,
+  "ours": "112c559f0203952d4b60bc5f934c191f4f3992c7",
+  "theirs": "3a6f695865ae9e0a4976a6bc60dbf9d316005580"
+ },
  "src/Core/OOMaths.h": {
   "base": "c68b96b6037f34b716dc993c71c045b091df9a36",
   "deleted": false,
