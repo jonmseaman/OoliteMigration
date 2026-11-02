@@ -345,3 +345,8 @@ game repo only gets local branches.
     file no longer has (the history dropped the Mac branch; step 024 brings it back from #766).
     The stored resolution is ours, the series' file unchanged. Taking theirs' head with ours'
     tail left an unterminated `#if`.
+  - Step 023's first component run (2026-11-02) failed `s6_damaged_ship_flees` ("no ship with
+    role 'police' survived"); the same build passed it three times in a row on its own, and the
+    step's only RNG change (`legacy_random`, `extern "C"` and initialiser order) changes no
+    values. Taken as a flaky scenario: `verify` was re-run, the scenario is unchanged, and no
+    retry was added to the tool. If it fails again, that decision is Jon's, not the tool's.
