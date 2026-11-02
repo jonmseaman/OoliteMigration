@@ -247,3 +247,7 @@ game repo only gets local branches.
     #if/#else; the C++ findBoundingBoxRelativeTo passes the history's _i, _j, _k; the copy-URL port
     uses ::GuiDisplayGen like the file's other uses. Step 19 removes the dark-mode API with the
     history's own port of #744.
+  - Step 15: the history's C++ key checks or bool results bitwise (Clang 23,
+    -Wbitwise-instead-of-logical). checkKeyPress only reads key state, so steps 15-18 use a
+    logical or; step 19 takes the history's own fix (AnyKeyPressed, which evaluates every check).
+    Step 14 drops the import of the +Input header the history deletes there.

@@ -35,6 +35,12 @@
   "ours": "52c563b8d621e64f0d14d545c08f12481d6f4ce3",
   "theirs": "c6002a387dfe4f97ee70d4c2caf54d6cfd351a33"
  },
+ "src/Core/Entities/PlayerEntityControls.cpp": {
+  "base": "8caabb8fe7e28ddf817fa127790acbd2b3af76ed",
+  "deleted": false,
+  "ours": "26e5118ece678b64908617bc0e044c1c6c813217",
+  "theirs": "b55e1d7daf0f3139e0438059f93910e2fc1c49b7"
+ },
  "src/Core/GameController.cpp": {
   "base": "0a0cce243eebacb78170c071ee0a3bef1f6a788b",
   "deleted": false,
@@ -91,7 +97,7 @@
  "src/SDL/MyOpenGLView.cpp": {
   "base": "54c53f2e186fc28c684e3841c0aaa132079a6016",
   "deleted": false,
-  "ours": "0527622d1c0c66ff59e0fafbf8972943b4fc2caa",
+  "ours": "ec185bc694d8251be12cda34d7f7e1a12f86a004",
   "theirs": "954519a46834e07f3280d76622cadb2655b47318"
  },
  "src/SDL/MyOpenGLView.h": {

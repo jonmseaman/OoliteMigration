@@ -25,7 +25,6 @@ MA 02110-1301, USA.
 #include "MyOpenGLView.h"
 #include "oofnd/Process.hpp"
 #include <SDL3/SDL_timer.h>
-
 #include "GameController.h"
 #include "GuiDisplayGen.h"
 #include "OOConstToString.h"
@@ -37,7 +36,7 @@ MA 02110-1301, USA.
 #include "PlayerEntity.h"
 #include "ResourceManager.h"
 #include "Universe.h"
-#include "png.h"
+#import "png.h"
 #include <SDL3/SDL_clipboard.h>
 #include <SDL3/SDL_init.h>
 #include "oofnd/Defaults.hpp"

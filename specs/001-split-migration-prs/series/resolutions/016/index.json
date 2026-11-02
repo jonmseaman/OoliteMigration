@@ -32,7 +32,7 @@
  "src/Core/OOOXZManager.mm": {
   "base": "46027cff87c7f2c87cb55c5c87ad5235be086d00",
   "deleted": false,
-  "ours": "c115c9e84c50a7261fb8cadfb9493868ef4780ae",
+  "ours": "3a8171f85047fb3d776699d1c26360b270b57fe2",
   "theirs": "d3837d611e2c7d1bbb75f1dbcafe526ced33a2ab"
  },
  "src/Core/Scripting/OOJSEngineTimeManagement.mm": {
@@ -74,7 +74,7 @@
  "src/SDL/MyOpenGLView.mm": {
   "base": "83c5a27d1aa3cfce90a824fc1b8975021dae6f94",
   "deleted": false,
-  "ours": "c06655e22e4d8ce26b92726ff7225ab5cae6a1f6",
+  "ours": "8c3528767ff5f0fcb442f9df1f60bc25fc5c0b0f",
   "theirs": "9060b8d220fecc8cc51469c230bbb4b77671ab26"
  }
 }

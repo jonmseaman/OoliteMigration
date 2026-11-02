@@ -1933,7 +1933,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "f562965b7d3088c6ac6e0727acc9faff27184459",
+   "merge_tree": "a62e269132590f7c89c8c23089de23bedbb4618e",
    "n": 14,
    "parent": "series/013-shipentity-slices",
    "resolutions": [
@@ -1968,6 +1968,10 @@
     {
      "how": "stored",
      "path": "src/SDL/MyOpenGLView+Input.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/MyOpenGLView.mm"
     }
    ],
    "size": {
@@ -1981,7 +1985,7 @@
     "to": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
     "type": "history"
    },
-   "target_tree": "f12f3dc94cf6a65b5f74f8825a6079babf7f8574",
+   "target_tree": "5137d1d52b80fdc20a523e05ef000b7ce16eb89f",
    "temporaries": [],
    "title": "Convert Universe and PlayerEntity to C++",
    "verification": null
@@ -2002,7 +2006,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "4509316e11de8d7d243f88301327ec1a5d578475",
+   "merge_tree": "4eb3514a28e2ad61e0da922bdf80619bc89f02c6",
    "n": 15,
    "parent": "series/014-universe-player-slices",
    "resolutions": [
@@ -2051,7 +2055,7 @@
      "path": "src/Core/OOOXZManager+ObjCBridge.mm"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/OOOXZManager.mm"
     },
     {
@@ -2106,7 +2110,7 @@
     "to": "2c2aae1316b5a125038a797c213162ffba389279",
     "type": "history"
    },
-   "target_tree": "7565ad9873a7ec8690e7ab923616b821943825e7",
+   "target_tree": "fe5f67697b090688b6c7f9265027c0958b651176",
    "temporaries": [],
    "title": "Delete the Objective-C facades",
    "verification": null
@@ -2127,7 +2131,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "2011f1a5cdf82b5aeb42f958a21db27f49a9922f",
+   "merge_tree": "9344124f4c1127736eb7e41ec5056c5717c0a1db",
    "n": 16,
    "parent": "series/015-facade-deletions",
    "resolutions": [
@@ -2299,7 +2303,7 @@
     "to": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
     "type": "history"
    },
-   "target_tree": "d823b38f75b1747e1ecf806e781ce5eee74f209c",
+   "target_tree": "2c6bcc9b2af7d78623fb51ece9dfcba48a19f7fc",
    "temporaries": [],
    "title": "Delete the root Entity facade",
    "verification": null
@@ -2321,7 +2325,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "3f78b3c677f4e432dba4487350c6427f99cd91e6",
+   "merge_tree": "ee29838370ca22c337a2c5100944b0f71c7cd877",
    "n": 17,
    "parent": "series/016-entity-facade",
    "resolutions": [
@@ -2578,7 +2582,7 @@
      "path": "src/SDL/MyOpenGLView+Input.cpp"
     },
     {
-     "how": "stored",
+     "how": "hunks",
      "path": "src/SDL/MyOpenGLView.cpp"
     },
     {
@@ -2613,7 +2617,7 @@
     "to": "af1f220542e4917a23833902e8efc313a8eb463b",
     "type": "history"
    },
-   "target_tree": "ea3d420aa285ebb6a21c5aa387c4f00ddc5c2291",
+   "target_tree": "deb4f56862177fc98e0f392a31a7491c97315f6e",
    "temporaries": [],
    "title": "Remove the Objective-C runtime and rename the sources to .cpp",
    "verification": null
@@ -2634,7 +2638,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "93804743e20bbd0a69b3413601fa14eba6ef62a3",
+   "merge_tree": "1c6ecddd5753670fb3ca8c82155604a3daabb2f5",
    "n": 18,
    "parent": "series/017-objc-runtime-out",
    "resolutions": [],
@@ -2649,7 +2653,7 @@
     "to": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
     "type": "history"
    },
-   "target_tree": "a22dbeb4fbc5561d0b7aa48d6b46bdaa33153f21",
+   "target_tree": "d5564db1513f5947d10cdba89e5caf49ef01ba18",
    "temporaries": [],
    "title": "Build with GCC as well as Clang",
    "verification": null
@@ -2670,7 +2674,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "078423635761fe1b59f353d8f35c5ebb9435e399",
+   "merge_tree": "2e6af2fa43d9924f9e1753070a70b5aa4b1a1992",
    "n": 19,
    "parent": "series/018-gcc-build",
    "resolutions": [
@@ -2693,6 +2697,10 @@
     {
      "how": "stored",
      "path": "src/Core/Entities/PlayerEntity.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Entities/PlayerEntityControls.cpp"
     },
     {
      "how": "stored",
@@ -2754,7 +2762,7 @@
     "to": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
     "type": "history"
    },
-   "target_tree": "4d9409bee5043f543531bdf6d42e29ef6f80ed0f",
+   "target_tree": "2f67d1139a372753e2351341dfbdb7836e9f42a6",
    "temporaries": [],
    "title": "Port upstream changes #369 to #765 into the C++ code",
    "verification": null

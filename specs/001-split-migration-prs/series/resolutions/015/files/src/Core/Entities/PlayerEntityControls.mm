@@ -2319,7 +2319,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
                 timeLastKeyPress = script_time;
             }
         }
-        leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) | checkKeyPress(n_key_gui_arrow_left) | checkKeyPress(n_key_gui_page_down) | checkKeyPress(n_key_gui_page_up);
+        leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_page_down) || checkKeyPress(n_key_gui_page_up);
 
         if (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick]) {
             if ([gameView isDown:gvMouseDoubleClick]) {
@@ -2359,7 +2359,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
                 timeLastKeyPress = script_time;
             }
         }
-        leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) | checkKeyPress(n_key_gui_arrow_left) | checkKeyPress(n_key_gui_page_down) | checkKeyPress(n_key_gui_page_up);
+        leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_page_down) || checkKeyPress(n_key_gui_page_up);
         if (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick]) // 'enter'
         {
             if ([gameView isDown:gvMouseDoubleClick]) {
@@ -2452,7 +2452,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
                 timeLastKeyPress = script_time;
             }
         }
-        leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) | checkKeyPress(n_key_gui_arrow_left) | checkKeyPress(n_key_gui_page_down) | checkKeyPress(n_key_gui_page_up);
+        leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_page_down) || checkKeyPress(n_key_gui_page_up);
 
         if (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick]) {
             if ([gameView isDown:gvMouseDoubleClick]) {
@@ -2499,7 +2499,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
                 timeLastKeyPress = script_time;
             }
         }
-        leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) | checkKeyPress(n_key_gui_arrow_left) | checkKeyPress(n_key_gui_page_down) | checkKeyPress(n_key_gui_page_up);
+        leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_page_down) || checkKeyPress(n_key_gui_page_up);
 
         if (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick]) {
             if ([gameView isDown:gvMouseDoubleClick]) {
@@ -2543,7 +2543,7 @@ void PlayerEntity::pollGuiArrowKeyControls(double delta_t)
                 timeLastKeyPress = script_time;
             }
         }
-        leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) | checkKeyPress(n_key_gui_arrow_left) | checkKeyPress(n_key_gui_page_down) | checkKeyPress(n_key_gui_page_up);
+        leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_page_down) || checkKeyPress(n_key_gui_page_up);
 
         if (checkKeyPress(n_key_gui_select)) // 'enter' NOT double-click
         {
@@ -4284,7 +4284,7 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
                 }
             }
         }
-        pageUpDownKeyPressed = checkKeyPress(n_key_gui_page_down) | checkKeyPress(n_key_gui_page_up);
+        pageUpDownKeyPressed = checkKeyPress(n_key_gui_page_down) || checkKeyPress(n_key_gui_page_up);
 
         if (!selectPressed) {
             if (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick]) // enter
@@ -4325,7 +4325,7 @@ void PlayerEntity::pollDemoControls(double /*delta_t*/)
                         oxzmanager->processOptionsNext();
                     }
                 }
-                leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) | checkKeyPress(n_key_gui_arrow_left) | checkKeyPress(n_key_gui_page_down) | checkKeyPress(n_key_gui_page_up);
+                leftRightKeyPressed = checkKeyPress(n_key_gui_arrow_right) || checkKeyPress(n_key_gui_arrow_left) || checkKeyPress(n_key_gui_page_down) || checkKeyPress(n_key_gui_page_up);
 
                 if (!selectPressed) {
                     if (checkKeyPress(n_key_gui_select) || [gameView isDown:gvMouseDoubleClick]) // enter

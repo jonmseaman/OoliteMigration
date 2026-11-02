@@ -33,5 +33,10 @@
   "deleted": false,
   "ours": "f5c8e937e477e4d6673005f98bebacaf35548bee",
   "theirs": "9866eca3fdf20b4b26dd238e6651e6c6be5d77fc"
+ },
+ "src/SDL/MyOpenGLView.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "b471a64695f2fe5853a1657a179c4f7005a9928b"
  }
 }

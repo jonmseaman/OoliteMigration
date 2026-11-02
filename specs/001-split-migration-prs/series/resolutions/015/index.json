@@ -41,6 +41,12 @@
   "ours": "7a54ad84ef587f1a68c9852619021f934d961566",
   "theirs": null
  },
+ "src/Core/OOOXZManager.mm": {
+  "base": "ef8295c89c0cb1c3c6288fec9b63f3acc1dbf9dc",
+  "deleted": false,
+  "ours": "1f749d14fe85cb126e210606f5ea5fff5a75be74",
+  "theirs": "46027cff87c7f2c87cb55c5c87ad5235be086d00"
+ },
  "src/Core/OOVector.h": {
   "base": "be7fed239e3fe8fa2e29ba2fe2405ace6a27cf5a",
   "deleted": false,

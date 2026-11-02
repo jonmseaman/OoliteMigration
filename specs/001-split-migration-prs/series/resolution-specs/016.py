@@ -21,7 +21,7 @@ _POST_016 = {"src/Core/OOOXZManager.mm": [
     ("        ::GuiDisplayGen* gui = [UNIVERSE gui];\n\n        if (_interfaceShowingOXZDetail) {\n"
      "            if (_currentOXPURL.has_value())\n"
      "                [[UNIVERSE gameView] cxx_stringToClipboard:*_currentOXPURL];\n"
-     "        } else {\n            OOGUIRow selection = [gui selectedRow];\n",
+     "        } else {\n            OOGUIRow selection = (gui != nullptr ? gui->getSelectedRow() : 0);\n",
      "        ::GuiDisplayGen* gui = (UNIVERSE != nullptr ? UNIVERSE->getGui() : nullptr);\n\n"
      "        if (_interfaceShowingOXZDetail) {\n"
      "            if (_currentOXPURL.has_value() && UNIVERSE != nullptr && UNIVERSE->getGameView() != nullptr)\n"

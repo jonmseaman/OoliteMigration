@@ -62,6 +62,28 @@ POST = dict(globals().get("POST", {}))
 POST["src/Core/Entities/PlayerEntity.mm"] = list(POST.get("src/Core/Entities/PlayerEntity.mm", [])) + [(
     "_cxxPlayer->_lastsaveName.has_value() ? oo::PList(*_cxxPlayer->_lastsaveName)",
     "_lastsaveName.has_value() ? oo::PList(*_lastsaveName)")]
+# The history's C++ key checks here combine bool results with a bitwise or, which Clang 23 reports
+# (-Wbitwise-instead-of-logical). checkKeyPress only reads the key state, so the logical or the
+# history writes by step 19 gives the same result.
+_KEYS_OLD = ("checkKeyPress(n_key_gui_arrow_right) | checkKeyPress(n_key_gui_arrow_left) | "
+             "checkKeyPress(n_key_gui_page_down) | checkKeyPress(n_key_gui_page_up);")
+_PAGE_OLD = "pageUpDownKeyPressed = checkKeyPress(n_key_gui_page_down) | checkKeyPress(n_key_gui_page_up);"
+
+
+def _logical_or(text):
+    assert text.count(_KEYS_OLD) == 6 and text.count(_PAGE_OLD) == 1, (text.count(_KEYS_OLD), text.count(_PAGE_OLD))
+    return text.replace(_KEYS_OLD, _KEYS_OLD.replace(") | ", ") || ")).replace(_PAGE_OLD, _PAGE_OLD.replace(") | ", ") || "))
+
+
+POST["src/Core/Entities/PlayerEntityControls.mm"] = list(POST.get("src/Core/Entities/PlayerEntityControls.mm", [])) + [_logical_or]
+# the copy-URL port (step 12): the GUI is the C++ class from here, as at the file's other uses
+try:
+    CHANGES
+except NameError:
+    CHANGES = {}
+CHANGES["src/Core/OOOXZManager.mm"] = [(
+    "        } else {\n            OOGUIRow selection = [gui selectedRow];\n",
+    "        } else {\n            OOGUIRow selection = (gui != nullptr ? gui->getSelectedRow() : 0);\n")]
 RES["src/Core/Entities/ShipEntity.mm"] = ["theirs"]  # its includes cover std::vector
 # the history deletes the vector bridge include here; its closing include-guard #endif goes too, since
 # upstream's #748 header uses #pragma once

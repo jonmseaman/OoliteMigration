@@ -46,3 +46,6 @@ CHANGES["src/Core/Scripting/OOJSShipGroup.h"] = [(
 CHANGES["src/meson.build"] = [(_THREADS_019 + "# Bead oo-bipqn: ", "# Bead oo-bipqn: ")]
 # the history separates winsock2.h from windows.h here, with its comment (step 10 did it first)
 RES["src/Core/OOFoundation.h"] = ["theirs"]
+
+# step 15's logical-or key checks give way to the history's own fix of the same warning
+RES["src/Core/Entities/PlayerEntityControls.cpp"] = ["theirs"] * 7

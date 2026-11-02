@@ -52,6 +52,9 @@ try:
     CHANGES
 except NameError:
     CHANGES = {}
+# the history folds the +Input header into the view class here (deleted above); upstream's include
+# block still imported it
+CHANGES["src/SDL/MyOpenGLView.mm"] = [('#import "MyOpenGLView+Input.h"\n', "")]
 CHANGES["src/Core/Entities/PlayerEntity.mm"] = [(
     'oo::Defaults::standard().setObject("last_savename", _lastsaveName.has_value() ? oo::PList(*_lastsaveName) : oo::PList());\n',
     'oo::Defaults::standard().setObject("last_savename", _cxxPlayer->_lastsaveName.has_value() ? '

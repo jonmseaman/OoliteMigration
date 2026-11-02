@@ -57,7 +57,11 @@ for path, specs in RES.items():
         pos = mt.end()
     out.append(text[pos:])
     result = "".join(out)
-    for old, new in ns.get("POST", {}).get(path, []):  # replacements on the resolved file
+    for entry in ns.get("POST", {}).get(path, []):  # replacements (or fn(text) -> text) on the resolved file
+        if callable(entry):
+            result = entry(result)
+            continue
+        old, new = entry
         if result.count(old) != 1:
             raise SystemExit(f"{path}: POST pattern found {result.count(old)} times: {old[:60]!r}")
         result = result.replace(old, new)
