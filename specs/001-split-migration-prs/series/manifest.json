@@ -3091,7 +3091,7 @@
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "ea32de739e7e8e5c3032ec7cc051e7dea883ca33",
+   "merge_tree": "c9c95aa42687f8ea148fece3c6c5b3ff4ef287c9",
    "n": 20,
    "parent": "series/019-upstream-9ee8ff22f-port",
    "resolutions": [
@@ -3105,11 +3105,31 @@
     },
     {
      "how": "stored",
+     "path": "src/Core/OOHPVector.cpp"
+    },
+    {
+     "how": "stored",
      "path": "src/Core/OOHPVector.h"
     },
     {
      "how": "stored",
+     "path": "src/Core/OOMaths.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOMatrix.cpp"
+    },
+    {
+     "how": "stored",
      "path": "src/Core/OOMatrix.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOPointMaths.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOQuaternion.cpp"
     },
     {
      "how": "stored",
@@ -3118,6 +3138,10 @@
     {
      "how": "stored",
      "path": "src/Core/OOTriangle.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOVector.cpp"
     },
     {
      "how": "stored",
@@ -3131,7 +3155,7 @@
    "size": {
     "deleted_files": 0,
     "other": 9,
-    "src": 104,
+    "src": 549,
     "tests": 386
    },
    "source": {
@@ -3144,27 +3168,27 @@
     ],
     "type": "develop"
    },
-   "target_tree": "867b8a4f64dd0d21aba73df71ba38f6d6f6a328c",
+   "target_tree": "133f849bac98ecbc006fbe3096a94bfee993b43e",
    "temporaries": [],
    "title": "Small fixes after the migration",
    "verification": {
     "checks": {
-     "build_clang": "pass",
+     "build_clang": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\020-build_clang.log)",
      "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
      "clang_format": "pass",
-     "component": "pass: s6_damaged_ship_flees",
+     "component": "fail: not run, the build failed",
      "no_new_spidermonkey_or_gnustep": "pass",
      "no_new_suppressions": "pass",
-     "smoke": "pass",
+     "smoke": "fail: not run, the build failed",
      "tests_untouched": "pass",
-     "unit": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\020-unit.log)",
-     "warnings_clang": "pass: 0 warnings"
+     "unit": "fail: not run, the build failed",
+     "warnings_clang": "n/a: the build failed"
     },
     "clean": false,
-    "commit": "b1b58353fef2445df92e77771662c5b2fd3eb926",
+    "commit": "d346fc4c443f7d801a281c8140a928f5df8498fa",
     "date": "2026-11-02",
     "era": "cxx",
-    "tree": "2944c826b889a3ad8b38063a7ee04efe165c4cb7"
+    "tree": "867b8a4f64dd0d21aba73df71ba38f6d6f6a328c"
    }
   },
   {
@@ -3175,7 +3199,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "c7fbd1f48467871731b9c255f4b606408bd56e34",
+   "merge_tree": "962f14a5237174fcfd5c5e19d6297cd81a42e74f",
    "n": 21,
    "parent": "series/020-develop-fixes",
    "resolutions": [
@@ -3208,14 +3232,6 @@
      "path": "src/Core/OOJoystickProfile.h"
     },
     {
-     "how": "stored",
-     "path": "src/Core/OOMaths.h"
-    },
-    {
-     "how": "transplant",
-     "path": "src/Core/OOMatrix.cpp"
-    },
-    {
      "how": "transplant",
      "path": "src/Core/OOOpenGLExtensionManager.h"
     },
@@ -3246,7 +3262,7 @@
     ],
     "type": "develop"
    },
-   "target_tree": "811e07ef9d560d351c2eb550586c48e4952d3890",
+   "target_tree": "9144f1b6013f2925986b1ab3788c41f0736c40cf",
    "temporaries": [],
    "title": "Make comments describe the code; use #pragma once",
    "verification": null
@@ -3259,7 +3275,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "54392c0c7b8dffddc9887ba8f69be8a5b52c6227",
+   "merge_tree": "895a0718f631d17ff36ac552694ec1f6e8b7632a",
    "n": 22,
    "parent": "series/021-source-hygiene",
    "resolutions": [],
@@ -3278,7 +3294,7 @@
     ],
     "type": "develop"
    },
-   "target_tree": "13d529d78c1623cd5559f4c0900af132335382b4",
+   "target_tree": "fac3b5e531c2f0bba69db04d0271a932e335306a",
    "temporaries": [],
    "title": "Tests and developer tooling",
    "verification": null
@@ -3291,7 +3307,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "740d692654c4267dab501da85310e4f42bb75781",
+   "merge_tree": "a85dadbf7bbd6658cdfe01ecdbc1bb450e867f6f",
    "n": 23,
    "parent": "series/022-tests-and-tooling",
    "resolutions": [
@@ -3310,10 +3326,6 @@
     {
      "how": "stored",
      "path": "src/Core/OOFoundation.h"
-    },
-    {
-     "how": "auto",
-     "path": "src/Core/OOMaths.h"
     },
     {
      "how": "stored",
@@ -3357,7 +3369,7 @@
     ],
     "type": "develop"
    },
-   "target_tree": "811013b8be583c81b2530e8905c739b891941f81",
+   "target_tree": "6ea7bc40f1f176901d0279f074cb0d917254a265",
    "temporaries": [],
    "title": "Compile the remaining C sources as C++; upgrade QuickJS-ng",
    "verification": null
@@ -3370,7 +3382,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "67e722dfdbf49e3dd7024c437370c1fc305c5ce7",
+   "merge_tree": "37cc5128be45608619d361b86c737109947081a2",
    "n": 24,
    "parent": "series/023-c-as-cxx",
    "resolutions": [
@@ -3435,14 +3447,6 @@
      "path": "src/Core/OOFullScreenController.h"
     },
     {
-     "how": "converge",
-     "path": "src/Core/OOHPVector.cpp"
-    },
-    {
-     "how": "hunks",
-     "path": "src/Core/OOHPVector.cpp"
-    },
-    {
      "how": "auto",
      "path": "src/Core/OOJoystickProfile.h"
     },
@@ -3457,14 +3461,6 @@
     {
      "how": "transplant",
      "path": "src/Core/OOMacroOpenGL.h"
-    },
-    {
-     "how": "prefer-theirs",
-     "path": "src/Core/OOMaths.h"
-    },
-    {
-     "how": "prefer-theirs",
-     "path": "src/Core/OOMatrix.cpp"
     },
     {
      "how": "prefer-theirs",
@@ -3485,10 +3481,6 @@
     {
      "how": "prefer-theirs",
      "path": "src/Core/OOSystemDescriptionManager.cpp"
-    },
-    {
-     "how": "prefer-theirs",
-     "path": "src/Core/OOVector.cpp"
     },
     {
      "how": "hunks",

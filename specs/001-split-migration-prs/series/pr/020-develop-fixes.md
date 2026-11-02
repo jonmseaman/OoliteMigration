@@ -2,7 +2,7 @@
 
 **Series:** step 20 of 25 · base `series/019-upstream-9ee8ff22f-port` · next `series/021-source-hygiene` **(gen)**
 
-**From:** `develop` commits `935aedb20`, `5346a1800`, `66567dc26`, `736572b67`, `c971f1641` · 104 src, 386 tests, 9 other changed lines; 0 lines in deleted files **(gen)**
+**From:** `develop` commits `935aedb20`, `5346a1800`, `66567dc26`, `736572b67`, `c971f1641` · 549 src, 386 tests, 9 other changed lines; 0 lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -19,7 +19,8 @@ the history's last state.
   `OOBoundingBox.h`, `OOTriangle.h` and `OOVoxel.h` include the maths headers they depend on;
   `EntityHelpers.h` includes `Entity.h`; `OOPointMaths.h` includes `OOFoundationTypes.h`.
   `OOMaths.h` keeps the `INCLUDED_OOMATHS_h` marker the maths sub-headers check, so they are
-  still reachable only through it. The maths headers take the fork's form here, with the guard
+  still reachable only through it. The maths family (`OOMaths.h`, its sub-headers and their sources) takes the fork's form
+  here, with the guard
   that says so (`#error Do not include … directly; include OOMaths.h`), in place of the
   guard-free form upstream's #748 gave them, which needs its includer to define `OOScalar` first.
 - `tests/check_headers_standalone.py` (`meson test --suite headers`) compiles every header the
@@ -50,19 +51,19 @@ upstream's layout where the change merged as it stands; a few headers carry the 
 
 ## Verified **(gen)**
 
-Windows x64, `b1b58353fe`, 2026-11-02.
+Windows x64, `d346fc4c44`, 2026-11-02.
 
 | Check | Result |
 |---|---|
-| build_clang | pass |
+| build_clang | fail: exit 1 (see .agent-tmp\series-verify-logs\020-build_clang.log) |
 | build_gcc | n/a: does not build with GCC yet (exit 1); the parent does not either |
 | clang_format | pass |
-| component | pass: s6_damaged_ship_flees |
+| component | fail: not run, the build failed |
 | no_new_spidermonkey_or_gnustep | pass |
 | no_new_suppressions | pass |
-| smoke | pass |
+| smoke | fail: not run, the build failed |
 | tests_untouched | pass |
-| unit | fail: exit 1 (see .agent-tmp\series-verify-logs\020-unit.log) |
-| warnings_clang | pass: 0 warnings |
+| unit | fail: not run, the build failed |
+| warnings_clang | n/a: the build failed |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

@@ -11,7 +11,19 @@
   "ours": "50d3c459aed537ff001779e680e6538f4db8c599",
   "theirs": "443ffa707b6b53a4273bf77ca83a43dcb4b6a34f"
  },
+ "src/Core/OOHPVector.cpp": {
+  "deleted": false,
+  "extra": true
+ },
  "src/Core/OOHPVector.h": {
+  "deleted": false,
+  "extra": true
+ },
+ "src/Core/OOMaths.h": {
+  "deleted": false,
+  "extra": true
+ },
+ "src/Core/OOMatrix.cpp": {
   "deleted": false,
   "extra": true
  },
@@ -20,6 +32,14 @@
   "deleted": false,
   "ours": "d02759821c47f4c5839a888fdd278040b98870ea",
   "theirs": "b769dcb92739566f6d4c6eb60b8488fb34c882ec"
+ },
+ "src/Core/OOPointMaths.h": {
+  "deleted": false,
+  "extra": true
+ },
+ "src/Core/OOQuaternion.cpp": {
+  "deleted": false,
+  "extra": true
  },
  "src/Core/OOQuaternion.h": {
   "base": "31a1f0f4717498c365902286e48b8d03f8058c82",
@@ -32,6 +52,10 @@
   "deleted": false,
   "ours": "fbd6eb7ca9d7631c36d8c54bd2ac4ca3f2fc9ea4",
   "theirs": "c1f4c73a4fff539b4a8d8f62f3b0cd92bac4c5c7"
+ },
+ "src/Core/OOVector.cpp": {
+  "deleted": false,
+  "extra": true
  },
  "src/Core/OOVector.h": {
   "deleted": false,

@@ -338,4 +338,6 @@ game repo only gets local branches.
     output byte for byte.
   - Step 020's unit run: develop's header check (736572b67) needs the maths headers' umbrella
     guard, which the history had and upstream's #748 form (taken by the earlier steps) does not.
-    Step 020 takes develop's text of the eight maths headers, as stored resolutions of 736572b67.
+    Step 020 takes develop's text of the maths family (the eight headers, which need develop's
+    `OOMaths.h` switches, and `OOMaths.h`, `OOPointMaths.h` and the vector, matrix and quaternion
+    sources), as stored resolutions of 736572b67.
