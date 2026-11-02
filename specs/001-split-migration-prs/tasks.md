@@ -304,7 +304,7 @@ and builds there with Clang.
   (`git branch -m`), description files and resolution directories so that NNN = `n`. Rewrite the
   manifest and reset Git Town lineage with `git town set-parent` for every moved branch. Add a test
   with the fixture. Accept: `python -m unittest tools.series.tests.test_renumber` exits 0.
-- [ ] T031 [US5] Generate `specs/001-split-migration-prs/series/HANDOVER.md` from the manifest
+- [X] T031 [US5] Generate `specs/001-split-migration-prs/series/HANDOVER.md` from the manifest
   (`series.py describe --handover`). It contains the anchors, the exclusions, the temporary-code
   ledger, and per step: branch, base, title, size and verification. It then gives Jon's commands,
   following quickstart §5: the push with Git for Windows git

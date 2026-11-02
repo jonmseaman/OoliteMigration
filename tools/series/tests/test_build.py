@@ -62,6 +62,29 @@ class DescriptionCheckTest(unittest.TestCase):
         self.assertTrue(series.check_descriptions({}, self.step)[0].startswith("rule 8"))
 
 
+class HandoverTest(unittest.TestCase):
+    M = {"anchors": {"upstream_base": "49a5eb9fc", "develop_target": "3aa8d65e8",
+                     "format": {"clang_format_version": "22.1.8", "style_file_from": "49a5eb9fc"}},
+         "exclusions": [{"path_glob": ".zed/**", "reason": "editor settings"}], "ledger": [],
+         "steps": [{"n": 1, "branch": "series/001-a", "parent": "series/000-upstream-base", "title": "Fix the game's seed",
+                    "description": "series/pr/001-a.md", "size": {"src": 11, "tests": 0, "other": 0},
+                    "verification": {"date": "2026-11-02", "checks": {"build_clang": "pass", "unit": "n/a: none"}}},
+                   {"n": 2, "branch": "series/002-b", "parent": "series/001-a", "title": "B",
+                    "description": "series/pr/002-b.md", "size": None, "verification": None}]}
+
+    def test_commands_are_complete_and_quoted(self):
+        text = series.render_handover(self.M)
+        self.assertNotRegex(text, r"<[a-z-]+>|…")
+        self.assertIn("GIT_TERMINAL_PROMPT=0 /mingw64/bin/git -C oolite-dev push origin "
+                      "series/000-upstream-base series/001-a series/002-b", text)
+        self.assertIn("--base series/001-a --head series/002-b --title 'B' "
+                      "--body-file specs/001-split-migration-prs/series/pr/002-b.md", text)
+        self.assertIn("--head jonmseaman:series/001-a --title 'Fix the game'\\''s seed'", text)
+        self.assertIn("| 1 | `series/001-a` | `series/000-upstream-base` | Fix the game's seed | 11 / 0 / 0 | "
+                      "1 pass, 1 n/a (2026-11-02) |", text)
+        self.assertIn("| not verified |", text)
+
+
 class FinalTreeTest(unittest.TestCase):
     """Rule 7: the last step is develop_target with the exclusions applied, and each has a reason."""
 
