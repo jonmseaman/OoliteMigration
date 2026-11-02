@@ -245,13 +245,17 @@ UPSTREAM_745 = build_table([
 
 # Upstream #737 renamed OOCocoa.h to OOFoundation.h.
 INCLUDE_RENAMES = (('"OOCocoa.h"', '"OOFoundation.h"'), ("<OOCocoa.h>", "<OOFoundation.h>"))
-TRANSFORM_VERSION = "upstream-745-737-v1"
+TRANSFORM_VERSION = "upstream-745-737-v2"
+OBJC_SOURCES = (".h", ".m", ".mm")
+C_SOURCES = OBJC_SOURCES + (".c", ".cc", ".cpp", ".hpp")
 
 
 def upstream_renames(path, text):
-    """The history snapshot transform: upstream's mechanical renames, for Objective-C sources."""
-    if not path.endswith((".h", ".m", ".mm")):
+    """The history snapshot transform: upstream's mechanical renames. The header rename (#737) reaches
+    every C-family source, since the history's sources become C++ (step 17); the selector renames
+    (#745) are Objective-C only."""
+    if not path.endswith(C_SOURCES):
         return text
     for old, new in INCLUDE_RENAMES:
         text = text.replace(old, new)
-    return rename_selectors(text, UPSTREAM_745)
+    return rename_selectors(text, UPSTREAM_745) if path.endswith(OBJC_SOURCES) else text

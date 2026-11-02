@@ -87,7 +87,7 @@
   "base": "61e61c33ceee1c2bf2f74b925f4d25cbc678db31",
   "deleted": false,
   "ours": "8ff20748e32e349f8740bb4acaccaa7af36216ad",
-  "theirs": "76485f3d9bd6a639bf2d6c2fa53c213a884cb634"
+  "theirs": "64af23c3a649259b674fbf12cfde9935313949b1"
  },
  "src/Core/Materials/OOConcreteTexture.cpp": {
   "base": "b15d7f1f62b8a8b11916b742c5f8030ad8a11865",
@@ -117,7 +117,7 @@
   "base": null,
   "deleted": true,
   "ours": null,
-  "theirs": "d5c75c1a0e2bb3432a2e75e358ba218ccbb50f22"
+  "theirs": "25c90a8152567bbf00e8bd8d60ef36d6ec598e10"
  },
  "src/Core/OOFoundation.cpp": {
   "deleted": false,
@@ -132,7 +132,7 @@
  "src/Core/OOFoundation.mm": {
   "base": null,
   "deleted": true,
-  "ours": "d5c75c1a0e2bb3432a2e75e358ba218ccbb50f22",
+  "ours": "25c90a8152567bbf00e8bd8d60ef36d6ec598e10",
   "theirs": null
  },
  "src/Core/OOHPVector.h": {
@@ -362,12 +362,6 @@
   "deleted": false,
   "ours": "9109842ff8577e21537e9fcd75c7f1f5e4bcd884",
   "theirs": "4be81b3031173de38e0fda08fc5e65aee6db76e0"
- },
- "src/SDL/MyOpenGLView.cpp": {
-  "base": "9060b8d220fecc8cc51469c230bbb4b77671ab26",
-  "deleted": false,
-  "ours": "1aa5a3c2b667a2e52e5097d9f44d4e99103e1107",
-  "theirs": "54c53f2e186fc28c684e3841c0aaa132079a6016"
  },
  "src/SDL/MyOpenGLView.h": {
   "deleted": false,

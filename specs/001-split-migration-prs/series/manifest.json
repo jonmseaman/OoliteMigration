@@ -2131,7 +2131,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "3bc7a38a81372239e0523ea815faac541d1dfc53",
+   "merge_tree": "4191fa81826d4067aa5de1448a1ad895947caa73",
    "n": 16,
    "parent": "series/015-facade-deletions",
    "resolutions": [
@@ -2303,7 +2303,7 @@
     "to": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
     "type": "history"
    },
-   "target_tree": "dae807ad51db6a5aec94ecdcc2f78a74542ce180",
+   "target_tree": "d418116cf21e09dcae99be7ed8aa632430e422a3",
    "temporaries": [],
    "title": "Delete the root Entity facade",
    "verification": null
@@ -2325,7 +2325,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "16f458e11cb1172c437e0f8b4ab6a49ce5cf12e0",
+   "merge_tree": "e2355654bca33a27f44f51b95c19c82cfc24663b",
    "n": 17,
    "parent": "series/016-entity-facade",
    "resolutions": [
@@ -2617,7 +2617,7 @@
     "to": "af1f220542e4917a23833902e8efc313a8eb463b",
     "type": "history"
    },
-   "target_tree": "92759d72c9a2a4a856fbcd046298e46416c72843",
+   "target_tree": "3a43ad9bb3bbb0ab2d5decfea937fcf6383720e1",
    "temporaries": [],
    "title": "Remove the Objective-C runtime and rename the sources to .cpp",
    "verification": null
@@ -2638,7 +2638,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "f78d8a4a8ed0fdad90870fba0a61f5ffe67ad2cf",
+   "merge_tree": "50ef95cc2c748bc56c5b7a1fe81fb48cc3304090",
    "n": 18,
    "parent": "series/017-objc-runtime-out",
    "resolutions": [],
@@ -2653,7 +2653,7 @@
     "to": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
     "type": "history"
    },
-   "target_tree": "09767071179f1cb0cbfd9bafb753e25c4670d220",
+   "target_tree": "b32b54df22a9bae43b043a0772f7823bbe899b38",
    "temporaries": [],
    "title": "Build with GCC as well as Clang",
    "verification": null

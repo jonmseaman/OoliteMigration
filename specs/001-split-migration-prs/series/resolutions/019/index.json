@@ -97,7 +97,7 @@
  "src/SDL/MyOpenGLView.cpp": {
   "base": "54c53f2e186fc28c684e3841c0aaa132079a6016",
   "deleted": false,
-  "ours": "ec185bc694d8251be12cda34d7f7e1a12f86a004",
+  "ours": "484c622495b8e051e13a655c3b552d9d7b3a1a44",
   "theirs": "954519a46834e07f3280d76622cadb2655b47318"
  },
  "src/SDL/MyOpenGLView.h": {

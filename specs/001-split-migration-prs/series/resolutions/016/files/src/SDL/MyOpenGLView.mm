@@ -932,7 +932,7 @@ void MyOpenGLView::stringToClipboard(const std::string& stringToCopy)
 }
 
 #if OOLITE_WINDOWS
-void cxx::MyOpenGLView::refreshDarKOrLightMode()
+void MyOpenGLView::refreshDarKOrLightMode()
 {
     int shouldSetDarkMode = isDarkModeOn();
     DwmSetWindowAttribute(windowHandle, DWMWA_USE_IMMERSIVE_DARK_MODE, &shouldSetDarkMode, sizeof(shouldSetDarkMode));

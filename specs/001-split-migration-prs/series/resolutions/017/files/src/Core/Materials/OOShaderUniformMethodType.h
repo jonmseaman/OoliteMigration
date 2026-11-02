@@ -34,7 +34,6 @@ SOFTWARE.
 
 #if OO_SHADERS || defined(OO_DEBUG_MONITOR_ENABLED)
 
-#include "OOHPVector.h"
 #include "OOMaths.h"
 #include <string>
 

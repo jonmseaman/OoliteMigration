@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 
 #pragma once
 
+#include "OOEntityHold.h"
 #include "OOFoundation.h"
 #include "ooscript/JSEngine.hpp"
 #include <vector>

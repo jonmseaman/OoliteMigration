@@ -37,7 +37,7 @@ def _sdl_includes_017(ours, theirs):
     return theirs + '#include "png.h"\n#include <SDL3/SDL_clipboard.h>\n#include <SDL3/SDL_init.h>\n'
 
 
-RES["src/SDL/MyOpenGLView.cpp"] = [_sdl_includes_017]
+del RES["src/SDL/MyOpenGLView.cpp"]  # (the automatic merge keeps upstream's png and SDL headers)
 
 
 # OOMaths.h: the history changes its GL-include condition here (no Objective-C units remain); step 10
@@ -62,10 +62,27 @@ RENAMES = list(globals().get("RENAMES", [])) + [
      ["src", ":(exclude)src/SDL/EXRSnapshotSupport"]),
     # upstream's #748 imports in headers the history makes C++ here; they forward-declare the class,
     # as the history's own port of #748 (step 19) leaves them
-    (r'(?m)^#import "(?:OOEquipmentType|PlayerEntity|ShipEntity|OOVisualEffectEntity)\.h"\n', "",
-     r'^#import "(OOEquipmentType|PlayerEntity|ShipEntity|OOVisualEffectEntity)\.h"',
-     [f"src/Core/Scripting/OOJS{n}.h" for n in ("EquipmentInfo", "PlayerShip", "Ship", "VisualEffect")]),
+    (r'(?m)^#import "(?:OOEquipmentType|PlayerEntity|ShipEntity)\.h"\n', "",
+     r'^#import "(OOEquipmentType|PlayerEntity|ShipEntity)\.h"',
+     [f"src/Core/Scripting/OOJS{n}.h" for n in ("EquipmentInfo", "PlayerShip", "Ship")]),
+    # OOJSVisualEffect.h declares a function returning std::vector<oo::EntityHold>, which the entity
+    # header gave it: it includes OOEntityHold.h instead, as the history's header does by step 19
+    # (the format pass sorts includes from here, so a header includes what it uses)
+    (r'(?m)^#import "OOVisualEffectEntity\.h"\n', '#include "OOEntityHold.h"\n',
+     r'^#import "OOVisualEffectEntity\.h"', ["src/Core/Scripting/OOJSVisualEffect.h"]),
 ]
 POST = dict(globals().get("POST", {}))
 POST["src/Core/OOHPVector.h"] = list(POST.get("src/Core/OOHPVector.h", [])) + [
     ("#pragma once\n\n#pragma once\n\n", "#pragma once\n\n")]
+# OOMaths.h includes OOHPVector.h after the types it needs; the header's own include of it, which the
+# format pass sorts ahead of OOMaths.h, goes, as in the history's header by step 19
+POST["src/Core/Materials/OOShaderUniformMethodType.h"] = list(POST.get("src/Core/Materials/OOShaderUniformMethodType.h", [])) + [
+    ('#include "OOHPVector.h"\n#include "OOMaths.h"\n', '#include "OOMaths.h"\n')]
+
+
+# Upstream (#737) renamed OOCocoa.mm to OOFoundation.mm; the history makes it OOCocoa.cpp here. With
+# the include rename both sides hold the same text, under two names: it is OOFoundation.cpp, the
+# name this step's meson.build resolution builds.
+DELETE = list(globals().get("DELETE", [])) + ["src/Core/OOCocoa.cpp", "src/Core/OOFoundation.mm"]
+ADD = dict(globals().get("ADD", {}))
+ADD["src/Core/OOFoundation.cpp"] = "017_files/OOFoundation.cpp"

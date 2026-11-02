@@ -251,3 +251,12 @@ game repo only gets local branches.
     -Wbitwise-instead-of-logical). checkKeyPress only reads key state, so steps 15-18 use a
     logical or; step 19 takes the history's own fix (AnyKeyPressed, which evaluates every check).
     Step 14 drops the import of the +Input header the history deletes there.
+  - The normaliser's #737 header rename (OOCocoa.h -> OOFoundation.h) reaches every C-family source
+    (TRANSFORM_VERSION upstream-745-737-v2), since the history's sources become .cpp at step 17;
+    the #745 selector renames stay Objective-C only. Steps 1-16's trees and step 19's are unchanged
+    by it. At step 17 the file both sides renamed (OOCocoa.mm: upstream's OOFoundation.mm, the
+    history's OOCocoa.cpp) is OOFoundation.cpp.
+  - From step 17 the format pass sorts includes in the C++ sources, so a header must include what it
+    uses: OOJSVisualEffect.h includes OOEntityHold.h and OOShaderUniformMethodType.h only OOMaths.h,
+    the history's step-19 forms.
+  - Step 16: the dark-mode function kept for the history's test leaves namespace cxx with the class.

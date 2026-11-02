@@ -56,6 +56,17 @@ class RenameTest(unittest.TestCase):
         t = "- (std::vector<int>)cxx_getContainersOfCommodity:(const std::string&)c:(OOCargoQuantity)n;"
         self.assertEqual(self.r(t), t)
 
+    def test_include_rename_reaches_cxx_sources(self):
+        # the history's sources become .cpp (step 17); #737's header rename applies to them too
+        for path in ("src/Core/a.cpp", "src/Core/a.hpp", "src/Core/a.c", "src/Core/a.h", "src/Core/a.mm"):
+            self.assertEqual(sel.upstream_renames(path, '#include "OOCocoa.h"\n'), '#include "OOFoundation.h"\n', path)
+        self.assertEqual(sel.upstream_renames("src/a.py", '"OOCocoa.h"'), '"OOCocoa.h"')
+
+    def test_selector_renames_stay_objc_only(self):
+        t = "[u getContainersOfCommodity:c :n];\n"
+        self.assertEqual(sel.upstream_renames("src/Core/a.cpp", t), t)
+        self.assertNotEqual(sel.upstream_renames("src/Core/a.mm", t), t)
+
     def test_selectors_in_decls(self):
         self.assertEqual(sel.selectors_in_decls("- (GLfloat)doesHitLine:(HPVector)v0 :(HPVector)v1;\n"
                                                 "+ (BOOL) getCloudTextureNameFor:(OOColor *)color :(GLfloat)impress :(GLfloat)bias\n"),

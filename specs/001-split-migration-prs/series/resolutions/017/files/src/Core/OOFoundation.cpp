@@ -27,7 +27,7 @@ SOFTWARE.
 
 */
 
-#include "OOCocoa.h"
+#include "OOFoundation.h"
 #include "OOFunctionAttributes.h"
 
 #include "oofnd/String.hpp"

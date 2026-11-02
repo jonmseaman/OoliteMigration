@@ -71,3 +71,7 @@ try:
 except NameError:
     CHANGES = {}
 CHANGES["src/meson.build"] = [(_THREADS_016 + "# Bead oo-bipqn: ", "# Bead oo-bipqn: ")]
+# the history's view class leaves namespace cxx here; the dark-mode API kept for its test follows
+POST = dict(globals().get("POST", {}))
+POST["src/SDL/MyOpenGLView.mm"] = list(POST.get("src/SDL/MyOpenGLView.mm", [])) + [
+    ("void cxx::MyOpenGLView::refreshDarKOrLightMode()\n", "void MyOpenGLView::refreshDarKOrLightMode()\n")]
