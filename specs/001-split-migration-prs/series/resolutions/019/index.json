@@ -50,7 +50,7 @@
  "src/Core/OOFoundation.h": {
   "base": "2d6b1e9222001c21312f0f910d976cf21a9c6f8c",
   "deleted": false,
-  "ours": "112c559f0203952d4b60bc5f934c191f4f3992c7",
+  "ours": "b14f84fff65ad0ad69248a2591dd686f82d96a82",
   "theirs": "3a6f695865ae9e0a4976a6bc60dbf9d316005580"
  },
  "src/Core/OOMaths.h": {
@@ -80,7 +80,7 @@
  "src/Core/Scripting/OOJSShipGroup.h": {
   "deleted": false,
   "extra": true,
-  "merged": "d55814ebec65f33de6a86baa0418ed5b42f913f0"
+  "merged": "491287d2504b87a2701488882b5db0c84619527e"
  },
  "src/Core/Scripting/OOJSSystem.cpp": {
   "base": "db7ba2f3f1726769c03ac6bc99ca2c6b5a536059",

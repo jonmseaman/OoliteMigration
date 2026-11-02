@@ -11,11 +11,41 @@
   "ours": "ef24abf369bdf52daf151c90ab8f230b9f6e1cba",
   "theirs": "4cd3f58fafe70a854492def1e981c37c044ff8b8"
  },
+ "src/Core/Entities/DockEntity.h": {
+  "base": "c377a7fe8803333425d089767ee08c7c07b32f1e",
+  "deleted": false,
+  "ours": "c5e82ee78f299501d748592cae2cb0603e7ca21c",
+  "theirs": "eb81108e8e8816f8b89ce9f26e6085fd2ee96f60"
+ },
+ "src/Core/Entities/Entity.h": {
+  "base": "abf32e8e7973609b9676d8f460ce541cea2d7cee",
+  "deleted": false,
+  "ours": "e5c65bd1847e2932bae8f0ee838923554cfd05cb",
+  "theirs": "bb6458b89414a007b35db995659438a5b260fa3f"
+ },
+ "src/Core/Entities/OOVisualEffectEntity.h": {
+  "base": "f7663d9dd84e443c7ba7adc6eb6bc42cd2310ca9",
+  "deleted": false,
+  "ours": "b5d3f29e26df3c6148a9dc319c5c9161d393bf23",
+  "theirs": "84d000f2dacae0054270c9bd717c9d6d813c9c83"
+ },
+ "src/Core/Entities/OOWaypointEntity.h": {
+  "base": "50d20e7e71f45c80342d7403bf7ec70eaf6e589f",
+  "deleted": false,
+  "ours": "d4a26f1833b9deaeaef438e4b4aa15a65d7432b3",
+  "theirs": "a1b6502972809ac9a66f064eebe5f0ab39a9e335"
+ },
  "src/Core/Entities/PlayerEntity.cpp": {
   "base": "4d8f72d77eecc738987535d10dbbe2a5428ec092",
   "deleted": false,
   "ours": "5ee3a630e867c2b4688d40f3b4659d30019e37c8",
   "theirs": "7918ae0da19588409312745e20f08f8b67f6278e"
+ },
+ "src/Core/Entities/PlayerEntity.h": {
+  "base": "3e71e03de72d5a49a2e50e6554a1da526fd1b934",
+  "deleted": false,
+  "ours": "bfc238b679524640c2094ee84bcec113e565443f",
+  "theirs": "00bbed81e6f30edfa0fb568754fc558be17ac5f6"
  },
  "src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp": {
   "base": "8c2888abdea44e1a426571d668a138792a99969a",
@@ -23,11 +53,29 @@
   "ours": "29c03327913b0d659f27a3d64148a63180efe268",
   "theirs": "f48034177e47693e9678de0179f73dca51789236"
  },
+ "src/Core/Entities/ShipEntity.h": {
+  "base": "b2b27ae64cb84f93bfbd58c9dcd96cecf87c8652",
+  "deleted": false,
+  "ours": "10525af4355dd7552c5f7e8d20d96e16d448aefe",
+  "theirs": "86a87c6dc7e986afd4816c1bed93bb442f274355"
+ },
  "src/Core/Entities/ShipEntityAI.cpp": {
   "base": "6b3495a26f0033bb9a6f68a9186467ea0025ab87",
   "deleted": false,
   "ours": "daf7d579368db41d963a9a47c5dda4bc576e43a2",
   "theirs": "677bf993dc1097cabbd269b54738edb0e656a53f"
+ },
+ "src/Core/Entities/StationEntity.h": {
+  "base": "e0d075104ce88e4d1d4a9e19a9877b9e27f0b677",
+  "deleted": false,
+  "ours": "fcd31f976f1b957b99bffeb68f4d4dcc26df942f",
+  "theirs": "d86a190794f5f90447773855cad2a487eb34eca2"
+ },
+ "src/Core/Entities/WormholeEntity.h": {
+  "base": "73681f1b3ac89fbaf6b3afca7742a8c289630ca5",
+  "deleted": false,
+  "ours": "189b302ed489168e6cf93e4d2ca838273426023f",
+  "theirs": "71921861478616d6a64053c7dbdd985debbc1b75"
  },
  "src/Core/GuiDisplayGen.cpp": {
   "base": "dcb67ce88bacd92d281d4cee22882abf90c22b7f",
@@ -53,6 +101,12 @@
   "ours": "09346f00a4132563ea22f89749361603cdc1875e",
   "theirs": "5a432f4d5bc35d6883b03c7921ac503ac2427f5a"
  },
+ "src/Core/Materials/OOTextureInternal.h": {
+  "base": "00125164be8572bd45289da400dddda6581d41e6",
+  "deleted": false,
+  "ours": "f6ed038d7da2c1e9535c2e77530e9e8dc9ea042b",
+  "theirs": "74957a8bf174cf74a0511d4836b677431e061345"
+ },
  "src/Core/OOALSoundChannel.h": {
   "base": "6ed636e01e8823ae323a570448af0442e26a5111",
   "deleted": false,
@@ -68,6 +122,12 @@
  "src/Core/OOFoundation.cpp": {
   "deleted": false,
   "extra": true
+ },
+ "src/Core/OOFoundation.h": {
+  "base": "eca2d6e4aa7c34673f1c5fdefd8e4af0a0428cd1",
+  "deleted": false,
+  "ours": "8c77d134f847c82d3a05e78bac10a0ee09340c0f",
+  "theirs": "2d6b1e9222001c21312f0f910d976cf21a9c6f8c"
  },
  "src/Core/OOFoundation.mm": {
   "base": null,
@@ -105,11 +165,23 @@
   "ours": "67f9e1099586af7e4c5b96e3cc2872cba218ea35",
   "theirs": "83331a804f6233788b06b270b68314ebe9ef3d0a"
  },
+ "src/Core/OOSound.h": {
+  "base": "c19e13b52698e19287abfba97e5b1ace5119c0b7",
+  "deleted": false,
+  "ours": "5ebfbd9dcb75ef7421bd7ebad3b2d79224959a82",
+  "theirs": "ee9e95ab787bca9a332eed22c4c9e24b6075b635"
+ },
  "src/Core/OOStringParsing.cpp": {
   "base": "e54d5e10015ed1af3565e25def45fe2365315f7f",
   "deleted": false,
   "ours": "2fd43ff71f728b81534f910dd6c2cd2a27591f58",
   "theirs": "c15594d63f3387a858fee8f9260a27d8e4416508"
+ },
+ "src/Core/OOVector.h": {
+  "base": "7f732e4161e2149fc72961305666b70725696325",
+  "deleted": false,
+  "ours": "b5452fe262b9e183ee40d69606cb6bd101efec63",
+  "theirs": "3c0673e630aaba514d5a7a8b09fd75767fc40185"
  },
  "src/Core/Scripting/EntityOOJavaScriptExtensions.cpp": {
   "base": "facbbab3b46551ab18b1a3816e695161051d3c8a",
@@ -117,11 +189,23 @@
   "ours": "0f006281043af2c241051fcc8156f1802799d709",
   "theirs": "7dce011dad88d495c8932a9de79c90b89375e946"
  },
+ "src/Core/Scripting/EntityOOJavaScriptExtensions.h": {
+  "base": "fe1f89b580ef26bca05b18773830fabc82627f76",
+  "deleted": false,
+  "ours": "6cab8a290dc10b7fe499e43372002a4cec68dddb",
+  "theirs": "8843b50e9c87d777466bf425ac03373dda725e7a"
+ },
  "src/Core/Scripting/OOJSDock.cpp": {
   "base": "eaae8efffc579b40aefa0bfab7ecf86a21ebfe02",
   "deleted": false,
   "ours": "8c20e0b99ec4b5583986258bbfd9983ba87e97de",
   "theirs": "ccb7da8be5af9e6f1b413bdcfb970a91d5508b7c"
+ },
+ "src/Core/Scripting/OOJSDock.h": {
+  "base": "18b2077b5bc620e37364542e7fb9a2d4d6d4978e",
+  "deleted": false,
+  "ours": "bb4dd2db8fd1d1c466311a72f50fe63fefeebc18",
+  "theirs": "f1f1c4fbc0886a2ed4ae5bb2a5bdff55bc1351d5"
  },
  "src/Core/Scripting/OOJSEntity.cpp": {
   "base": "7c4bafd5a9c8aba6129c018ab1b837bb7575a6e1",
@@ -135,11 +219,29 @@
   "ours": "40e63363dc0e006d11b78a6128d61edf75d4d4ff",
   "theirs": "ed4486276162c4d07c04fdc54ddb92af7ffc8d28"
  },
+ "src/Core/Scripting/OOJSEquipmentInfo.h": {
+  "base": "1f652d2fae9c62c40d4f1c8db1a127635aedfca1",
+  "deleted": false,
+  "ours": "603af4fa8883b424efb3f8ba598684771386437d",
+  "theirs": "26c52acb95a592504534b90fc45e169c9a6e1ca8"
+ },
+ "src/Core/Scripting/OOJSFlasher.h": {
+  "base": "9462a46954c128bfd09624694571d676ebf5e2e0",
+  "deleted": false,
+  "ours": "16d4d19fb0d46f1c6d3d59825af466e57d2d9440",
+  "theirs": "ea07be6e75ac3793a73ab02a5376c794509ee006"
+ },
  "src/Core/Scripting/OOJSFunction.cpp": {
   "base": "71823c95b7ef992d93906f5c352fd613721c0678",
   "deleted": false,
   "ours": "adbbf0cd7a2cb8ecb486bb4ebceb6c0ef9fa2619",
   "theirs": "06794600d33e44e96dd73de0c30507a6d54eb039"
+ },
+ "src/Core/Scripting/OOJSPlanet.h": {
+  "base": "39b9262b7caeecc9585a39369bd07046fbc7415e",
+  "deleted": false,
+  "ours": "718e5334d582e885b2a8a5059443579bbe0815ae",
+  "theirs": "a1d0528c5eaf312480a77cbf9dee9d6f2652538f"
  },
  "src/Core/Scripting/OOJSPlayer.cpp": {
   "base": "7f50318d9993c44f6e80774d55529316f1f2ebe7",
@@ -147,11 +249,23 @@
   "ours": "239c43620a5b6b9d055cead86368e72c57e3f211",
   "theirs": "2ec40f13cf36412319606d792b2edb7b31d00afa"
  },
+ "src/Core/Scripting/OOJSPlayer.h": {
+  "base": "3d850abaa2521b994cc9408a55d72a915cf196d4",
+  "deleted": false,
+  "ours": "88f7b5b25695f51fb4b2774f4c83ba3563443fd7",
+  "theirs": "35d7275cef2f0ad7940383c94f186a7f5dcb422b"
+ },
  "src/Core/Scripting/OOJSPlayerShip.cpp": {
   "base": "eb5357e778292fb958f49d8238adb2978184a892",
   "deleted": false,
   "ours": "55c1d53297decab7c1e9b99b804d3b0dd7e04577",
   "theirs": "23156ba47bc1a7ed5cfe4eb02a5ad407858f52b4"
+ },
+ "src/Core/Scripting/OOJSPlayerShip.h": {
+  "base": "d22b8b444cc9e11d8a83ec7e2a3800071f418e35",
+  "deleted": false,
+  "ours": "79df0b2d126ed5b9e7eabcfb03c4caf43e7061fc",
+  "theirs": "acd8f605985132bd155daba0eaaa814e5e2f2f1d"
  },
  "src/Core/Scripting/OOJSShip.cpp": {
   "base": "9309b71c597d1c447f0d28686dcc85456863a091",
@@ -159,11 +273,29 @@
   "ours": "d49393064a4f01770e587057dadf21235862aa6b",
   "theirs": "2ee8052628b50d5944dc895c2366ece25851b196"
  },
+ "src/Core/Scripting/OOJSShip.h": {
+  "base": "b2f078a44f3932c950625cf5b33fa0b0b1497989",
+  "deleted": false,
+  "ours": "b3ed65a6012eab20f3d992ec48f29ac02f8cc8da",
+  "theirs": "3037ad904bf57f5daf5dd88b9c98153c0820718d"
+ },
+ "src/Core/Scripting/OOJSShipGroup.h": {
+  "base": "2bb3815e7735b1a220d4483fbfc23d941d9d88c2",
+  "deleted": false,
+  "ours": "d7a1f3cd5abc1af9a00b33ff5c9e47e5a9fd81b3",
+  "theirs": "812919ec55cf498752bd06d416565b9c5f84c805"
+ },
  "src/Core/Scripting/OOJSSound.cpp": {
   "base": "472cba07be21c50e771ebf9ca94fe6dc246d0282",
   "deleted": false,
   "ours": "72d07bd80dd5c42e4e4a0dd6e597380369316cdc",
   "theirs": "923c634511372e64a88c3db23ac4113168c45e7a"
+ },
+ "src/Core/Scripting/OOJSSound.h": {
+  "base": "f651230038a1cb8efd4b530ea89e8f4c4e4116cd",
+  "deleted": false,
+  "ours": "b825e40a9bad64394ba5760b41c28740949d63f2",
+  "theirs": "a015d1f138fd01cae29945723f7b3205e195f635"
  },
  "src/Core/Scripting/OOJSStation.cpp": {
   "base": "4e90e70465fb5723461dd1a7bce329c75c51f91d",
@@ -171,17 +303,47 @@
   "ours": "9a73bdf8448941ba45527e60e34fb9ba4a97e5ac",
   "theirs": "ab2e07b4d800deaca6d5aa91fd87ea7a44f8939b"
  },
+ "src/Core/Scripting/OOJSStation.h": {
+  "base": "50dd2bad0d9a5fde01f916d92b061fa79bc32825",
+  "deleted": false,
+  "ours": "bcf9cfa7f0ccd0ce76e4ad5fe08aeaceebec4eb1",
+  "theirs": "7db60a577c6d3cbd19774a8132bc27fcbcbca83a"
+ },
+ "src/Core/Scripting/OOJSVisualEffect.h": {
+  "base": "c9f5fdbe698428056aa76b98da3fc32be4da13fa",
+  "deleted": false,
+  "ours": "2235dc936b1e0bf3c81b89564c24a4287c24b6d7",
+  "theirs": "0d80875fca89f5f3951293c2aa1418c8f694fcfe"
+ },
  "src/Core/Scripting/OOJSWaypoint.cpp": {
   "base": "44e7c2a1a9c927646784477e077f14ce939546a7",
   "deleted": false,
   "ours": "f6d02ad61b5c223797c16dffe15e9d6809251d6c",
   "theirs": "4ceab731ccf0ce88a4e52ba0749d106702cd3a3d"
  },
+ "src/Core/Scripting/OOJSWaypoint.h": {
+  "base": "fe66085d1b56a251db1358ee134f9d4a85963d3a",
+  "deleted": false,
+  "ours": "37e6e26cb7f6c6b7559efe3dcb5c6c932a116b21",
+  "theirs": "98b5bb66cf9e767766040d05206252d5e54202d7"
+ },
  "src/Core/Scripting/OOJSWormhole.cpp": {
   "base": "733ef18741d7a4b6cb499aa10ecbf930e79b48d8",
   "deleted": false,
   "ours": "fada73f697150e20b91a9daaed0c3eb3e10b3160",
   "theirs": "c173d6dfca14c23dfcdeeb48bced3fdc541849ee"
+ },
+ "src/Core/Scripting/OOJSWormhole.h": {
+  "base": "cb098d46b41c058c5d789fdadb1088cb5f468817",
+  "deleted": false,
+  "ours": "9bee221f65df0b191b0adee7d30230202b747563",
+  "theirs": "407f74d8dc9c061287e30560e8679722f065ec22"
+ },
+ "src/Core/Scripting/OOJavaScriptEngine.h": {
+  "base": "aced35b3cd78535ee5549a38ad8c4346c143f980",
+  "deleted": false,
+  "ours": "dbf68aa9a716c9364fa8910b3c13817075a091fe",
+  "theirs": "31985f768e93b73b04cc216b53dd8676443ff2e5"
  },
  "src/Core/Universe.cpp": {
   "base": "cc10b98da17009dd96c97942c5cd5374fd46cd3a",
@@ -206,6 +368,11 @@
   "deleted": false,
   "ours": "5ee72aa00ed8fa698951e7b08ba9f38f8bc4dc55",
   "theirs": "54c53f2e186fc28c684e3841c0aaa132079a6016"
+ },
+ "src/SDL/MyOpenGLView.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "42d5481a87a5f3458147a486c1a71fcf915c729d"
  },
  "src/meson/meson.build": {
   "base": "6445b105d979ae0a283b48becf4a641955412c52",

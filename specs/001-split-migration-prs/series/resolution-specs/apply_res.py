@@ -158,24 +158,28 @@ for path, src in ns.get("ADD", {}).items():
 # RENAMES = [(regex, replacement), ...]: applied to every file of the step's result that matches (a
 # name the history keeps changing form across steps). Routed like CHANGES: POST for a path in RES,
 # EDIT for an automatically resolved conflict, FIX for a clean path. Run after the sections above.
-_renames = [(re.compile(_rx), _rep, _rx) for _rx, _rep in ns.get("RENAMES", [])]
+# An entry may be (regex, replacement, line_regex, pathspecs): a multi-line regex is found through a
+# one-line regex (git grep matches lines) within the given pathspecs.
+_renames = [(re.compile(_e[0]), _e[1], _e[2] if len(_e) > 2 else _e[0], _e[3] if len(_e) > 3 else ["src"])
+            for _e in ns.get("RENAMES", [])]
 _targets = {}
-for _pat, _rep, _rx in _renames:
-    for _f in trees._git(S.GAME, "grep", "-l", "-P", "-e", _rx, tree, "--", "src", ok=(0, 1)).stdout.decode().split():
+for _pat, _rep, _rx, _specs in _renames:
+    for _f in trees._git(S.GAME, "grep", "-l", "-P", "-e", _rx, tree, "--", *_specs, ok=(0, 1)).stdout.decode().split():
         _targets.setdefault(_f.split(":", 1)[1], None)
 for path in _targets:  # every rename applied to a file in one pass, recorded once
+    data = _automatic(path) if path in conf and path not in RES else \
+        trees._git(S.GAME, "cat-file", "-p", f"{tree}:{path}").stdout.decode("utf-8", "surrogateescape")
+    new, total = data, 0
+    for _pat, _rep, _rx, _specs in _renames:
+        new, count = _pat.subn(_rep, new)
+        total += count
+    if total == 0 and path not in RES:
+        continue
     if path in RES:
         print(f"{path}: in RES; its POST carries the rename (the build reports a miss)")
         continue
     if path in EDIT or path in FIX_LATE or path in ns.get("FIX", {}):
         raise SystemExit(f"{path}: already edited in this step; add the rename to its CHANGES")
-    data = _automatic(path) if path in conf else         trees._git(S.GAME, "cat-file", "-p", f"{tree}:{path}").stdout.decode("utf-8", "surrogateescape")
-    new, total = data, 0
-    for _pat, _rep, _rx in _renames:
-        new, count = _pat.subn(_rep, new)
-        total += count
-    if total == 0:
-        continue
     print(f"{path}: renamed ({total})")
     if not dry:
         trees.record_resolution(S.GAME, b, o, t, S.resolutions_dir(st), path, new.encode("utf-8", "surrogateescape"),

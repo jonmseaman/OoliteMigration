@@ -33,3 +33,17 @@ exec(open(__file__.replace("011.py", "selector_containers.py"), encoding="utf-8"
 RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES
 # the history converts the console client to C++ here; step 8's selector spacing goes with the method
 RES["src/Core/Debug/OODebugTCPConsoleClient.mm"] = ["theirs", "theirs"]
+
+
+# The history's scripting unit tests (new here, Objective-C++ until step 17) declare their own stub
+# entity classes and include only the scripting header, as the history's headers forward-declare
+# the class (@class). Upstream's #748 also imports the entity header there, which defines each class
+# twice in those tests. The redundant import stays out until the tests stop stubbing the classes.
+try:
+    CHANGES
+except NameError:
+    CHANGES = {}
+for _js, _entity in (("Dock", "DockEntity"), ("Sound", "OOSound"), ("Player", "PlayerEntity"),
+                     ("Station", "StationEntity"), ("Planet", "OOPlanetEntity"),
+                     ("Waypoint", "OOWaypointEntity"), ("Wormhole", "WormholeEntity")):
+    CHANGES[f"src/Core/Scripting/OOJS{_js}.h"] = [(f'#import "{_entity}.h"\n', "")]

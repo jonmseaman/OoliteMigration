@@ -222,3 +222,10 @@ game repo only gets local branches.
     same rename itself when it pulls #745 at step 19).
   - Upstream's copy-URL state (#747) becomes std::optional<std::string> at step 10, where NSString
     goes; its methods become members at step 12.
+  - The history's scripting unit tests (steps 11-16, and as C++ until 19) declare stub entity classes
+    and include only the scripting header. Upstream's #748 imports the entity header in seven of
+    those headers (OOJSDock/Sound/Player/Station/Planet/Waypoint/Wormhole.h), which defines each class
+    twice; the import goes at step 11 (each header forward-declares the class). At step 17 the
+    history's C++ headers drop #748's other four such imports, as the history's own port of #748 at
+    step 19 does, and the second #pragma once (upstream's and the history's) goes everywhere but
+    vendored miniz.h.

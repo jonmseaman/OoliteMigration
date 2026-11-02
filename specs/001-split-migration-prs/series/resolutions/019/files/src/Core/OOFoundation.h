@@ -36,8 +36,6 @@ MA 02110-1301, USA.
 #include <math.h>
 #include <stdbool.h>
 
-#pragma once
-
 #ifdef NDEBUG
 #define OOLITE_DEBUG 0
 #else

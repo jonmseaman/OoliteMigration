@@ -1499,7 +1499,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "6f5b5638f627ca9fd3998470bf95d20f3a047f24",
+   "merge_tree": "4c315ace12204220e01671c733549aa5b43cd344",
    "n": 11,
    "parent": "series/010-leaf-conversions",
    "resolutions": [
@@ -1640,6 +1640,10 @@
      "path": "src/Core/OOSkyDrawable.mm"
     },
     {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSDock.h"
+    },
+    {
      "how": "auto",
      "path": "src/Core/Scripting/OOJSEngineTimeManagement.mm"
     },
@@ -1648,8 +1652,32 @@
      "path": "src/Core/Scripting/OOJSFlasher.h"
     },
     {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSPlanet.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSPlayer.h"
+    },
+    {
      "how": "transplant",
      "path": "src/Core/Scripting/OOJSShipGroup.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSSound.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSStation.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSWaypoint.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSWormhole.h"
     },
     {
      "how": "stored",
@@ -1671,7 +1699,7 @@
     "to": "ab5dc6cd728a5b26951c588d3d6e0ef99049009c",
     "type": "history"
    },
-   "target_tree": "297814d82d6dd0abe9d2951a20556bf0630eb5a3",
+   "target_tree": "2e376cae8d3eb6f9277dfc9c1205b340476f4209",
    "temporaries": [],
    "title": "Convert scripting, entities, audio and materials classes to C++",
    "verification": null
@@ -1694,7 +1722,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "f535462866f96f65a329f90137bb1682da5d031c",
+   "merge_tree": "7e77504562f36ac29deb24423f039da7bb15bc6c",
    "n": 12,
    "parent": "series/011-module-conversions",
    "resolutions": [
@@ -1770,7 +1798,7 @@
     "to": "0c01939de79a4ac04237390d93dc78437057c5e0",
     "type": "history"
    },
-   "target_tree": "365da4fc3b0f14c100c46771e7da91d62ef110c8",
+   "target_tree": "80feece6d206cd5e563b4e9b15c5ecfc4130363d",
    "temporaries": [],
    "title": "Convert the large files in slices; delete the first Objective-C facades",
    "verification": null
@@ -1791,7 +1819,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "c5b2d878dcbe06cd7b48f84656097d588ffe380e",
+   "merge_tree": "7c164a62678a207c4214dd9e0f825e9bd2d63353",
    "n": 13,
    "parent": "series/012-first-slices",
    "resolutions": [
@@ -1847,7 +1875,7 @@
     "to": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
     "type": "history"
    },
-   "target_tree": "4b993a855f1e2d27b1fe96079b2793265e0019b4",
+   "target_tree": "b0fe1e9f3373662146c2f07a74c2e2ba48e7fd27",
    "temporaries": [],
    "title": "Convert ShipEntity to C++",
    "verification": null
@@ -1869,7 +1897,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "a6ad02798eba5006c28dd98da4bc33911c9f8d38",
+   "merge_tree": "8c80eb499b574fc8757051d0badb1fd37f24b122",
    "n": 14,
    "parent": "series/013-shipentity-slices",
    "resolutions": [
@@ -1917,7 +1945,7 @@
     "to": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
     "type": "history"
    },
-   "target_tree": "5e24143cb7bb027917a7be7338038a69dfc2d784",
+   "target_tree": "626d8dfea52e46767018014f8dfa55f8c91e5221",
    "temporaries": [],
    "title": "Convert Universe and PlayerEntity to C++",
    "verification": null
@@ -1938,7 +1966,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "7ff3ddf85d60938869a9464b901e45573d74315a",
+   "merge_tree": "b451343ad8faf130a9129a7ed29024ec98a06867",
    "n": 15,
    "parent": "series/014-universe-player-slices",
    "resolutions": [
@@ -2042,7 +2070,7 @@
     "to": "2c2aae1316b5a125038a797c213162ffba389279",
     "type": "history"
    },
-   "target_tree": "3a339b1359968f9b893d001ba8d222b80846e7f4",
+   "target_tree": "c1b4f13c5ce50f3ff2c797c015c88a940289fcff",
    "temporaries": [],
    "title": "Delete the Objective-C facades",
    "verification": null
@@ -2063,7 +2091,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "48478229b0c59d60de845854f197ef0449f6d8e7",
+   "merge_tree": "41719395e963674b28166928b675eaed27a64cb3",
    "n": 16,
    "parent": "series/015-facade-deletions",
    "resolutions": [
@@ -2235,7 +2263,7 @@
     "to": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
     "type": "history"
    },
-   "target_tree": "400e12fa6a071d74174aaba1272708ee82a1f7cf",
+   "target_tree": "02f3c7406025ee0fe09b1a95e690bfa4a57f132e",
    "temporaries": [],
    "title": "Delete the root Entity facade",
    "verification": null
@@ -2257,7 +2285,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "25eee1cfb72071619281562fee0b060af4d61b8c",
+   "merge_tree": "c2c24b7202cf5c6f56c4e0cbe7128cd77b0df508",
    "n": 17,
    "parent": "series/016-entity-facade",
    "resolutions": [
@@ -2278,19 +2306,19 @@
      "path": "src/Core/Entities/DockEntity.cpp"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/Entities/DockEntity.h"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Entities/Entity.h"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/Entities/OOVisualEffectEntity.h"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/Entities/OOWaypointEntity.h"
     },
     {
@@ -2298,7 +2326,7 @@
      "path": "src/Core/Entities/PlayerEntity.cpp"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/Entities/PlayerEntity.h"
     },
     {
@@ -2306,7 +2334,7 @@
      "path": "src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/Entities/ShipEntity.h"
     },
     {
@@ -2314,11 +2342,11 @@
      "path": "src/Core/Entities/ShipEntityAI.cpp"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/Entities/StationEntity.h"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/Entities/WormholeEntity.h"
     },
     {
@@ -2338,7 +2366,7 @@
      "path": "src/Core/Materials/OOShaderUniformMethodType.h"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/Materials/OOTextureInternal.h"
     },
     {
@@ -2354,7 +2382,7 @@
      "path": "src/Core/OOFoundation.cpp"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/OOFoundation.h"
     },
     {
@@ -2390,7 +2418,7 @@
      "path": "src/Core/OOPolygonSprite.cpp"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/OOSound.h"
     },
     {
@@ -2402,7 +2430,7 @@
      "path": "src/Core/OOVector.cpp"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/OOVector.h"
     },
     {
@@ -2410,7 +2438,7 @@
      "path": "src/Core/Scripting/EntityOOJavaScriptExtensions.cpp"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/EntityOOJavaScriptExtensions.h"
     },
     {
@@ -2422,7 +2450,7 @@
      "path": "src/Core/Scripting/OOJSDock.cpp"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSDock.h"
     },
     {
@@ -2438,11 +2466,11 @@
      "path": "src/Core/Scripting/OOJSEquipmentInfo.cpp"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSEquipmentInfo.h"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSFlasher.h"
     },
     {
@@ -2454,7 +2482,7 @@
      "path": "src/Core/Scripting/OOJSPlanet.cpp"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSPlanet.h"
     },
     {
@@ -2462,7 +2490,7 @@
      "path": "src/Core/Scripting/OOJSPlayer.cpp"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSPlayer.h"
     },
     {
@@ -2470,7 +2498,7 @@
      "path": "src/Core/Scripting/OOJSPlayerShip.cpp"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSPlayerShip.h"
     },
     {
@@ -2478,11 +2506,11 @@
      "path": "src/Core/Scripting/OOJSShip.cpp"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSShip.h"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSShipGroup.h"
     },
     {
@@ -2490,7 +2518,7 @@
      "path": "src/Core/Scripting/OOJSSound.cpp"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSSound.h"
     },
     {
@@ -2498,11 +2526,11 @@
      "path": "src/Core/Scripting/OOJSStation.cpp"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSStation.h"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSVisualEffect.h"
     },
     {
@@ -2510,7 +2538,7 @@
      "path": "src/Core/Scripting/OOJSWaypoint.cpp"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSWaypoint.h"
     },
     {
@@ -2518,11 +2546,11 @@
      "path": "src/Core/Scripting/OOJSWormhole.cpp"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSWormhole.h"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/Scripting/OOJavaScriptEngine.h"
     },
     {
@@ -2540,6 +2568,10 @@
     {
      "how": "stored",
      "path": "src/SDL/MyOpenGLView.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/MyOpenGLView.h"
     },
     {
      "how": "auto",
@@ -2569,7 +2601,7 @@
     "to": "af1f220542e4917a23833902e8efc313a8eb463b",
     "type": "history"
    },
-   "target_tree": "b17f187a990ed7baf073cecebd1a0abe0ee05c86",
+   "target_tree": "21db9a5ac8cb2a0ad0b72482edcfadfd16df892d",
    "temporaries": [],
    "title": "Remove the Objective-C runtime and rename the sources to .cpp",
    "verification": null
@@ -2590,7 +2622,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "87ee3d64575b220b18357d85ddd3b0c3cf8a7eb6",
+   "merge_tree": "c50d06715e00203a63b71a45d28df81ee0f1aa59",
    "n": 18,
    "parent": "series/017-objc-runtime-out",
    "resolutions": [],
@@ -2605,7 +2637,7 @@
     "to": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
     "type": "history"
    },
-   "target_tree": "f76dd168084d7f0462cd66786c80a2f93bb7fa0b",
+   "target_tree": "f11d53c79c98c7022d0c08e62fa1f3a0da4a7409",
    "temporaries": [],
    "title": "Build with GCC as well as Clang",
    "verification": null
@@ -2626,7 +2658,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "1d6b93290eca41d57cd28637a536ea1a2778bf00",
+   "merge_tree": "19f06fb75bed615d6c14dd438b5414b017fefa93",
    "n": 19,
    "parent": "series/018-gcc-build",
    "resolutions": [
@@ -2683,10 +2715,6 @@
      "path": "src/Core/Scripting/OOJSSystem.cpp"
     },
     {
-     "how": "transplant",
-     "path": "src/Core/Scripting/OOJSVisualEffect.h"
-    },
-    {
      "how": "stored",
      "path": "src/SDL/MyOpenGLView.cpp"
     },
@@ -2710,7 +2738,7 @@
     "to": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
     "type": "history"
    },
-   "target_tree": "7b38a1a87ecf3e45a868b8cee7c4c1062683d392",
+   "target_tree": "dcec78f8cd4abf2dbc5f27601265df30ff365bb1",
    "temporaries": [],
    "title": "Port upstream changes #369 to #765 into the C++ code",
    "verification": null

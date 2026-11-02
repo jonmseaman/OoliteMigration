@@ -25,7 +25,6 @@ MA 02110-1301, USA.
 */
 
 #pragma once
-#import "OOSound.h"
 #import "OOFoundation.h"
 #include "OOJSPrivateObject.h"
 #include "oofnd/Ref.hpp"

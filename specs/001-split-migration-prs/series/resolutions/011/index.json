@@ -59,6 +59,41 @@
   "ours": "dd1aa91ca11c4c7427c5b9409d15ec1820ee03b8",
   "theirs": "46e328b1127c54b25f73d58ac3e64424129e98bc"
  },
+ "src/Core/Scripting/OOJSDock.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "4b1863b66418f9efa9d9c6fcbe339922a3a7a807"
+ },
+ "src/Core/Scripting/OOJSPlanet.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "9b71049abb5463de946aa8c79300ac6d857dff22"
+ },
+ "src/Core/Scripting/OOJSPlayer.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "2abb46ba294bc38977f8e9b3dc8af03bdbbda409"
+ },
+ "src/Core/Scripting/OOJSSound.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "a737719afb6aed8669ac52ff1d3a28824e50947f"
+ },
+ "src/Core/Scripting/OOJSStation.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "e51330739f37c9137a0ad0543b02dc8939907c2e"
+ },
+ "src/Core/Scripting/OOJSWaypoint.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "48296157666df8ef9a96f9622c19574e965727f4"
+ },
+ "src/Core/Scripting/OOJSWormhole.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "00de035fe1853b73b28e5661841efafaed42a6fe"
+ },
  "src/Core/Scripting/OOJavaScriptEngine.h": {
   "base": "1abe9db2227500d82db7d156052ea080932ce7d9",
   "deleted": false,

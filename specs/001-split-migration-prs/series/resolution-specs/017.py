@@ -52,3 +52,20 @@ CHANGES["src/Core/OOMaths.h"] = [(
     '#include "OOFunctionAttributes.h"\n#if defined(__cplusplus) && !defined(OO_PLAIN_CPP_UNIT) // was __OBJC__: a game unit, not a plain C++ one\n#include "OOOpenGL.h"\n')]
 # the history deletes the oofnd Objective-C headers here; the include order steps 6 and 10 restored goes with them
 DELETE = list(globals().get("DELETE", [])) + ["src/oofnd/objc/OOObjCPeer.h", "src/oofnd/objc/OOObjCRef.h"]
+
+
+# Upstream (#748) and the history (here) each put a #pragma once at the top of a header; the merge
+# keeps both. The first is kept. (Vendored miniz.h is left as it is.)
+RENAMES = list(globals().get("RENAMES", [])) + [
+    # a second #pragma once anywhere below the first
+    (r"(?ms)\A(.*?^#pragma once\n.*?)^#pragma once\n(?:[ \t]*\n)?", r"\1", r"^#pragma once",
+     ["src", ":(exclude)src/SDL/EXRSnapshotSupport"]),
+    # upstream's #748 imports in headers the history makes C++ here; they forward-declare the class,
+    # as the history's own port of #748 (step 19) leaves them
+    (r'(?m)^#import "(?:OOEquipmentType|PlayerEntity|ShipEntity|OOVisualEffectEntity)\.h"\n', "",
+     r'^#import "(OOEquipmentType|PlayerEntity|ShipEntity|OOVisualEffectEntity)\.h"',
+     [f"src/Core/Scripting/OOJS{n}.h" for n in ("EquipmentInfo", "PlayerShip", "Ship", "VisualEffect")]),
+]
+POST = dict(globals().get("POST", {}))
+POST["src/Core/OOHPVector.h"] = list(POST.get("src/Core/OOHPVector.h", [])) + [
+    ("#pragma once\n\n#pragma once\n\n", "#pragma once\n\n")]

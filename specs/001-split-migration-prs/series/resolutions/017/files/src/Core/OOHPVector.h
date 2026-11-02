@@ -27,8 +27,6 @@ MA 02110-1301, USA.
 
 #pragma once
 
-#pragma once
-
 #include "OOFastArithmetic.h"
 #include "OOVector.h"
 
