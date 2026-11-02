@@ -260,3 +260,9 @@ game repo only gets local branches.
     uses: OOJSVisualEffect.h includes OOEntityHold.h and OOShaderUniformMethodType.h only OOMaths.h,
     the history's step-19 forms.
   - Step 16: the dark-mode function kept for the history's test leaves namespace cxx with the class.
+  - Step 19: the history's OOMaths.h includes each maths header in turn, while upstream's #748
+    OOMatrix.h includes OOQuaternion.h itself; the four maths headers without a guard (OOMatrix,
+    OOQuaternion, OOVoxel, OOTriangle) get #pragma once, as develop's have it, and OOMaths.h keeps
+    the #endif of its OOMATHS_STANDALONE block (the history's include-guard #endif goes, as #748).
+  - Build-only results (Clang, test flavour), T023: steps 1-19 compile; their only warnings are the
+    listed ones in the history's tests.

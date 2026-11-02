@@ -54,3 +54,9 @@ RES["src/Core/Entities/PlayerEntityControls.cpp"] = ["theirs"] * 7
 POST = dict(globals().get("POST", {}))
 POST["src/Core/OOMaths.h"] = [('#include "legacy_random.h"\n\n#ifdef __cplusplus\n',
                                '#include "legacy_random.h"\n#endif\n\n#ifdef __cplusplus\n')]
+# The history's OOMaths.h includes each maths header in turn, and upstream's #748 OOMatrix.h includes
+# OOQuaternion.h itself: the headers without a guard get #pragma once, as develop's have it.
+RENAMES = list(globals().get("RENAMES", [])) + [
+    (r"(?s)\A(/\*.*?\n\*/\n\n)(?!#pragma once)", r"\1#pragma once\n\n", r"^\*/$",
+     [f"src/Core/{n}.h" for n in ("OOMatrix", "OOQuaternion", "OOVoxel", "OOTriangle")]),
+]

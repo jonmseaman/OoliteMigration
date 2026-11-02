@@ -65,6 +65,11 @@
   "ours": "8a0a9f9494f1e101dbbc7426ad806b5574a10705",
   "theirs": "e23846b5e6156ca8b21dd468e498f06e36c171a4"
  },
+ "src/Core/OOMatrix.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "983b860a53bcc81270c815ee8828ff7ab2fd0eec"
+ },
  "src/Core/OOOXZManager.cpp": {
   "base": "5e32156c6eb47ce4738b53c16d7e937229de6297",
   "deleted": false,
@@ -76,6 +81,21 @@
   "deleted": false,
   "ours": "fb40aee53bf49d80fa8d1026853411e61c8c5530",
   "theirs": "748c4f58a20e373d2279e62f269ef4dee555743b"
+ },
+ "src/Core/OOQuaternion.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "4698ba3150863d706dba4bc74ccfbe278c6ab8af"
+ },
+ "src/Core/OOTriangle.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "16625143ada6302b4fe68d2f84cf7ee5f1d3c5f2"
+ },
+ "src/Core/OOVoxel.h": {
+  "deleted": false,
+  "extra": true,
+  "merged": "ccdb7ee0c6dba578f689550295ae7359884d8543"
  },
  "src/Core/Scripting/OOJSManifest.cpp": {
   "base": "571d37acbe768f654103c75de02982c6469158ca",
