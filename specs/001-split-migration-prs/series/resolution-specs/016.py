@@ -18,7 +18,7 @@ DELETE = []
 # The history moves this file's Universe and GUI calls to C++ here; step 12's copy-URL port follows,
 # in the form of the history's own port (step 19).
 _POST_016 = {"src/Core/OOOXZManager.mm": [
-    ("        GuiDisplayGen* gui = [UNIVERSE gui];\n\n        if (_interfaceShowingOXZDetail) {\n"
+    ("        ::GuiDisplayGen* gui = [UNIVERSE gui];\n\n        if (_interfaceShowingOXZDetail) {\n"
      "            if (_currentOXPURL.has_value())\n"
      "                [[UNIVERSE gameView] cxx_stringToClipboard:*_currentOXPURL];\n"
      "        } else {\n            OOGUIRow selection = [gui selectedRow];\n",

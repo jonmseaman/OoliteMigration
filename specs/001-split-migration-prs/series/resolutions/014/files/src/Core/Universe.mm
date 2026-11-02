@@ -615,7 +615,6 @@ static BOOL MaintainLinkedLists(Universe* uni)
     if (uni->_cxxUniverse->n_entities > 0) {
         int n;
         Entity *checkEnt, *last;
-#endif
 
         last = nil;
 
@@ -849,7 +848,6 @@ const oo::PList* EquipmentExtraInfo(const oo::PList& item)
 {
     return item.at<oo::PList::Dict>(EQUIPMENT_EXTRA_INFO_INDEX);
 }
-#endif
 
 // -[nil oo_unsignedLongLongForKey:defaultValue:] was 0, not the fallback.
 unsigned long long ExtraInfoValue(const oo::PList* extra, std::string_view key, unsigned long long fallback)

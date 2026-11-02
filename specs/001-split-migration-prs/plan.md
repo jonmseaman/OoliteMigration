@@ -243,3 +243,7 @@ game repo only gets local branches.
   - #744's dark-mode removal waits for the history (steps 12-18): the history's view test calls
     isDarkModeOn until its own port of #744 at step 19. A test that exercises code upstream removed
     keeps that code until the history drops the test; the deferral is listed in series/deferred.md.
+  - Step 13: the deferred macOS multisample renderbuffer path (#766) loses its #endif with its
+    #if/#else; the C++ findBoundingBoxRelativeTo passes the history's _i, _j, _k; the copy-URL port
+    uses ::GuiDisplayGen like the file's other uses. Step 19 removes the dark-mode API with the
+    history's own port of #744.

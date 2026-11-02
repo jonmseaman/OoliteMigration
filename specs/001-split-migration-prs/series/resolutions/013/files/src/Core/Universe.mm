@@ -708,7 +708,6 @@ static GLfloat docked_light_specular[4] = { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
     OOGL(glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, GL_TRUE));
     OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0));
     OOGL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D_MULTISAMPLE, _cxxUniverse->msaaTextureID, 0));
-#endif
 
     // create necessary MSAA depth render buffer
     OOGL(glGenRenderbuffers(1, &_cxxUniverse->msaaDepthBufferID));
@@ -886,7 +885,6 @@ static GLfloat docked_light_specular[4] = { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
     OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, _cxxUniverse->msaaTextureID));
     OOGL(glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, 4, GL_RGBA16F, (GLsizei)viewSize.width, (GLsizei)viewSize.height, GL_TRUE));
     OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0));
-#endif
 
     // resize MSAA depth attachment
     OOGL(glBindRenderbuffer(GL_RENDERBUFFER, _cxxUniverse->msaaDepthBufferID));

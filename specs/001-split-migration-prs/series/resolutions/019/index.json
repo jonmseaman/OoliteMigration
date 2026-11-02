@@ -91,8 +91,14 @@
  "src/SDL/MyOpenGLView.cpp": {
   "base": "54c53f2e186fc28c684e3841c0aaa132079a6016",
   "deleted": false,
-  "ours": "8aac3a2488fdcb2021b9521571ce9e37099ff47e",
+  "ours": "0527622d1c0c66ff59e0fafbf8972943b4fc2caa",
   "theirs": "954519a46834e07f3280d76622cadb2655b47318"
+ },
+ "src/SDL/MyOpenGLView.h": {
+  "base": "1cfff4e49e12a294be67c46e5f8858702422bfea",
+  "deleted": false,
+  "ours": "b0c74f14762f8186c624c0f90c5b8ca342d65a5c",
+  "theirs": "8afcdb3c655074356d9fba030d06851b7d71cf87"
  },
  "src/meson.build": {
   "deleted": false,

@@ -13,7 +13,10 @@ RES = {
     "src/Core/OOMaths.h": ["theirs", "theirs", "theirs"],
     "src/Core/OOOXZManager.cpp": ["theirs"],  # the history's C++ copy-URL port
     "src/Core/OOOpenGLOnly.h": ["ours"],  # #766: GL_GLEXT_PROTOTYPES on macOS too
-    "src/SDL/MyOpenGLView.cpp": ["ours"],  # Linux stubs stay removed (#747)
+    # the includes are already in the file's include block; the history's port of #744 removes the
+    # dark-mode API the history's test needed until here
+    "src/SDL/MyOpenGLView.cpp": ["ours", "theirs"],
+    "src/SDL/MyOpenGLView.h": ["theirs"],  # (its declarations go with it)
 }
 DELETE = []
 # step 2 removed the unused system prototype; the history removes it here too

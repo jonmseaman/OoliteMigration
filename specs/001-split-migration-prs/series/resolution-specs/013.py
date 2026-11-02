@@ -55,6 +55,28 @@ def _enum_cast(ours, theirs):
 RES["src/Core/Entities/ShipEntity.mm"] = ["theirs", "theirs", _enum_cast, _enum_cast, "theirs", "theirs", "theirs"]
 
 
+# the history's C++ findBoundingBoxRelativeTo names its basis _i, _j, _k; the call's selector parts
+# carry upstream's #745 names
+POST["src/Core/Entities/ShipEntity.mm"] = list(POST["src/Core/Entities/ShipEntity.mm"]) + [
+    ("    return [self findBoundingBoxRelativeToPosition:opv i:i j:j k:k];\n}\n",
+     "    return [self findBoundingBoxRelativeToPosition:opv i:_i j:_j k:_k];\n}\n")]
+# the macOS multisample renderbuffer path (#766) is deferred: its #if/#else went with the hunks, and
+# its #endif goes too
+POST["src/Core/Universe.mm"] = [
+    ("_cxxUniverse->msaaTextureID, 0));\n#endif\n", "_cxxUniverse->msaaTextureID, 0));\n"),
+    ("    OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0));\n#endif\n",
+     "    OOGL(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, 0));\n"),
+]
+# the copy-URL port (step 12): the GUI is the C++ class from here, as at the file's other uses
+try:
+    CHANGES
+except NameError:
+    CHANGES = {}
+CHANGES["src/Core/OOOXZManager.mm"] = [
+    ("        GuiDisplayGen* gui = [UNIVERSE gui];\n\n        if (_interfaceShowingOXZDetail) {\n",
+     "        ::GuiDisplayGen* gui = [UNIVERSE gui];\n\n        if (_interfaceShowingOXZDetail) {\n")]
+
+
 # the containers selector gets a named second part (see selector_containers.py)
 exec(open(__file__.replace("013.py", "selector_containers.py"), encoding="utf-8").read())
 RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES

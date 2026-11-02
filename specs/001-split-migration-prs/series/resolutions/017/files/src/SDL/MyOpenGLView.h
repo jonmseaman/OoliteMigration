@@ -206,8 +206,8 @@ public:
     ::GameController* getGameController();
     virtual void setGameController(::GameController* controller);
     bool isRunningOnPrimaryDisplayDevice();
-#if OOLITE_WINDOWS
     void getDisplayDimensions(unsigned* width, unsigned* height);
+#if OOLITE_WINDOWS
     void refreshDarKOrLightMode();
     bool isDarkModeOn();
     bool getAtDesktopResolution();

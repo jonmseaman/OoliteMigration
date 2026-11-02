@@ -17,6 +17,11 @@
   "ours": "68818919c016a236db923d37103b41ed8a0387d6",
   "theirs": "5ac4e3983a08dcda5f570d096eb352842237df90"
  },
+ "src/Core/OOOXZManager.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "f2fce318aa833cf5e4be375b37132d56c6720d48"
+ },
  "src/Core/Universe+ObjCBridge.h": {
   "deleted": false,
   "extra": true,

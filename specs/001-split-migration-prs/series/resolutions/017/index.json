@@ -348,7 +348,7 @@
  "src/Core/Universe.cpp": {
   "base": "cc10b98da17009dd96c97942c5cd5374fd46cd3a",
   "deleted": false,
-  "ours": "c77621eabd2182c0ef7d695c394f136e15e9f4c1",
+  "ours": "383a4f7a1229f4f3218a1a401a4028162b139223",
   "theirs": "aca70aa9e6fbfc1dc5da28645d6f9add166c8fb3"
  },
  "src/Core/meson.build": {
@@ -366,13 +366,13 @@
  "src/SDL/MyOpenGLView.cpp": {
   "base": "9060b8d220fecc8cc51469c230bbb4b77671ab26",
   "deleted": false,
-  "ours": "5736f522bd91a1e5030e26af9de5bca17439a6d6",
+  "ours": "1aa5a3c2b667a2e52e5097d9f44d4e99103e1107",
   "theirs": "54c53f2e186fc28c684e3841c0aaa132079a6016"
  },
  "src/SDL/MyOpenGLView.h": {
   "deleted": false,
   "extra": true,
-  "merged": "42d5481a87a5f3458147a486c1a71fcf915c729d"
+  "merged": "c353ecd3463d6813fff08600c4c3f15bcaaeedd2"
  },
  "src/meson/meson.build": {
   "base": "6445b105d979ae0a283b48becf4a641955412c52",

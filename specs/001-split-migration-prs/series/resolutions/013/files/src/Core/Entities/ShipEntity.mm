@@ -13235,7 +13235,7 @@ BoundingBox ShipEntity::findBoundingBoxRelativeTo(::Entity* other, Vector _i, Ve
 {
     ::ShipEntity* self = oo::ToObjC(this);
     HPVector opv = other ? other->_cxxEntity->position : position;
-    return [self findBoundingBoxRelativeToPosition:opv i:i j:j k:k];
+    return [self findBoundingBoxRelativeToPosition:opv i:_i j:_j k:_k];
 }
 
 // Exposed to AI and legacy scripts.
