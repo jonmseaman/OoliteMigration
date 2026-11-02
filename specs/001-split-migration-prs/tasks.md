@@ -327,7 +327,7 @@ and builds there with Clang.
   (`7437f22a5` today) and run `tree` for every step. List the new conflicts (expected: #780 in the
   scripting steps) in plan.md Notes, without changing the real stack. Accept: `grep -q '^-
   Re-anchor dry run' specs/001-split-migration-prs/plan.md`.
-- [ ] T035 Final gate: the full tool test suite, then `check --verified`, then `git -C oolite-dev
+- [X] T035 Final gate: the full tool test suite, then `check --verified`, then `git -C oolite-dev
   status --porcelain` empty and `git -C oolite-dev rev-parse develop` still `3aa8d65e8`.
   Accept: `python -m unittest discover -s tools/series/tests -t . && python -I
   tools/series/series.py check --verified && [ -z "$(git -C oolite-dev status --porcelain)" ] && [
