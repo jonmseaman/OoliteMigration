@@ -369,7 +369,7 @@ void MyOpenGLView::pollControls()
                 if (!mouseWarped) // standard event, handle it
                 {
                     // Event coordinates are in points, viewSize in pixels (they differ on high-DPI displays)
-                    float pixelDensity = SDL_GetWindowPixelDensity(oo::ToCxx(self)->window);
+                    float pixelDensity = SDL_GetWindowPixelDensity(window);
                     if (pixelDensity <= 0.0f)
                         pixelDensity = 1.0f;
                     double mx = mmove_event->x * pixelDensity - w / 2.0;

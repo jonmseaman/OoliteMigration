@@ -1,4 +1,10 @@
 {
+ "src/Core/Entities/PlayerEntity.mm": {
+  "base": "cf3440008195a1a3c59d7aeba4e9fc56455a3e27",
+  "deleted": false,
+  "ours": "facd4b10b953a265d13726d1533541cd6ae75798",
+  "theirs": "e016ffac3c53108eeb420ed542b111c103cec0e5"
+ },
  "src/Core/Entities/PlayerEntityControls.mm": {
   "base": "e0118bd3934d0260d499773eb34bff2d340e04c4",
   "deleted": false,

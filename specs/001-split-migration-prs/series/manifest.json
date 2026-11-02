@@ -1933,7 +1933,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "6f0fc6c540ecadfcbd459b0c837eeec46d66010c",
+   "merge_tree": "f562965b7d3088c6ac6e0727acc9faff27184459",
    "n": 14,
    "parent": "series/013-shipentity-slices",
    "resolutions": [
@@ -1942,7 +1942,7 @@
      "path": "src/Core/Entities/Entity.h"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/Entities/PlayerEntity.mm"
     },
     {
@@ -1981,7 +1981,7 @@
     "to": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
     "type": "history"
    },
-   "target_tree": "8d1f1a6e724ea61237bb01ca8a046d64c2861033",
+   "target_tree": "f12f3dc94cf6a65b5f74f8825a6079babf7f8574",
    "temporaries": [],
    "title": "Convert Universe and PlayerEntity to C++",
    "verification": null
@@ -2002,7 +2002,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "4a69ba24352f53f1951ad071b2be5c42d413ef02",
+   "merge_tree": "4509316e11de8d7d243f88301327ec1a5d578475",
    "n": 15,
    "parent": "series/014-universe-player-slices",
    "resolutions": [
@@ -2106,7 +2106,7 @@
     "to": "2c2aae1316b5a125038a797c213162ffba389279",
     "type": "history"
    },
-   "target_tree": "375e784fefb61ebeddf2ae831e7d26b6759ae817",
+   "target_tree": "7565ad9873a7ec8690e7ab923616b821943825e7",
    "temporaries": [],
    "title": "Delete the Objective-C facades",
    "verification": null
@@ -2127,7 +2127,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "51b0cf21e7c7e85105a607d2f171e44d13886a01",
+   "merge_tree": "2011f1a5cdf82b5aeb42f958a21db27f49a9922f",
    "n": 16,
    "parent": "series/015-facade-deletions",
    "resolutions": [
@@ -2299,7 +2299,7 @@
     "to": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
     "type": "history"
    },
-   "target_tree": "ed173894e93f690b58a8ee0ea5b6b40774e4484c",
+   "target_tree": "d823b38f75b1747e1ecf806e781ce5eee74f209c",
    "temporaries": [],
    "title": "Delete the root Entity facade",
    "verification": null
@@ -2321,7 +2321,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "e0b4107520dfa504051bd7f493f577775c5e8393",
+   "merge_tree": "3f78b3c677f4e432dba4487350c6427f99cd91e6",
    "n": 17,
    "parent": "series/016-entity-facade",
    "resolutions": [
@@ -2613,7 +2613,7 @@
     "to": "af1f220542e4917a23833902e8efc313a8eb463b",
     "type": "history"
    },
-   "target_tree": "3f78d2d53d9f98a199b017ad2b8e7964b0a09d17",
+   "target_tree": "ea3d420aa285ebb6a21c5aa387c4f00ddc5c2291",
    "temporaries": [],
    "title": "Remove the Objective-C runtime and rename the sources to .cpp",
    "verification": null
@@ -2634,7 +2634,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "4362a8117d7378a7ed9b90978dc2414088975b1b",
+   "merge_tree": "93804743e20bbd0a69b3413601fa14eba6ef62a3",
    "n": 18,
    "parent": "series/017-objc-runtime-out",
    "resolutions": [],
@@ -2649,7 +2649,7 @@
     "to": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
     "type": "history"
    },
-   "target_tree": "f40216bb8acaf128810fc347651d04319bb56e07",
+   "target_tree": "a22dbeb4fbc5561d0b7aa48d6b46bdaa33153f21",
    "temporaries": [],
    "title": "Build with GCC as well as Clang",
    "verification": null
@@ -2670,7 +2670,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "3d5876ef15196a4bad2a6e9f3cd9eab03b47f4e1",
+   "merge_tree": "078423635761fe1b59f353d8f35c5ebb9435e399",
    "n": 19,
    "parent": "series/018-gcc-build",
    "resolutions": [
@@ -2754,7 +2754,7 @@
     "to": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
     "type": "history"
    },
-   "target_tree": "eb308570632ea2e4da9db93112b2d6ddf4c0f302",
+   "target_tree": "4d9409bee5043f543531bdf6d42e29ef6f80ed0f",
    "temporaries": [],
    "title": "Port upstream changes #369 to #765 into the C++ code",
    "verification": null

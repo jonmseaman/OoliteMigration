@@ -57,6 +57,11 @@ def vla(ours, theirs):
 
 
 RES["src/Core/Entities/PlayerEntity.mm"] = [last_savename, vla, vla]
+# the setter step 14 wrote through _cxxPlayer is a C++ member from here
+POST = dict(globals().get("POST", {}))
+POST["src/Core/Entities/PlayerEntity.mm"] = list(POST.get("src/Core/Entities/PlayerEntity.mm", [])) + [(
+    "_cxxPlayer->_lastsaveName.has_value() ? oo::PList(*_cxxPlayer->_lastsaveName)",
+    "_lastsaveName.has_value() ? oo::PList(*_lastsaveName)")]
 RES["src/Core/Entities/ShipEntity.mm"] = ["theirs"]  # its includes cover std::vector
 # the history deletes the vector bridge include here; its closing include-guard #endif goes too, since
 # upstream's #748 header uses #pragma once

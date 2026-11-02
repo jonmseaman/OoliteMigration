@@ -43,8 +43,19 @@ POST = {
          "            int windowWidth, windowHeight;\n"
          "            SDL_GetWindowSize(window, &windowWidth, &windowHeight);\n"
          "            saveWindowSize(NSMakeSize(windowWidth, windowHeight));\n"),
+        # and step 12's port of #766's mouse-motion density, in the C++ member
+        ("SDL_GetWindowPixelDensity(oo::ToCxx(self)->window);", "SDL_GetWindowPixelDensity(window);"),
     ],
 }
+# step 8's port of #740 (remember the last saved game) writes the C++ player's name from here
+try:
+    CHANGES
+except NameError:
+    CHANGES = {}
+CHANGES["src/Core/Entities/PlayerEntity.mm"] = [(
+    'oo::Defaults::standard().setObject("last_savename", _lastsaveName.has_value() ? oo::PList(*_lastsaveName) : oo::PList());\n',
+    'oo::Defaults::standard().setObject("last_savename", _cxxPlayer->_lastsaveName.has_value() ? '
+    'oo::PList(*_cxxPlayer->_lastsaveName) : oo::PList());\n')]
 # the history folded the +Input header into the view class
 DELETE = ["src/SDL/MyOpenGLView+Input.h"]
 
