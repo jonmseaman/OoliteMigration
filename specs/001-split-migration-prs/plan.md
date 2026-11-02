@@ -336,3 +336,6 @@ game repo only gets local branches.
     input's layout, and develop's tests were sorted by an earlier version); `verify` checks they
     differ in nothing else. Step 025 is develop exactly (FR-002), so it cannot be the command's
     output byte for byte.
+  - Step 020's unit run: develop's header check (736572b67) needs the maths headers' umbrella
+    guard, which the history had and upstream's #748 form (taken by the earlier steps) does not.
+    Step 020 takes develop's text of the eight maths headers, as stored resolutions of 736572b67.

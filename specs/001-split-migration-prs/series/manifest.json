@@ -3088,42 +3088,50 @@
    "branch": "series/020-develop-fixes",
    "chapter": null,
    "description": "series/pr/020-develop-fixes.md",
-   "era": null,
+   "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "5cfb51aa1206af573909111d6dcd297af84b596e",
+   "merge_tree": "ea32de739e7e8e5c3032ec7cc051e7dea883ca33",
    "n": 20,
    "parent": "series/019-upstream-9ee8ff22f-port",
    "resolutions": [
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/OOBoundingBox.h"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/OOFastArithmetic.h"
     },
     {
-     "how": "transplant",
+     "how": "stored",
+     "path": "src/Core/OOHPVector.h"
+    },
+    {
+     "how": "stored",
      "path": "src/Core/OOMatrix.h"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/OOQuaternion.h"
     },
     {
-     "how": "transplant",
+     "how": "stored",
      "path": "src/Core/OOTriangle.h"
     },
     {
-     "how": "transplant",
+     "how": "stored",
+     "path": "src/Core/OOVector.h"
+    },
+    {
+     "how": "stored",
      "path": "src/Core/OOVoxel.h"
     }
    ],
    "size": {
     "deleted_files": 0,
     "other": 9,
-    "src": 600,
+    "src": 104,
     "tests": 386
    },
    "source": {
@@ -3136,10 +3144,28 @@
     ],
     "type": "develop"
    },
-   "target_tree": "2944c826b889a3ad8b38063a7ee04efe165c4cb7",
+   "target_tree": "867b8a4f64dd0d21aba73df71ba38f6d6f6a328c",
    "temporaries": [],
    "title": "Small fixes after the migration",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "pass: s6_damaged_ship_flees",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\020-unit.log)",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "b1b58353fef2445df92e77771662c5b2fd3eb926",
+    "date": "2026-11-02",
+    "era": "cxx",
+    "tree": "2944c826b889a3ad8b38063a7ee04efe165c4cb7"
+   }
   },
   {
    "boundary_moved": null,
@@ -3149,7 +3175,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "e01c3608da8e85f38c1f398b5ea05a8445cee542",
+   "merge_tree": "c7fbd1f48467871731b9c255f4b606408bd56e34",
    "n": 21,
    "parent": "series/020-develop-fixes",
    "resolutions": [
@@ -3220,7 +3246,7 @@
     ],
     "type": "develop"
    },
-   "target_tree": "a03c034e13b466587c20e3ff7d7bfdee879ec054",
+   "target_tree": "811e07ef9d560d351c2eb550586c48e4952d3890",
    "temporaries": [],
    "title": "Make comments describe the code; use #pragma once",
    "verification": null
@@ -3233,7 +3259,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "fd9cdba115f48918fd46a62284cafe37832eea0e",
+   "merge_tree": "54392c0c7b8dffddc9887ba8f69be8a5b52c6227",
    "n": 22,
    "parent": "series/021-source-hygiene",
    "resolutions": [],
@@ -3252,7 +3278,7 @@
     ],
     "type": "develop"
    },
-   "target_tree": "fe5b9250fa3075bf18da08ce72bd99ed3f8b09aa",
+   "target_tree": "13d529d78c1623cd5559f4c0900af132335382b4",
    "temporaries": [],
    "title": "Tests and developer tooling",
    "verification": null
@@ -3265,7 +3291,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "f1358315f4c28a67dc7f3506894cd861284d0bd5",
+   "merge_tree": "740d692654c4267dab501da85310e4f42bb75781",
    "n": 23,
    "parent": "series/022-tests-and-tooling",
    "resolutions": [
@@ -3331,7 +3357,7 @@
     ],
     "type": "develop"
    },
-   "target_tree": "46c70e3f471a17b7e52c9868f82b764a90885867",
+   "target_tree": "811013b8be583c81b2530e8905c739b891941f81",
    "temporaries": [],
    "title": "Compile the remaining C sources as C++; upgrade QuickJS-ng",
    "verification": null
@@ -3344,7 +3370,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "914085cf6a2ebca3c256a79f4b6c4aa4c700068a",
+   "merge_tree": "67e722dfdbf49e3dd7024c437370c1fc305c5ce7",
    "n": 24,
    "parent": "series/023-c-as-cxx",
    "resolutions": [
@@ -3417,10 +3443,6 @@
      "path": "src/Core/OOHPVector.cpp"
     },
     {
-     "how": "prefer-theirs",
-     "path": "src/Core/OOHPVector.h"
-    },
-    {
      "how": "auto",
      "path": "src/Core/OOJoystickProfile.h"
     },
@@ -3446,10 +3468,6 @@
     },
     {
      "how": "prefer-theirs",
-     "path": "src/Core/OOMatrix.h"
-    },
-    {
-     "how": "prefer-theirs",
      "path": "src/Core/OOOpenGL.h"
     },
     {
@@ -3466,31 +3484,11 @@
     },
     {
      "how": "prefer-theirs",
-     "path": "src/Core/OOQuaternion.h"
-    },
-    {
-     "how": "prefer-theirs",
      "path": "src/Core/OOSystemDescriptionManager.cpp"
-    },
-    {
-     "how": "converge",
-     "path": "src/Core/OOTriangle.h"
-    },
-    {
-     "how": "transplant",
-     "path": "src/Core/OOTriangle.h"
     },
     {
      "how": "prefer-theirs",
      "path": "src/Core/OOVector.cpp"
-    },
-    {
-     "how": "converge",
-     "path": "src/Core/OOVoxel.h"
-    },
-    {
-     "how": "transplant",
-     "path": "src/Core/OOVoxel.h"
     },
     {
      "how": "hunks",
@@ -3566,7 +3564,7 @@
     ],
     "type": "develop"
    },
-   "target_tree": "7ba55f51bffb631321b05b131ccdd2f42509f05b",
+   "target_tree": "144f820f54ebafb90b4a0ecdce0f08e33eb05cfe",
    "temporaries": [],
    "title": "Port upstream #766, #774 and #781",
    "verification": null

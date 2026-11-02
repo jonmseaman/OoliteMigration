@@ -1,0 +1,46 @@
+{
+ "src/Core/OOBoundingBox.h": {
+  "base": "496e6f40555b534076a14af196940e454702fc53",
+  "deleted": false,
+  "ours": "8194c80fa36903a5dbcc06655ee04054675081d6",
+  "theirs": "3578818825c2915e30c7bdaa793ecfc043a4d163"
+ },
+ "src/Core/OOFastArithmetic.h": {
+  "base": "2f292758315629d00cf42e4894208c4fe716ba29",
+  "deleted": false,
+  "ours": "50d3c459aed537ff001779e680e6538f4db8c599",
+  "theirs": "443ffa707b6b53a4273bf77ca83a43dcb4b6a34f"
+ },
+ "src/Core/OOHPVector.h": {
+  "deleted": false,
+  "extra": true
+ },
+ "src/Core/OOMatrix.h": {
+  "base": "e732c5669bef18773c0416dea0abb415aef81fc1",
+  "deleted": false,
+  "ours": "d02759821c47f4c5839a888fdd278040b98870ea",
+  "theirs": "b769dcb92739566f6d4c6eb60b8488fb34c882ec"
+ },
+ "src/Core/OOQuaternion.h": {
+  "base": "31a1f0f4717498c365902286e48b8d03f8058c82",
+  "deleted": false,
+  "ours": "2c623caf84f7828942fa2ceb00b786b944dd1138",
+  "theirs": "d9cbf26d8bfcf963f2a80910b5abb46ba7a610b2"
+ },
+ "src/Core/OOTriangle.h": {
+  "base": "dd79e59f029d67c56c7eeb0c9e70bb573edd8a9f",
+  "deleted": false,
+  "ours": "fbd6eb7ca9d7631c36d8c54bd2ac4ca3f2fc9ea4",
+  "theirs": "c1f4c73a4fff539b4a8d8f62f3b0cd92bac4c5c7"
+ },
+ "src/Core/OOVector.h": {
+  "deleted": false,
+  "extra": true
+ },
+ "src/Core/OOVoxel.h": {
+  "base": "20c25e9cce30a3c955822938e4983222298ec1b9",
+  "deleted": false,
+  "ours": "fb0a8ddf97d75d84571291227f4d1b5ce6c0c0bc",
+  "theirs": "07800266a202fa046c59767f14239453ff0edba0"
+ }
+}
