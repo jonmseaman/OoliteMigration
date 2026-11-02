@@ -251,7 +251,7 @@ matching the manifest's exclusions, and `check --verified` passes for 020–025.
   the exclusions taken from the base. Add a test to `tools/series/tests/test_trees.py` using the
   fixture's reformat commit. Accept: `python -m unittest tools.series.tests.test_trees && for n
   in 20 21 22 23 24 25; do python -I tools/series/series.py tree $n || exit 1; done`.
-- [ ] T025 [US3] Build steps 20–25, write their descriptions (step 025: mechanical, optional, gives
+- [X] T025 [US3] Build steps 20–25, write their descriptions (step 025: mechanical, optional, gives
   the reproducing command, and notes that 001–024 already pass upstream's own clang-format check),
   and verify them. If a step from 020–024 doesn't build in upstream style, fold its commits into
   025, `renumber` (T030; if not yet done, do it by hand and record it), and note it in plan.md

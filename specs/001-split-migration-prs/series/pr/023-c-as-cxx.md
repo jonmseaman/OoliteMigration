@@ -34,19 +34,19 @@ for the upgrade, and the removed `OOLITE_GNUSTEP` guards.
 
 ## Verified **(gen)**
 
-Windows x64, `658de374cc`, 2026-11-02.
+Windows x64, `fac67c649a`, 2026-11-02.
 
 | Check | Result |
 |---|---|
-| build_clang | fail: exit 1 (see .agent-tmp\series-verify-logs\023-build_clang.log) |
+| build_clang | pass |
 | build_gcc | n/a: does not build with GCC yet (exit 1); the parent does not either |
 | clang_format | pass |
-| component | fail: not run, the build failed |
+| component | pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships, t1_tutorial_walkthrough |
 | no_new_spidermonkey_or_gnustep | pass |
 | no_new_suppressions | pass |
-| smoke | fail: not run, the build failed |
+| smoke | pass |
 | tests_untouched | pass |
-| unit | fail: not run, the build failed |
-| warnings_clang | n/a: the build failed |
+| unit | pass: oofnd, core, headers |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

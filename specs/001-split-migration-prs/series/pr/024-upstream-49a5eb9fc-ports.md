@@ -2,7 +2,7 @@
 
 **Series:** step 24 of 25 · base `series/023-c-as-cxx` · next `series/025-google-style-format` **(gen)**
 
-**From:** `develop` commits `7912222ed`, `f80c74210`, `a1e2ce889`, `ac193cfe7`, `ec2462f6f`, `35d0ef8a0` · 1.1k src, 198 tests, 169 other changed lines; 223 lines in deleted files **(gen)**
+**From:** `develop` commits `7912222ed`, `f80c74210`, `a1e2ce889`, `ac193cfe7`, `ec2462f6f`, `35d0ef8a0` · 6.0k src, 197 tests, 169 other changed lines; 223 lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -44,6 +44,19 @@ part that runs everywhere and has tests. The tests pass under the GL test contex
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `95c133d92b`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: does not build with GCC yet (exit 1); the parent does not either |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | pass: oofnd, core, headers |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

@@ -2,7 +2,7 @@
 
 **Series:** step 25 of 25 · base `series/024-upstream-49a5eb9fc-ports` · next `—` **(gen)**
 
-**From:** `develop` commits `13eb19ee7`, `266118a39`, `4ef61a09d`, `21c3048a2` · 378.3k src, 658 tests, 55 other changed lines; 0 lines in deleted files **(gen)**
+**From:** `develop` commits `13eb19ee7`, `266118a39`, `4ef61a09d`, `21c3048a2` · 431.9k src, 5 tests, 55 other changed lines; 0 lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -33,6 +33,20 @@ not the diff.
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `d340858485`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: does not build with GCC yet (exit 1); the parent does not either |
+| clang_format | n/a: the reformat step changes the style; upstream's check follows it |
+| component | n/a: no component scenario touched |
+| mechanical | pass: the reformat and 3 file(s) of its own (.clang-format, README.md, mk.sh); 88 file(s) keep develop's layout or include order (clang-format's output depends on its input's layout, and develop's tests were sorted by an earlier version) |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | pass: oofnd, core, headers |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

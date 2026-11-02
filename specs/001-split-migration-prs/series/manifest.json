@@ -3395,7 +3395,7 @@
    "size": {
     "deleted_files": 0,
     "other": 167,
-    "src": 14409,
+    "src": 14389,
     "tests": 5350
    },
    "source": {
@@ -3410,22 +3410,22 @@
    "title": "Compile the remaining C sources as C++; upgrade QuickJS-ng",
    "verification": {
     "checks": {
-     "build_clang": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\023-build_clang.log)",
+     "build_clang": "pass",
      "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
      "clang_format": "pass",
-     "component": "fail: not run, the build failed",
+     "component": "pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships, t1_tutorial_walkthrough",
      "no_new_spidermonkey_or_gnustep": "pass",
      "no_new_suppressions": "pass",
-     "smoke": "fail: not run, the build failed",
+     "smoke": "pass",
      "tests_untouched": "pass",
-     "unit": "fail: not run, the build failed",
-     "warnings_clang": "n/a: the build failed"
+     "unit": "pass: oofnd, core, headers",
+     "warnings_clang": "pass: 0 warnings"
     },
     "clean": false,
-    "commit": "658de374cc116db66be1112ccaa1c93be4c50986",
+    "commit": "fac67c649a781c7779e2150faffa02e952f4dc6f",
     "date": "2026-11-02",
     "era": "cxx",
-    "tree": "6ea7bc40f1f176901d0279f074cb0d917254a265"
+    "tree": "3fcf12683aa7c124d1067a882624365b53161442"
    }
   },
   {
@@ -3433,7 +3433,7 @@
    "branch": "series/024-upstream-49a5eb9fc-ports",
    "chapter": null,
    "description": "series/pr/024-upstream-49a5eb9fc-ports.md",
-   "era": null,
+   "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "27cb24da701420da0046e0d4ccdfc40d274259ff",
@@ -3613,14 +3613,32 @@
    "target_tree": "144f820f54ebafb90b4a0ecdce0f08e33eb05cfe",
    "temporaries": [],
    "title": "Port upstream #766, #774 and #781",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core, headers",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "95c133d92b5781c23c8635187acc128295b8e83e",
+    "date": "2026-11-02",
+    "era": "cxx",
+    "tree": "144f820f54ebafb90b4a0ecdce0f08e33eb05cfe"
+   }
   },
   {
    "boundary_moved": null,
    "branch": "series/025-google-style-format",
    "chapter": null,
    "description": "series/pr/025-google-style-format.md",
-   "era": null,
+   "era": "cxx",
    "kind": "mechanical",
    "mechanical_command": "take .clang-format from 3aa8d65e8 and add mk.sh format/format-check (4ef61a09d), then run clang-format 22 -i on every .h/.hpp/.c/.cpp under src/ and tests/",
    "merge_tree": "d07634da3e3fb470ca36cb3172f75f5db4c16621",
@@ -3630,8 +3648,8 @@
    "size": {
     "deleted_files": 0,
     "other": 55,
-    "src": 378259,
-    "tests": 658
+    "src": 431864,
+    "tests": 5
    },
    "source": {
     "commits": [
@@ -3645,7 +3663,26 @@
    "target_tree": "d07634da3e3fb470ca36cb3172f75f5db4c16621",
    "temporaries": [],
    "title": "Reformat with Google-style clang-format (optional)",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "n/a: the reformat step changes the style; upstream's check follows it",
+     "component": "n/a: no component scenario touched",
+     "mechanical": "pass: the reformat and 3 file(s) of its own (.clang-format, README.md, mk.sh); 88 file(s) keep develop's layout or include order (clang-format's output depends on its input's layout, and develop's tests were sorted by an earlier version)",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core, headers",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "d34085848565c3e878daa20af39214421034be70",
+    "date": "2026-11-02",
+    "era": "cxx",
+    "tree": "d07634da3e3fb470ca36cb3172f75f5db4c16621"
+   }
   }
  ]
 }
