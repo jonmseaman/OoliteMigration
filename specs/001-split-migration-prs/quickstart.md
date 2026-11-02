@@ -19,12 +19,13 @@ UCRT64 (`tools/series` invokes `C:/Users/jon/scoop/apps/msys2/current/usr/bin/ba
 
 ```bash
 python tools/series/series.py inventory          # writes series/inventory.tsv
-python tools/series/series.py cut --chapters     # writes R14's 25 steps to manifest.json
+python tools/series/series.py cut --chapters     # writes R14's steps to manifest.json, keeping hoisted ones
 python tools/series/series.py check              # exit 1 until steps are built
 ```
 
-Expected: 25 planned steps (001–019 history chapters, 020–025 the `develop` tail), each with its
-chapter, history range and measured size.
+Expected: 26 steps: 001 the hoisted `OO_RANDOM_SEED` fix, 002–020 the history chapters and 021–026
+the `develop` tail, each with its chapter or commits and its measured size. `cut` keeps the hoisted
+steps and every step's state; `hoist <commit> --slug S` then `renumber` adds another.
 
 ## 2. Build the stack
 
@@ -40,7 +41,7 @@ manifest order.
 
 ```bash
 python tools/series/series.py verify --from 1          # incremental builds, step by step
-python tools/series/series.py verify <last> --clean    # clean build of the last step
+python tools/series/series.py verify 26 --clean       # clean build of the last step
 python tools/series/series.py check --verified          # exit 0 only when every step passes
 ```
 
@@ -50,7 +51,8 @@ plus unit and smoke tests passing; `check --verified` exits 0.
 ## 4. The end state is `develop`
 
 ```bash
-git -C oolite-dev diff --stat series/<last> 3aa8d65e8    # only paths in the exclusions list
+python tools/series/series.py check --only final-tree    # the last step is develop, outside the exclusions
+git -C oolite-dev diff --stat series/026-google-style-format 3aa8d65e8    # only the exclusions' paths
 ```
 
 ## 5. Hand over (Jon)

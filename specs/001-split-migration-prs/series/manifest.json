@@ -38,6 +38,7 @@
  "ledger": [],
  "steps": [
   {
+   "boundary_moved": null,
    "branch": "series/001-random-seed-env",
    "chapter": null,
    "description": "series/pr/001-random-seed-env.md",
@@ -3727,8 +3728,8 @@
      "unit": "pass: oofnd, core, headers",
      "warnings_clang": "pass: 0 warnings"
     },
-    "clean": false,
-    "commit": "d34085848565c3e878daa20af39214421034be70",
+    "clean": true,
+    "commit": "d5f8e1af33df5c64029cca5a180d8e0f39cfe3fa",
     "date": "2026-11-02",
     "era": "cxx",
     "tree": "d07634da3e3fb470ca36cb3172f75f5db4c16621"

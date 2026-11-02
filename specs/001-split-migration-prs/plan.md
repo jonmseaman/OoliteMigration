@@ -188,6 +188,14 @@ game repo only gets local branches.
   one the parent's own record, itself current, was made for. Every check reads only the step's
   tree, its parent's tree and the parent's record, so after the hoist only steps 001 and 002 were
   re-verified.
+- T032 (2026-11-02): quickstart §1–4 run against the built stack. `inventory`, `cut --chapters`,
+  `check`, `build --from 1` (all 26 unchanged), `git town branch`, `verify 26 --clean`,
+  `check --verified` and §4's diff exit 0. `verify --from 1` was not run again in one pass (about
+  13 hours): each step's record comes from the same command run from that step on (`--from 20`,
+  `--from 23`, `1`, `2`), and `check --verified` confirms every record is current. Drift fixed: the
+  step count (26, with the hoisted step), `<last>` placeholders, and the CLI contract (`hoist
+  --title`, `tree --commit`, `verify --integrity-only`, the `verified` group, `renumber`'s
+  resolution directories, the resolutions layout).
 - Re-anchor dry run (T034, 2026-11-02): `upstream_base` set to `upstream/master` (`7437f22a5`,
   one commit past `49a5eb9fc`: #780, engine-neutral JavaScript names outside the scripting layer,
   21 files) in a copy of the manifest (`.agent-tmp/series-reanchor/`); every step's tree computed

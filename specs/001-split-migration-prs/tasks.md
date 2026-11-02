@@ -317,7 +317,7 @@ and builds there with Clang.
 
 ## Phase 8: Polish and cross-cutting
 
-- [ ] T032 [P] Run quickstart.md end to end against the built stack and fix any drift between it,
+- [X] T032 [P] Run quickstart.md end to end against the built stack and fix any drift between it,
   contracts/series-cli.md and the tool. Accept: every command block in quickstart.md §1–4 exits 0.
 - [X] T033 [P] Update plan.md's Notes "To fill at G2" items with the results (boundary moves,
   hoisted fixes, tail folds), and the status log in `docs/phases/4p-upstream-polish.md` with one
