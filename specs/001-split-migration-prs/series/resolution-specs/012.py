@@ -174,3 +174,43 @@ POST["src/Core/Entities/ShipEntity.mm"] = [(
 # the containers selector gets a named second part (see selector_containers.py)
 exec(open(__file__.replace("012.py", "selector_containers.py"), encoding="utf-8").read())
 RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES
+
+
+# The history's tests that arrive here (test_OOJSSystem) leave autoreleased OOJSValues in the
+# thread's pools at exit, which libobjc drains after the CRT's static destructors; the freed values
+# reached the destroyed JS registries and notification center (std::system_error at exit). The
+# history's own fix (3179b9ce0, oo-9ht.173: the registries and the default center are immortal),
+# which the history makes at step 14, is brought forward; its test change stays at step 14.
+try:
+    CHANGES
+except NameError:
+    CHANGES = {}
+_IMMORTAL_NOTE = (
+    "    // The process registries are immortal: allocated once and never destroyed (bead oo-9ht.173).\n"
+    "    // libobjc drains a thread's open autorelease pools at thread detach, which on Windows runs after\n"
+    "    // the CRT has destroyed namespace-scope objects; an autoreleased OOJSValue or script freed there\n"
+    "    // still reaches them (beginRequest -> csOf, finalizers, roots). The same holds for every\n"
+    "    // registry below that a finalizer or a façade call can reach.\n")
+def _immortal(decl_type, name, comment=""):
+    tail = f" // {comment}" if comment else ""
+    return (f"    {decl_type} {name};{tail}\n", f"    {decl_type}& {name} = *new {decl_type};{tail}\n")
+CHANGES["src/Core/Scripting/ooscript/JSEngine_quickjs.cpp"] = [
+    ("    std::unordered_map<JSContext*, ContextState*> gContexts;\n",
+     _IMMORTAL_NOTE + "    std::unordered_map<JSContext*, ContextState*>& gContexts = *new std::unordered_map<JSContext*, ContextState*>;\n"),
+    _immortal("std::unordered_map<JSRuntime*, JSContext*>", "gCtxForRuntime", "finalizers get only a JSRuntime*"),
+    _immortal("std::vector<const Value*>", "gConstructing", "vp blocks of constructor calls"),
+    _immortal("std::unordered_map<JSClassID, BackendClass*>", "gClasses"),
+    _immortal("std::unordered_map<void*, std::vector<SharedPermanent>>", "gSharedPermanent", "prototype -> entries (atoms owned)"),
+    _immortal("std::unordered_map<std::string, JSValue>", "gScopeByFile", "owned references"),
+    _immortal("std::vector<JSValue>", "gCallThis", "`this` of each façade call in progress (borrowed)"),
+    ("    static std::unordered_map<JSClassID, ClassDef*> sForeign;\n",
+     "    static std::unordered_map<JSClassID, ClassDef*>& sForeign = *new std::unordered_map<JSClassID, ClassDef*>; // immortal, as the registries above (bead oo-9ht.173)\n"),
+    _immortal("std::unordered_map<JSContext*, FrameSnapshot>", "gFrames"),
+    _immortal("std::unordered_map<std::string, ScriptRep*>", "gFrameScripts", "one stable Script token per filename"),
+]
+CHANGES["src/oofnd/Notification.hpp"] = [
+    ("        static NotificationCenter center;\n",
+     "        // Immortal (bead oo-9ht.173): an object freed by a pool drained at thread detach, after the\n"
+     "        // CRT's static destructors, may still remove its observers here.\n"
+     "        static NotificationCenter& center = *new NotificationCenter;\n"),
+]

@@ -68,7 +68,7 @@ that.
 
 ## Verified **(gen)**
 
-Windows x64, `98b3f356fa`, 2026-11-02.
+Windows x64, `8650190d76`, 2026-11-02.
 
 | Check | Result |
 |---|---|
@@ -80,7 +80,7 @@ Windows x64, `98b3f356fa`, 2026-11-02.
 | no_new_suppressions | pass |
 | smoke | pass |
 | tests_untouched | pass |
-| unit | fail: exit 1 (see .agent-tmp\series-verify-logs\011-unit.log) |
+| unit | pass: oofnd, core |
 | warnings_clang | pass: 0 warnings outside the history's tests (3 listed in test-warnings.md) |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

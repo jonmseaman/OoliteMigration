@@ -80,3 +80,7 @@ RES["src/Core/Universe.mm"] = ["theirs", "theirs", guard, "theirs"] + [vla] * 8 
 # the containers selector gets a named second part (see selector_containers.py)
 exec(open(__file__.replace("014.py", "selector_containers.py"), encoding="utf-8").read())
 RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES
+
+# step 12 brought the history's immortal registries (3179b9ce0) forward; here the history makes
+# that change; its debugger hook, declared next to them, stays out (the series keeps the stub setter)
+RES["src/Core/Scripting/ooscript/JSEngine_quickjs.cpp"] = ["ours"]

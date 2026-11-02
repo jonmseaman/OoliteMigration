@@ -45,6 +45,11 @@
   "ours": "4a523cd7440ffcea5545bcbc21da961074483b0c",
   "theirs": "731a0715c16207b4b453a83ae7cda74a11cc515d"
  },
+ "src/Core/Scripting/ooscript/JSEngine_quickjs.cpp": {
+  "deleted": false,
+  "extra": true,
+  "merged": "c097f5efc047f810551778b4a77864a7f596c255"
+ },
  "src/SDL/MyOpenGLView+Input.mm": {
   "base": "b2580193416e8ba909a5666c16314e5743e7c464",
   "deleted": false,
@@ -62,5 +67,10 @@
   "deleted": false,
   "ours": "deb2357fd7c338605713cca2d3422a19c5b59907",
   "theirs": "cb23899cc4dea1dd077b213697353ca84ae02f4a"
+ },
+ "src/oofnd/Notification.hpp": {
+  "deleted": false,
+  "extra": true,
+  "merged": "d0d5bd434836607a226c33e55b122e9f44a629f3"
  }
 }

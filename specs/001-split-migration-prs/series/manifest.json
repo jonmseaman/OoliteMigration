@@ -1874,14 +1874,14 @@
      "no_new_suppressions": "pass",
      "smoke": "pass",
      "tests_untouched": "pass",
-     "unit": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\011-unit.log)",
+     "unit": "pass: oofnd, core",
      "warnings_clang": "pass: 0 warnings outside the history's tests (3 listed in test-warnings.md)"
     },
     "clean": false,
-    "commit": "98b3f356fa59f15743b54490b064193f5c735877",
+    "commit": "8650190d7686c36adeb87d5126334f6cb031b6f8",
     "date": "2026-11-02",
     "era": "objc-quickjs",
-    "tree": "c8e1efbb99dbdf00474673c5b48567f8fcea6a33"
+    "tree": "1e29e295c53850a22f97a788ea579d1b7731892e"
    }
   },
   {
@@ -1899,10 +1899,10 @@
     ]
    },
    "description": "series/pr/012-first-slices.md",
-   "era": null,
+   "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "0d6dd12ddb5299f271381c8017ac61e86a22785c",
+   "merge_tree": "679534352c21ab3ee84dc5d74ec8bdcefd95b04d",
    "n": 12,
    "parent": "series/011-module-conversions",
    "resolutions": [
@@ -1956,6 +1956,10 @@
     },
     {
      "how": "stored",
+     "path": "src/Core/Scripting/ooscript/JSEngine_quickjs.cpp"
+    },
+    {
+     "how": "stored",
      "path": "src/SDL/MyOpenGLView+Input.mm"
     },
     {
@@ -1965,23 +1969,45 @@
     {
      "how": "stored",
      "path": "src/SDL/MyOpenGLView.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/oofnd/Notification.hpp"
     }
    ],
    "size": {
     "deleted_files": 5058,
     "other": 51,
-    "src": 25966,
-    "tests": 13298
+    "src": 26136,
+    "tests": 12894
    },
    "source": {
     "from": "ad82bd1efe7e79a499cb62fc9ea52fc7f8123f08",
     "to": "0c01939de79a4ac04237390d93dc78437057c5e0",
     "type": "history"
    },
-   "target_tree": "3c630b3bfd66493816cd66150a0b0b7eca8c97f8",
+   "target_tree": "8bdc377d9ffe584880c5121d1cc6370001000fa4",
    "temporaries": [],
    "title": "Convert the large files in slices; delete the first Objective-C facades",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\012-unit.log)",
+     "warnings_clang": "pass: 0 warnings outside the history's tests (4 listed in test-warnings.md)"
+    },
+    "clean": false,
+    "commit": "cce07fad2b72db5002925b144bb3acdd69539b29",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "3c630b3bfd66493816cd66150a0b0b7eca8c97f8"
+   }
   },
   {
    "boundary_moved": null,
@@ -1999,7 +2025,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "5fd81726699272aa3c9b5ff14de706ad0a0f3144",
+   "merge_tree": "92e1d6d9d5f8bf98c9f6a8f573ef181299d20884",
    "n": 13,
    "parent": "series/012-first-slices",
    "resolutions": [
@@ -2059,7 +2085,7 @@
     "to": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
     "type": "history"
    },
-   "target_tree": "a1b006edc582f1b30a3b525a4703e18b163d0218",
+   "target_tree": "59cf67fc3538c9e23ceea0095d123c8eb2f777fc",
    "temporaries": [],
    "title": "Convert ShipEntity to C++",
    "verification": null
@@ -2098,7 +2124,7 @@
      "path": "src/Core/Entities/PlayerEntityControls.mm"
     },
     {
-     "how": "auto",
+     "how": "stored",
      "path": "src/Core/Scripting/ooscript/JSEngine_quickjs.cpp"
     },
     {

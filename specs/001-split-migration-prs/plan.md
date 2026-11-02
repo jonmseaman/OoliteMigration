@@ -272,3 +272,9 @@ game repo only gets local branches.
     the history's tests passed only in its -O2 build. The history's own fix (f4fc8a0dd, oo-lglaq,
     which the history makes at step 16) is brought forward to step 11 as the conservative default:
     no test changes, steps 11-15 differ in OOFastArithmetic.h only, steps 16-19 are unchanged.
+  - Step 12's unit run: test_OOJSSystem (new here) passed every check, then aborted at exit with
+    std::system_error: autoreleased OOJSValues drained at thread detach reached the JS registries
+    and the notification center after the CRT destroyed them. The history's source fix (3179b9ce0,
+    oo-9ht.173, made at step 14) is brought forward to step 12; its test change stays at step 14.
+    Step 14 takes the series' side of the meeting hunk (the series keeps the stub debugger setter,
+    so the history's gDebuggerHandler stays out). Steps 16-19 are unchanged.

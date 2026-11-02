@@ -2,7 +2,7 @@
 
 **Series:** step 12 of 25 · base `series/011-module-conversions` · next `series/013-shipentity-slices` **(gen)**
 
-**Chapter:** P3 · slice plans, slices, facade deletions · history `ad82bd1efe`..`0c01939de7` (80 merges) · 26.0k src, 13.3k tests, 51 other changed lines; 5.1k lines in deleted files **(gen)**
+**Chapter:** P3 · slice plans, slices, facade deletions · history `ad82bd1efe`..`0c01939de7` (80 merges) · 26.1k src, 12.9k tests, 51 other changed lines; 5.1k lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -86,6 +86,19 @@ The `GameController.mm` hunk is the priority change, debug builds only (`#ifndef
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `cce07fad2b`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | fail: exit 1 (see .agent-tmp\series-verify-logs\012-unit.log) |
+| warnings_clang | pass: 0 warnings outside the history's tests (4 listed in test-warnings.md) |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

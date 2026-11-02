@@ -11,6 +11,12 @@
   "ours": "13854530636adeef34ad3dc68dcfb64886d68700",
   "theirs": "482e30ec87e8905e73b0ff9648e4b9931fd7cb3f"
  },
+ "src/Core/Scripting/ooscript/JSEngine_quickjs.cpp": {
+  "base": "9a9cfba8d76812025fa4d6e24a4cdacc1892e34b",
+  "deleted": false,
+  "ours": "a102e53e3bb6142d81349b36a967570eb8cfc84f",
+  "theirs": "ae8241eeb692a9ccdc4a659f60c32d9cdfb5016b"
+ },
  "src/Core/Universe+ObjCBridge.mm": {
   "deleted": false,
   "extra": true,
