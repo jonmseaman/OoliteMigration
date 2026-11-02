@@ -76,6 +76,52 @@ class TreesTest(unittest.TestCase):
         self.assertEqual(conflicts, ["src/a.m"])
         self.assertIsNone(tree)
 
+    def test_replay_carries_content_commits_and_a_reformat_commit_is_a_no_op(self):
+        fx, g = self.fx, self.game
+        cache = os.path.join(self.tmpdir.name, "cache.json")
+        n = lambda c: normalise.normalise_tree(g, f"{c}^{{tree}}", fx["u0"], cache_path=cache)
+        u0, u1, u2 = n(fx["u0"]), n(fx["u1"]), n(fx["u2"])
+        self.assertEqual(u0, u1)  # U1 only reformats: in upstream's style it changes nothing
+        # the series so far: the history's first a.m change on U0
+        ours = n(git(g, "rev-parse", f"{fx['merges'][1]}:upstream/oolite"))
+        tree, conflicts = trees.replay(g, ours, [("u1", u0, u1), ("u2", u1, u2)], self.res)
+        self.assertEqual(conflicts, [])
+        self.assertIn("return 10", self.show(tree, "src/a.m"))      # the series' own change kept
+        self.assertIn("upstream edit", self.show(tree, "src/b.m"))  # the replayed content commit
+        self.assertEqual(self.show(tree, "src/e.m") + "\n", E2)
+
+    def test_replay_stops_at_the_commit_with_a_conflict(self):
+        fx, g = self.fx, self.game
+        cache = os.path.join(self.tmpdir.name, "cache.json")
+        n = lambda c: normalise.normalise_tree(g, f"{c}^{{tree}}", fx["u0"], cache_path=cache)
+        tree, conflicts = trees.replay(g, self.theirs, [("u2", n(fx["u1"]), n(fx["u2"]))], self.res)
+        self.assertIsNone(tree)
+        self.assertEqual(conflicts, ["u2: src/b.m"])  # the history changed b.m too
+
+    def test_take_paths_matches_the_source_for_excluded_paths(self):
+        g = self.game
+        fx = self.fx
+        tree = git(g, "rev-parse", f"{fx['u2']}^{{tree}}")
+        source = git(g, "rev-parse", f"{fx['u0']}^{{tree}}")
+        out = trees.take_paths(g, tree, source, ["src/e*"])
+        self.assertNotIn("src/e.m", git(g, "ls-tree", "-r", "--name-only", out).splitlines())  # removed
+        self.assertEqual(self.show(out, "src/b.m"), self.show(tree, "src/b.m"))  # others untouched
+        self.assertEqual(trees.take_paths(g, tree, source, []), tree)
+
+
+class DedupeTest(unittest.TestCase):
+    def test_second_pragma_once_and_a_repeated_include_run_go(self):
+        text = ("/* licence */\n\n#pragma once\n\n#pragma once\n\n#ifndef X\n#else\n"
+                "#include \"A.h\"\n#include \"B.h\"\n\n// Each header includes what it uses.\n"
+                "#include \"A.h\"\n#include \"B.h\"\n\nint x;\n")
+        self.assertEqual(trees.dedupe_header(text),
+                         "/* licence */\n\n#pragma once\n\n#ifndef X\n#else\n"
+                         "#include \"A.h\"\n#include \"B.h\"\n\nint x;\n")
+
+    def test_different_include_runs_and_a_single_pragma_stay(self):
+        text = "#pragma once\n\n#include \"A.h\"\n\n// more\n#include \"B.h\"\n"
+        self.assertEqual(trees.dedupe_header(text), text)
+
 
 class AutoMergeTest(unittest.TestCase):
     base = ["#ifndef NDEBUG\n", "void dump(JSContext *c);\n", "#endif\n", "int x;\n"]
@@ -178,3 +224,14 @@ class HunkMergeTest(unittest.TestCase):
             text = "".join(lines)
             self.assertIn("#ifdef OO_DEBUG_MONITOR_ENABLED\nhistory 4\n", text)
             self.assertIn("<<<<<<< ours\nupstream 20\n=======\nhistory 20\n>>>>>>> theirs\n", text)
+
+    def test_hunk_whose_ours_side_only_relaid_takes_theirs(self):
+        b = ["// a long comment\n", "// wrapped here\n", "#define M(x) \\\n", "  f(x)\n"]
+        o = ["// a long comment wrapped\n", "// here\n", "#define M(x) f(x)\n"]  # the same text, laid out anew
+        t = ["// a long comment\n", "#define M(x) \\\n", "  g(x)\n"]                # a real change
+        self.assertEqual(trees.resolve_hunk(b, o, t), (t, "layout"))
+        o2 = ["// a long comment wrapped\n", "// here, and more\n", "#define M(x) f(x)\n"]
+        self.assertEqual(trees.resolve_hunk(b, o2, t), (None, None))  # ours changed words: a person decides
+        both = ["// the same new comment\n", "// wrapped\n", "int x;\n"]
+        both_relaid = ["// the same new comment wrapped\n", "int x;\n"]
+        self.assertEqual(trees.resolve_hunk(["int y;\n"], both_relaid, both), (both, "layout"))

@@ -1,0 +1,20 @@
+{
+ "README.md": {
+  "base": "9aa1be8d42da20943110fd3584cf84edbeb4c56c",
+  "deleted": false,
+  "ours": "5e8353019fd91d35c452bae14add1840bc3f2e33",
+  "theirs": "ad2d31d9428c2e0f7730bd1e55ea9b2aed831058"
+ },
+ "ShellScripts/macOS/install_packages.sh": {
+  "base": null,
+  "deleted": false,
+  "ours": "2985056cc3f5e0804a3d551263dbd749e9804c13",
+  "theirs": "527e009a794798c6ff9b627ec18362fd1af5e91b"
+ },
+ "darwin.ini": {
+  "base": null,
+  "deleted": false,
+  "ours": "88e54d1b7d5fded640f62d7d014f547947887207",
+  "theirs": "b04ede84da3153fb6f186cc902d0dc57fb505318"
+ }
+}

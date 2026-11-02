@@ -263,7 +263,26 @@ def resolve_hunk(b, o, t, moved=None):
     out = transplant(b, o, t)
     if out is not None:
         return out, "transplant"
+    if _layout(o) == _layout(b) or _layout(o) == _layout(t):
+        # ours differs from base only in layout (line breaks, spaces, a macro's line continuations),
+        # so theirs' change is the only real one; or both made the same change, laid out apart:
+        # theirs' text (last, so it never changes a hunk the rules above take)
+        return t, "layout"
     return None, None
+
+
+def _layout(lines):
+    """The hunk's text without whitespace, line continuations, or the `//` that continues a line
+    comment on the next line: equal for two layouts of it (a reflowed comment, a re-wrapped macro).
+    The first `//` of a comment run stays, so commenting code out is still a change."""
+    out, in_comment = [], False
+    for line in "".join(lines).replace("\\\n", "\n").splitlines():
+        s = line.strip()
+        if s.startswith("//") and in_comment:
+            s = s[2:]
+        in_comment = "//" in line
+        out.append("".join(s.split()))
+    return "".join(out)
 
 
 def merge_file_by_hunks(repo, base_oid, ours_oid, theirs_oid, ours_tree=None, path=None):
@@ -354,11 +373,13 @@ def deleted_earlier(res_dir):
     return out
 
 
-def target_tree(repo, base, ours, theirs, res_dir, report=None, ignore=()):
+def target_tree(repo, base, ours, theirs, res_dir, report=None, ignore=(), prefer=None):
     """Return (tree, []) when every conflict is resolved, else (None, unresolved paths).
 
     `report`, if a list, receives (path, how) for each resolved conflict. Stored resolutions for the
-    paths in `ignore` are not used (to see what the automatic rules alone give for them).
+    paths in `ignore` are not used (to see what the automatic rules alone give for them). With
+    prefer="theirs", a file the rules and stored resolutions leave is theirs' whole file (for a merge
+    whose theirs is a decision already made, such as develop's own resolution).
     """
     tree, conflicts = merge(repo, base, ours, theirs)
     if not conflicts:
@@ -398,9 +419,20 @@ def target_tree(repo, base, ours, theirs, res_dir, report=None, ignore=()):
                 lines, _, left = merge_file_by_hunks(repo, key["base"], key["ours"], key["theirs"], ours, path)
                 if left == 0:
                     out, how = lines, "hunks"
+            if out is None and prefer == "theirs":
+                # theirs' whole file: hunk by hunk, diff3 against a base far from both sides can
+                # align them wrongly and drop lines
+                out, how = t, "prefer-theirs"
             if out is not None:
                 apply.append((path, how, None, "".join(out).encode("utf-8", "surrogateescape")))
                 continue
+        if prefer == "theirs" and not all(key.values()):
+            # added or deleted on one side: theirs' state
+            if key["theirs"] is None:
+                apply.append((path, "prefer-theirs", {"deleted": True}, None))
+            else:
+                apply.append((path, "prefer-theirs", None, _git(repo, "cat-file", "blob", key["theirs"]).stdout))
+            continue
         unresolved.append(path)
     # files a resolution adds outside the conflicted paths (e.g. a name both sides renamed differently);
     # an edit of a cleanly merged file is keyed by that merged blob, and is stale if the merge changed
@@ -429,6 +461,142 @@ def target_tree(repo, base, ours, theirs, res_dir, report=None, ignore=()):
             _git(repo, "update-index", "--add", "--cacheinfo", f"{mode},{sha},{path}", env=env)
         out = _git(repo, "write-tree", env=env).stdout.decode().strip()
     return out, []
+
+
+def replay(repo, ours, pairs, res_root, report=None):
+    """Carry a sequence of commits onto `ours`, as a rebase does (research R14's tail).
+
+    `pairs` is [(label, before, after)]: the trees around each commit (normalised by the caller, so
+    a commit that only reformats is a no-op). Each is a 3-way merge with base `before`, theirs
+    `after`, onto the result so far; its stored resolutions live in res_root/label. Returns
+    (tree, []) or (None, ["label: path", ...]) at the first commit that leaves conflicts.
+    """
+    for label, before, after, *policy in pairs:
+        tree, conflicts = target_tree(repo, before, ours, after, os.path.join(res_root, label), report=report,
+                                      prefer=policy[0] if policy else None)
+        if conflicts:
+            return None, [f"{label}: {p}" for p in conflicts]
+        ours = tree
+    return ours, []
+
+
+def take_paths(repo, tree, source, globs):
+    """`tree` with every path matching one of `globs` (fnmatch; `**` matches across directories) as
+    it is in `source`: added, changed or removed to match."""
+    import fnmatch
+    if not globs:
+        return tree
+    match = lambda p: any(fnmatch.fnmatchcase(p, g) for g in globs)
+    listing = lambda t: {l.split(TAB, 1)[1]: l.split(TAB, 1)[0].split() for l in
+                         _git(repo, "ls-tree", "-r", "-z", t).stdout.decode("utf-8").split(NUL) if l}
+    have, want = listing(tree), listing(source)
+    paths = sorted(p for p in set(have) | set(want) if match(p) and have.get(p) != want.get(p))
+    if not paths:
+        return tree
+    with tempfile.TemporaryDirectory() as tmp:
+        env = {"GIT_INDEX_FILE": os.path.join(tmp, "index")}
+        _git(repo, "read-tree", tree, env=env)
+        for p in paths:
+            if p in want:
+                mode, _typ, sha = want[p]
+                _git(repo, "update-index", "--add", "--cacheinfo", f"{mode},{sha},{p}", env=env)
+            else:
+                _git(repo, "update-index", "--force-remove", "--", p, env=env)
+        return _git(repo, "write-tree", env=env).stdout.decode().strip()
+
+
+def keep_unchanged(repo, tree, normalised, original):
+    """Where `tree` still has `normalised`'s blob for a path that normalising changed, put back
+    `original`'s bytes: a file the merge left alone keeps its layout (a test is never reformatted
+    by a step that does not change it)."""
+    listing = lambda t: {l.split(TAB, 1)[1]: l.split(TAB, 1)[0].split() for l in
+                         _git(repo, "ls-tree", "-r", "-z", t).stdout.decode("utf-8").split(NUL) if l}
+    have, norm, orig = listing(tree), listing(normalised), listing(original)
+    paths = [p for p, e in have.items() if p in norm and p in orig and e == norm[p] and norm[p] != orig[p]]
+    if not paths:
+        return tree
+    with tempfile.TemporaryDirectory() as tmp:
+        env = {"GIT_INDEX_FILE": os.path.join(tmp, "index")}
+        _git(repo, "read-tree", tree, env=env)
+        for p in paths:
+            mode, _typ, sha = orig[p]
+            _git(repo, "update-index", "--add", "--cacheinfo", f"{mode},{sha},{p}", env=env)
+        return _git(repo, "write-tree", env=env).stdout.decode().strip()
+
+
+def dedupe_header(text):
+    """A header with what two merged sides each added kept once: a `#pragma once` after the first
+    (and the blank line after it), and an `#include` run that repeats the run just before it, with the
+    comment and blank lines between them. Returns the text unchanged if neither is there."""
+    lines = text.splitlines(keepends=True)
+    out, seen_pragma = [], False
+    i = 0
+    while i < len(lines):
+        s = lines[i].strip()
+        if s == "#pragma once":
+            if seen_pragma:
+                i += 1
+                if i < len(lines) and not lines[i].strip() and out and not out[-1].strip():
+                    i += 1  # no double blank line where it was
+                continue
+            seen_pragma = True
+        out.append(lines[i])
+        i += 1
+    lines, out = out, []
+    i = 0
+    while i < len(lines):
+        if lines[i].startswith("#include"):
+            j = i
+            while j < len(lines) and lines[j].startswith("#include"):
+                j += 1
+            run = lines[i:j]
+            k = j
+            while k < len(lines) and (not lines[k].strip() or lines[k].lstrip().startswith("//")):
+                k += 1
+            if lines[k:k + len(run)] == run and (k + len(run) == len(lines) or not lines[k + len(run)].startswith("#include")):
+                out += run  # what followed the repeat (a blank line, say) follows the first run
+                i = k + len(run)
+                continue
+            out += run
+            i = j
+            continue
+        out.append(lines[i])
+        i += 1
+    return "".join(out)
+
+
+def dedupe_tree(repo, tree, paths):
+    """`tree` with dedupe_header applied to each of `paths` (headers) that it changes."""
+    edits = {}
+    for p in paths:
+        if not p.endswith((".h", ".hpp")):
+            continue
+        blob = _blob_at(repo, tree, p)
+        if not blob:
+            continue
+        text = _git(repo, "cat-file", "blob", blob).stdout.decode("utf-8", "surrogateescape")
+        new = dedupe_header(text)
+        if new != text:
+            edits[p] = new.encode("utf-8", "surrogateescape")
+    if not edits:
+        return tree
+    with tempfile.TemporaryDirectory() as tmp:
+        env = {"GIT_INDEX_FILE": os.path.join(tmp, "index")}
+        _git(repo, "read-tree", tree, env=env)
+        for p, content in edits.items():
+            sha = _git(repo, "hash-object", "-w", "--stdin", inp=content).stdout.decode().strip()
+            _git(repo, "update-index", "--add", "--cacheinfo", f"{_mode(repo, tree, p)},{sha},{p}", env=env)
+        return _git(repo, "write-tree", env=env).stdout.decode().strip()
+
+
+def revert(repo, tree, commit):
+    """`tree` with `commit`'s change (against its first parent) backed out; it must back out cleanly."""
+    after = _git(repo, "rev-parse", f"{commit}^{{tree}}").stdout.decode().strip()
+    before = _git(repo, "rev-parse", f"{commit}^1^{{tree}}").stdout.decode().strip()
+    out, conflicts = merge(repo, after, tree, before)
+    if conflicts:
+        raise RuntimeError(f"revert {commit}: conflicts in {', '.join(sorted(conflicts))}")
+    return out
 
 
 def _blob_at(repo, tree, path):

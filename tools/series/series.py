@@ -26,6 +26,7 @@ def parser():
     t.add_argument("n", type=int)
     t.add_argument("--show", metavar="PATH", help="write the conflicted file and its inputs to .agent-tmp/series-resolve")
     t.add_argument("--record", metavar="PATH", help="store the edited file from .agent-tmp/series-resolve as the resolution")
+    t.add_argument("--commit", metavar="LABEL", help="for a tail step: the replayed commit the conflict is in")
     b = sub.add_parser("build", help="create or reset step branches")
     b.add_argument("steps", nargs="*", type=int)
     b.add_argument("--from", dest="from_", type=int)
@@ -190,13 +191,139 @@ def step_by_n(m, n):
     raise SystemExit(f"no step {n}")
 
 
+SQUASH = "935aedb20"  # the fork's squash of the history (the second parent of develop's 0e1cc17a4)
+
+
+def tail_space(m, tree):
+    """`tree` in the fork's final style (develop_target's .clang-format) and upstream's names, its
+    sources and tests alike: the space the tail is replayed in. develop reformatted everything in
+    Google style early (13eb19ee7, one of step 025's commits), rewrapping comments at 80 columns;
+    formatting back cannot undo that, but formatting the series' own files this way gives develop's
+    text, so the commits after it merge here (plan.md Notes, 2026-11-02)."""
+    from tools.series import normalise, selectors
+    return normalise.normalise_tree(GAME, tree, m["anchors"]["develop_target"], transform=selectors.upstream_renames,
+                                    transform_id=selectors.TRANSFORM_VERSION,
+                                    select=lambda p: normalise.is_source(p) or normalise.is_test_source(p),
+                                    rename_only=lambda p: False)
+
+
+def develop_order(m):
+    """develop's commits after the squash, oldest first: the squash, then the first-parent line."""
+    from tools.series import history
+    full = lambda c: history.git(GAME, "rev-parse", "--verify", f"{c}^{{commit}}")
+    squash = full(SQUASH)
+    line = history.git(GAME, "rev-list", "--first-parent", "--reverse",
+                       f"{squash}^..{m['anchors']['develop_target']}").split()
+    return [squash] + [c for c in line if c != squash and c != full(f"{squash}^")]
+
+
+def develop_inputs(m, step):
+    """[(label, before, after)] for a tail step: its commits in develop's order, in the tail's space.
+    The squash's `before` is the history's last snapshot, so its pair is the squash gap (research
+    R14). A merge commit counts as its change against its first parent."""
+    from tools.series import history
+    order = develop_order(m)
+    commits = sorted(step["source"]["commits"], key=order.index)
+    base_commit = history.git(GAME, "rev-parse", f"{m['anchors']['upstream_base']}^{{commit}}")
+    out = []
+    for c in commits:
+        if c == order[0]:  # the squash
+            last = step_by_n(m, HISTORY_STEPS_LAST(m))["source"]["to"]
+            before = history.snapshot(GAME, last, m["anchors"]["history_prefix"])
+        else:
+            before = history.git(GAME, "rev-parse", f"{c}^1^{{tree}}")
+        after = tail_space(m, history.git(GAME, "rev-parse", f"{c}^{{tree}}"))
+        out.append((c[:10], tail_space(m, before), after))
+        if history.git(GAME, "rev-parse", "-q", "--verify", f"{c}^2", check=False).stdout.strip() == base_commit:
+            # develop's merge of the series' own base: the series already has upstream's side, so
+            # the merge's resolution is its change against that side. Where the series and the
+            # resolution differ on the same lines, the resolution is the fork's decision.
+            out.append((c[:10] + "-resolution", tail_space(m, f"{base_commit}^{{tree}}"), after, "theirs"))
+    return out
+
+
+def exclusion_globs(m):
+    return [e["path_glob"] for e in m.get("exclusions", []) if "path_glob" in e]
+
+
 def compute_merge_tree(m, step, report=None):
     """(merge tree, conflicts) for a step; `report` receives (path, "stored" | "auto") per resolved conflict."""
-    from tools.series import trees
+    from tools.series import history, trees
     if step["source"]["type"] == "history":
         base, ours, theirs = merge_inputs(m, step)
         return trees.target_tree(GAME, base, ours, theirs, resolutions_dir(step), report=report)
-    raise SystemExit(f"tree: source type {step['source']['type']!r} not implemented yet (T024)")
+    if step["source"]["type"] != "develop":
+        raise SystemExit(f"tree: unknown source type {step['source']['type']!r}")
+    base_tree = history.git(GAME, "rev-parse", f"{m['anchors']['upstream_base']}^{{tree}}")
+    if step["kind"] == "mechanical":
+        # the last step is the fork itself, outside the exclusions (FR-002)
+        tree = history.git(GAME, "rev-parse", f"{m['anchors']['develop_target']}^{{tree}}")
+        for e in m.get("exclusions", []):
+            if "revert_commit" in e:
+                tree = trees.revert(GAME, tree, e["revert_commit"])
+        return trees.take_paths(GAME, tree, base_tree, exclusion_globs(m)), []
+    prev = step_by_n(m, step["n"] - 1)
+    ours = prev.get("merge_tree")
+    if not ours:
+        raise SystemExit(f"step {step['n']}: step {prev['n']} has no resolved tree yet; run `tree {prev['n']}` first")
+    # replayed in the tail's space; a file the step does not change keeps the series' bytes (a test
+    # is never reformatted by a step that does not change it), and the format pass puts changed
+    # sources back in upstream's style
+    ours_t = tail_space(m, ours)
+    tree, conflicts = trees.replay(GAME, ours_t, develop_inputs(m, step), resolutions_dir(step), report=report)
+    if conflicts:
+        return None, conflicts
+    # what both sides added to a header (a #pragma once, a self-contained include run) is kept once
+    changed = history.git(GAME, "diff", "--name-only", "--no-renames", ours_t, tree).splitlines()
+    tree = trees.dedupe_tree(GAME, tree, changed)
+    nxt = step_by_n(m, step["n"] + 1) if step["n"] < len(m["steps"]) else None
+    if nxt is not None and nxt["kind"] == "mechanical":
+        tree = converge(m, nxt, tree, report)
+    tree = trees.keep_unchanged(GAME, tree, ours_t, ours)
+    return trees.take_paths(GAME, tree, base_tree, exclusion_globs(m)), []
+
+
+def converge(m, mechanical, tree, report=None):
+    """The last content step ends where develop does, in the tail's space: a file that still differs
+    from develop (outside the exclusions, and apart from what the mechanical step's own commits
+    change besides formatting) takes develop's text. What remains are merge artefacts of the
+    replay; this makes the mechanical step exactly the reformat (research R14)."""
+    import fnmatch
+    from tools.series import history, normalise, trees
+    target, _ = compute_merge_tree(m, mechanical)
+    target_t = tail_space(m, target)
+    # the mechanical step's own files (.clang-format, the format script); a source that still differs
+    # in the tail's space differs in more than its formatting, so it converges here
+    own = set()
+    for _label, before, after, *_ in develop_inputs(m, mechanical):
+        own |= {p for p in history.git(GAME, "diff", "--name-only", "--no-renames", before, after).splitlines()
+                if not (normalise.is_source(p) or normalise.is_test_source(p))}
+    excluded = lambda p: any(fnmatch.fnmatchcase(p, g) for g in exclusion_globs(m))
+    left = [p for p in history.git(GAME, "diff", "--name-only", "--no-renames", tree, target_t).splitlines()
+            if p not in own and not excluded(p)]
+    if report is not None:
+        report.extend((p, "converge") for p in left)
+    return trees.take_paths(GAME, tree, target_t, [glob_escape(p) for p in left])
+
+
+def glob_escape(path):
+    import glob
+    return glob.escape(path)
+
+
+def develop_merge_at(m, step, label):
+    """(base, ours, theirs, res_dir) of the replay's merge for the commit `label` of a tail step."""
+    from tools.series import trees
+    prev = step_by_n(m, step["n"] - 1)
+    ours = tail_space(m, prev["merge_tree"])
+    for lab, before, after, *policy in develop_inputs(m, step):
+        res = os.path.join(resolutions_dir(step), lab)
+        if lab == label or lab == label[:10]:
+            return before, ours, after, res
+        ours, conflicts = trees.target_tree(GAME, before, ours, after, res, prefer=policy[0] if policy else None)
+        if conflicts:
+            raise SystemExit(f"step {step['n']}: {lab} has unresolved conflicts first")
+    raise SystemExit(f"step {step['n']}: no commit {label}")
 
 
 def format_pass(m, tree):
@@ -215,6 +342,8 @@ def compute_tree(m, step, report=None):
     merged, conflicts = compute_merge_tree(m, step, report)
     if conflicts:
         return None, merged, conflicts
+    if step["kind"] == "mechanical":
+        return merged, merged, conflicts  # the fork's own tree, in its own style
     return format_pass(m, merged), merged, conflicts
 
 
@@ -227,9 +356,14 @@ def cmd_tree(args):
     step = step_by_n(m, args.n)
     scratch = os.path.join(RESOLVE_SCRATCH, f"{step['n']:03d}")
     if args.show or args.record:
-        if step["source"]["type"] != "history":
-            raise SystemExit("tree --show/--record: history steps only")
-        base, ours, theirs = merge_inputs(m, step)
+        res_dir = resolutions_dir(step)
+        if step["source"]["type"] == "history":
+            base, ours, theirs = merge_inputs(m, step)
+        elif not args.commit:
+            raise SystemExit("tree --show/--record: a tail step needs --commit (the label `tree` printed)")
+        else:
+            base, ours, theirs, res_dir = develop_merge_at(m, step, args.commit)
+            scratch = os.path.join(scratch, args.commit[:10])
         path = args.show or args.record
         if path.startswith("tests/"):
             print(f"tree {args.n}: {path} is a test file; tests are never resolved by hand (rule 1)", file=sys.stderr)
@@ -254,7 +388,7 @@ def cmd_tree(args):
             return 0
         src = os.path.join(scratch, path)
         if not os.path.exists(src):
-            trees.record_resolution(GAME, base, ours, theirs, resolutions_dir(step), path, None)
+            trees.record_resolution(GAME, base, ours, theirs, res_dir, path, None)
             print(f"recorded: {path} deleted")
             return 0
         with open(src, "rb") as f:
@@ -262,7 +396,7 @@ def cmd_tree(args):
         if b"<<<<<<<" in content or b">>>>>>>" in content:
             print(f"tree {args.n}: {src} still has conflict markers", file=sys.stderr)
             return 1
-        trees.record_resolution(GAME, base, ours, theirs, resolutions_dir(step), path, content)
+        trees.record_resolution(GAME, base, ours, theirs, res_dir, path, content)
         print(f"recorded: {path}")
         return 0
     report = []

@@ -245,7 +245,7 @@ equals `3aa8d65e8` outside the exclusions.
 **Independent Test**: `git -C oolite-dev diff --name-only series/025-* 3aa8d65e8` lists only paths
 matching the manifest's exclusions, and `check --verified` passes for 020–025.
 
-- [ ] T024 [US3] Extend `tree <n>` for `source` = `develop`. For steps 020–024 the target is
+- [X] T024 [US3] Extend `tree <n>` for `source` = `develop`. For steps 020–024 the target is
   `N_upstream(develop at the group's last commit)`, with commits outside the group backed out by
   3-way merge, plus the exclusions taken from the base. For step 025 it is `develop_target` with
   the exclusions taken from the base. Add a test to `tools/series/tests/test_trees.py` using the

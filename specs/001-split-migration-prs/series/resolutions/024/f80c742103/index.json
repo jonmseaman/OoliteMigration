@@ -1,0 +1,8 @@
+{
+ "src/SDL/MyOpenGLView.cpp": {
+  "base": "0bf6d5113e84f6c3927f2a16a72b687863dacf12",
+  "deleted": false,
+  "ours": "87c5e0828e0f002bcc7ed7cb768f35056d177899",
+  "theirs": "ec8b9e1815b22edc75cb39ac716653dee52db2ca"
+ }
+}

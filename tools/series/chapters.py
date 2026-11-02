@@ -61,18 +61,22 @@ HISTORY = [
 # (slug, kind, title, develop commits, mechanical command)
 TAIL = [
     ("develop-fixes", "hand-written", "Small fixes after the migration",
-     ["935aedb20", "5346a1800", "66567dc26", "736572b67", "c971f1641", "ec2462f6f"], None),
+     ["935aedb20", "5346a1800", "66567dc26", "736572b67", "c971f1641"], None),
     ("source-hygiene", "hand-written", "Make comments describe the code; use #pragma once",
      ["2ceced1f8", "c9c225c78", "0b49abd31"], None),
+    # before c-as-cxx: 448aa6d20 edits the component tests 51d05af43 brings and the .clangd 70c176921 adds
+    ("tests-and-tooling", "hand-written", "Tests and developer tooling",
+     ["51d05af43", "517abcfcd", "119e29325", "70c176921"], None),
     ("c-as-cxx", "hand-written", "Compile the remaining C sources as C++; upgrade QuickJS-ng",
      ["448aa6d20", "6e1654a6b"], None),
+    # 35d0ef8a0 (the readme) follows develop's merge of upstream, which it edits after; 4ef61a09d
+    # (mk.sh format) goes with the reformat it is the tool for.
+    # ec2462f6f fixes the macOS C++ build that the #766 ports (ac193cfe7) make: it goes with them
     ("upstream-49a5eb9fc-ports", "hand-written", "Port upstream #766, #774 and #781",
-     ["7912222ed", "f80c74210", "a1e2ce889", "ac193cfe7"], None),
-    ("tests-and-tooling", "hand-written", "Tests and developer tooling",
-     ["51d05af43", "517abcfcd", "119e29325", "70c176921", "4ef61a09d", "35d0ef8a0"], None),
+     ["7912222ed", "f80c74210", "a1e2ce889", "ac193cfe7", "ec2462f6f", "35d0ef8a0"], None),
     ("google-style-format", "mechanical", "Reformat with Google-style clang-format (optional)",
-     ["13eb19ee7", "266118a39", "21c3048a2"],
-     "take .clang-format from 3aa8d65e8, then run clang-format 22 -i on every .h/.hpp/.c/.cpp under src/ and tests/"),
+     ["13eb19ee7", "266118a39", "4ef61a09d", "21c3048a2"],
+     "take .clang-format from 3aa8d65e8 and add mk.sh format/format-check (4ef61a09d), then run clang-format 22 -i on every .h/.hpp/.c/.cpp under src/ and tests/"),
 ]
 
 EXCLUSIONS = [

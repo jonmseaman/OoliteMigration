@@ -296,3 +296,33 @@ game repo only gets local branches.
     the same test meson.build at step 18, so the failure is the history's, not a resolution's.
     The develop tail (020+) is expected to bring the GCC fix; the first step that builds with GCC
     makes GCC required from the next one.
+- 2026-11-02 (T024): the tail is replayed, not cut from develop snapshots. Each tail step carries its
+  `develop` commits onto the previous step, one 3-way merge per commit (base the commit's first
+  parent, theirs the commit), in develop's order. The squash's pair is the squash gap (the history's
+  last snapshot to `935aedb20`).
+  - The replay runs in develop's final style (its `.clang-format`, sources and tests alike).
+    develop reformatted everything early (`13eb19ee7`, step 025's) and rewrapped comments at 80
+    columns, which formatting back cannot undo: in upstream's style, step 021 conflicted in 365
+    files. Formatting the series' own files in develop's style gives develop's text (checked on
+    three files), and step 021 then has 5. A file a step does not change keeps the series' bytes,
+    so a test is never reformatted by a step that does not change it; changed sources go back to
+    upstream's style in the format pass, and a changed test keeps develop's style.
+  - New automatic rule, last in line so no history step's result changes: a hunk whose sides
+    differ only in layout (whitespace, a macro's continuations, a reflowed `//` comment) takes
+    theirs.
+  - Order (research R14's tail table, updated): tests and tooling (022) before C-as-C++ (023),
+    since `448aa6d20` edits the component tests `51d05af43` brings and the `.clangd` `70c176921`
+    adds; `ec2462f6f` (the macOS C++ build fix) after the #766 ports it fixes; `35d0ef8a0` (the
+    readme) after develop's upstream merge; `4ef61a09d` (`mk.sh format`) in 025, with the reformat.
+  - `7912222ed` merges `49a5eb9fc`, the series' base. Its first-parent change alone left the
+    series with upstream's side where develop resolved otherwise (SpiderMonkey's macOS build
+    script, Objective-C in `#if OOLITE_MAC_OS_X` blocks, the maths headers' layout). Its
+    resolution is replayed as a second pair, base `49a5eb9fc`; where it conflicts, develop's whole
+    file is taken (diff3 against the Objective-C base aligned the two C++ sides wrongly and dropped
+    a function's end in Universe.cpp when done hunk by hunk).
+  - Headers a tail step changes keep one `#pragma once` and one copy of an include run both sides
+    added (steps 020/021 had duplicates from the history's and develop's self-contained headers).
+  - Step 024 ends where develop does in the tail's space: 7 sources that still differed (merge
+    artefacts: OOHPVector.cpp's `!OOMATHS_STANDALONE` guard, ShipEntity.h's comments, the two
+    virtual-member macros' layout, three maths headers) take develop's text, so step 025 is the
+    reformat plus its own `.clang-format`, `mk.sh` and readme lines, nothing else.

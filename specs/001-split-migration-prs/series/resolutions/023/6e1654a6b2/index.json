@@ -1,0 +1,8 @@
+{
+ "subprojects/quickjs-ng.wrap": {
+  "base": "2f968417c235123b860000f3f3d9fa43dc4eacb2",
+  "deleted": false,
+  "ours": "1feae2ae734702ef56b26f8093be872b27d148ea",
+  "theirs": "031ed6ec3f40a4a4c85903822af5aecbe015bcf0"
+ }
+}

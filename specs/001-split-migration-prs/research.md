@@ -331,12 +331,16 @@ content step reads in upstream's style:
 
 | Step | Purpose | `develop` commits |
 |---:|---|---|
-| 020 | Small fixes and the squash gap | 6 files of `935aedb20` vs `6504faa3b9`; `5346a1800`, `66567dc26`, `736572b67`, `c971f1641`, `ec2462f6f` |
+| 020 | Small fixes and the squash gap | 6 files of `935aedb20` vs `6504faa3b9`; `5346a1800`, `66567dc26`, `736572b67`, `c971f1641` |
 | 021 | Source hygiene: comments explain code; `#pragma once` | `2ceced1f8`, `c9c225c78`, `0b49abd31` |
-| 022 | C sources as C++: `bool`, `nullptr`; QuickJS-ng upgrade | `448aa6d20`, `6e1654a6b` |
-| 023 | Upstream `49a5eb9fc` merged and #766, #774, #781 ported (the base already has upstream's side) | `7912222ed` (its resolution only), `f80c74210`, `a1e2ce889`, `ac193cfe7` |
-| 024 | Tests and tooling: component tests from `origin/master`, test script, editor setup, `mk.sh format` | `51d05af43`, `517abcfcd`, `119e29325`, `70c176921`, `4ef61a09d`, `35d0ef8a0` (`.zed/`, `.vscode/` and the `3aa8d65e8` CI filter excluded) |
-| 025 | Google-style clang-format (mechanical): `.clang-format` and `clang-format -i` with version 22 | `13eb19ee7`, `266118a39`, `21c3048a2`; tree = `3aa8d65e8` minus exclusions |
+| 022 | Tests and tooling: component tests from `origin/master`, test script, editor setup | `51d05af43`, `517abcfcd`, `119e29325`, `70c176921` (`.zed/`, `.vscode/` excluded) |
+| 023 | C sources as C++: `bool`, `nullptr`; QuickJS-ng upgrade | `6e1654a6b`, `448aa6d20` |
+| 024 | Upstream `49a5eb9fc` merged and #766, #774, #781 ported (the base already has upstream's side); the macOS C++ build fix; the readme | `7912222ed` (its resolution against upstream's side), `f80c74210`, `a1e2ce889`, `ac193cfe7`, `ec2462f6f`, `35d0ef8a0` |
+| 025 | Google-style clang-format (mechanical): `.clang-format`, `mk.sh format`, and `clang-format -i` with version 22 | `13eb19ee7`, `266118a39`, `4ef61a09d`, `21c3048a2`; tree = `3aa8d65e8` minus exclusions (the `3aa8d65e8` CI filter excluded) |
+
+Order changed 2026-11-02 (plan.md Notes): tests and tooling before C-as-C++, whose commit edits
+the tests and `.clangd` they bring; `ec2462f6f` and `35d0ef8a0` after develop's upstream merge,
+which they follow; `4ef61a09d` (`mk.sh format`) with the reformat it is the tool for.
 
 Tail trees 020–024 are `develop` snapshots normalised back to upstream's style (R3), with each
 group's commits applied. Step 025's tree is exactly `develop` outside the exclusions (FR-002).

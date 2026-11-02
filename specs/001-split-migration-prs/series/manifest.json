@@ -3091,10 +3091,35 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "620833d9556cff49c80eafc39acd6e340d749514",
    "n": 20,
    "parent": "series/019-upstream-9ee8ff22f-port",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "transplant",
+     "path": "src/Core/OOBoundingBox.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOFastArithmetic.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOMatrix.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOQuaternion.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOTriangle.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOVoxel.h"
+    }
+   ],
    "size": null,
    "source": {
     "commits": [
@@ -3102,12 +3127,11 @@
      "5346a1800868891baac3bf20990b1338bbb4bfcf",
      "66567dc268527dd24c7d3cee39a785c3946d545a",
      "736572b670e8afbae0bacac854f3ae4d99e674ab",
-     "c971f16411fd8346148b992afb164c8002e03c51",
-     "ec2462f6f82d998e12828b36ecf15b85a070735c"
+     "c971f16411fd8346148b992afb164c8002e03c51"
     ],
     "type": "develop"
    },
-   "target_tree": null,
+   "target_tree": "d574c1181aae0934322db4afe8136708518c4cff",
    "temporaries": [],
    "title": "Small fixes after the migration",
    "verification": null
@@ -3120,10 +3144,63 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "f93524283c29e154222bd59f766bab8f19dbfcf7",
    "n": 21,
    "parent": "series/020-develop-fixes",
-   "resolutions": [],
+   "resolutions": [
+    {
+     "how": "auto",
+     "path": "src/Core/Debug/OODebuggerInterface.h"
+    },
+    {
+     "how": "hunks",
+     "path": "src/Core/HeadUpDisplay.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/Materials/OOConcreteTexture.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Materials/OOTexture.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOALSoundChannel.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOEquipmentType.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOJoystickProfile.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOMaths.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOMatrix.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOOpenGLExtensionManager.h"
+    },
+    {
+     "how": "hunks",
+     "path": "src/Core/Scripting/OOJSStation.cpp"
+    },
+    {
+     "how": "hunks",
+     "path": "src/Core/Universe.cpp"
+    },
+    {
+     "how": "hunks",
+     "path": "src/Core/UniverseVirtualMembers.h"
+    }
+   ],
    "size": null,
    "source": {
     "commits": [
@@ -3133,23 +3210,99 @@
     ],
     "type": "develop"
    },
-   "target_tree": null,
+   "target_tree": "009d1a7d01829d2f5b01e4f40732596d1d4e6b2c",
    "temporaries": [],
    "title": "Make comments describe the code; use #pragma once",
    "verification": null
   },
   {
    "boundary_moved": null,
-   "branch": "series/022-c-as-cxx",
+   "branch": "series/022-tests-and-tooling",
    "chapter": null,
-   "description": "series/pr/022-c-as-cxx.md",
+   "description": "series/pr/022-tests-and-tooling.md",
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "ccd046492e17819bccb73d0d55b53fc5a146ae40",
    "n": 22,
    "parent": "series/021-source-hygiene",
    "resolutions": [],
+   "size": null,
+   "source": {
+    "commits": [
+     "51d05af43920429a37f2ffe19de758146ef715aa",
+     "517abcfcd3a2922ef85e8ed1427045ebfbe04f8c",
+     "119e293256274c07d107d1c6220541fb586bd40a",
+     "70c1769214274442b31dc27301a46ab25fb70f13"
+    ],
+    "type": "develop"
+   },
+   "target_tree": "66d668d257b3ded7ee1f3098792dee7ce7e847af",
+   "temporaries": [],
+   "title": "Tests and developer tooling",
+   "verification": null
+  },
+  {
+   "boundary_moved": null,
+   "branch": "series/023-c-as-cxx",
+   "chapter": null,
+   "description": "series/pr/023-c-as-cxx.md",
+   "era": null,
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": "8fa32fd9dd008baea486fdb3c15a15133a3b885c",
+   "n": 23,
+   "parent": "series/022-tests-and-tooling",
+   "resolutions": [
+    {
+     "how": "stored",
+     "path": "src/Core/Debug/OODebugMonitor.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Debug/OODebugMonitor.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/GameController.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOFoundation.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOMaths.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/OOOpenGLOnly.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/Universe.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/SDL/MyOpenGLView+Input.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/MyOpenGLView.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/main.cpp"
+    },
+    {
+     "how": "stored",
+     "path": "subprojects/packagefiles/quickjs-ng-void-return.patch"
+    },
+    {
+     "how": "stored",
+     "path": "subprojects/quickjs-ng.wrap"
+    }
+   ],
    "size": null,
    "source": {
     "commits": [
@@ -3158,65 +3311,215 @@
     ],
     "type": "develop"
    },
-   "target_tree": null,
+   "target_tree": "ede914f3f8bb3a7fb53b1738c9619ea65f04ad8e",
    "temporaries": [],
    "title": "Compile the remaining C sources as C++; upgrade QuickJS-ng",
    "verification": null
   },
   {
    "boundary_moved": null,
-   "branch": "series/023-upstream-49a5eb9fc-ports",
+   "branch": "series/024-upstream-49a5eb9fc-ports",
    "chapter": null,
-   "description": "series/pr/023-upstream-49a5eb9fc-ports.md",
+   "description": "series/pr/024-upstream-49a5eb9fc-ports.md",
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
-   "n": 23,
-   "parent": "series/022-c-as-cxx",
-   "resolutions": [],
+   "merge_tree": "5eac8648c2927ad5d69f2075fa371d6a63d12e39",
+   "n": 24,
+   "parent": "series/023-c-as-cxx",
+   "resolutions": [
+    {
+     "how": "stored",
+     "path": "ShellScripts/macOS/install_packages.sh"
+    },
+    {
+     "how": "stored",
+     "path": "darwin.ini"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/Debug/OODebuggerInterface.h"
+    },
+    {
+     "how": "converge",
+     "path": "src/Core/Entities/EntityVirtualMembers.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/Entities/PlayerEntityControls.cpp"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/Entities/PlayerEntityKeyMapper.cpp"
+    },
+    {
+     "how": "converge",
+     "path": "src/Core/Entities/ShipEntity.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/Materials/OOConcreteTexture.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/Materials/OOShaderProgram.cpp"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/OOFoundation.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/OOFullScreenController.h"
+    },
+    {
+     "how": "converge",
+     "path": "src/Core/OOHPVector.cpp"
+    },
+    {
+     "how": "hunks",
+     "path": "src/Core/OOHPVector.cpp"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/OOHPVector.h"
+    },
+    {
+     "how": "auto",
+     "path": "src/Core/OOJoystickProfile.h"
+    },
+    {
+     "how": "converge",
+     "path": "src/Core/OOJoystickProfile.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/OOLogHeader.cpp"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOMacroOpenGL.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOMacroOpenGL.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/OOMaths.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/OOMatrix.cpp"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/OOMatrix.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/OOOpenGL.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/OOOpenGLExtensionManager.cpp"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/OOOpenGLExtensionManager.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/OOPlanetDrawable.cpp"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/OOQuaternion.h"
+    },
+    {
+     "how": "converge",
+     "path": "src/Core/OOTriangle.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOTriangle.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/OOVector.cpp"
+    },
+    {
+     "how": "converge",
+     "path": "src/Core/OOVoxel.h"
+    },
+    {
+     "how": "transplant",
+     "path": "src/Core/OOVoxel.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/OXPVerifier/OOOXPVerifier.cpp"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/Scripting/OOJSEntity.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/Scripting/OOJSSound.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/Scripting/OOJSStation.cpp"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/Scripting/OOJSWaypoint.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/Universe.cpp"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/Universe.h"
+    },
+    {
+     "how": "converge",
+     "path": "src/Core/UniverseVirtualMembers.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/Core/UniverseVirtualMembers.h"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/SDL/MyOpenGLView+Input.cpp"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/SDL/MyOpenGLView.cpp"
+    },
+    {
+     "how": "prefer-theirs",
+     "path": "src/SDL/main.cpp"
+    }
+   ],
    "size": null,
    "source": {
     "commits": [
      "7912222ed5ecc6cb17bad4d2ef8789aa28365919",
      "f80c742103e8a369a018f634f04a8f10628d5f76",
      "a1e2ce889790f1d61054f8f64613bc2bf5853cae",
-     "ac193cfe732a83fae13e0a5372abc441f16c476b"
-    ],
-    "type": "develop"
-   },
-   "target_tree": null,
-   "temporaries": [],
-   "title": "Port upstream #766, #774 and #781",
-   "verification": null
-  },
-  {
-   "boundary_moved": null,
-   "branch": "series/024-tests-and-tooling",
-   "chapter": null,
-   "description": "series/pr/024-tests-and-tooling.md",
-   "era": null,
-   "kind": "hand-written",
-   "mechanical_command": null,
-   "merge_tree": null,
-   "n": 24,
-   "parent": "series/023-upstream-49a5eb9fc-ports",
-   "resolutions": [],
-   "size": null,
-   "source": {
-    "commits": [
-     "51d05af43920429a37f2ffe19de758146ef715aa",
-     "517abcfcd3a2922ef85e8ed1427045ebfbe04f8c",
-     "119e293256274c07d107d1c6220541fb586bd40a",
-     "70c1769214274442b31dc27301a46ab25fb70f13",
-     "4ef61a09dc8fe665ae55c317f1a0b1677f706406",
+     "ac193cfe732a83fae13e0a5372abc441f16c476b",
+     "ec2462f6f82d998e12828b36ecf15b85a070735c",
      "35d0ef8a0e55c07dcac254b9adee9bc4253a4f79"
     ],
     "type": "develop"
    },
-   "target_tree": null,
+   "target_tree": "03dda959d9928db4d4916554cb77a80ee1ac311b",
    "temporaries": [],
-   "title": "Tests and developer tooling",
+   "title": "Port upstream #766, #774 and #781",
    "verification": null
   },
   {
@@ -3226,21 +3529,22 @@
    "description": "series/pr/025-google-style-format.md",
    "era": null,
    "kind": "mechanical",
-   "mechanical_command": "take .clang-format from 3aa8d65e8, then run clang-format 22 -i on every .h/.hpp/.c/.cpp under src/ and tests/",
-   "merge_tree": null,
+   "mechanical_command": "take .clang-format from 3aa8d65e8 and add mk.sh format/format-check (4ef61a09d), then run clang-format 22 -i on every .h/.hpp/.c/.cpp under src/ and tests/",
+   "merge_tree": "d07634da3e3fb470ca36cb3172f75f5db4c16621",
    "n": 25,
-   "parent": "series/024-tests-and-tooling",
+   "parent": "series/024-upstream-49a5eb9fc-ports",
    "resolutions": [],
    "size": null,
    "source": {
     "commits": [
      "13eb19ee7e6e9881161c4e99a232ececa6c28bbd",
      "266118a39b2976f6228238ce6f9f5126951b490f",
+     "4ef61a09dc8fe665ae55c317f1a0b1677f706406",
      "21c3048a25adf7a44e5a29dde0964c61e2ec604f"
     ],
     "type": "develop"
    },
-   "target_tree": null,
+   "target_tree": "d07634da3e3fb470ca36cb3172f75f5db4c16621",
    "temporaries": [],
    "title": "Reformat with Google-style clang-format (optional)",
    "verification": null
