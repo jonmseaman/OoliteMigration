@@ -360,13 +360,13 @@
  "src/SDL/MyOpenGLView+Input.cpp": {
   "base": "d929115ae51392f9f1d414fd29617c315497a5f5",
   "deleted": false,
-  "ours": "9109842ff8577e21537e9fcd75c7f1f5e4bcd884",
+  "ours": "e38a44d68e9efc256433f8b93ebafde7ef4191f6",
   "theirs": "4be81b3031173de38e0fda08fc5e65aee6db76e0"
  },
  "src/SDL/MyOpenGLView.cpp": {
   "base": "9060b8d220fecc8cc51469c230bbb4b77671ab26",
   "deleted": false,
-  "ours": "5ee72aa00ed8fa698951e7b08ba9f38f8bc4dc55",
+  "ours": "5736f522bd91a1e5030e26af9de5bca17439a6d6",
   "theirs": "54c53f2e186fc28c684e3841c0aaa132079a6016"
  },
  "src/SDL/MyOpenGLView.h": {

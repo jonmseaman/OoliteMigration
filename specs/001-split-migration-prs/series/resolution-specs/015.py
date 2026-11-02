@@ -57,7 +57,7 @@ def vla(ours, theirs):
 
 
 RES["src/Core/Entities/PlayerEntity.mm"] = [last_savename, vla, vla]
-RES["src/Core/Entities/ShipEntity.mm"] = ["theirs", "theirs", "theirs"]  # its includes cover std::vector
+RES["src/Core/Entities/ShipEntity.mm"] = ["theirs", "theirs"]  # its includes cover std::vector
 # the history deletes the vector bridge include here; its closing include-guard #endif goes too, since
 # upstream's #748 header uses #pragma once
 RES["src/Core/OOVector.h"] = [""]

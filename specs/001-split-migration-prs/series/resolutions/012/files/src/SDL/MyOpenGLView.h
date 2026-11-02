@@ -205,6 +205,8 @@ public:
     bool isRunningOnPrimaryDisplayDevice();
     void getDisplayDimensions(unsigned* width, unsigned* height);
 #if OOLITE_WINDOWS
+    void refreshDarKOrLightMode();
+    bool isDarkModeOn();
     bool getAtDesktopResolution();
     float hdrMaxBrightness();
     void setHDRMaxBrightness(float newMaxBrightness);

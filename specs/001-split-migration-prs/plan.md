@@ -240,3 +240,6 @@ game repo only gets local branches.
     display functions lose the history's Windows guard, #766's mouse pixel density reads the C++
     view's window. The bounding-box selector (#745 named its parts; the normaliser's table has no
     entry) uses the history's spelling in step 12's call, which the history's OOMesh bridge declares.
+  - #744's dark-mode removal waits for the history (steps 12-18): the history's view test calls
+    isDarkModeOn until its own port of #744 at step 19. A test that exercises code upstream removed
+    keeps that code until the history drops the test; the deferral is listed in series/deferred.md.

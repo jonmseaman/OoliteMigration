@@ -488,7 +488,7 @@ void MyOpenGLView::endSplashScreen()
         // is shown, so no other Oolite window holds focus when the new one is mapped.
         SDL_Window* previousWindow = window; // the window in use so far, which showed the splash
         window = NULL;
-        [self createWindowWithSize:firstScreen];
+        createWindowWithSize(firstScreen);
         SDL_DestroyWindow(previousWindow);
         // createWindowWithSize: left glContext current, and SDL_DestroyWindow does not destroy
         // it. But destroying the old window frees the GL context of its SDL framebuffer renderer,
@@ -868,7 +868,6 @@ NSSize MyOpenGLView::modeAsSize(int sizeIndex)
 
 #endif
 
-#if OOLITE_WINDOWS
 void MyOpenGLView::getDisplayDimensions(unsigned* width, unsigned* height)
 {
     SDL_DisplayID displayID = SDL_GetDisplayForWindow(window);
@@ -910,7 +909,30 @@ void MyOpenGLView::stringToClipboard(const std::string& stringToCopy)
     }
 }
 
-#if OOLITE_WINDOWS
+void MyOpenGLView::refreshDarKOrLightMode()
+{
+    int shouldSetDarkMode = isDarkModeOn();
+    DwmSetWindowAttribute(windowHandle, DWMWA_USE_IMMERSIVE_DARK_MODE, &shouldSetDarkMode, sizeof(shouldSetDarkMode));
+}
+
+bool MyOpenGLView::isDarkModeOn()
+{
+    char buffer[4];
+    DWORD bufferSize = sizeof(buffer);
+
+    // reading a REG_DWORD value from the Registry
+    HRESULT resultRegGetValue = RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+        L"AppsUseLightTheme", RRF_RT_REG_DWORD, NULL, buffer, &bufferSize);
+    if (resultRegGetValue != ERROR_SUCCESS) {
+        return NO;
+    }
+
+    // get our 4 obtained bytes into integer little endian format
+    int i = (int)(buffer[3] << 24 | buffer[2] << 16 | buffer[1] << 8 | buffer[0]);
+
+    // dark mode is 0, light mode is 1
+    return i == 0;
+}
 
 bool MyOpenGLView::getAtDesktopResolution()
 {

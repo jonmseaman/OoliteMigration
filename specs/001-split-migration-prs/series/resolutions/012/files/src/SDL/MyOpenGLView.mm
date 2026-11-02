@@ -58,6 +58,29 @@ extern "C" int SaveEXRSnapshot(const char* outfilename, int width, int height, c
 #include "oofnd/Date.hpp"
 #include <ctype.h>
 
+#if OOLITE_WINDOWS
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+extern "C" HRESULT WINAPI DwmSetWindowAttribute(HWND hwnd, DWORD dwAttribute, LPCVOID pvAttribute, DWORD cbAttribute);
+
+#define USE_UNDOCUMENTED_DARKMODE_API 1
+
+#if USE_UNDOCUMENTED_DARKMODE_API
+#ifndef LOAD_LIBRARY_SEARCH_SYSTEM32
+#define LOAD_LIBRARY_SEARCH_SYSTEM32 0x00000800
+#endif
+typedef DWORD(WINAPI* pfnSetPreferredAppMode)(DWORD appMode);
+enum PreferredAppMode {
+    Default,
+    AllowDark,
+    ForceDark,
+    ForceLight,
+    Max
+};
+#endif
+#endif // OOLITE_WINDOWS
+
 namespace {
 
 // oo_stringForKey:defaultValue: over the user defaults: the value if it is a string, a number's
@@ -907,6 +930,30 @@ void cxx::MyOpenGLView::stringToClipboard(const std::string& stringToCopy)
 }
 
 #if OOLITE_WINDOWS
+void cxx::MyOpenGLView::refreshDarKOrLightMode()
+{
+    int shouldSetDarkMode = isDarkModeOn();
+    DwmSetWindowAttribute(windowHandle, DWMWA_USE_IMMERSIVE_DARK_MODE, &shouldSetDarkMode, sizeof(shouldSetDarkMode));
+}
+
+bool cxx::MyOpenGLView::isDarkModeOn()
+{
+    char buffer[4];
+    DWORD bufferSize = sizeof(buffer);
+
+    // reading a REG_DWORD value from the Registry
+    HRESULT resultRegGetValue = RegGetValueW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+        L"AppsUseLightTheme", RRF_RT_REG_DWORD, NULL, buffer, &bufferSize);
+    if (resultRegGetValue != ERROR_SUCCESS) {
+        return NO;
+    }
+
+    // get our 4 obtained bytes into integer little endian format
+    int i = (int)(buffer[3] << 24 | buffer[2] << 16 | buffer[1] << 8 | buffer[0]);
+
+    // dark mode is 0, light mode is 1
+    return i == 0;
+}
 
 bool cxx::MyOpenGLView::getAtDesktopResolution()
 {

@@ -1754,7 +1754,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "67d30defdb5ce1de508f10c5ae7f194df6899dd8",
+   "merge_tree": "81ac0d2598eab65e1bfef0633ab219c9b8923440",
    "n": 12,
    "parent": "series/011-module-conversions",
    "resolutions": [
@@ -1812,14 +1812,6 @@
     },
     {
      "how": "stored",
-     "path": "src/SDL/MyOpenGLView+ObjCBridge.h"
-    },
-    {
-     "how": "stored",
-     "path": "src/SDL/MyOpenGLView+ObjCBridge.mm"
-    },
-    {
-     "how": "stored",
      "path": "src/SDL/MyOpenGLView.h"
     },
     {
@@ -1838,7 +1830,7 @@
     "to": "0c01939de79a4ac04237390d93dc78437057c5e0",
     "type": "history"
    },
-   "target_tree": "4078a6f01adfdff80a7d90f54d44a064fe239129",
+   "target_tree": "06cc72698110d6dd08e38e620e5aa3f250eb01c2",
    "temporaries": [],
    "title": "Convert the large files in slices; delete the first Objective-C facades",
    "verification": null
@@ -1859,7 +1851,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "828541cf3d307f95f192769b3f4820035ff8ec75",
+   "merge_tree": null,
    "n": 13,
    "parent": "series/012-first-slices",
    "resolutions": [
@@ -1915,7 +1907,7 @@
     "to": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
     "type": "history"
    },
-   "target_tree": "325f43d0f1c4eb5565f9c89733bf93241c64b671",
+   "target_tree": null,
    "temporaries": [],
    "title": "Convert ShipEntity to C++",
    "verification": null
@@ -2280,7 +2272,7 @@
      "path": "src/Core/Universe.mm"
     },
     {
-     "how": "stored",
+     "how": "upstream-deleted",
      "path": "src/SDL/MyOpenGLView.mm"
     },
     {

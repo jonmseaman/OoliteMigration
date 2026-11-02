@@ -51,16 +51,6 @@
   "ours": "cc1d33f07f2d419b243c42d84a9f4d85912d1d98",
   "theirs": "2adb65a445ba6398e288daea312cc890f5f13384"
  },
- "src/SDL/MyOpenGLView+ObjCBridge.h": {
-  "deleted": false,
-  "extra": true,
-  "merged": "8bae70c48489a76e8b57a86ab581ea0758884c49"
- },
- "src/SDL/MyOpenGLView+ObjCBridge.mm": {
-  "deleted": false,
-  "extra": true,
-  "merged": "f87e0bd9076ab52f312f9476162731f61157df70"
- },
  "src/SDL/MyOpenGLView.h": {
   "base": "d99e9cf8f8f83e63bfa9f1961b4b4375da048482",
   "deleted": false,

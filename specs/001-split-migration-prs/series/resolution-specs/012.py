@@ -41,7 +41,10 @@ RES = {
     "src/SDL/MyOpenGLView.mm": [
         "theirs",  # the history's C++ view (upstream's #766 guard is re-applied below)
         "theirs",
-        "ours",    # upstream #744 removed the undocumented dark-mode API: it stays removed
+        # upstream #744 removed the undocumented dark-mode API; the history's unit test of the view
+        # calls it until the history's own port of #744 (step 19), so the history's API stays to then,
+        # inside upstream's Windows block (it is Windows-only)
+        "both",
         # Linux stubs: upstream made three of these common (#747); the HDR stub stays, in the history's C++ form
         "bool cxx::MyOpenGLView::hdrOutput()\n",
         "theirs",  # macOS screenshot path (#766) deferred
@@ -131,22 +134,19 @@ POST["src/SDL/MyOpenGLView.mm"] = [("#ifdef GNUSTEP_BASE_LIBRARY\nvoid cxx::MyOp
 #  - #747 made getDisplayDimensions & co. common, so the history's Windows guard above them goes
 #  - #766's mouse-motion pixel density reads the C++ view's window
 POST["src/SDL/MyOpenGLView.mm"] += [
+    # the dark-mode API kept for the history's test (above) needs the history's Windows declarations,
+    # which #744 deleted with it
+    ("#include <ctype.h>\n\nnamespace {\n",
+     "#include <ctype.h>\n\n" + open(__file__.replace("012.py", "012_files/darkmode_block.mm"), encoding="utf-8").read()
+     + "\nnamespace {\n"),
     ("        [self createWindowWithSize:firstScreen];\n", "        createWindowWithSize(firstScreen);\n"),
     ("#endif\n\n#if OOLITE_WINDOWS\nvoid cxx::MyOpenGLView::getDisplayDimensions(",
      "#endif\n\nvoid cxx::MyOpenGLView::getDisplayDimensions("),
 ]
-# #744 removed the undocumented dark-mode API (its definitions are gone above); the history's C++
-# view and its new bridge still declared and forwarded it. #747's common getDisplayDimensions is
-# declared for every platform.
+# #747's common getDisplayDimensions is declared for every platform
 POST["src/SDL/MyOpenGLView.h"] = [(
-    "#if OOLITE_WINDOWS\n    void getDisplayDimensions(unsigned* width, unsigned* height);\n"
-    "    void refreshDarKOrLightMode();\n    bool isDarkModeOn();\n",
+    "#if OOLITE_WINDOWS\n    void getDisplayDimensions(unsigned* width, unsigned* height);\n",
     "    void getDisplayDimensions(unsigned* width, unsigned* height);\n#if OOLITE_WINDOWS\n")]
-FIX["src/SDL/MyOpenGLView+ObjCBridge.h"] = subs(
-    ("- (void)refreshDarKOrLightMode;\n- (BOOL)isDarkModeOn;\n", ""))
-FIX["src/SDL/MyOpenGLView+ObjCBridge.mm"] = subs((
-    "- (void)refreshDarKOrLightMode\n{\n    _cxxView->refreshDarKOrLightMode();\n}\n\n"
-    "- (BOOL)isDarkModeOn\n{\n    return _cxxView->isDarkModeOn();\n}\n\n", ""))
 POST["src/SDL/MyOpenGLView+Input.mm"] = [
     ("SDL_GetWindowPixelDensity(window);", "SDL_GetWindowPixelDensity(oo::ToCxx(self)->window);")]
 # Upstream's #745 named this selector's parts (ri:rj:rk:...si:sj:sk:); the normaliser's table has no
