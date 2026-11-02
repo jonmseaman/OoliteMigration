@@ -2674,7 +2674,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "2e6af2fa43d9924f9e1753070a70b5aa4b1a1992",
+   "merge_tree": "4d975213c7c76a8364aee0a998d553186cbfa11e",
    "n": 19,
    "parent": "series/018-gcc-build",
    "resolutions": [
@@ -2758,7 +2758,7 @@
     "to": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
     "type": "history"
    },
-   "target_tree": "2f67d1139a372753e2351341dfbdb7836e9f42a6",
+   "target_tree": "a3bdda2b0f3635aa80a28f5bec97605d191e8323",
    "temporaries": [],
    "title": "Port upstream changes #369 to #765 into the C++ code",
    "verification": null

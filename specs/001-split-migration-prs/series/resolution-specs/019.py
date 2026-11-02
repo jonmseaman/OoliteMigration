@@ -49,3 +49,8 @@ RES["src/Core/OOFoundation.h"] = ["theirs"]
 
 # step 15's logical-or key checks give way to the history's own fix of the same warning
 RES["src/Core/Entities/PlayerEntityControls.cpp"] = ["theirs"] * 7
+# The history closes OOMATHS_STANDALONE's block and then its include guard; the series keeps
+# upstream's #pragma once (#748), and the resolution dropped the block's #endif with the guard's
+POST = dict(globals().get("POST", {}))
+POST["src/Core/OOMaths.h"] = [('#include "legacy_random.h"\n\n#ifdef __cplusplus\n',
+                               '#include "legacy_random.h"\n#endif\n\n#ifdef __cplusplus\n')]

@@ -125,6 +125,7 @@ typedef double OOHPScalar;
 #include "OOBoundingBox.h"
 
 #include "legacy_random.h"
+#endif
 
 #ifdef __cplusplus
 }
