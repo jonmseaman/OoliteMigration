@@ -758,15 +758,21 @@ def check_descriptions(m, step):
 
 
 def check_final_tree(m, step):
-    """Rule 7: the last step's tree equals develop_target outside the exclusions."""
+    """Rule 7: the last step's tree equals develop_target outside the exclusions (path globs left out,
+    reverted commits undone), and every exclusion gives its reason."""
     import fnmatch
-    from tools.series import history
+    from tools.series import history, trees
+    out = [f"rule 7: exclusion {e.get('path_glob') or e.get('revert_commit')!r} has no reason"
+           for e in m.get("exclusions", []) if not str(e.get("reason") or "").strip()]
     target = history.git(GAME, "rev-parse", f"{m['anchors']['develop_target']}^{{tree}}")
+    for e in m.get("exclusions", []):
+        if "revert_commit" in e:
+            target = trees.revert(GAME, target, e["revert_commit"])
     tip = history.git(GAME, "rev-parse", f"refs/heads/{step['branch']}^{{tree}}")
-    globs = [e["path_glob"] for e in m.get("exclusions", []) if e.get("path_glob")]
+    globs = exclusion_globs(m)
     diff = [p for p in history.git(GAME, "diff", "--name-only", "--no-renames", tip, target).splitlines()
             if not any(fnmatch.fnmatch(p, g) for g in globs)]
-    return [f"rule 7: last step differs from develop_target at {p}" for p in diff[:20]] + (
+    return out + [f"rule 7: last step differs from develop_target at {p}" for p in diff[:20]] + (
         [f"rule 7: ... and {len(diff) - 20} more paths"] if len(diff) > 20 else [])
 
 

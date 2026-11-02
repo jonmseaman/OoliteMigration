@@ -257,7 +257,7 @@ matching the manifest's exclusions, and `check --verified` passes for 020–025.
   025, `renumber` (T030; if not yet done, do it by hand and record it), and note it in plan.md
   Notes. Accept: `python -I tools/series/series.py build --from 20 && python -I
   tools/series/series.py verify --from 20 && python -I tools/series/series.py check --verified`.
-- [ ] T026 [US3] Add data-model rule 7 to `check`: the last step's tree equals `develop_target` outside
+- [X] T026 [US3] Add data-model rule 7 to `check`: the last step's tree equals `develop_target` outside
   the exclusions, and every exclusion has a reason. Accept: `python -I tools/series/series.py check
   --only final-tree` exits 0.
 
