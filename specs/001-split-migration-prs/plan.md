@@ -188,6 +188,23 @@ game repo only gets local branches.
   one the parent's own record, itself current, was made for. Every check reads only the step's
   tree, its parent's tree and the parent's record, so after the hoist only steps 001 and 002 were
   re-verified.
+- Re-anchor dry run (T034, 2026-11-02): `upstream_base` set to `upstream/master` (`7437f22a5`,
+  one commit past `49a5eb9fc`: #780, engine-neutral JavaScript names outside the scripting layer,
+  21 files) in a copy of the manifest (`.agent-tmp/series-reanchor/`); every step's tree computed
+  with the stored resolutions, the real stack untouched. Script: `.agent-tmp/reanchor.py`.
+  - The hoisted step 001 and chapters 002, 007, 019 and 021 merge cleanly.
+  - New conflicts, all where #780 renamed JavaScript identifiers in files the migration rewrote:
+    003 (1: `ShipEntityAI.mm`), 004 (5), 005 (17), 006 (1), 008 (3), 009 (9), 010 (5), 011 (2),
+    012 (1), 013 (3), 014 (5), 015 (3), 016 (6), 017 (3), 018 (2), 020 (3), and the first tail
+    step 022 (5, in 2ceced1f8). The files: the entities (`ShipEntity`, `PlayerEntity`,
+    `PlayerEntityLoadSave`, `StationEntity`, `DockEntity`, `OOVisualEffectEntity`, `OOECMBlastEntity`),
+    `Universe`, `GuiDisplayGen`, `OOCommodities`, `OOCharacter.h`, `OODebugMonitor` and
+    `OOJavaScriptEngine.h`.
+  - The run keeps conflicted files (with markers) as the next step's `ours`, so the counts after
+    the first conflicted step are an upper bound. The tail replay stops at its first unresolved
+    commit, so 023–026 were not reached.
+  - Re-anchoring means resolving these 74 conflicts (at most) once each (most are the same rename in
+    successive versions of one file), then rebuilding and re-verifying from step 003.
 - G2 results (2026-11-02): no chapter boundary moved (every snapshot built at its R14 boundary;
   no step has `boundary_moved`). One fix is hoisted, `OO_RANDOM_SEED` (step 001); the
   enumeration shuffle stays in chapter 1 (see Hoist candidates). No tail group folded into the

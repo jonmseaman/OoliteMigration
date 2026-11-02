@@ -109,6 +109,9 @@ def normalise_tree(repo, tree, style_from, clang_format=CLANG_FORMAT, cache_path
         out = _git(repo, "write-tree", env=env).decode().strip()
 
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-    with open(cache_path, "w", encoding="utf-8", newline="\n") as f:
+    # written aside and moved into place, so a concurrent reader never sees half a file
+    tmp = f"{cache_path}.{os.getpid()}.tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
         json.dump(cache, f)
+    os.replace(tmp, cache_path)
     return out

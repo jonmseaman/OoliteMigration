@@ -322,7 +322,7 @@ and builds there with Clang.
 - [X] T033 [P] Update plan.md's Notes "To fill at G2" items with the results (boundary moves,
   hoisted fixes, tail folds), and the status log in `docs/phases/4p-upstream-polish.md` with one
   line. Accept: `! grep -q 'To fill at G2' specs/001-split-migration-prs/plan.md`.
-- [ ] T034 Re-anchor dry run (research R12, gate G5): in a copy of the manifest
+- [X] T034 Re-anchor dry run (research R12, gate G5): in a copy of the manifest
   (`.agent-tmp/series-reanchor/manifest.json`), set `upstream_base` to `upstream/master`
   (`7437f22a5` today) and run `tree` for every step. List the new conflicts (expected: #780 in the
   scripting steps) in plan.md Notes, without changing the real stack. Accept: `grep -q '^-
