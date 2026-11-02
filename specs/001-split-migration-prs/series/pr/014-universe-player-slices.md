@@ -2,7 +2,7 @@
 
 **Series:** step 14 of 25 · base `series/013-shipentity-slices` · next `series/015-facade-deletions` **(gen)**
 
-**Chapter:** P3 · 3.7 PlayerEntity slices, 3.8 Universe slices · history `4b272b165e`..`33abe86219` (40 merges) · 17.7k src, 3.6k tests, 0 other changed lines; 1.2k lines in deleted files **(gen)**
+**Chapter:** P3 · 3.7 PlayerEntity slices, 3.8 Universe slices · history `4b272b165e`..`33abe86219` (40 merges) · 17.6k src, 3.6k tests, 0 other changed lines; 1.2k lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -61,6 +61,19 @@ remaining `[x foo]` sends into calls; their tests drop only the facade's own cas
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `eac31b43c9`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | pass: oofnd, core |
+| warnings_clang | pass: 0 warnings outside the history's tests (7 listed in test-warnings.md) |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

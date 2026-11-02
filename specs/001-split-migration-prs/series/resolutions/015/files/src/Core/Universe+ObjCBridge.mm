@@ -628,7 +628,7 @@ extern Universe* gSharedUniverse;
 {
     return _cxxUniverse->getContainersOfGoods(how_many, scarce, legal);
 }
-- (std::vector<oo::ObjCRef<::Entity*>>)cxx_getContainersOfCommodity:(const std::string&)commodity_name how_much:(OOCargoQuantity)how_much
+- (std::vector<oo::ObjCRef<::Entity*>>)cxx_getContainersOfCommodity:(const std::string&)commodity_name /* unnamed second part */ :(OOCargoQuantity)how_much
 {
     return _cxxUniverse->getContainersOfCommodity(commodity_name, how_much);
 }

@@ -242,7 +242,7 @@ MA 02110-1301, USA.
 - (ShipEntity*)reifyCargoPod:(ShipEntity*)cargoObj;
 - (ShipEntity*)cargoPodFromTemplate:(ShipEntity*)cargoObj;
 - (std::vector<oo::ObjCRef<::Entity*>>)cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal;
-- (std::vector<oo::ObjCRef<::Entity*>>)cxx_getContainersOfCommodity:(const std::string&)commodity_name how_much:(OOCargoQuantity)how_many;
+- (std::vector<oo::ObjCRef<::Entity*>>)cxx_getContainersOfCommodity:(const std::string&)commodity_name /* unnamed second part */ :(OOCargoQuantity)how_many;
 - (void)fillCargopodWithRandomCargo:(ShipEntity*)cargopod;
 - (std::string)getRandomCommodity; // a commodity key
 - (OOCargoQuantity)cxx_getRandomAmountOfCommodity:(const std::string&)co_type;

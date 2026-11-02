@@ -1999,14 +1999,14 @@
      "no_new_suppressions": "pass",
      "smoke": "pass",
      "tests_untouched": "pass",
-     "unit": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\012-unit.log)",
+     "unit": "pass: oofnd, core",
      "warnings_clang": "pass: 0 warnings outside the history's tests (4 listed in test-warnings.md)"
     },
     "clean": false,
-    "commit": "cce07fad2b72db5002925b144bb3acdd69539b29",
+    "commit": "4c411b26a7fab4fc732c733c9503dd1b5748575a",
     "date": "2026-11-02",
     "era": "objc-quickjs",
-    "tree": "3c630b3bfd66493816cd66150a0b0b7eca8c97f8"
+    "tree": "8bdc377d9ffe584880c5121d1cc6370001000fa4"
    }
   },
   {
@@ -2022,7 +2022,7 @@
     ]
    },
    "description": "series/pr/013-shipentity-slices.md",
-   "era": null,
+   "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "92e1d6d9d5f8bf98c9f6a8f573ef181299d20884",
@@ -2088,7 +2088,25 @@
    "target_tree": "59cf67fc3538c9e23ceea0095d123c8eb2f777fc",
    "temporaries": [],
    "title": "Convert ShipEntity to C++",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core",
+     "warnings_clang": "pass: 0 warnings outside the history's tests (7 listed in test-warnings.md)"
+    },
+    "clean": false,
+    "commit": "36e7fadd4f104ecb72dbd437f221284f8fff6655",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "59cf67fc3538c9e23ceea0095d123c8eb2f777fc"
+   }
   },
   {
    "boundary_moved": null,
@@ -2104,7 +2122,7 @@
     ]
    },
    "description": "series/pr/014-universe-player-slices.md",
-   "era": null,
+   "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "3961df291e7b45eb04d45f7561a9246f81869ab5",
@@ -2162,7 +2180,25 @@
    "target_tree": "efb510bc688a62ca5e178260948cf12e2daddeca",
    "temporaries": [],
    "title": "Convert Universe and PlayerEntity to C++",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core",
+     "warnings_clang": "pass: 0 warnings outside the history's tests (7 listed in test-warnings.md)"
+    },
+    "clean": false,
+    "commit": "eac31b43c9dcebc3c770179e1e1f2d8cbb2b7239",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "efb510bc688a62ca5e178260948cf12e2daddeca"
+   }
   },
   {
    "boundary_moved": null,
@@ -2177,10 +2213,10 @@
     ]
    },
    "description": "series/pr/015-facade-deletions.md",
-   "era": null,
+   "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "321d021de6c6cff1de2507624d2832d713ee882f",
+   "merge_tree": "03e9e810cea0e282130ea1b65abba472bd33fcc5",
    "n": 15,
    "parent": "series/014-universe-player-slices",
    "resolutions": [
@@ -2271,23 +2307,45 @@
     {
      "how": "auto",
      "path": "src/SDL/MyOpenGLView+Input.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/main.mm"
     }
    ],
    "size": {
-    "deleted_files": 22063,
+    "deleted_files": 22068,
     "other": 0,
-    "src": 50308,
-    "tests": 27629
+    "src": 50322,
+    "tests": 25925
    },
    "source": {
     "from": "d01d45e47c50bda1ebbfd44c5f94596519ba840b",
     "to": "2c2aae1316b5a125038a797c213162ffba389279",
     "type": "history"
    },
-   "target_tree": "82b31502611aeaa79dd58b786ec5391123250de1",
+   "target_tree": "3b7513516f4b933ef3655b98f8460c581baf6cd7",
    "temporaries": [],
    "title": "Delete the Objective-C facades",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\015-smoke.log)",
+     "tests_untouched": "pass",
+     "unit": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\015-unit.log)",
+     "warnings_clang": "pass: 0 warnings outside the history's tests (7 listed in test-warnings.md)"
+    },
+    "clean": false,
+    "commit": "a605e348318254e0fb83d7583b5536172b6f63f7",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "82b31502611aeaa79dd58b786ec5391123250de1"
+   }
   },
   {
    "boundary_moved": null,
@@ -2434,10 +2492,6 @@
      "path": "src/Core/Scripting/OOJSFunction.mm"
     },
     {
-     "how": "stored",
-     "path": "src/Core/Scripting/OOJSShip.mm"
-    },
-    {
      "how": "auto",
      "path": "src/Core/Scripting/OOJavaScriptEngine.mm"
     },
@@ -2456,6 +2510,10 @@
     {
      "how": "stored",
      "path": "src/SDL/MyOpenGLView.mm"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/main.mm"
     },
     {
      "how": "stored",

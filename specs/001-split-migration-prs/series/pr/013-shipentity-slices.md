@@ -2,7 +2,7 @@
 
 **Series:** step 13 of 25 · base `series/012-first-slices` · next `series/014-universe-player-slices` **(gen)**
 
-**Chapter:** P3 · 3.7 ShipEntity slices · history `477a4919bc`..`9a7a14fe2b` (60 merges) · 29.1k src, 6.5k tests, 103 other changed lines; 57 lines in deleted files **(gen)**
+**Chapter:** P3 · 3.7 ShipEntity slices · history `477a4919bc`..`9a7a14fe2b` (60 merges) · 29.1k src, 6.9k tests, 105 other changed lines; 57 lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -53,6 +53,19 @@ only the call syntax and types should differ. The tests are the place to look fo
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `36e7fadd4f`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | pass: oofnd, core |
+| warnings_clang | pass: 0 warnings outside the history's tests (7 listed in test-warnings.md) |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

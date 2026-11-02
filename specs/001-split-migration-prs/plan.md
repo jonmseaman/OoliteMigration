@@ -278,3 +278,15 @@ game repo only gets local branches.
     oo-9ht.173, made at step 14) is brought forward to step 12; its test change stays at step 14.
     Step 14 takes the series' side of the meeting hunk (the series keeps the stub debugger setter,
     so the history's gDebuggerHandler stays out). Steps 16-19 are unchanged.
+  - Step 15's unit run: the history's test_OOJSShip (new here) overrides the history's
+    -cxx_getContainersOfCommodity:: in its stand-in universe; the series' how_much: name (steps
+    8-14) bypassed it. Step 15 takes the history's selector and sends; its declarations keep the
+    whitespace before the unnamed part that Clang's -Wmissing-selector-name asks for (its own
+    suggested fix), held by a comment since clang-format drops a bare space there.
+  - Step 15's smoke run crashed about 3 runs in 5 (a message to a freed GameController facade from
+    Universe::drawMessage): the history makes main's controller C++ here (c820fb8f8d) while the view
+    still keeps the facade unretained and peers are weak; the history has the same window until
+    0eabd9899 (step 16). Main retains its controller's facade for the process, as it held its
+    Objective-C controller before (5 of 5 smoke runs pass); step 16 drops the line with the facades.
+    (+sharedController was tried first: it makes a second controller, as the constructor does not
+    record the shared one.) Steps 16-19 are unchanged by both.

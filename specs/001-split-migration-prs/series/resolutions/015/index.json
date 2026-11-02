@@ -82,5 +82,10 @@
   "deleted": false,
   "ours": "cf074c53ba2c79a8a6a3e15cecc62444452811ec",
   "theirs": "38d9069f729e93243ee4014ab493e6a48ea33dbc"
+ },
+ "src/SDL/main.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "4fca39877442661b8e9bcd1831fb1f6f8858df91"
  }
 }

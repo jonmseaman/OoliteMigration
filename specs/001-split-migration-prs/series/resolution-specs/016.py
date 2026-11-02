@@ -48,8 +48,9 @@ RES["src/Core/Scripting/OOJSEngineTimeManagement.mm"] = ["theirs"]
 RES["src/Core/Materials/OOConcreteTexture.mm"] = ["ours"]
 # the history adds the same enum/float casts here (step 5 had them first) and converts the arrays
 RES["src/Core/Entities/ShipEntity.mm"] = ["theirs"] * 4
-# the containers calls become C++ member calls here (the selector, and its how_much: part, go)
-RES["src/Core/Entities/ShipEntity.mm"] = ["theirs"] * 6
+# the containers calls become C++ member calls here (the selector goes; step 15 already has the
+# history's form of it, so those lines merge cleanly)
+RES["src/Core/Entities/ShipEntity.mm"] = ["theirs"] * 4
 RES["src/Core/Scripting/OOJSShip.mm"] = ["theirs"]
 # the history deletes the Universe facade here; step 15's selector part goes with it
 DELETE = list(globals().get("DELETE", [])) + ["src/Core/Universe+ObjCBridge.h", "src/Core/Universe+ObjCBridge.mm"]
@@ -75,3 +76,10 @@ CHANGES["src/meson.build"] = [(_THREADS_016 + "# Bead oo-bipqn: ", "# Bead oo-bi
 POST = dict(globals().get("POST", {}))
 POST["src/SDL/MyOpenGLView.mm"] = list(POST.get("src/SDL/MyOpenGLView.mm", [])) + [
     ("void cxx::MyOpenGLView::refreshDarKOrLightMode()\n", "void MyOpenGLView::refreshDarKOrLightMode()\n")]
+
+# the history deletes the controller's and view's facades here (0eabd9899): step 15's shared-facade
+# hold in main goes with them
+CHANGES["src/SDL/main.mm"] = [(
+    "        // The game view keeps the controller's facade unretained; it lives as long as the process,\n"
+    "        // as the Objective-C controller main held did.\n"
+    "        [oo::ToObjC(controller.get()) retain];\n", "")]

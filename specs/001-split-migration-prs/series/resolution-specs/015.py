@@ -90,18 +90,42 @@ RES["src/Core/Entities/ShipEntity.mm"] = ["theirs"]  # its includes cover std::v
 RES["src/Core/OOVector.h"] = [""]
 
 
-# the containers selector gets a named second part (see selector_containers.py)
-exec(open(__file__.replace("015.py", "selector_containers.py"), encoding="utf-8").read())
-RENAMES = list(globals().get("RENAMES", [])) + CONTAINERS_RENAMES
+# The containers selector: steps 8-14 name its second part how_much: (see selector_containers.py).
+# Here the history's test_OOJSShip arrives, whose stand-in universe overrides the history's
+# -cxx_getContainersOfCommodity:: and records the call; the named selector would bypass it. So this
+# step takes the history's selector and sends. The declarations keep the whitespace before the
+# unnamed part that Clang's -Wmissing-selector-name asks for (its own suggested fix); clang-format
+# drops a bare space there, so a comment holds it. Step 16 deletes the bridge.
+_UNNAMED_DECL = (r"\)commodity_name ?(?:how_much)?:\(OOCargoQuantity\)",
+                 ")commodity_name /* unnamed second part */ :(OOCargoQuantity)")
+_UNNAMED_SEND = (r"(cxx_getContainersOfCommodity:[^\]\n]*?) how_much:(num|adjustment|how_many)\]", r"\1:\2]")
 
 
-# the history retypes the bridge's containers methods here; the selector's how_much: part is re-applied
-def _containers_part(ours, theirs):
-    out, n = _re15.subn(r"\)commodity_name ?:\(OOCargoQuantity\)", ")commodity_name how_much:(OOCargoQuantity)", theirs)
-    assert n == 1, n
-    return out
+def _unnamed(text):
+    text, d = _re15.subn(_UNNAMED_DECL[0], _UNNAMED_DECL[1], text)
+    text, c = _re15.subn(_UNNAMED_SEND[0], _UNNAMED_SEND[1], text)
+    assert d or c, "no containers selector found"
+    return text
 
 
-RES["src/Core/Universe+ObjCBridge.h"] = [_containers_part]
-RES["src/Core/Universe+ObjCBridge.mm"] = [_containers_part]
-RES["src/Core/Scripting/OOJSShip.mm"] = [lambda ours, theirs: theirs.replace('value_or(""):adjustment]', 'value_or("") how_much:adjustment]')]
+RES["src/Core/Universe+ObjCBridge.h"] = ["theirs"]
+RES["src/Core/Universe+ObjCBridge.mm"] = ["theirs"]
+RES["src/Core/Scripting/OOJSShip.mm"] = ["theirs"]
+for _p in ("src/Core/Universe+ObjCBridge.h", "src/Core/Universe+ObjCBridge.mm"):
+    POST[_p] = list(POST.get(_p, [])) + [_unnamed]
+POST["src/Core/Entities/ShipEntity.mm"] = list(POST.get("src/Core/Entities/ShipEntity.mm", [])) + [_unnamed]
+
+
+# The history makes main's controller C++ here (c820fb8f8d); the game view still keeps the
+# controller's Objective-C facade unretained, and peers are weak and autoreleased, so the facade
+# died at a pool drain and the view's pointer dangled (smoke: a crash in -mouseInteractionMode from
+# Universe::drawMessage, about 3 runs in 5). The history has the same window until it deletes the
+# view's and controller's facades (0eabd9899, step 16). Main retains its controller's facade for the
+# process, as it held its Objective-C controller before (+sharedController would make a second
+# controller: the constructor does not record the shared one).
+CHANGES["src/SDL/main.mm"] = [(
+    "        controller = oo::makeRef<cxx::GameController>();\n",
+    "        controller = oo::makeRef<cxx::GameController>();\n"
+    "        // The game view keeps the controller's facade unretained; it lives as long as the process,\n"
+    "        // as the Objective-C controller main held did.\n"
+    "        [oo::ToObjC(controller.get()) retain];\n")]

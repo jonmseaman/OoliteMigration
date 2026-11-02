@@ -2,7 +2,7 @@
 
 **Series:** step 15 of 25 · base `series/014-universe-player-slices` · next `series/016-entity-facade` **(gen)**
 
-**Chapter:** P3 · facade-deletion batches · history `d01d45e47c`..`2c2aae1316` (51 merges) · 50.3k src, 27.6k tests, 0 other changed lines; 22.1k lines in deleted files **(gen)**
+**Chapter:** P3 · facade-deletion batches · history `d01d45e47c`..`2c2aae1316` (51 merges) · 50.3k src, 25.9k tests, 0 other changed lines; 22.1k lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -56,6 +56,19 @@ station, dock or visual effect.
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `a605e34831`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| clang_format | pass |
+| component | n/a: no component scenario touched |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | fail: exit 1 (see .agent-tmp\series-verify-logs\015-smoke.log) |
+| tests_untouched | pass |
+| unit | fail: exit 1 (see .agent-tmp\series-verify-logs\015-unit.log) |
+| warnings_clang | pass: 0 warnings outside the history's tests (7 listed in test-warnings.md) |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

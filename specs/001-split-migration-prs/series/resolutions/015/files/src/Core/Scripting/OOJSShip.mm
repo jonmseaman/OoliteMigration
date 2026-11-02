@@ -4043,7 +4043,7 @@ static bool ShipAdjustCargo(ooscript::Context context, ooscript::CallArgs& oojsA
     bool ok = true;
 
     if (adjustment > 0) {
-        ok = ship->addCargo([UNIVERSE cxx_getContainersOfCommodity:commodity.value_or("") how_much:adjustment]); // non-reified templates
+        ok = ship->addCargo([UNIVERSE cxx_getContainersOfCommodity:commodity.value_or(""):adjustment]); // non-reified templates
     } else if (adjustment < 0) {
         OOCargoQuantity r = (OOCargoQuantity)(-adjustment);
         ok = ship->removeCargo(commodity.value_or(""), r);
