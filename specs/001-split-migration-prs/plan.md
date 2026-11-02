@@ -229,3 +229,14 @@ game repo only gets local branches.
     history's C++ headers drop #748's other four such imports, as the history's own port of #748 at
     step 19 does, and the second #pragma once (upstream's and the history's) goes everywhere but
     vendored miniz.h.
+  - FR-003 against hard rules 1 and 2: Clang 23 warns in a few of the history's own unit tests
+    (unused stand-ins and finalizer counters, steps 11-18). The tests are not edited and nothing is
+    silenced; each warning is listed in series/test-warnings.md with its step range, and verify
+    passes a step whose only warnings are listed ones in files under tests/ (the record counts
+    them). Any other warning still fails. Game-code warnings of the same kind are fixed in the
+    history's later forms (step 11: the texture trace context, the Manifest prototype).
+  - Step 12 carries upstream code into the history's C++ view in its terms: #774's splash-window
+    replacement calls the C++ createWindowWithSize (ported here, not deferred), #747's common
+    display functions lose the history's Windows guard, #766's mouse pixel density reads the C++
+    view's window. The bounding-box selector (#745 named its parts; the normaliser's table has no
+    entry) uses the history's spelling in step 12's call, which the history's OOMesh bridge declares.

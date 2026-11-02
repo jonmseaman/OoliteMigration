@@ -64,35 +64,75 @@
   "extra": true,
   "merged": "4b1863b66418f9efa9d9c6fcbe339922a3a7a807"
  },
+ "src/Core/Scripting/OOJSDock.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "ece1b55d1b5a05d57d7dca8746a6a18830458afb"
+ },
+ "src/Core/Scripting/OOJSManifest.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "1783344df2d4280528d4a50ed7a84cc6ee3f3c22"
+ },
  "src/Core/Scripting/OOJSPlanet.h": {
   "deleted": false,
   "extra": true,
   "merged": "9b71049abb5463de946aa8c79300ac6d857dff22"
+ },
+ "src/Core/Scripting/OOJSPlanet.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "1c34d14b58e6ee195514714689cb4dfe0b436756"
  },
  "src/Core/Scripting/OOJSPlayer.h": {
   "deleted": false,
   "extra": true,
   "merged": "2abb46ba294bc38977f8e9b3dc8af03bdbbda409"
  },
+ "src/Core/Scripting/OOJSPlayer.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "90e85d7bdd7ae9684b416fa265eafc6a206bf7e9"
+ },
  "src/Core/Scripting/OOJSSound.h": {
   "deleted": false,
   "extra": true,
   "merged": "a737719afb6aed8669ac52ff1d3a28824e50947f"
+ },
+ "src/Core/Scripting/OOJSSound.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "a6a7ce3499298fe6013a86290cfc18f972c3f3c8"
  },
  "src/Core/Scripting/OOJSStation.h": {
   "deleted": false,
   "extra": true,
   "merged": "e51330739f37c9137a0ad0543b02dc8939907c2e"
  },
+ "src/Core/Scripting/OOJSStation.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "772272d3a705fa0af54ca2b5c266be96671dbf96"
+ },
  "src/Core/Scripting/OOJSWaypoint.h": {
   "deleted": false,
   "extra": true,
   "merged": "48296157666df8ef9a96f9622c19574e965727f4"
  },
+ "src/Core/Scripting/OOJSWaypoint.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "86a5ddf24e82a1059ac82b5259d835085b2ccb76"
+ },
  "src/Core/Scripting/OOJSWormhole.h": {
   "deleted": false,
   "extra": true,
   "merged": "00de035fe1853b73b28e5661841efafaed42a6fe"
+ },
+ "src/Core/Scripting/OOJSWormhole.mm": {
+  "deleted": false,
+  "extra": true,
+  "merged": "f911138bac14b81bac3e04b6e0a3bc114bcb9f9a"
  },
  "src/Core/Scripting/OOJavaScriptEngine.h": {
   "base": "1abe9db2227500d82db7d156052ea080932ce7d9",

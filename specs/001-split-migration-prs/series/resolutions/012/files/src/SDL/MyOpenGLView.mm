@@ -487,7 +487,7 @@ void cxx::MyOpenGLView::endSplashScreen()
         // is shown, so no other Oolite window holds focus when the new one is mapped.
         SDL_Window* previousWindow = window; // the window in use so far, which showed the splash
         window = NULL;
-        [self createWindowWithSize:firstScreen];
+        createWindowWithSize(firstScreen);
         SDL_DestroyWindow(previousWindow);
         // createWindowWithSize: left glContext current, and SDL_DestroyWindow does not destroy
         // it. But destroying the old window frees the GL context of its SDL framebuffer renderer,
@@ -865,7 +865,6 @@ NSSize cxx::MyOpenGLView::modeAsSize(int sizeIndex)
 
 #endif
 
-#if OOLITE_WINDOWS
 void cxx::MyOpenGLView::getDisplayDimensions(unsigned* width, unsigned* height)
 {
     SDL_DisplayID displayID = SDL_GetDisplayForWindow(window);

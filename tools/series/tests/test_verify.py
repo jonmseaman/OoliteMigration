@@ -97,6 +97,42 @@ class WarningCountTest(unittest.TestCase):
         self.assertEqual(verify.warning_count("WARNING: Project targets '>=1.1' but uses feature ...\n"), 0)
 
 
+class ListedTestWarningsTest(unittest.TestCase):
+    TABLE = ("# Warnings\n\n| Steps | File | Warning | Why it stays | Gone from |\n|---|---|---|---|---|\n"
+             "| 11–16 | `tests/unit/core/test_a.mm` | `variable 'sFinalized' set but not used` | the history's test | 17 |\n"
+             "| 12 | `tests/unit/core/test_b.mm` | `unused variable 'x'` | the history's test | 13 |\n")
+    LOG = ("../../tests/unit/core/test_a.mm:132:5: warning: variable 'sFinalized' set but not used [-Wunused-but-set-global]\n"
+           "../../tests/unit/core/test_b.mm:9:5: warning: unused variable 'x' [-Wunused-variable]\n")
+
+    def listed(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "test-warnings.md")
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(self.TABLE)
+            return verify.listed_test_warnings(path)
+
+    def test_table_is_read(self):
+        self.assertEqual(self.listed(), [
+            (11, 16, "tests/unit/core/test_a.mm", "variable 'sFinalized' set but not used"),
+            (12, 12, "tests/unit/core/test_b.mm", "unused variable 'x'")])
+
+    def test_no_warnings_pass(self):
+        self.assertEqual(verify.warnings_verdict("", 11, self.listed()), "pass: 0 warnings")
+
+    def test_listed_warnings_within_their_steps_pass_and_are_counted(self):
+        self.assertEqual(verify.warnings_verdict(self.LOG, 12, self.listed()),
+                         "pass: 0 warnings outside the history's tests (2 listed in test-warnings.md)")
+
+    def test_listed_warning_outside_its_steps_fails(self):
+        self.assertEqual(verify.warnings_verdict(self.LOG, 11, self.listed()),
+                         "fail: 1 warnings (and 1 listed in test-warnings.md)")
+
+    def test_source_warnings_are_never_listed(self):
+        listed = [(1, 99, "src/a.mm", "unused variable 'x'")]
+        self.assertEqual(verify.warnings_verdict("../../src/a.mm:1:1: warning: unused variable 'x'\n", 5, listed),
+                         "fail: 1 warnings")
+
+
 class TouchedScenariosTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

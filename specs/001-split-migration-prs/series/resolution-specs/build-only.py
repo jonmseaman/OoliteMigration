@@ -11,7 +11,7 @@ log = os.path.join(V.LOG_DIR, f"{n:03d}-build_clang.log")
 if os.path.exists(log): os.remove(log)
 rc, w = V.run_build(era, wt, "clang", "--clean" in sys.argv, log)
 text = open(log, encoding="utf-8", errors="replace").read()
-print(f"step {n} ({era}): rc={rc} warnings={w}")
+print(f"step {n} ({era}): rc={rc} warnings={w} verdict={V.warnings_verdict(text, n, V.listed_test_warnings())}")
 for line in sorted(set(re.findall(r"^\.\./\.\./(src/\S+: (?:warning|error): .*)$", text, re.M)))[:60]:
     print("  " + line[:220])
 for line in sorted(set(re.findall(r"^(ld\.lld: error: .*)$", text, re.M)))[:10]:

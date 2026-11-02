@@ -1499,7 +1499,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "4c315ace12204220e01671c733549aa5b43cd344",
+   "merge_tree": "461a166796112bc645bc2a29f94ae68861ae052f",
    "n": 11,
    "parent": "series/010-leaf-conversions",
    "resolutions": [
@@ -1644,6 +1644,10 @@
      "path": "src/Core/Scripting/OOJSDock.h"
     },
     {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSDock.mm"
+    },
+    {
      "how": "auto",
      "path": "src/Core/Scripting/OOJSEngineTimeManagement.mm"
     },
@@ -1653,11 +1657,23 @@
     },
     {
      "how": "stored",
+     "path": "src/Core/Scripting/OOJSManifest.mm"
+    },
+    {
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSPlanet.h"
     },
     {
      "how": "stored",
+     "path": "src/Core/Scripting/OOJSPlanet.mm"
+    },
+    {
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSPlayer.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSPlayer.mm"
     },
     {
      "how": "transplant",
@@ -1669,7 +1685,15 @@
     },
     {
      "how": "stored",
+     "path": "src/Core/Scripting/OOJSSound.mm"
+    },
+    {
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSStation.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSStation.mm"
     },
     {
      "how": "stored",
@@ -1677,7 +1701,15 @@
     },
     {
      "how": "stored",
+     "path": "src/Core/Scripting/OOJSWaypoint.mm"
+    },
+    {
+     "how": "stored",
      "path": "src/Core/Scripting/OOJSWormhole.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSWormhole.mm"
     },
     {
      "how": "stored",
@@ -1699,7 +1731,7 @@
     "to": "ab5dc6cd728a5b26951c588d3d6e0ef99049009c",
     "type": "history"
    },
-   "target_tree": "2e376cae8d3eb6f9277dfc9c1205b340476f4209",
+   "target_tree": "c8e1efbb99dbdf00474673c5b48567f8fcea6a33",
    "temporaries": [],
    "title": "Convert scripting, entities, audio and materials classes to C++",
    "verification": null
@@ -1722,7 +1754,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "7e77504562f36ac29deb24423f039da7bb15bc6c",
+   "merge_tree": "67d30defdb5ce1de508f10c5ae7f194df6899dd8",
    "n": 12,
    "parent": "series/011-module-conversions",
    "resolutions": [
@@ -1780,6 +1812,14 @@
     },
     {
      "how": "stored",
+     "path": "src/SDL/MyOpenGLView+ObjCBridge.h"
+    },
+    {
+     "how": "stored",
+     "path": "src/SDL/MyOpenGLView+ObjCBridge.mm"
+    },
+    {
+     "how": "stored",
      "path": "src/SDL/MyOpenGLView.h"
     },
     {
@@ -1798,7 +1838,7 @@
     "to": "0c01939de79a4ac04237390d93dc78437057c5e0",
     "type": "history"
    },
-   "target_tree": "80feece6d206cd5e563b4e9b15c5ecfc4130363d",
+   "target_tree": "4078a6f01adfdff80a7d90f54d44a064fe239129",
    "temporaries": [],
    "title": "Convert the large files in slices; delete the first Objective-C facades",
    "verification": null
@@ -1819,7 +1859,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "7c164a62678a207c4214dd9e0f825e9bd2d63353",
+   "merge_tree": "828541cf3d307f95f192769b3f4820035ff8ec75",
    "n": 13,
    "parent": "series/012-first-slices",
    "resolutions": [
@@ -1875,7 +1915,7 @@
     "to": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
     "type": "history"
    },
-   "target_tree": "b0fe1e9f3373662146c2f07a74c2e2ba48e7fd27",
+   "target_tree": "325f43d0f1c4eb5565f9c89733bf93241c64b671",
    "temporaries": [],
    "title": "Convert ShipEntity to C++",
    "verification": null
@@ -1897,7 +1937,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "8c80eb499b574fc8757051d0badb1fd37f24b122",
+   "merge_tree": null,
    "n": 14,
    "parent": "series/013-shipentity-slices",
    "resolutions": [
@@ -1945,7 +1985,7 @@
     "to": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
     "type": "history"
    },
-   "target_tree": "626d8dfea52e46767018014f8dfa55f8c91e5221",
+   "target_tree": null,
    "temporaries": [],
    "title": "Convert Universe and PlayerEntity to C++",
    "verification": null
@@ -1966,7 +2006,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "b451343ad8faf130a9129a7ed29024ec98a06867",
+   "merge_tree": null,
    "n": 15,
    "parent": "series/014-universe-player-slices",
    "resolutions": [
@@ -2070,7 +2110,7 @@
     "to": "2c2aae1316b5a125038a797c213162ffba389279",
     "type": "history"
    },
-   "target_tree": "c1b4f13c5ce50f3ff2c797c015c88a940289fcff",
+   "target_tree": null,
    "temporaries": [],
    "title": "Delete the Objective-C facades",
    "verification": null
@@ -2091,7 +2131,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "41719395e963674b28166928b675eaed27a64cb3",
+   "merge_tree": null,
    "n": 16,
    "parent": "series/015-facade-deletions",
    "resolutions": [
@@ -2263,7 +2303,7 @@
     "to": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
     "type": "history"
    },
-   "target_tree": "02f3c7406025ee0fe09b1a95e690bfa4a57f132e",
+   "target_tree": null,
    "temporaries": [],
    "title": "Delete the root Entity facade",
    "verification": null
@@ -2285,7 +2325,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "c2c24b7202cf5c6f56c4e0cbe7128cd77b0df508",
+   "merge_tree": null,
    "n": 17,
    "parent": "series/016-entity-facade",
    "resolutions": [
@@ -2447,10 +2487,6 @@
     },
     {
      "how": "stored",
-     "path": "src/Core/Scripting/OOJSDock.cpp"
-    },
-    {
-     "how": "stored",
      "path": "src/Core/Scripting/OOJSDock.h"
     },
     {
@@ -2478,16 +2514,12 @@
      "path": "src/Core/Scripting/OOJSFunction.cpp"
     },
     {
-     "how": "upstream-deleted",
+     "how": "auto",
      "path": "src/Core/Scripting/OOJSPlanet.cpp"
     },
     {
      "how": "stored",
      "path": "src/Core/Scripting/OOJSPlanet.h"
-    },
-    {
-     "how": "stored",
-     "path": "src/Core/Scripting/OOJSPlayer.cpp"
     },
     {
      "how": "stored",
@@ -2515,15 +2547,7 @@
     },
     {
      "how": "stored",
-     "path": "src/Core/Scripting/OOJSSound.cpp"
-    },
-    {
-     "how": "stored",
      "path": "src/Core/Scripting/OOJSSound.h"
-    },
-    {
-     "how": "stored",
-     "path": "src/Core/Scripting/OOJSStation.cpp"
     },
     {
      "how": "stored",
@@ -2535,15 +2559,7 @@
     },
     {
      "how": "stored",
-     "path": "src/Core/Scripting/OOJSWaypoint.cpp"
-    },
-    {
-     "how": "stored",
      "path": "src/Core/Scripting/OOJSWaypoint.h"
-    },
-    {
-     "how": "stored",
-     "path": "src/Core/Scripting/OOJSWormhole.cpp"
     },
     {
      "how": "stored",
@@ -2601,7 +2617,7 @@
     "to": "af1f220542e4917a23833902e8efc313a8eb463b",
     "type": "history"
    },
-   "target_tree": "21db9a5ac8cb2a0ad0b72482edcfadfd16df892d",
+   "target_tree": null,
    "temporaries": [],
    "title": "Remove the Objective-C runtime and rename the sources to .cpp",
    "verification": null
@@ -2622,7 +2638,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "c50d06715e00203a63b71a45d28df81ee0f1aa59",
+   "merge_tree": null,
    "n": 18,
    "parent": "series/017-objc-runtime-out",
    "resolutions": [],
@@ -2637,7 +2653,7 @@
     "to": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
     "type": "history"
    },
-   "target_tree": "f11d53c79c98c7022d0c08e62fa1f3a0da4a7409",
+   "target_tree": null,
    "temporaries": [],
    "title": "Build with GCC as well as Clang",
    "verification": null
@@ -2658,7 +2674,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "19f06fb75bed615d6c14dd438b5414b017fefa93",
+   "merge_tree": null,
    "n": 19,
    "parent": "series/018-gcc-build",
    "resolutions": [
@@ -2738,7 +2754,7 @@
     "to": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
     "type": "history"
    },
-   "target_tree": "dcec78f8cd4abf2dbc5f27601265df30ff365bb1",
+   "target_tree": null,
    "temporaries": [],
    "title": "Port upstream changes #369 to #765 into the C++ code",
    "verification": null

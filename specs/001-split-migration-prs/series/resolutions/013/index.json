@@ -2,7 +2,7 @@
  "src/Core/Entities/ShipEntity.mm": {
   "base": "472c83e50b211e532d6ea07de4673127aa5761f5",
   "deleted": false,
-  "ours": "5d98118468fc386ebc49f089ba967018c2f0bc9e",
+  "ours": "7a718faf3e8e351f6d52b50bcedb91eb74557e96",
   "theirs": "d7538439bf064dba59be59bca17f5768b0ef088e"
  },
  "src/Core/GameController.h": {

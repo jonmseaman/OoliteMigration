@@ -44,7 +44,7 @@
  "src/Core/Materials/OOTexture.cpp": {
   "base": "e380e98d669da58953461140cbe76df6d68eb0fa",
   "deleted": false,
-  "ours": "1b6777852dc6aa1cce78b4e7d06a3dc920760cc8",
+  "ours": "af84a3f9f01325e1da13d70593199b02df3faa66",
   "theirs": "e77076304e0625a709cc82b0a7a858e61506a898"
  },
  "src/Core/OOFoundation.h": {
@@ -74,7 +74,7 @@
  "src/Core/Scripting/OOJSManifest.cpp": {
   "base": "571d37acbe768f654103c75de02982c6469158ca",
   "deleted": false,
-  "ours": "d508f56cdf07eb2fcf3b59bdafe8a296c0ba0eba",
+  "ours": "8408198e5569d91f214ab5559d69f782e8e9c162",
   "theirs": "f1b6699334e1241c27056dfa0e39053d25515eca"
  },
  "src/Core/Scripting/OOJSShipGroup.h": {

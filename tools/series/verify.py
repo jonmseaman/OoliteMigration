@@ -69,8 +69,42 @@ def gcc_attempted(step_era, parent_record):
     return step_era == "cxx" or gcc_required(parent_record)
 
 
+def _warnings(log):
+    return set(m.group(0) + log[m.end():log.find("\n", m.end())] for m in WARNING_RE.finditer(log))
+
+
 def warning_count(log):
-    return len(set(m.group(0) + log[m.end():log.find("\n", m.end())] for m in WARNING_RE.finditer(log)))
+    return len(_warnings(log))
+
+
+# Warnings the history's own test files raise under the series' newer compiler. The series never
+# edits a test and never silences a warning, so these are listed, per step range, instead of fixed;
+# every other warning fails the step. Only files under tests/ can be listed.
+TEST_WARNINGS = os.path.join(ROOT, "specs", "001-split-migration-prs", "series", "test-warnings.md")
+_ROW_RE = re.compile(r"^\|\s*(\d+)(?:\s*[–-]\s*(\d+))?\s*\|\s*`(tests/[^`]+)`\s*\|\s*`([^`]+)`\s*\|", re.M)
+
+
+def listed_test_warnings(path=TEST_WARNINGS):
+    """[(first step, last step, test file, warning text)] from the table in `path`."""
+    if not os.path.exists(path):
+        return []
+    return [(int(lo), int(hi or lo), f, w) for lo, hi, f, w in _ROW_RE.findall(_read(path))]
+
+
+def _is_listed(warning, n, listed):
+    path = re.sub(r"^(?:\.\./)+", "", warning.split(":", 1)[0])
+    return path.startswith("tests/") and any(
+        lo <= n <= hi and path == f and text in warning for lo, hi, f, text in listed)
+
+
+def warnings_verdict(log, n, listed):
+    found = _warnings(log)
+    known = {w for w in found if _is_listed(w, n, listed)}
+    other = len(found) - len(known)
+    note = f"{len(known)} listed in {os.path.basename(TEST_WARNINGS)}"
+    if other == 0:
+        return f"pass: 0 warnings outside the history's tests ({note})" if known else "pass: 0 warnings"
+    return f"fail: {other} warnings" + (f" (and {note})" if known else "")
 
 
 def touched_scenarios(repo, parent_tree, tree):
@@ -295,17 +329,19 @@ def verify_step(repo, step, parent_tree, parent_record, clean=False, integrity=N
             os.remove(log(what))
 
     wt = ensure_worktree(repo, WORKTREES["clang"], commit)
-    rc, warnings = run_build(step_era, wt, "clang", clean, log("build_clang"))
+    listed = listed_test_warnings()
+    rc, _ = run_build(step_era, wt, "clang", clean, log("build_clang"))
     checks["build_clang"] = "pass" if rc == 0 else f"fail: exit {rc} (see {os.path.relpath(log('build_clang'), ROOT)})"
-    checks["warnings_clang"] = ("pass: 0 warnings" if warnings == 0 else f"fail: {warnings} warnings") if rc == 0 \
+    checks["warnings_clang"] = warnings_verdict(_read(log("build_clang")), step["n"], listed) if rc == 0 \
         else "n/a: the build failed"
     if checks["build_gcc"] == "run":
         gwt = ensure_worktree(repo, WORKTREES["gcc"], commit)
-        grc, gwarn = run_build(step_era, gwt, "gcc", clean, log("build_gcc"))
-        if grc == 0 and gwarn == 0:
-            checks["build_gcc"] = "pass"
+        grc, _ = run_build(step_era, gwt, "gcc", clean, log("build_gcc"))
+        gverdict = warnings_verdict(_read(log("build_gcc")), step["n"], listed)
+        if grc == 0 and gverdict.startswith("pass"):
+            checks["build_gcc"] = gverdict.replace("pass: 0 warnings", "pass", 1) if gverdict != "pass: 0 warnings" else "pass"
         elif grc == 0:
-            checks["build_gcc"] = f"fail: {gwarn} warnings"
+            checks["build_gcc"] = gverdict
         elif gcc_required(parent_record):
             checks["build_gcc"] = f"fail: exit {grc} (the parent builds with GCC)"
         else:

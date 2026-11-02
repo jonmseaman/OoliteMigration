@@ -1595,9 +1595,7 @@ BoundingBox ShipEntity::findBoundingBoxRelativeToPosition(HPVector opv, Vector _
     ::ShipEntity* self = oo::ToObjC(this);
     // HPVect: check that this conversion doesn't lose needed precision
     return [[self mesh] findBoundingBoxRelativeToPosition:HPVectorToVector(opv)
-                                                       ri:i
-                                                       rj:j
-                                                       rk:k
+                                                    basis:_i:_j:_k
                                              selfPosition:HPVectorToVector(position)
                                                 selfBasis:v_right:v_up:v_forward];
 }

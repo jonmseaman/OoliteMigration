@@ -51,7 +51,8 @@ def _enum_cast(ours, theirs):
     return theirs.replace(" * UNIVERSE_MAX_ENTITIES", " * static_cast<double>(UNIVERSE_MAX_ENTITIES)")
 
 
-RES["src/Core/Entities/ShipEntity.mm"] = ["theirs", _enum_cast, _enum_cast, "theirs", "theirs", "theirs"]
+# (the second hunk: step 12's bounding-box call, which the history converts to C++ here)
+RES["src/Core/Entities/ShipEntity.mm"] = ["theirs", "theirs", _enum_cast, _enum_cast, "theirs", "theirs", "theirs"]
 
 
 # the containers selector gets a named second part (see selector_containers.py)

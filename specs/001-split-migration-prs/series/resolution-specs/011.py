@@ -47,3 +47,35 @@ for _js, _entity in (("Dock", "DockEntity"), ("Sound", "OOSound"), ("Player", "P
                      ("Station", "StationEntity"), ("Planet", "OOPlanetEntity"),
                      ("Waypoint", "OOWaypointEntity"), ("Wormhole", "WormholeEntity")):
     CHANGES[f"src/Core/Scripting/OOJS{_js}.h"] = [(f'#import "{_entity}.h"\n', "")]
+# #748 moved each implementation's import of its entity header into the header; with the header's
+# import out, the implementation keeps the history's own import
+for _js, _entity, _anchor, _after in (
+        ("Dock", "DockEntity", '#import "GameController.h"\n', False),
+        ("Sound", "OOSound", '#import "ResourceManager.h"\n', False),
+        ("Player", "PlayerEntity", '#import "PlayerEntityContracts.h"\n', False),
+        ("Station", "StationEntity", '#import "OOShipRegistry.h"\n', True),
+        ("Planet", "OOPlanetEntity", '#import "OOJavaScriptEngine.h"\n', True),
+        ("Waypoint", "OOWaypointEntity", '#import "OOJavaScriptEngine.h"\n', True),
+        ("Wormhole", "WormholeEntity", '#import "OOJavaScriptEngine.h"\n', True)):
+    _imp = f'#import "{_entity}.h"\n'
+    CHANGES[f"src/Core/Scripting/OOJS{_js}.mm"] = [(_anchor, _anchor + _imp if _after else _imp + _anchor)]
+
+
+# Warnings in the history's own step-11 code under Clang 23 (-Wunused-but-set-global, which the
+# history's compiler did not have), fixed in the forms the history reaches by step 19:
+#  - the texture trace context is written and never read: the markers are no-ops
+#  - the Manifest prototype is stored and never read: it is not stored
+_BS = "\\"
+_TRACE_OLD = ("#ifdef OO_DEBUG_MONITOR_ENABLED\nnamespace {\n\nconst char* sGlobalTraceContext = nullptr;\n\n"
+              "} // namespace\n\n#define SET_TRACE_CONTEXT(str)       " + _BS + "\n    do {                             " + _BS + "\n"
+              "        sGlobalTraceContext = (str); " + _BS + "\n    } while (0)\n#else\n#define SET_TRACE_CONTEXT(str) " + _BS + "\n"
+              "    do {                       " + _BS + "\n    } while (0)\n#endif\n")
+_TRACE_NEW = ("// The ObjC tree kept a trace context here for the debug monitor; nothing reads it, so the\n"
+              "// markers are no-ops in every build.\n#define SET_TRACE_CONTEXT(str) " + _BS + "\n"
+              "    do {                       " + _BS + "\n    } while (0)\n")
+POST = dict(globals().get("POST", {}))
+POST["src/Core/Materials/OOTexture.mm"] = list(POST.get("src/Core/Materials/OOTexture.mm", [])) + [(_TRACE_OLD, _TRACE_NEW)]
+CHANGES["src/Core/Scripting/OOJSManifest.mm"] = [
+    ("namespace {\nstatic ooscript::Object sManifestPrototype;\n} // namespace\n", ""),
+    ("    sManifestPrototype = (proto);\n", ""),
+]

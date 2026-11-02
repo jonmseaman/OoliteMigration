@@ -1355,13 +1355,13 @@ void ShipEntity::initWithKey(const std::string& key)
 {
     // HPVect: check that this conversion doesn't lose needed precision
     return [[self mesh] findBoundingBoxRelativeToPosition:HPVectorToVector(opv)
-                                                       ri:i
-                                                       rj:j
-                                                       rk:k
+                                                    basis:i
+                                                         :j
+                                                         :k
                                              selfPosition:HPVectorToVector(_cxxEntity->position)
-                                                selfBasis:_cxxShip->
-                                                  v_right:_cxxShip->
-                                                     v_up:_cxxShip->v_forward];
+                                                selfBasis:_cxxShip->v_right
+                                                         :_cxxShip->v_up
+                                                         :_cxxShip->v_forward];
 }
 
 - (Octree*)octree
