@@ -53,3 +53,21 @@ RES["src/Core/Entities/ShipEntity.mm"] = ["theirs"] * 6
 RES["src/Core/Scripting/OOJSShip.mm"] = ["theirs"]
 # the history deletes the Universe facade here; step 15's selector part goes with it
 DELETE = list(globals().get("DELETE", [])) + ["src/Core/Universe+ObjCBridge.h", "src/Core/Universe+ObjCBridge.mm"]
+
+
+# The history adds the Windows threads override here (bead oo-bipqn), next to the copy step 4
+# brought forward; step 4's copy gives way to the history's text.
+_THREADS_016 = (
+    "# QuickJS-ng adds dependency('threads') (-pthread) to its link line, and every target\n"
+    "# that links it. The MinGW clang driver does not use -pthread when linking (cutils.h takes Win32\n"
+    "# threads under _WIN32), so each link printed \"argument unused during compilation: '-pthread'\".\n"
+    "# On Windows the threads dependency is the same compile flag without the unused link flag, so the\n"
+    "# objects and the links are unchanged and the driver has nothing to report.\n"
+    "if host_machine.system() == 'windows'\n"
+    "    meson.override_dependency('threads', declare_dependency(compile_args: ['-pthread']))\n"
+    "endif\n")
+try:
+    CHANGES
+except NameError:
+    CHANGES = {}
+CHANGES["src/meson.build"] = [(_THREADS_016 + "# Bead oo-bipqn: ", "# Bead oo-bipqn: ")]

@@ -105,10 +105,5 @@
   "deleted": false,
   "ours": "b0c74f14762f8186c624c0f90c5b8ca342d65a5c",
   "theirs": "8afcdb3c655074356d9fba030d06851b7d71cf87"
- },
- "src/meson.build": {
-  "deleted": false,
-  "extra": true,
-  "merged": "b150ed3f622c86b006fa4cc0af0942c5f737f2e3"
  }
 }

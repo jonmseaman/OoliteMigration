@@ -76,5 +76,11 @@
   "deleted": false,
   "ours": "8c3528767ff5f0fcb442f9df1f60bc25fc5c0b0f",
   "theirs": "9060b8d220fecc8cc51469c230bbb4b77671ab26"
+ },
+ "src/meson.build": {
+  "base": "945b84cf57ee8c74cf7fb77c782aca947b7297a3",
+  "deleted": false,
+  "ours": "a925839378a66d8179197852dfd04eb7937a5dda",
+  "theirs": "cfa551ec719d3b97ef7e3bc22b8df9724e95d454"
  }
 }

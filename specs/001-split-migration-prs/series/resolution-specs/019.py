@@ -43,7 +43,7 @@ except NameError:
 CHANGES["src/Core/Scripting/OOJSShipGroup.h"] = [(
     "#include \"ooscript/JSEngine.hpp\"\n\n#include \"OOFoundation.h\"\n#include \"ooscript/JSEngine.hpp\"\n",
     "#include \"ooscript/JSEngine.hpp\"\n")]
-CHANGES["src/meson.build"] = [(_THREADS_019 + "# Bead oo-bipqn: ", "# Bead oo-bipqn: ")]
+# (the threads override's copy goes at step 16, where the history adds its own)
 # the history separates winsock2.h from windows.h here, with its comment (step 10 did it first)
 RES["src/Core/OOFoundation.h"] = ["theirs"]
 
