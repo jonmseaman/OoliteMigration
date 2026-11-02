@@ -6,6 +6,7 @@ Never pushes, never runs `git town sync` or `propose`, never touches develop, ma
 """
 import argparse
 import os
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -238,8 +239,29 @@ def develop_inputs(m, step):
             # develop's merge of the series' own base: the series already has upstream's side, so
             # the merge's resolution is its change against that side. Where the series and the
             # resolution differ on the same lines, the resolution is the fork's decision.
-            out.append((c[:10] + "-resolution", tail_space(m, f"{base_commit}^{{tree}}"), after, "theirs"))
+            # It also holds what develop did before it in commits of later steps (13eb19ee7's
+            # .clang-format): those paths are left as they are.
+            res_base = tail_space(m, f"{base_commit}^{{tree}}")
+            later = [x for x in order[:order.index(c)] if step_of_commit(m, x) > step["n"]]
+            # (non-source files only: a later reformat's sources differ here only where clang-format
+            # is not idempotent, and those are develop's resolution too)
+            from tools.series import normalise
+            paths = set()
+            for x in later:
+                paths |= {p for p in history.git(GAME, "diff", "--name-only", "--no-renames",
+                                                 tail_space(m, f"{x}^1^{{tree}}"), tail_space(m, f"{x}^{{tree}}")).splitlines()
+                          if not (normalise.is_source(p) or normalise.is_test_source(p))}
+            from tools.series import trees
+            res_after = trees.take_paths(GAME, after, res_base, [glob_escape(p) for p in sorted(paths)])
+            out.append((c[:10] + "-resolution", res_base, res_after, "theirs"))
     return out
+
+
+def step_of_commit(m, commit):
+    for s in m["steps"]:
+        if s["source"]["type"] == "develop" and commit in s["source"]["commits"]:
+            return s["n"]
+    return 0  # the squash's first parent and other commits in no step
 
 
 def exclusion_globs(m):
@@ -488,8 +510,8 @@ def integrity(m, step):
     from tools.series import normalise, verify
     tree = stack_tree(step)
     parent = parent_tree_of(m, step)
-    if step["source"]["type"] != "history":
-        raise SystemExit(f"verify: integrity for {step['source']['type']!r} steps is not implemented yet (T024)")
+    if step["source"]["type"] == "develop":
+        return integrity_tail(m, step, tree, parent)
     base, ours, source = merge_inputs(m, step)
     out = {
         "tests_untouched": verify.check_tests_untouched(GAME, tree, source, ours, resolution_paths(step), base),
@@ -501,6 +523,117 @@ def integrity(m, step):
     else:
         out["clang_format"] = "n/a: the reformat step changes the style; upstream's check follows it"
     return out
+
+
+def integrity_tail(m, step, tree, parent):
+    """Research R11's checks for a tail step. Its sources are develop's commits: a test it changes
+    is develop's text of that test (in the tail's style, or exactly develop's in the mechanical
+    step), no stored resolution is a test, and a suppression it adds is one develop has."""
+    import fnmatch
+    from tools.series import history, normalise, verify
+    commits = [c for c in develop_order(m) if c in step["source"]["commits"]]
+    latest = history.git(GAME, "rev-parse", f"{commits[-1]}^{{tree}}")
+    out = {}
+    bad = [p for p in tail_resolution_paths(step) if p.startswith("tests/")]
+    changed = history.git(GAME, "diff", "--name-only", "--no-renames", parent, tree, "--", "tests/").splitlines()
+    if step["kind"] == "mechanical":
+        target = history.git(GAME, "rev-parse", f"{m['anchors']['develop_target']}^{{tree}}")
+        bad += [p for p in changed if verify._blob(GAME, tree, p) != verify._blob(GAME, target, p)]
+    else:
+        # the text of each changed test in some commit of the step, or develop's in the converging step
+        sources = [after for _l, _b, after, *_ in develop_inputs(m, step)]
+        nxt = step_by_n(m, step["n"] + 1) if step["n"] < len(m["steps"]) else None
+        if nxt is not None and nxt["kind"] == "mechanical":
+            sources.append(tail_space(m, compute_merge_tree(m, nxt)[0]))
+        pairs = develop_inputs(m, step)
+        start = tail_space(m, parent)
+        for p in changed:
+            blob = verify._blob(GAME, tree, p)
+            if any(verify._blob(GAME, s, p) == blob for s in sources):
+                continue
+            # or the step's commits merged cleanly, in turn, into the parent's text of it
+            text = trees_text(start, p)
+            for _l, before, after, *_ in pairs:
+                if text is None or verify._blob(GAME, before, p) == verify._blob(GAME, after, p):
+                    continue
+                text = merge_text(trees_text(before, p), text, trees_text(after, p))
+            got = trees_text(tree, p)
+            if text is None or got is None or text != got:
+                bad.append(p)
+    out["tests_untouched"] = "pass" if not bad else "fail: " + ", ".join(sorted(set(bad))[:8])
+    out["no_new_suppressions"] = verify.check_no_new_suppressions(GAME, parent, tree, latest)
+    out["no_new_spidermonkey_or_gnustep"] = verify.check_no_new_legacy(GAME, parent, tree)
+    if step["kind"] == "mechanical":
+        out["clang_format"] = "n/a: the reformat step changes the style; upstream's check follows it"
+        out["mechanical"] = check_mechanical(m, step, tree, parent)
+    else:
+        out["clang_format"] = verify.check_clang_format(GAME, tree, normalise.normalise_tree(GAME, tree, tree))
+    return out
+
+
+def trees_text(tree, path):
+    """The bytes of `path` in `tree`, or None if it has none."""
+    r = subprocess.run(["git", "-C", GAME, "cat-file", "-p", f"{tree}:{path}"], capture_output=True)
+    return r.stdout if r.returncode == 0 else None
+
+
+def merge_text(base, ours, theirs):
+    """A conflict-free `git merge-file` of three texts (None meaning absent), or None."""
+    import tempfile
+    if base is None or ours is None or theirs is None:
+        return theirs if ours == base else (ours if theirs == base else None)
+    with tempfile.TemporaryDirectory() as tmp:
+        files = []
+        for name, data in (("ours", ours), ("base", base), ("theirs", theirs)):
+            f = os.path.join(tmp, name)
+            with open(f, "wb") as out:
+                out.write(data)
+            files.append(f)
+        r = subprocess.run(["git", "merge-file", "-p", *files], capture_output=True)
+        return r.stdout if r.returncode == 0 else None
+
+
+def check_mechanical(m, step, tree, parent):
+    """The mechanical step is its command: the parent with the step's own non-source files, its
+    sources and tests run through clang-format 22 in the new style, gives the step's tree."""
+    from tools.series import history, normalise, trees
+    own = set()
+    for _label, before, after, *_ in develop_inputs(m, step):
+        own |= {p for p in history.git(GAME, "diff", "--name-only", "--no-renames", before, after).splitlines()
+                if not (normalise.is_source(p) or normalise.is_test_source(p))}
+    start = trees.take_paths(GAME, parent, tree, [glob_escape(p) for p in sorted(own)])
+    made = normalise.normalise_tree(GAME, start, m["anchors"]["develop_target"],
+                                    select=lambda p: normalise.is_source(p) or normalise.is_test_source(p),
+                                    rename_only=lambda p: False)
+    diff = history.git(GAME, "diff", "--name-only", "--no-renames", made, tree).splitlines()
+    # develop's text came from earlier layouts (and its tests from an earlier clang-format), and
+    # clang-format's output depends on its input's layout: such files may differ, but in layout only
+    lines = lambda t, p: (trees_text(t, p) or b"").decode("utf-8", "surrogateescape").splitlines(keepends=True)
+    def shape(t, p):  # the text without its layout, and its includes in any order
+        ls = lines(t, p)
+        return (trees._layout([l for l in ls if not l.startswith("#include")]),
+                sorted(l.strip() for l in ls if l.startswith("#include")))
+    real = [p for p in diff if shape(made, p) != shape(tree, p)]
+    own_text = f"{len(own)} file(s) of its own ({', '.join(sorted(own))})"
+    if real:
+        return f"fail: {len(real)} file(s) differ from the command's output in more than layout: " + ", ".join(real[:8])
+    if diff:
+        return f"pass: the reformat and {own_text}; {len(diff)} file(s) keep develop's layout or include order (clang-format's output depends on its input's layout, and develop's tests were sorted by an earlier version)"
+    return f"pass: the reformat and {own_text}"
+
+
+def tail_resolution_paths(step):
+    """The paths of a tail step's stored resolutions (one directory per replayed commit)."""
+    import json
+    out = set()
+    root = resolutions_dir(step)
+    if os.path.isdir(root):
+        for d in os.listdir(root):
+            index = os.path.join(root, d, "index.json")
+            if os.path.exists(index):
+                with open(index, encoding="utf-8") as f:
+                    out |= set(json.load(f))
+    return sorted(out)
 
 
 def stack_tree(step):

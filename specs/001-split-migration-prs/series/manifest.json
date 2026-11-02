@@ -3324,7 +3324,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "5eac8648c2927ad5d69f2075fa371d6a63d12e39",
+   "merge_tree": "2dd55300c25ab5e06e1668ef3baa7884a84626e8",
    "n": 24,
    "parent": "series/023-c-as-cxx",
    "resolutions": [
@@ -3517,7 +3517,7 @@
     ],
     "type": "develop"
    },
-   "target_tree": "03dda959d9928db4d4916554cb77a80ee1ac311b",
+   "target_tree": "6c20c18de5491fba9683bd5367f30263b110a8e8",
    "temporaries": [],
    "title": "Port upstream #766, #774 and #781",
    "verification": null
