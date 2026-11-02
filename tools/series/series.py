@@ -23,6 +23,7 @@ def parser():
     h = sub.add_parser("hoist", help="turn history commits into an independent step at the front")
     h.add_argument("commits", nargs="+")
     h.add_argument("--slug", required=True)
+    h.add_argument("--title", help="the PR title (default: the last commit's subject)")
     t = sub.add_parser("tree", help="compute a step's target tree")
     t.add_argument("n", type=int)
     t.add_argument("--show", metavar="PATH", help="write the conflicted file and its inputs to .agent-tmp/series-resolve")
@@ -130,6 +131,9 @@ def cmd_cut(args):
     if errors:
         print("cut: " + "\n     ".join(errors), file=sys.stderr)
         return 1
+    # hoisted steps are not in the chapters; they keep their place in front (and their state)
+    hoisted = [dict(s, slug=s["branch"].split("-", 1)[1]) for s in old.values() if s.get("kind") == "independent"]
+    steps = sorted(hoisted, key=lambda s: s["n"]) + steps
     for n, s in enumerate(steps, 1):
         slug = s.pop("slug")
         s["n"] = n
@@ -156,6 +160,41 @@ def resolutions_dir(step):
     return os.path.join(SERIES_DIR, "resolutions", f"{step['n']:03d}")
 
 
+def history_snap(m):
+    """history commit -> the game's tree there, normalised to upstream's paths and style (N)."""
+    from tools.series import history, normalise, selectors
+    a = m["anchors"]
+    return lambda c: normalise.normalise_tree(GAME, history.snapshot(GAME, c, a["history_prefix"]),
+                                              a["format"]["style_file_from"],
+                                              transform=selectors.upstream_renames,
+                                              transform_id=selectors.TRANSFORM_VERSION)
+
+
+def cmd_hoist(args):
+    """Insert an independent step made of history commits, if they apply to the series base and to
+    upstream_base alone (FR-008). Building it is `verify`'s job; `renumber` then renames the branches."""
+    from tools.series import history, hoist, manifest
+    m = load_manifest()
+    full = lambda c: history.git(GAME, "rev-parse", "--verify", f"{c}^{{commit}}")
+    commits = [full(c) for c in args.commits]
+    snap = history_snap(m)
+    upstream = history.git(GAME, "rev-parse", f"{m['anchors']['upstream_base']}^{{tree}}")
+    try:
+        hoist.hoisted_tree(GAME, upstream, commits, snap)  # alone on upstream
+        tree = hoist.hoisted_tree(GAME, hoist.series_base(m, upstream), commits, snap)
+    except hoist.DoesNotApply as e:
+        print(f"hoist: {e}; it stays in its chapter", file=sys.stderr)
+        return 1
+    if any(c in (s.get("source") or {}).get("commits", []) for s in m.get("steps", []) for c in commits):
+        print("hoist: already hoisted", file=sys.stderr)
+        return 1
+    title = args.title or history.git(GAME, "log", "-1", "--format=%s", commits[-1])
+    step = hoist.insert(m, commits, args.slug, title, tree, manifest.ROOT_BRANCH, "objc-spidermonkey")
+    manifest.save(MANIFEST, m)
+    print(f"hoist: step {step['n']} {step['branch']} planned; run `renumber`, then `build --from {step['n']}`")
+    return 0
+
+
 def merge_inputs(m, step):
     """(base, ours, theirs) trees for a history step: an incremental, rebase-style merge (research R15).
 
@@ -163,17 +202,14 @@ def merge_inputs(m, step):
     ours   = the previous step's resolved tree, or the series base for the first
     theirs = N(history at this chapter's boundary)
     """
-    from tools.series import history, normalise
+    from tools.series import history, hoist
     a = m["anchors"]
-    style = a["format"]["style_file_from"]
-    from tools.series import selectors
-    snap = lambda c: normalise.normalise_tree(GAME, history.snapshot(GAME, c, a["history_prefix"]), style,
-                                              transform=selectors.upstream_renames,
-                                              transform_id=selectors.TRANSFORM_VERSION)
+    snap = history_snap(m)
     prev = step_by_n(m, step["n"] - 1) if step["n"] > 1 else None
-    if prev is None:
+    if prev is None or prev.get("kind") == "independent":
+        # the series base: upstream, with the hoisted fixes in front of the first chapter
         base = snap(a["history_start"])
-        ours = history.git(GAME, "rev-parse", f"{a['upstream_base']}^{{tree}}")
+        ours = hoist.series_base(m, history.git(GAME, "rev-parse", f"{a['upstream_base']}^{{tree}}"))
     else:
         if prev["source"]["type"] != "history":
             raise SystemExit(f"step {step['n']}: previous step is not a history step")
@@ -275,6 +311,15 @@ def compute_merge_tree(m, step, report=None):
     if step["source"]["type"] == "history":
         base, ours, theirs = merge_inputs(m, step)
         return trees.target_tree(GAME, base, ours, theirs, resolutions_dir(step), report=report)
+    if step["source"]["type"] == "hoisted":
+        from tools.series import hoist
+        upstream = history.git(GAME, "rev-parse", f"{m['anchors']['upstream_base']}^{{tree}}")
+        earlier = {"steps": [s for s in m["steps"] if s["n"] < step["n"]]}
+        try:
+            return hoist.hoisted_tree(GAME, hoist.series_base(earlier, upstream), step["source"]["commits"],
+                                      history_snap(m)), []
+        except hoist.DoesNotApply as e:
+            raise SystemExit(f"step {step['n']}: {e}")
     if step["source"]["type"] != "develop":
         raise SystemExit(f"tree: unknown source type {step['source']['type']!r}")
     base_tree = history.git(GAME, "rev-parse", f"{m['anchors']['upstream_base']}^{{tree}}")
@@ -954,7 +999,7 @@ def cmd_handover(m):
     raise SystemExit("describe --handover: not implemented yet (T031)")
 
 
-HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
+HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut, "hoist": cmd_hoist, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
 
 
 def main(argv=None):

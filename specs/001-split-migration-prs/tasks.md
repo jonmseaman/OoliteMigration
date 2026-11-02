@@ -273,7 +273,7 @@ matching the manifest's exclusions, and `check --verified` passes for 020–025.
 (`git merge-tree --write-tree 49a5eb9fc <step>` with the base as merge base gives no conflicts)
 and builds there with Clang.
 
-- [ ] T027 [US4] Implement `hoist <history-commit>… --slug S`: check that the commits' combined
+- [X] T027 [US4] Implement `hoist <history-commit>… --slug S`: check that the commits' combined
   change applies to `49a5eb9fc` with `git apply --3way` and builds in the T005 shell. Then insert
   an `independent` step before step 1, and remove the same change from later steps' diffs by
   carrying it into every target tree up to its original chapter. Add a test with the fixture.
