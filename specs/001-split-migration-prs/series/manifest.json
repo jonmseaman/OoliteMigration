@@ -3173,22 +3173,22 @@
    "title": "Small fixes after the migration",
    "verification": {
     "checks": {
-     "build_clang": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\020-build_clang.log)",
+     "build_clang": "pass",
      "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
      "clang_format": "pass",
-     "component": "fail: not run, the build failed",
+     "component": "pass: s6_damaged_ship_flees",
      "no_new_spidermonkey_or_gnustep": "pass",
      "no_new_suppressions": "pass",
-     "smoke": "fail: not run, the build failed",
+     "smoke": "pass",
      "tests_untouched": "pass",
-     "unit": "fail: not run, the build failed",
-     "warnings_clang": "n/a: the build failed"
+     "unit": "pass: oofnd, core, headers",
+     "warnings_clang": "pass: 0 warnings"
     },
     "clean": false,
-    "commit": "d346fc4c443f7d801a281c8140a928f5df8498fa",
+    "commit": "2cc66bc702f42c0d6953a38375115d46f0380e10",
     "date": "2026-11-02",
     "era": "cxx",
-    "tree": "867b8a4f64dd0d21aba73df71ba38f6d6f6a328c"
+    "tree": "133f849bac98ecbc006fbe3096a94bfee993b43e"
    }
   },
   {
@@ -3196,7 +3196,7 @@
    "branch": "series/021-source-hygiene",
    "chapter": null,
    "description": "series/pr/021-source-hygiene.md",
-   "era": null,
+   "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "962f14a5237174fcfd5c5e19d6297cd81a42e74f",
@@ -3265,14 +3265,32 @@
    "target_tree": "9144f1b6013f2925986b1ab3788c41f0736c40cf",
    "temporaries": [],
    "title": "Make comments describe the code; use #pragma once",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core, headers",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "ee5a9ab940f649a3e2a678ecd37f0eabf6665bd8",
+    "date": "2026-11-02",
+    "era": "cxx",
+    "tree": "9144f1b6013f2925986b1ab3788c41f0736c40cf"
+   }
   },
   {
    "boundary_moved": null,
    "branch": "series/022-tests-and-tooling",
    "chapter": null,
    "description": "series/pr/022-tests-and-tooling.md",
-   "era": null,
+   "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "895a0718f631d17ff36ac552694ec1f6e8b7632a",
@@ -3297,17 +3315,35 @@
    "target_tree": "fac3b5e531c2f0bba69db04d0271a932e335306a",
    "temporaries": [],
    "title": "Tests and developer tooling",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships, t1_tutorial_walkthrough",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core, headers",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "bee324c3279bf79a4b5efcfc68d5332437a9c68a",
+    "date": "2026-11-02",
+    "era": "cxx",
+    "tree": "fac3b5e531c2f0bba69db04d0271a932e335306a"
+   }
   },
   {
    "boundary_moved": null,
    "branch": "series/023-c-as-cxx",
    "chapter": null,
    "description": "series/pr/023-c-as-cxx.md",
-   "era": null,
+   "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "a85dadbf7bbd6658cdfe01ecdbc1bb450e867f6f",
+   "merge_tree": "c42baecfb2ed6f355890159a20e05b70c320859e",
    "n": 23,
    "parent": "series/022-tests-and-tooling",
    "resolutions": [
@@ -3357,10 +3393,10 @@
     }
    ],
    "size": {
-    "deleted_files": 48153,
-    "other": 3052,
-    "src": 31705,
-    "tests": 5698
+    "deleted_files": 0,
+    "other": 167,
+    "src": 14409,
+    "tests": 5350
    },
    "source": {
     "commits": [
@@ -3369,10 +3405,28 @@
     ],
     "type": "develop"
    },
-   "target_tree": "6ea7bc40f1f176901d0279f074cb0d917254a265",
+   "target_tree": "3fcf12683aa7c124d1067a882624365b53161442",
    "temporaries": [],
    "title": "Compile the remaining C sources as C++; upgrade QuickJS-ng",
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_clang": "fail: exit 1 (see .agent-tmp\\series-verify-logs\\023-build_clang.log)",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "fail: not run, the build failed",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "fail: not run, the build failed",
+     "tests_untouched": "pass",
+     "unit": "fail: not run, the build failed",
+     "warnings_clang": "n/a: the build failed"
+    },
+    "clean": false,
+    "commit": "658de374cc116db66be1112ccaa1c93be4c50986",
+    "date": "2026-11-02",
+    "era": "cxx",
+    "tree": "6ea7bc40f1f176901d0279f074cb0d917254a265"
+   }
   },
   {
    "boundary_moved": null,
@@ -3382,7 +3436,7 @@
    "era": null,
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "37cc5128be45608619d361b86c737109947081a2",
+   "merge_tree": "27cb24da701420da0046e0d4ccdfc40d274259ff",
    "n": 24,
    "parent": "series/023-c-as-cxx",
    "resolutions": [

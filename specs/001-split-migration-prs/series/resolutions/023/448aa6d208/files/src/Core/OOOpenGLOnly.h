@@ -25,22 +25,7 @@ MA 02110-1301, USA.
 
 */
 
-#ifndef OOLITE_SDL
-#if !OOLITE_MAC_OS_X
-#define OOLITE_SDL 1
-#endif
-#endif
-
-#if OOLITE_MAC_OS_X
-
-// Apple OpenGL includes...
-#include <OpenGL/OpenGL.h>
-#include <OpenGL/gl.h>
-#include <OpenGL/glext.h>
-#include <OpenGL/glu.h>
-
-#elif OOLITE_SDL
-
+#pragma once
 // SDL OpenGL includes...
 
 // GL_GLEXT_PROTOTYPES must be defined for the Linux and macOS builds to use

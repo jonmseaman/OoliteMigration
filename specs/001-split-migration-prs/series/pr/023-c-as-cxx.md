@@ -2,7 +2,7 @@
 
 **Series:** step 23 of 25 · base `series/022-tests-and-tooling` · next `series/024-upstream-49a5eb9fc-ports` **(gen)**
 
-**From:** `develop` commits `448aa6d20`, `6e1654a6b` · 31.7k src, 5.7k tests, 3.1k other changed lines; 48.2k lines in deleted files **(gen)**
+**From:** `develop` commits `448aa6d20`, `6e1654a6b` · 14.4k src, 5.3k tests, 167 other changed lines; 0 lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -34,6 +34,19 @@ for the upgrade, and the removed `OOLITE_GNUSTEP` guards.
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `658de374cc`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | fail: exit 1 (see .agent-tmp\series-verify-logs\023-build_clang.log) |
+| build_gcc | n/a: does not build with GCC yet (exit 1); the parent does not either |
+| clang_format | pass |
+| component | fail: not run, the build failed |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | fail: not run, the build failed |
+| tests_untouched | pass |
+| unit | fail: not run, the build failed |
+| warnings_clang | n/a: the build failed |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

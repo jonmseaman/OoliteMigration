@@ -2,7 +2,7 @@
 
 **Series:** step 20 of 25 · base `series/019-upstream-9ee8ff22f-port` · next `series/021-source-hygiene` **(gen)**
 
-**From:** `develop` commits `935aedb20`, `5346a1800`, `66567dc26`, `736572b67`, `c971f1641` · 549 src, 386 tests, 9 other changed lines; 0 lines in deleted files **(gen)**
+**From:** `develop` commits `935aedb20`, `5346a1800`, `66567dc26`, `736572b67`, `c971f1641` · 833 src, 386 tests, 9 other changed lines; 0 lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -51,19 +51,19 @@ upstream's layout where the change merged as it stands; a few headers carry the 
 
 ## Verified **(gen)**
 
-Windows x64, `d346fc4c44`, 2026-11-02.
+Windows x64, `2cc66bc702`, 2026-11-02.
 
 | Check | Result |
 |---|---|
-| build_clang | fail: exit 1 (see .agent-tmp\series-verify-logs\020-build_clang.log) |
+| build_clang | pass |
 | build_gcc | n/a: does not build with GCC yet (exit 1); the parent does not either |
 | clang_format | pass |
-| component | fail: not run, the build failed |
+| component | pass: s6_damaged_ship_flees |
 | no_new_spidermonkey_or_gnustep | pass |
 | no_new_suppressions | pass |
-| smoke | fail: not run, the build failed |
+| smoke | pass |
 | tests_untouched | pass |
-| unit | fail: not run, the build failed |
-| warnings_clang | n/a: the build failed |
+| unit | pass: oofnd, core, headers |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

@@ -341,3 +341,7 @@ game repo only gets local branches.
     Step 020 takes develop's text of the maths family (the eight headers, which need develop's
     `OOMaths.h` switches, and `OOMaths.h`, `OOPointMaths.h` and the vector, matrix and quaternion
     sources), as stored resolutions of 736572b67.
+  - Step 023's `OOOpenGLOnly.h`: 448aa6d20 edits the `OOLITE_SDL` switch, which the series'
+    file no longer has (the history dropped the Mac branch; step 024 brings it back from #766).
+    The stored resolution is ours, the series' file unchanged. Taking theirs' head with ours'
+    tail left an unterminated `#if`.

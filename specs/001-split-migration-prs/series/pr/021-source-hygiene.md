@@ -2,7 +2,7 @@
 
 **Series:** step 21 of 25 · base `series/020-develop-fixes` · next `series/022-tests-and-tooling` **(gen)**
 
-**From:** `develop` commits `2ceced1f8`, `c9c225c78`, `0b49abd31` · 80.7k src, 153.2k tests, 48 other changed lines; 0 lines in deleted files **(gen)**
+**From:** `develop` commits `2ceced1f8`, `c9c225c78`, `0b49abd31` · 56.8k src, 153.2k tests, 48 other changed lines; 0 lines in deleted files **(gen)**
 
 ## What this changes
 
@@ -31,6 +31,19 @@ check passes).
 
 ## Verified **(gen)**
 
-Not verified yet.
+Windows x64, `ee5a9ab940`, 2026-11-02.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: does not build with GCC yet (exit 1); the parent does not either |
+| clang_format | pass |
+| component | pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| smoke | pass |
+| tests_untouched | pass |
+| unit | pass: oofnd, core, headers |
+| warnings_clang | pass: 0 warnings |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.
