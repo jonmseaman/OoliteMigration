@@ -844,8 +844,42 @@ def check_final_tree(m, step):
         [f"rule 7: ... and {len(diff) - 20} more paths"] if len(diff) > 20 else [])
 
 
+def cmd_check_seriesb(args):
+    """`check` for the seriesb profile: data-model.md's rules 1-7 (tools/series/seriesb.py)."""
+    import json
+    from tools.series import seriesb
+    m = load_manifest()
+    groups = set(args.only.split(",")) if args.only else set(seriesb.GROUPS) - {"verified"}
+    if args.verified:
+        groups.add("verified")
+    unknown = groups - set(seriesb.GROUPS)
+    if unknown:
+        print(f"check: unknown group(s) {', '.join(sorted(unknown))}; groups are {', '.join(seriesb.GROUPS)}", file=sys.stderr)
+        return 2
+    if not m:
+        print(f"check: no manifest at {os.path.relpath(MANIFEST, ROOT)}", file=sys.stderr)
+        return 1
+    baseline_path = os.path.join(SERIES_DIR, "baseline.json")
+    baseline = None
+    if os.path.exists(baseline_path):
+        with open(baseline_path, encoding="utf-8") as f:
+            baseline = json.load(f)
+    elif "baseline" in groups:
+        print(f"check: no {os.path.relpath(baseline_path, ROOT)}", file=sys.stderr)
+        return 1
+    steps = m.get("steps", [])
+    problems = seriesb.check(GAME, m, groups, baseline, parse_range(args.steps, len(steps)))
+    for p in problems:
+        print(p)
+    print(f"check: {len(problems)} problem(s) in {', '.join(sorted(groups))} for steps "
+          f"{args.steps or f'1-{len(steps)}'}", file=sys.stderr)
+    return 1 if problems else 0
+
+
 def cmd_check(args):
-    from tools.series import manifest, stack
+    from tools.series import manifest, profile, stack
+    if profile.current() == "seriesb":
+        return cmd_check_seriesb(args)
     m = load_manifest()
     groups = set(args.only.split(",")) if args.only else set(CHECK_GROUPS) - {"verified"}
     if args.verified:
@@ -1147,4 +1181,6 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # run in the package's module, the one profile.activate rebinds (this file is __main__ here)
+    from tools.series import series as _series
+    sys.exit(_series.main())

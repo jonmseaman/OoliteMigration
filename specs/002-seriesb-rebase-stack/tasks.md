@@ -161,7 +161,7 @@ R8).
   - a verification older than the latest sync.
 
   Accept: the file exists and fails before T006.
-- [ ] T006 Implement the seriesb manifest schema and `check` rules 1–7 in `tools/series/manifest.py`
+- [X] T006 Implement the seriesb manifest schema and `check` rules 1–7 in `tools/series/manifest.py`
   and `tools/series/series.py` (`cmd_check`). Use these fields from data-model.md:
   - `parents[]` (`kind` is `upstream` or `fix-parent`; a `fix-parent` is allowed "only with a
     Notes entry naming Jon's choice");
