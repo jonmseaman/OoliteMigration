@@ -640,6 +640,8 @@ and `$S verify --steps N` exits 0, including the `no_facade` and `poc` checks fr
 - [ ] T052 [US7] Set `anchors.develop_target` to T051's tip. Rebuild step 003 as "Compile as
   Objective-C++" (slug `003-objective-cxx`): it is old 003's renames and build changes, with none
   of the façade. #768's binding and `poc/` are kept and renamed to `.mm`. Accept: per-step.
+  *Progress*: step 003 built and committed (`51a1ac527`, plan Notes); manifest anchor and slug rename
+  remain.
 - [ ] T053 [US7] Rebuild steps 004–009, which take the binding and `poc/` off Foundation before
   gnustep-base goes. Accept: per-step, for each.
 - [ ] T054 [US7] Rebuild steps 010–016, which take the binding and `poc/` to C++ (010) and off the

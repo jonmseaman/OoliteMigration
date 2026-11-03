@@ -433,3 +433,15 @@ sources outside the replayed trees.
   increase-thrust, unbinding the player's own increase-thrust button. The faithful port
   (`765619143`, T051a) therefore fails the existing test `savesAndLoadsSettings` in
   `test_OOJoystickManager`; the test is unchanged (hard rule 1). Awaiting Jon's decision.
+- **New step 003 built (2026-11-03): `51a1ac527` on `seriesb/003-quickjs-switch`** (slug rename to
+  `003-objective-cxx` waits for the manifest update, T052). 288 files, +2110/−1622 against 002
+  (old 003: 407 files, about +34k/−25k). Build rc=0 with exactly 002's 7 warnings (QuickJS-ng's own
+  `-Wpedantic` and `-pthread`), smoke passes, no façade, no test changed. *Default taken, against
+  the earlier "keep the rest of old 003" rule*: old 003 also reverted #768 outside the façade
+  (dropped `OOJSFreeValue` calls, SpiderMonkey's macOS build script and patch, Mozilla CI steps,
+  `XP_*` defines, polyfills in `oolite-global-prefix.js`, its own QuickJS LTO and clock changes).
+  Those files keep 002's content; `.agent-tmp/step3/find_reverts.py` finds such hunks (002→old step
+  hunks that undo #768's changes since `7437f22a5`) and `step3/reverts.txt` lists them. The end
+  target has none of the SpiderMonkey files, so later steps' deletions of them become no-ops; any
+  remaining `develop`-only difference surfaces at T055's final-tree check and is placed then.
+  Replays of 004–024 run `find_reverts.py` on each step for the same reason.
