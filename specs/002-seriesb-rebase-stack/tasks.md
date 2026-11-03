@@ -292,7 +292,7 @@ recorded.
   3. Run `$S build n`.
 
   Accept: `$S check --only lineage,branches,differs --steps 1-2` exits 0.
-- [ ] T017 [US2] *(Changed at T017, 2026-11-02: see spec D1's second amendment and research R4.
+- [X] T017 [US2] *(Changed at T017, 2026-11-02: see spec D1's second amendment and research R4.
   Done as `fold 3 5 --title … --reason …`, then `tree 3 --take-old --keep 'tools/js-parity/**'
   'tools/oxp-upgrade/**' --reason …`. The new 003 is old 005's tree plus the two tools, and T018's
   separate old 004/005 replays no longer exist. The Accept command is unchanged.)* Replay old 003 as the new 003, "Put the game's JavaScript behind an engine façade,
@@ -314,7 +314,7 @@ recorded.
 
   Accept: `$S check --only lineage,branches,differs --steps 1-3` exits 0, and the step's tree
   contains no `src/Core/Scripting/poc/`.
-- [ ] T018 [US2] Replay old 004 (Objective-C++) and old 005. For old 005:
+- [X] T018 [US2] Replay old 004 (Objective-C++) and old 005. For old 005:
   - if `$S tree` gives a tree equal to its parent's, run `$S drop 5 --covered-by 768 --reason
     "#768 already makes QuickJS-ng the only engine and removes SpiderMonkey"`;
   - otherwise keep it with a narrowed title naming what is left (expected: NSPR and build-switch
@@ -322,13 +322,13 @@ recorded.
 
   Accept: `$S check --only manifest,lineage,branches,differs --steps 1-5` exits 0, and old 005 is
   either in `dropped[]` or has a title differing from the old one.
-- [ ] T019 [US2] Replay old 006–010 in order (Objective-C era), resolving and building each as in
+- [X] T019 [US2] Replay old 006–010 in order (Objective-C era), resolving and building each as in
   T016. Most conflicts are expected to be the #780/#768 renames, in successive versions of the same
   entity files; reuse a step's resolution reasoning for the next. Accept: `$S check --only
   lineage,branches,differs --steps 1-10` exits 0 (step numbers as currently in the manifest).
-- [ ] T020 [US2] Replay old 011–026 in order (C++ era from old 011 on), resolving and building each
+- [X] T020 [US2] Replay old 011–026 in order (C++ era from old 011 on), resolving and building each
   as in T016. Accept: `$S check --only manifest,lineage,branches,differs` exits 0 for all steps.
-- [ ] T021 [US2] Run `$S renumber` if a step was dropped, so step numbers are contiguous from 001
+- [X] T021 [US2] Run `$S renumber` if a step was dropped, so step numbers are contiguous from 001
   (spec FR-006). Then check `git town branch` in `oolite-dev` shows one chain
   `develop`→`000a`→`000b`→`001`…. Accept: `$S check --only manifest,lineage,branches` exits 0, and
   `$S check --only baseline` exits 0.
@@ -346,7 +346,7 @@ recorded.
 
 **Independent Test**: `$S check --verified` exits 0.
 
-- [ ] T022 [US3] Run `$S check --only final-tree`.
+- [X] T022 [US3] Run `$S check --only final-tree`.
   - If the last step's tree differs from `develop` (`3aa8d65e8`) outside `exclusions` ∪
     `additions`, find which step introduced each difference: bisect with
     `git diff seriesb/NNN 3aa8d65e8 -- <path>`.
