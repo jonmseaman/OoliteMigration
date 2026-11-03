@@ -43,7 +43,7 @@ The game reaches its shared objects through process-wide globals. A survey of `o
 2026-11-02 found:
 
 - **The universe and the player.** `gSharedUniverse` and `gOOPlayer` sit behind the `UNIVERSE` and
-  `PLAYER` macros. `UNIVERSE` appears about 2,400 times and `PLAYER` about 540 times. A universe
+  `PLAYER` macros. `UNIVERSE` appears about 3,600 times (on about 2,400 lines) and `PLAYER` about 690 times. A universe
   is built by `Universe::newUniverse(MyOpenGLView*)`, so making one requires the game's view.
 - **14 `shared…()` singletons**: `GameController`, `OOMusicController`, `OOOpenALController`,
   `OOSoundMixer`, `OOJoystickManager`, `OOAsyncWorkManager`, `OOGraphicsResetManager`,
@@ -102,7 +102,7 @@ pattern the other stages copy. It also separates the controller's simulation-tic
 window and event-loop role, which the headless game needs.
 
 **Why this priority**: The user named the controller, and it owns the tick, which every headless
-test drives. It is small, so it proves the pattern without taking on `UNIVERSE`'s 2,400 uses.
+test drives. It is small, so it proves the pattern without taking on `UNIVERSE`'s 3,600 uses.
 
 **Independent Test**: A unit test builds two controller instances in one process. It schedules a
 deferred call on one and checks that the other never runs it. All existing suites still pass.
@@ -122,7 +122,8 @@ deferred call on one and checks that the other never runs it. All existing suite
 
 A test creates a headless game or scene with a fixed seed. It needs no window, OpenGL context,
 audio device or input. It spawns a police viper and a pirate 10 km apart, and an asteroid field.
-It steps the simulation 900 ticks at a fixed time step, then asserts that the police ship engaged
+It steps the simulation at a fixed time step through 112.5 s of game time (the component
+scenario's 900 ticks of 0.125 s), then asserts that the police ship engaged
 the pirate and survived. It queries the scene for entities by role, position and state, and
 receives the events the game raised (attacked, destroyed, docked). The test runs in the ordinary
 unit-test process, in seconds, and gives the same result every run.
@@ -137,7 +138,7 @@ scenario.
 **Acceptance Scenarios**:
 
 1. **Given** a headless scene seeded with 20260910 holding one police ship and one pirate 10 km
-   apart, **When** it is stepped 900 ticks, **Then** the police ship engages the pirate and
+   apart, **When** it is stepped through 112.5 s of game time, **Then** the police ship engages the pirate and
    survives, matching the component scenario's result.
 2. **Given** the same seed and spawns, **When** the test runs twice, **Then** both runs produce
    the same entity positions and events at every tick.
@@ -316,8 +317,8 @@ within Stories 3 and 4. What is left is mostly presentation-side and does not bl
   check enforces this on every unit-test run.
 - **SC-005**: When the feature is done, 0 inventory entries are *to do*. Every *kept* entry has a
   reason, and kept entries are no more than 10% of the starting count.
-- **SC-006**: 0 uses of the universe or player globals remain, counted from about 2,400 and
-  about 540 at the start. A test runs two headless scenes at once, each giving its solo result.
+- **SC-006**: 0 uses of the universe or player globals remain, counted from about 3,600 and
+  about 690 at the start. A test runs two headless scenes at once, each giving its solo result.
 - **SC-007**: Every stage passes `unit`, `component`, `smoke` and `gui` with the same results as
   its parent, and builds with no new warnings under both Clang and GCC.
 - **SC-008**: Frame time in the smoke run stays within 2% of the parent stage's.
@@ -353,8 +354,12 @@ of them.
 - **Test framework.** The headless tests use the existing unit test framework under `tests/unit`
   and run in the `unit` suite. Porting component scenarios to Gherkin-over-headless is a possible
   follow-up, not part of this feature.
-- **Relation to 4p.** This is source hygiene and test infrastructure for upstream, so it sits in
-  Phase 4p. Because of its size it may run alongside Phase 5. The plan records that.
+- **Relation to the migration phases.** This is separate work that follows the C++ migration. It
+  is not part of Phase 4p or Phase 6, and it is not part of the faithful port's upstream PR series
+  (`series/*`, `seriesb/*`). 4p keeps structural changes out of that series so reviewers can
+  compare it line for line. This feature branches from `develop` on its own epic branch, and its
+  decisions live in this spec and its plan, not in a phase doc. It may run alongside Phase 5. It
+  is proposed upstream as its own series after the faithful port. (Decided by Jon, 2026-11-02.)
 - **Threading.** Thread confinement stays as it is today. The feature does not make any service
   thread-safe that is not already. Headless scenes may run tests in parallel only as separate
   processes until Story 4 is done.
