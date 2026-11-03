@@ -549,7 +549,7 @@ for tests and FR-016's amended hard rule 6.
   `OOJSWorldScripts`, `OOJSSpecialFunctions`, `OOJSFrameCallbacks`, `OOJSEquipmentInfo`,
   `OOJSInterfaceDefinition`, `OOJSGuiScreenKeyDefinition`, `OOJSPopulatorDefinition` and
   `OOConstToJSString`. Accept: as T039.
-- [ ] T041 [US6] Remove `src/Core/Scripting/ooscript/`, plus `OOJSEngineNativeWrappers` and
+- [X] T041 [US6] Remove `src/Core/Scripting/ooscript/`, plus `OOJSEngineNativeWrappers` and
   `OOJSPrivateObject` where #768's design has no counterpart (otherwise reduce them to it), and
   update the meson lists. Accept: `git grep -n ooscript -- src/Core/Scripting` is empty in the
   worktree, and `./mk.sh build test` gets past `src/Core/Scripting`.
@@ -557,7 +557,7 @@ for tests and FR-016's amended hard rule 6.
   include `OOJavaScriptEngine.h`, to #780's engine-neutral names and #768's API. Accept:
   `git grep -n ooscript -- src` is empty, and `./mk.sh build test` exits 0 with Clang, and with
   `--native-file=gcc.ini`.
-- [ ] T043 [US6] Move the tests (FR-015): the 73 in `tests/unit/core`, 2 in `tests/unit/expander` and
+- [X] T043 [US6] Move the tests (FR-015): the 73 in `tests/unit/core`, 2 in `tests/unit/expander` and
   1 in `tests/unit` that use the façade.
   - Keep every assertion. Replace `tests/unit/test_jsengine_quickjs.cpp` (a test of the façade) by
     #768's equivalent where one exists, or remove it.
@@ -569,7 +569,7 @@ for tests and FR-016's amended hard rule 6.
   - `git grep -n ooscript -- tests` is empty;
   - `tests/run.sh unit` passes;
   - every path in `git diff --name-only develop -- tests` appears in `test-changes.md`.
-- [ ] T044 [US6] Bring #768's non-source parts: `Resources/Scripts/oolite-quickjs-compat.js`, the
+- [X] T044 [US6] Bring #768's non-source parts: `Resources/Scripts/oolite-quickjs-compat.js`, the
   QuickJS-ng patch (applied to the fork's newer QuickJS-ng if it still applies and the tests need
   it; research R5's rule), `tools/js-parity/**` and `tools/oxp-upgrade/**`. Record each decision
   with its evidence in plan.md's Notes. Accept: both tools exist on the branch, and plan.md's Notes

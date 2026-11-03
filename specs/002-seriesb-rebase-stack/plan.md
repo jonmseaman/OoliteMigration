@@ -213,6 +213,23 @@ sources outside the replayed trees.
     error handler, not the dump.
   - Removed as façade-only: `test_jsengine_quickjs.cpp` (the façade's own backend test), named-root
     and request checks. The full list, per test, is in `series/test-changes.md`.
+- T044 (2026-11-03): #768's non-source parts, on `feature/upstream-quickjs-binding` (`fb47a9c26`).
+  - `Resources/Scripts/oolite-quickjs-compat.js`: identical to #768's (came with the core, `c39eb267d`).
+  - `tools/js-parity/**` and `tools/oxp-upgrade/**`: taken whole from #768's branch by path, not
+    opened (the probe is an OXP, hard rule 4).
+  - `logcontrol.plist`: #768's two classes, `script.javaScript.cache` and `script.javaScript.load.modern`;
+    the ported `OOJSScript.cpp` logs under both.
+  - **Not applied**: #768's `0001-oolite-primitive-property-assignment.patch` (strict-mode `"s".foo = 1`
+    is silently ignored instead of throwing). Research R5's default: the tests pass without it, and
+    `develop` (also QuickJS-ng 0.17) has never had it. T045's parity probe will show whether it
+    matters; adopting it is one line in the wrap.
+  - Left as the fork has them: CI workflows, install scripts, `meson.options`, README (#768's
+    SpiderMonkey removals there do not apply; the fork never had SpiderMonkey's build).
+- T043 (2026-11-03): the unit tests moved by five parallel groups (branches `…-t1`…`-t5`), merged
+  `86e33d549`..`c977f6058`; `tests/unit/core/meson.build` conflicts were resolved line by line (each
+  group's own tests). Ledger: `series/test-changes.md`. `git grep ooscript` is empty;
+  `./mk.sh build test` with Clang: 0 warnings; `tests/run.sh unit`: oofnd 40, core 175, headers 1,
+  all pass.
 - T042 (2026-11-03): the 50 files outside the scripting layer were ported in two parts, E (debug console
   and monitor, Universe, GuiDisplayGen, string and constant utilities) and F (the entities,
   OOEquipmentType, OOShipGroup), then merged (`49aad3e87`).
