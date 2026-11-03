@@ -313,8 +313,10 @@ def _compute_target(repo, m, step):
     return tree, [], []
 
 
-def ledger_paths(step):
-    """The paths the switch step's test ledger lists (any `path` in a table row's first cell)."""
+def ledger_paths(step, section=None):
+    """The paths the step's test ledger lists (any `path` in a table row's first cell). With
+    `section` (a replayed step, spec FR-017), only the rows under the heading `## <section>`, up to
+    the next `## ` heading."""
     import re
     path = step["source"].get("test_ledger") or ""
     if not os.path.isabs(path):
@@ -322,9 +324,22 @@ def ledger_paths(step):
     if not os.path.exists(path):
         return None
     with open(path, encoding="utf-8") as f:
-        text = f.read()
-    return {p.strip("`") for row in text.splitlines() if row.startswith("|")
+        lines = f.read().splitlines()
+    if section is not None:
+        inside, kept = False, []
+        for line in lines:
+            if line.startswith("## "):
+                inside = line[3:].strip().startswith(section)
+            elif inside:
+                kept.append(line)
+        lines = kept
+    return {p.strip("`") for row in lines if row.startswith("|")
             for p in re.split(r",\s*", row.split("|")[1].strip())}
+
+
+def ledger_section(step):
+    """The ledger heading a replayed step's rows sit under."""
+    return f"Step {step['n']:03d}"
 
 
 def unlisted_tests(repo, step, parent, tree):
@@ -432,13 +447,19 @@ def integrity(repo, m, step, series_dir):
             "no_new_suppressions": verify.check_no_new_suppressions(repo, parent, tree, parent),
             "no_new_spidermonkey_or_gnustep": verify.check_no_new_legacy(repo, parent, tree),
             "clang_format": verify.check_clang_format(repo, tree, normalise.normalise_tree(repo, tree, tree)),
+            "no_facade": verify.check_no_facade(repo, tree),
         }
         return out
     base, ours, theirs = inputs(repo, m, step)
+    allowed = ()
+    if step["source"].get("test_ledger"):
+        allowed = ledger_paths(step, ledger_section(step)) or ()
     out = {
-        "tests_untouched": verify.check_tests_untouched(repo, tree, theirs, ours, resolution_paths(series_dir, step), base),
+        "tests_untouched": verify.check_tests_untouched(repo, tree, theirs, ours, resolution_paths(series_dir, step),
+                                                        base, allowed=allowed),
         "no_new_suppressions": verify.check_no_new_suppressions(repo, parent, tree, theirs),
         "no_new_spidermonkey_or_gnustep": verify.check_no_new_legacy(repo, parent, tree),
+        "no_facade": verify.check_no_facade(repo, tree),
     }
     if step.get("kind") == "mechanical":
         out["clang_format"] = "n/a: the reformat step changes the style; upstream's check follows it"

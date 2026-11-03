@@ -817,7 +817,8 @@ def cmd_verify_replay(args):
         try:
             record = verify.verify_step(GAME, step, replay.parent_tree(GAME, m, step), prec, clean=clean,
                                         integrity=checks, inherited=prec.get("warning_keys", []),
-                                        listed_n=step["source"].get("old_step", 0), component_attempts=3)
+                                        listed_n=step["source"].get("old_step", 0), component_attempts=3,
+                                        poc=True)
         finally:
             verify.TEST_WARNINGS = saved
         record["after_sync"] = len(m.get("syncs", []))

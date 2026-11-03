@@ -623,7 +623,7 @@ and `$S verify --steps N` exits 0, including the `no_facade` and `poc` checks fr
 
 - [X] T049 [US7] Tag the old heads (`archive/seriesb-facade/000b`, `001`–`025`). Accept:
   `git -C oolite-dev tag -l 'archive/seriesb-facade/*' | wc -l` prints 26.
-- [ ] T050 [US7] Tool: add the verify checks `no_facade` and `poc` (`-Dquickjs_poc=true` build, then
+- [X] T050 [US7] Tool: add the verify checks `no_facade` and `poc` (`-Dquickjs_poc=true` build, then
   `meson test quickjs-poc`, n/a when the tree has no `poc/`). Let `tests_untouched` accept a ledger
   entry for any step. New tests go in `tools/series/tests/test_nofacade.py`. Accept:
   `python -m unittest discover -s tools/series/tests` passes.
@@ -632,6 +632,11 @@ and `$S verify --steps N` exits 0, including the `no_facade` and `poc` checks fr
   to C++ (sources `.cpp`, `oofnd` in place of Foundation, `meson.build` on the `.cpp` game
   sources). The 7 `tests/*.js` scripts stay unchanged. Accept: `./mk.sh build test` passes, and so
   does a `-Dquickjs_poc=true` build with `meson test quickjs-poc`.
+- [ ] T051a [US7] Upstream #783 (`joystick_gui`, merged into upstream `master` as `28ceaaba0` on
+  2026-11-03; #767/#768 unchanged): port it into the C++ code on `feature/upstream-quickjs-poc-cxx`,
+  so the end target has it. In the stack it joins step 023, retitled "Port upstream #766, #774,
+  #781 and #783" (slug `023-upstream-28ceaaba0-ports`). Accept: `./mk.sh build test` passes, and
+  each behaviour #783 adds is pinned by a new unit test.
 - [ ] T052 [US7] Set `anchors.develop_target` to T051's tip. Rebuild step 003 as "Compile as
   Objective-C++" (slug `003-objective-cxx`): it is old 003's renames and build changes, with none
   of the façade. #768's binding and `poc/` are kept and renamed to `.mm`. Accept: per-step.

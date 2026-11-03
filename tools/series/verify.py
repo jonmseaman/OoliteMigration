@@ -201,12 +201,14 @@ def _clean_merge(repo, base, ours, theirs, path):
         return r.stdout if r.returncode == 0 else None
 
 
-def check_tests_untouched(repo, tree, source, ours, resolution_paths, base=None):
+def check_tests_untouched(repo, tree, source, ours, resolution_paths, base=None, allowed=()):
     """(a) every tests/ file is the source snapshot's, upstream's (`ours`, the merge's other side), or
-    the conflict-free merge of the two, and no stored resolution is a test file."""
-    bad = [p for p in resolution_paths if p.startswith("tests/")]
+    the conflict-free merge of the two, and no stored resolution is a test file. A test the step's
+    test ledger lists (`allowed`: paths, or file names alone) may differ (spec FR-015, FR-017)."""
+    listed = lambda p: p in allowed or os.path.basename(p) in allowed
+    bad = [p for p in resolution_paths if p.startswith("tests/") and not listed(p)]
     for p in _git(repo, "diff", "--name-only", "--no-renames", source, tree, "--", "tests/").splitlines():
-        if _blob(repo, tree, p) == _blob(repo, ours, p):
+        if _blob(repo, tree, p) == _blob(repo, ours, p) or listed(p):
             continue
         merged = _clean_merge(repo, base, ours, source, p) if base else None
         if merged is None or merged != subprocess.run(["git", "-C", repo, "cat-file", "-p", f"{tree}:{p}"],
@@ -257,6 +259,34 @@ def check_no_new_legacy(repo, parent_tree, tree):
     before, after = count(parent_tree), count(tree)
     grown = [f"{k} {before[k]}->{after[k]}" for k in LEGACY_DEP_RE if after[k] > before[k]]
     return "pass" if not grown else "fail: " + ", ".join(grown)
+
+
+FACADE_RE = r"ooscript|JSEngine\.hpp"
+
+
+def check_no_facade(repo, tree):
+    """(e) seriesb (spec FR-017): no file under src/ or tests/ uses the fork's ooscript façade."""
+    r = subprocess.run(["git", "-C", repo, "grep", "-l", "-E", FACADE_RE, tree, "--", "src", "tests"],
+                       capture_output=True, text=True)
+    if r.returncode not in (0, 1):
+        raise RuntimeError(f"git grep failed: {r.stderr.strip()}")
+    hits = [line.split(":", 1)[1] for line in r.stdout.splitlines() if ":" in line]
+    return "pass" if not hits else f"fail: {len(hits)} files use the façade: " + ", ".join(hits[:5])
+
+
+POC_MESON = "src/Core/Scripting/poc/meson.build"
+POC_LINUX_ONLY = "supports Linux only"
+
+
+def poc_plan(repo, tree):
+    """'run', or 'n/a: reason', for #767's proof-of-concept harness (src/Core/Scripting/poc)."""
+    text = subprocess.run(["git", "-C", repo, "cat-file", "-p", f"{tree}:{POC_MESON}"],
+                          capture_output=True, text=True)
+    if text.returncode != 0:
+        return "n/a: the tree has no proof-of-concept harness"
+    if POC_LINUX_ONLY in text.stdout:
+        return "n/a: the harness needs GNUstep here, so upstream builds it on Linux only"
+    return "run"
 
 
 def check_clang_format(repo, tree, formatted_tree):
@@ -328,6 +358,16 @@ def run_smoke(step_era, worktree, log):
     return run_script(step_era, f"cd '{_msys_path(worktree)}' || exit 2\n./mk.sh test test", log)
 
 
+def run_poc(step_era, worktree, log):
+    """Build #767's harness in its own build directory (-Dquickjs_poc=true) and run its meson test."""
+    body = (f"cd '{_msys_path(worktree)}' || exit 2\n"
+            "[ -d build/quickjs-poc ] || meson setup build/quickjs-poc --native-file clang.ini "
+            "-Dquickjs_poc=true -Ddebug=true -Doptimization=0 || exit 2\n"
+            "meson compile -C build/quickjs-poc oojs-quickjs-poc || exit 1\n"
+            "meson test -C build/quickjs-poc quickjs-poc --print-errorlogs")
+    return run_script(step_era, body, log)
+
+
 def run_component(step_era, worktree, scenarios, log):
     venv = _msys_path(os.path.join(AGENT_TMP, "series-verify-venv"))
     body = (f"cd '{_msys_path(worktree)}' || exit 2\n"
@@ -346,7 +386,7 @@ def unit_suites(repo, tree):
 
 
 def verify_step(repo, step, parent_tree, parent_record, clean=False, integrity=None, inherited=None,
-                listed_n=None, component_attempts=1):
+                listed_n=None, component_attempts=1, poc=False):
     """Run the step's matrix; returns its verification record. With `inherited` (seriesb), warnings
     are counted against the parent's; `listed_n` is the step number test-warnings.md is keyed by
     (0: none of its warnings apply)."""
@@ -358,9 +398,11 @@ def verify_step(repo, step, parent_tree, parent_record, clean=False, integrity=N
     has_smoke = "tests/launch_snapshot.py" in _git(repo, "ls-tree", "--name-only", tree, "--", "tests/")
     scenarios = touched_scenarios(repo, parent_tree, tree) if parent_tree else []
     checks = dict(plan(step_era, parent_record, bool(suites), has_smoke, scenarios))
+    if poc:  # seriesb (spec FR-017): #767's harness, wherever this machine can build it
+        checks["poc"] = poc_plan(repo, tree)
     stamp = f"{step['n']:03d}"
     log = lambda what: os.path.join(LOG_DIR, f"{stamp}-{what}.log")
-    for what in ("build_clang", "build_gcc", "unit", "smoke", "component"):
+    for what in ("build_clang", "build_gcc", "unit", "smoke", "component", "poc"):
         if os.path.exists(log(what)):
             os.remove(log(what))
 
@@ -388,8 +430,9 @@ def verify_step(repo, step, parent_tree, parent_record, clean=False, integrity=N
     built = rc == 0
     for check, runner in (("unit", lambda: run_unit(step_era, wt, suites, log("unit"))),
                           ("smoke", lambda: run_smoke(step_era, wt, log("smoke"))),
-                          ("component", lambda: run_component(step_era, wt, scenarios, log("component")))):
-        if checks[check] != "run":
+                          ("component", lambda: run_component(step_era, wt, scenarios, log("component"))),
+                          ("poc", lambda: run_poc(step_era, wt, log("poc")))):
+        if checks.get(check) != "run":
             continue
         if not built:
             checks[check] = "fail: not run, the build failed"

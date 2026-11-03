@@ -184,6 +184,17 @@ sources outside the replayed trees.
   and step 025 is dropped or shrinks to what is left. The old heads are kept as local tags
   `archive/seriesb-facade/NNN` (`000b` and `001`–`025`). Branches are updated in place, so Jon
   force-pushes them. Tasks T049–T057.
+- **2026-11-03, Jon: bring in upstream's newly merged PR.** Upstream `master` moved to `28ceaaba0`,
+  merging #783 (`joystick_gui`: joystick control of GUI screens, and fixes to the joystick
+  configuration screen). #767/#768 did not move. #783 changes eight Objective-C files that the
+  stack converts to C++, so it is ported into the C++ code with its behaviour kept, on the
+  end-target branch (T051a). In the stack it joins step 023, which already carries the upstream
+  `master` changes that are not in #767/#768. *Default taken*: extend step 023 instead of adding a
+  step 024a, because a new step would renumber 024–025 and step 023 is the stack's place for
+  "ports of upstream master".
+- **2026-11-03, clang-format.** CI pins clang-format 22. This machine has 23.1.4, which disagrees
+  with 22 only on wrapped enum initialisers (4 untouched files). New code in Phase 11 is formatted
+  with 23 and checked for that construct; the CI format check is the authority.
 - **Behaviour changes that follow #768, for Jon to confirm** (found while porting and moving tests,
   2026-11-03). Tests expecting the old behaviour are updated, and each update is in the test ledger:
   - **Manifest**: assigning an invalid value to a manifest entry, or deleting one, now throws
