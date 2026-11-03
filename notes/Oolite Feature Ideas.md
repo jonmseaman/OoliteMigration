@@ -1,6 +1,7 @@
 # Oolite Feature Ideas
 
 Features that Frontier: Elite II (1993), Frontier: First Encounters (1995), Elite Dangerous and the later ports of the original Elite have and core Oolite doesn't, plus a modern UI and multiplayer. The details and sources for each game are in the feature references in this folder: [Elite (1984)](<Elite (1984) — Feature Reference.md>), [Frontier: Elite II and First Encounters](<Frontier Elite II and First Encounters — Feature Reference.md>), [Elite Dangerous](<Elite Dangerous — Feature Reference.md>) , [EVE Online](<EVE Online — Feature Reference.md>) , [X4: Foundations](<X4 Foundations — Feature Reference.md>) and [Freelancer](<Freelancer — Feature Reference.md>).
+EVE Online's modules and fitting systems are covered in depth separately, in [EVE Online — Modules and Fitting](<EVE Online — Modules and Fitting Reference.md>).
 
 "Oolite today" describes the core game in `oolite-dev` (`Resources` and `src`), not expansions, so some of these may already exist as OXPs. Elite II and First Encounters together are "Frontier".
 

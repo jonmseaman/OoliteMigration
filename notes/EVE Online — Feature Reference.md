@@ -11,7 +11,10 @@ by a studio with an in-house economist.
 This is the longest of the four references because EVE is much the largest game. Mining and industry
 get the deepest treatment, because they prompted it, and the career they suggest for Oolite is
 worked out separately in
-[Mining and Manufacturing — Design Sketch](<Mining and Manufacturing — Design Sketch.md>).
+[Mining and Manufacturing — Design Sketch](<Mining and Manufacturing — Design Sketch.md>). Modules
+and fitting get a section here and a reference of their own in
+[EVE Online — Modules and Fitting Reference](<EVE Online — Modules and Fitting Reference.md>), which
+covers every module class, weapon type, subsystem, hold and bay in detail.
 
 **On the studio's name.** CCP Games completed a management buyout from Pearl Abyss and **renamed
 itself Fenris Creations on 6 May 2026**, returning to independence after Pearl Abyss had bought it in
@@ -93,7 +96,7 @@ expansions once more from 2022.
 | Date | Release | Headline |
 | --- | --- | --- |
 | **2026-11-10** | **Fractured Skies** | Chapter 2 of *Theatres of War*: two-month Military Campaigns per empire pair, four navy attack battlecruisers from loyalty-point stores, Synchronizer rigs, a redesigned heads-up display in preview |
-| 2026-09-22 | Cradle of War major update | **Force projection revamped** — Ansiblex jump bridges put on a draining capacitor, owning-alliance only, and jump fatigue explicitly abandoned as the throttle |
+| 2026-09-22 | Cradle of War major update | **Force projection revamped** — Ansiblex jump bridges put on a draining capacitor, cost rising with distance from the alliance capital, owning-alliance only, and capitals barred from using them |
 | **2026-06-09** | **Cradle of War** | Chapter 1: **Exordium**, a 53-system starter region at security 1.0 with PvP blocked and a one-way exit; Military Campaign groundwork; Bulwark mining anomalies |
 | 2026-05-06 | *A New Era* | CCP Games becomes **Fenris Creations**; buyback from Pearl Abyss; Google DeepMind research partnership |
 | 2026-02 | EVE Evolved | A three-part quality and art pass: Neocom upgrades, Aura guidance, sharper skies |
@@ -282,10 +285,12 @@ failure, built for one ship.
 Stargates are free and instant between known systems. Beyond that: **jump drives** on capitals,
 which need a **cynosural field** lit at the destination by another pilot and cannot be used in
 high-security space; **titan bridges** that throw a fleet to a lit cyno; and **Ansiblex jump
-bridges**, alliance-built gates between owned systems. Jump fatigue, introduced in 2014 to stop
-instant force projection across the galaxy, was explicitly **abandoned as the throttle** in
-September 2026 in favour of a capacitor on the jump bridges whose cost rises with distance from the
-owning alliance's capital.
+bridges**, alliance-built gates between owned systems. **Jump fatigue**, introduced in 2014 to stop
+instant force projection across the galaxy, remains a jump-drive mechanic. The September 2026
+revamp put Ansiblex bridges on a **capacitor** instead, whose cost rises with distance from the
+owning alliance's capital — the studio's first proposal had been to throttle bridges with fatigue
+too, and the capacitor replaced *that proposal*, not fatigue itself. The official notes do not
+mention fatigue at all, so **whether jump-drive fatigue has been changed is unclear**.
 
 [EVE University: Security status](https://wiki.eveuniversity.org/Security_status), [Crimewatch](https://wiki.eveuniversity.org/Crimewatch), [W-space](https://wiki.eveuniversity.org/W-space), [Wormholes](https://wiki.eveuniversity.org/Wormholes), [Pochven](https://wiki.eveuniversity.org/Pochven), [Abyssal Deadspace](https://wiki.eveuniversity.org/Abyssal_Deadspace), [ESI universe endpoints](https://esi.evetech.net/latest/universe/systems/), [EVE Ref reference data](https://data.everef.net/reference-data/), [CCP: Force Projection revamped](https://www.eveonline.com/news/view/major-update-force-projection-revamped)
 
@@ -1057,7 +1062,7 @@ a single run.
 | --- | --- | --- |
 | Tech 1 | NPC market original | ME10 / TE20 |
 | Tech 2 | **Invention**, as a limited-run copy | None possible |
-| Tech 3 | **Reverse engineering** of Sleeper relics from wormhole space | None |
+| Tech 3 | **Ancient Relics** recovered from Sleeper space in wormholes, turned into copies with the **Sleeper Encryption Methods** skill. Long called "reverse engineering"; a 2014 devblog folded that activity into invention, and the old name persists in community usage | None |
 | Faction and navy | Loyalty-point store copies, and rare drops | None |
 | Capital and supercapital | NPC market original, researched like tech 1, and gated behind Capital Ship Construction | ME10, at 790 days base |
 
@@ -1309,8 +1314,9 @@ and tech 2 hulls insure badly and the loss is real.
 The **Force Projection revamp** of September 2026 reshaped alliance logistics by putting Ansiblex
 jump bridges on a slowly recharging capacitor that each transiting ship drains, with the cost
 scaling by the destination's distance from the owner's capital system — cheap inward, expensive
-outward. Bridges became owning-alliance-only, and the studio said explicitly that it was moving
-*away* from jump fatigue as the throttle.
+outward. Bridges became owning-alliance-only. The design the studio first floated would have
+throttled bridges with jump fatigue; the capacitor replaced that **proposal**, and the shipped notes
+say nothing about jump-drive fatigue, which remains a separate mechanic.
 
 ### Faucets, sinks and the Monthly Economic Report
 
