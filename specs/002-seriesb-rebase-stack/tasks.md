@@ -553,7 +553,7 @@ for tests and FR-016's amended hard rule 6.
   `OOJSPrivateObject` where #768's design has no counterpart (otherwise reduce them to it), and
   update the meson lists. Accept: `git grep -n ooscript -- src/Core/Scripting` is empty in the
   worktree, and `./mk.sh build test` gets past `src/Core/Scripting`.
-- [ ] T042 [US6] Move the 50 files outside the scripting layer that name `ooscript`, and the 16 that
+- [X] T042 [US6] Move the 50 files outside the scripting layer that name `ooscript`, and the 16 that
   include `OOJavaScriptEngine.h`, to #780's engine-neutral names and #768's API. Accept:
   `git grep -n ooscript -- src` is empty, and `./mk.sh build test` exits 0 with Clang, and with
   `--native-file=gcc.ini`.
@@ -589,7 +589,7 @@ for tests and FR-016's amended hard rule 6.
 
 **Goal**: seriesb ends on upstream's binding. Step 025 takes the target's tree.
 
-- [ ] T047 [US6] Add a `target` source type to the tool, with tests in
+- [X] T047 [US6] Add a `target` source type to the tool, with tests in
   `tools/series/tests/test_replay.py`. A step with `source: {type: "target", ref}` has the target's
   tree minus `exclusions`, plus the parent's `additions`. `differs_from_old` does not apply; the
   description says it is the switch. `cut --replay` keeps it last. Accept:

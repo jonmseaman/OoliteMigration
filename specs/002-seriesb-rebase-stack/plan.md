@@ -213,6 +213,15 @@ sources outside the replayed trees.
     error handler, not the dump.
   - Removed as façade-only: `test_jsengine_quickjs.cpp` (the façade's own backend test), named-root
     and request checks. The full list, per test, is in `series/test-changes.md`.
+- T042 GCC (2026-11-03): `./mk.sh build test --native-file=gcc.ini` fails on `develop` itself
+  (`3aa8d65e8`, GCC 16.2 with LTO): `test_OOCacheManager` and `test_OOJoystickManager` do not link
+  (undefined `oo::EntityDescription`, pulled in by an inline in `EntityPListForeign.h`), and it prints
+  49 warning lines (ODR and LTO type mismatches from test stand-ins of `OOJavaScriptEngine`/`OOJSScript`,
+  libstdc++ `-Waggressive-loop-optimizations`, `OOMatrix.h` `-Wnonnull-compare`). The binding branch
+  fails the same two links and prints 24 warning lines of the same kinds; the one extra
+  `aggressive-loop` line is the new `test_OOJSTimeLimiter`, which links the whole game. Default taken:
+  T042 is accepted as "no worse than `develop` with GCC"; the GCC unit run waits on the pre-existing
+  link failures, which are a separate fix (not this feature's).
 - T044 (2026-11-03): #768's non-source parts, on `feature/upstream-quickjs-binding` (`fb47a9c26`).
   - `Resources/Scripts/oolite-quickjs-compat.js`: identical to #768's (came with the core, `c39eb267d`).
   - `tools/js-parity/**` and `tools/oxp-upgrade/**`: taken whole from #768's branch by path, not

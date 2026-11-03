@@ -100,13 +100,20 @@ def validate(m):
         if (s.get("kind") == "mechanical") != bool(s.get("mechanical_command")):
             out.append(f"rule 1: step {n}: a mechanical step, and only one, has a mechanical_command")
         src = s.get("source") or {}
-        if src.get("type") != "replay":
-            out.append(f"rule 1: step {n} source is {src.get('type')!r}, not replay")
-        old = src.get("old_step")
-        if not isinstance(old, int) or old <= last_old:
-            out.append(f"rule 1: step {n} old_step {old!r} does not increase (after {last_old})")
+        if src.get("type") == "target":
+            if i != len(steps) - 1:
+                out.append(f"rule 1: step {n} is the switch (source target) but not the last step")
+            missing = [k for k in ("ref", "commit", "test_ledger") if not src.get(k)]
+            if missing:
+                out.append(f"rule 1: step {n}, the switch, has no {', '.join(missing)}")
+        elif src.get("type") != "replay":
+            out.append(f"rule 1: step {n} source is {src.get('type')!r}, not replay or target")
         else:
-            last_old = old
+            old = src.get("old_step")
+            if not isinstance(old, int) or old <= last_old:
+                out.append(f"rule 1: step {n} old_step {old!r} does not increase (after {last_old})")
+            else:
+                last_old = old
         if manifest_mod.BOOKKEEPING_RE.search(s.get("title") or ""):
             out.append(f"rule 1: step {n} title carries a bead id or ADR number")
     for f in m.get("folded", []):
@@ -311,13 +318,19 @@ def _name_status(repo, a, b, path):
 
 def check_tests(repo, m, wanted):
     """Hard rule 1: a step modifies or deletes an existing test only where its old step did the same
-    (same resulting text, or deleted in both)."""
+    (same resulting text, or deleted in both). The switch step's changed tests must be in its test
+    ledger instead (rule 1's signed-off exception, FR-015)."""
+    from tools.series import replay
     out = []
     for s in m.get("steps", []):
         if s["n"] not in wanted or not _sha(repo, f"refs/heads/{s['branch']}"):
             continue
         tree = _out(repo, "rev-parse", f"refs/heads/{s['branch']}^{{tree}}")
         parent = _out(repo, "rev-parse", f"refs/heads/{s['parent']}^{{tree}}")
+        if replay.is_target(s):
+            out += [f"rule 1: step {s['n']}, the switch, changes the existing test {p}, which its test ledger "
+                    "does not list" for p in replay.unlisted_tests(repo, s, parent, tree)]
+            continue
         old = s["source"]["old_commit"]
         first = s["source"].get("old_from_commit") or old
         old_changes = _name_status(repo, _out(repo, "rev-parse", f"{first}~1^{{tree}}"),

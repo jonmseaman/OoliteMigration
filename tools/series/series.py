@@ -24,6 +24,10 @@ def parser():
     cg = c.add_mutually_exclusive_group(required=True)
     cg.add_argument("--chapters", action="store_true", help="use research R14's chapters (series)")
     cg.add_argument("--replay", action="store_true", help="one replay step per old series/ step (seriesb)")
+    c.add_argument("--target", metavar="REF", help="with --replay: add or update the last step, the switch to REF's tree")
+    c.add_argument("--title", help="with --target: the switch step's title")
+    c.add_argument("--slug", help="with --target: the switch step's branch slug")
+    c.add_argument("--test-ledger", metavar="PATH", help="with --target: the FR-015 ledger of the tests it changes")
     h = sub.add_parser("hoist", help="turn history commits into an independent step at the front")
     h.add_argument("commits", nargs="+")
     h.add_argument("--slug", required=True)
@@ -813,7 +817,7 @@ def cmd_verify_replay(args):
         try:
             record = verify.verify_step(GAME, step, replay.parent_tree(GAME, m, step), prec, clean=clean,
                                         integrity=checks, inherited=prec.get("warning_keys", []),
-                                        listed_n=step["source"]["old_step"], component_attempts=3)
+                                        listed_n=step["source"].get("old_step", 0), component_attempts=3)
         finally:
             verify.TEST_WARNINGS = saved
         record["after_sync"] = len(m.get("syncs", []))
@@ -1179,6 +1183,8 @@ def cmd_describe(args):
 # --- seriesb: descriptions and the handover (contracts/series-cli-seriesb.md) ----------------------
 
 def _old_range(step):
+    if step["source"].get("type") == "target":
+        return "the switch"
     olds = step["source"].get("old_steps") or [step["source"]["old_step"]]
     return "old " + ", ".join(str(n) for n in olds)
 
@@ -1201,8 +1207,11 @@ def render_description_replay(m, step, kept):
     size_txt = (f"{fmt_k(size['src'])} src, {fmt_k(size['tests'])} tests, {fmt_k(size['other'])} other changed lines; "
                 f"{fmt_k(size['deleted_files'])} lines in deleted files") if size else "not built yet"
     src = step["source"]
+    switch = src.get("type") == "target"
     lines = [f"# {step['title']}", "",
              f"**Series:** step {step['n']} of {len(steps)} · base `{step['parent']}` · next `{nxt}` **(gen)**", "",
+             (f"**Switch:** the tree of `{src['ref']}` (`{src['commit'][:10]}`), with the series' exclusions and "
+              f"additions · {size_txt} **(gen)**") if switch else
              f"**Replays:** `{src['old_branch']}` ({_old_range(step)} of the master-based series) · {size_txt} **(gen)**",
              "",
              f"**Based on:** {_root_pr(m)}, so this step is not independent of upstream's QuickJS-ng PRs "
@@ -1210,16 +1219,21 @@ def render_description_replay(m, step, kept):
     for h in HAND_SECTIONS:
         lines += [f"## {h}", "", kept.get(h) or TODO, ""]
     differs = step.get("differs_from_old") or []
-    lines += ["## Differences from the old step **(gen)**", ""]
-    if differs:
-        lines.append(f"Where this step's change differs from `{src['old_branch']}`'s, and why:")
-        lines.append("")
-        for d in differs[:40]:
-            lines.append(f"- `{d['path']}`: {d['reason']}")
-        if len(differs) > 40:
-            lines.append(f"- ... and {len(differs) - 40} more (the manifest lists them all)")
+    if switch:
+        lines += ["## Test changes **(gen)**", "",
+                  f"The tests move to upstream's engine API with the code; each changed test is listed in "
+                  f"`{src.get('test_ledger')}` (spec FR-015)."]
     else:
-        lines.append(f"None: the same change as `{src['old_branch']}`.")
+        lines += ["## Differences from the old step **(gen)**", ""]
+        if differs:
+            lines.append(f"Where this step's change differs from `{src['old_branch']}`'s, and why:")
+            lines.append("")
+            for d in differs[:40]:
+                lines.append(f"- `{d['path']}`: {d['reason']}")
+            if len(differs) > 40:
+                lines.append(f"- ... and {len(differs) - 40} more (the manifest lists them all)")
+        else:
+            lines.append(f"None: the same change as `{src['old_branch']}`.")
     lines += ["", "## Verified **(gen)**", ""]
     v = step.get("verification")
     if v:
@@ -1237,7 +1251,7 @@ def render_description_replay(m, step, kept):
 def _old_description(m, step):
     """The hand-written sections of the old step's description, as a starting point (FR-006)."""
     old = _old_manifest(m)
-    o = next((x for x in old["steps"] if x["branch"] == step["source"]["old_branch"]), None)
+    o = next((x for x in old["steps"] if x["branch"] == step["source"].get("old_branch")), None)
     if not o:
         return {}
     path = os.path.join(ROOT, os.path.dirname(m["anchors"]["old_manifest"]), "pr", os.path.basename(o["description"]))
@@ -1315,7 +1329,9 @@ def render_handover_replay(m):
         z = s.get("size") or {}
         size = f"{fmt_k(z.get('src', 0))} / {fmt_k(z.get('tests', 0))} / {fmt_k(z.get('other', 0))}" if z else "—"
         title = s["title"].replace("|", "\\|")
-        out.append(f"| {s['n']} | `{s['branch']}` | `{s['source']['old_branch']}` ({_old_range(s)}) | `{s['parent']}` "
+        what = (f"`{s['source']['ref']}` (the switch)" if s["source"].get("type") == "target"
+                else f"`{s['source']['old_branch']}` ({_old_range(s)})")
+        out.append(f"| {s['n']} | `{s['branch']}` | {what} | `{s['parent']}` "
                    f"| {title} | {size} | {verification_summary(s)} |")
     branches = " ".join(s["branch"] for s in steps)
     out += ["", "## Keeping it current", "",
@@ -1460,12 +1476,19 @@ def cmd_cut_replay(args):
         print("cut: no parents; run `parents --setup` first", file=sys.stderr)
         return 1
     replay.cut(GAME, m, _old_manifest(m))
+    if args.target:
+        if not (args.title and args.slug and args.test_ledger):
+            print("cut --target: give --title, --slug and --test-ledger", file=sys.stderr)
+            return 2
+        replay.set_target(GAME, m, args.target, args.title, args.slug, args.test_ledger)
     problems = seriesb.validate(m)
     if problems:
         print("cut: manifest invalid:\n  " + "\n  ".join(problems), file=sys.stderr)
         return 1
     manifest.save(MANIFEST, m)
-    print(f"cut: {len(m['steps'])} replay steps; {len(m.get('dropped', []))} dropped")
+    switch = sum(1 for s in m["steps"] if replay.is_target(s))
+    print(f"cut: {len(m['steps']) - switch} replay steps" + (", then the switch" if switch else "")
+          + f"; {len(m.get('dropped', []))} dropped")
     return 0
 
 
@@ -1481,6 +1504,9 @@ def cmd_tree_replay(args):
     from tools.series import manifest, replay, trees
     m = load_manifest()
     step = _replay_step(m, args.n)
+    if replay.is_target(step) and (args.take_old or args.rule or args.show or args.record):
+        print(f"tree {args.n}: the switch takes its target's tree; there is nothing to resolve", file=sys.stderr)
+        return 2
     scratch = os.path.join(RESOLVE_SCRATCH, f"{step['n']:03d}")
     rdir = replay.res_dir(SERIES_DIR, step)
     if args.take_old:
@@ -1581,7 +1607,7 @@ def cmd_fold(args):
     m = load_manifest()
     for s in m["steps"]:
         built = replay._sha(GAME, f"refs/heads/{s['branch']}")
-        if args.first_old <= s["source"]["old_step"] < args.into_old and built:
+        if args.first_old <= s["source"].get("old_step", 0) < args.into_old and built:
             raise SystemExit(f"fold: {s['branch']} is built; a built step is not folded")
     replay.fold(GAME, m, _old_manifest(m), args.first_old, args.into_old, args.title, args.reason)
     problems = seriesb.validate(m)

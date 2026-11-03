@@ -348,7 +348,8 @@ def unit_suites(repo, tree):
 def verify_step(repo, step, parent_tree, parent_record, clean=False, integrity=None, inherited=None,
                 listed_n=None, component_attempts=1):
     """Run the step's matrix; returns its verification record. With `inherited` (seriesb), warnings
-    are counted against the parent's; `listed_n` is the step number test-warnings.md is keyed by."""
+    are counted against the parent's; `listed_n` is the step number test-warnings.md is keyed by
+    (0: none of its warnings apply)."""
     branch = step["branch"]
     commit = _git(repo, "rev-parse", f"refs/heads/{branch}").strip()
     tree = _git(repo, "rev-parse", f"{commit}^{{tree}}").strip()
@@ -365,7 +366,7 @@ def verify_step(repo, step, parent_tree, parent_record, clean=False, integrity=N
 
     wt = ensure_worktree(repo, WORKTREES["clang"], commit)
     listed = listed_test_warnings()
-    ln = listed_n or step["n"]
+    ln = step["n"] if listed_n is None else listed_n
     verdict = (lambda text: warnings_verdict(text, ln, listed)) if inherited is None else \
         (lambda text: warnings_verdict_relative(text, ln, listed, inherited))
     rc, _ = run_build(step_era, wt, "clang", clean, log("build_clang"))

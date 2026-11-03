@@ -6,6 +6,10 @@ by stored whole-file resolutions (trees.target_tree), by a step's `rules` (every
 rule's globs takes the old step's side, recorded as theirs-rule with the rule's reason), or by hand
 with `tree --record`. Each step starts as one commit on its parent; after a `git town sync` it also
 carries the sync's merges, and `build` will not reset it without `reset=True`.
+
+The last step may be the switch (source type "target", set by `set_target`): its tree is a target
+branch's tree, with the exclusions' reverts applied and every exclusion and addition path as the
+parent has it. It replays no old step; its test changes are listed in its test ledger (FR-015).
 """
 import contextlib
 import fnmatch
@@ -45,6 +49,16 @@ def active(m):
         profile.activate(before)
 
 
+def is_target(step):
+    return (step.get("source") or {}).get("type") == "target"
+
+
+def _reset_state(s):
+    for k in STATE_FIELDS:
+        s[k] = [] if k in ("resolutions", "rules", "differs_from_old") else {} if k == "reasons" else None
+    s["state"] = "planned"
+
+
 def slug_of(branch):
     return branch.split("/", 1)[1].split("-", 1)[1]
 
@@ -58,7 +72,8 @@ def res_dir(series_dir, step):
 def cut(repo, m, old_m):
     """One planned replay step per old step not in `dropped`, in order; keeps the state of steps
     already planned (matched by old step)."""
-    have = {s["source"]["old_step"]: s for s in m.get("steps", [])}
+    have = {s["source"]["old_step"]: s for s in m.get("steps", []) if not is_target(s)}
+    targets = [s for s in m.get("steps", []) if is_target(s)]
     dropped = {d["old_step"] for d in m.get("dropped", [])}
     folded = {n for f in m.get("folded", []) for n in f["old_steps"]}
     into = {f["into_old_step"]: f for f in m.get("folded", [])}
@@ -90,11 +105,43 @@ def cut(repo, m, old_m):
                                                           else {} if k == "reasons" else None)
         s["state"] = s["state"] or "planned"
         steps.append(s)
+    for t in targets:  # the switch stays last
+        n = len(steps) + 1
+        slug = slug_of(t["branch"])
+        branch = f"seriesb/{n:03d}-{slug}"
+        if t["branch"] != branch:
+            _reset_state(t)
+        t.update(n=n, branch=branch, description=f"series/pr/{n:03d}-{slug}.md")
+        steps.append(t)
     root = seriesb.root(m)
     for i, s in enumerate(steps):
         s["parent"] = root if i == 0 else steps[i - 1]["branch"]
     m["steps"] = steps
     return m
+
+
+def set_target(repo, m, ref, title, slug, test_ledger):
+    """Add the switch step last, or update it: its tree is `ref`'s (see the module docstring)."""
+    if not str(title or "").strip() or not str(slug or "").strip():
+        raise SystemExit("target: give a title and a slug")
+    commit = _git(repo, "rev-parse", f"{ref}^{{commit}}")
+    steps = m.setdefault("steps", [])
+    s = next((x for x in steps if is_target(x)), None)
+    if s is None:
+        n = len(steps) + 1
+        s = {"n": n, "branch": f"seriesb/{n:03d}-{slug}", "kind": "hand-written", "title": title,
+             "mechanical_command": None, "chapter": None, "era": steps[-1].get("era") if steps else None,
+             "description": f"series/pr/{n:03d}-{slug}.md",
+             "parent": steps[-1]["branch"] if steps else seriesb.root(m)}
+        _reset_state(s)
+        steps.append(s)
+    elif (s["source"].get("commit"), slug_of(s["branch"])) != (commit, slug):
+        _reset_state(s)
+        s["branch"] = f"seriesb/{s['n']:03d}-{slug}"
+        s["description"] = f"series/pr/{s['n']:03d}-{slug}.md"
+    s["title"] = title
+    s["source"] = {"type": "target", "ref": ref, "commit": commit, "test_ledger": test_ledger}
+    return s
 
 
 # --- trees ---------------------------------------------------------------------------------------
@@ -111,6 +158,8 @@ def parent_tree(repo, m, step):
 
 def inputs(repo, m, step):
     """(base, ours, theirs) trees of the step's replay merge."""
+    if is_target(step):
+        raise SystemExit(f"step {step['n']} is the switch to {step['source']['ref']}: it has no replay merge")
     old = step["source"]["old_commit"]
     first = step["source"].get("old_from_commit") or old
     return (_git(repo, "rev-parse", f"{first}~1^{{tree}}"), parent_tree(repo, m, step),
@@ -204,6 +253,8 @@ def rule_reason(step, path):
 def compute(repo, m, step, series_dir):
     """(tree or None, unresolved paths, [(path, how)]). Records the tree and resolutions in the step;
     a changed tree invalidates later steps' trees."""
+    if is_target(step):
+        return _compute_target(repo, m, step)
     rdir = res_dir(series_dir, step)
     base, ours, theirs = inputs(repo, m, step)
     report = []
@@ -231,6 +282,61 @@ def compute(repo, m, step, series_dir):
     if step.get("state") in (None, "planned"):
         step["state"] = "computed"
     return tree, [], report
+
+
+def _set_tree(m, step, tree):
+    if step.get("target_tree") != tree:
+        for later in m["steps"][step["n"]:]:
+            later["target_tree"] = later["merge_tree"] = None
+    step["target_tree"] = step["merge_tree"] = tree
+    if step.get("state") in (None, "planned"):
+        step["state"] = "computed"
+
+
+def target_tree(repo, m, step):
+    """The switch step's tree: the target's, with the exclusions' reverts applied and every exclusion
+    and addition path as the parent has it (the final-tree rule, read backwards)."""
+    tree = _git(repo, "rev-parse", f"{step['source']['commit']}^{{tree}}")
+    for e in m.get("exclusions", []):
+        if e.get("revert_commit"):
+            tree = trees.revert(repo, tree, e["revert_commit"])
+    globs = [e["path_glob"] for e in m.get("exclusions", []) + m.get("additions", []) if e.get("path_glob")]
+    return trees.take_paths(repo, tree, parent_tree(repo, m, step), globs)
+
+
+def _compute_target(repo, m, step):
+    tree = target_tree(repo, m, step)
+    _set_tree(m, step, tree)
+    step["resolutions"] = []
+    return tree, [], []
+
+
+def ledger_paths(step):
+    """The paths the switch step's test ledger lists (any `path` in a table row's first cell)."""
+    import re
+    path = step["source"].get("test_ledger") or ""
+    if not os.path.isabs(path):
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), path)
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    return {p.strip("`") for row in text.splitlines() if row.startswith("|")
+            for p in re.split(r",\s*", row.split("|")[1].strip())}
+
+
+def unlisted_tests(repo, step, parent, tree):
+    """Existing tests the switch step modifies or deletes that its ledger does not list (FR-015).
+    A ledger row may name a file by its path, or by its name alone."""
+    listed = ledger_paths(step)
+    if listed is None:
+        return ["(no test ledger at " + str(step["source"].get("test_ledger")) + ")"]
+    out = []
+    for line in _git(repo, "diff", "--name-status", "--no-renames", parent, tree, "--", "tests/").splitlines():
+        status, p = line.split("\t", 1)
+        if status != "A" and p not in listed and os.path.basename(p) not in listed:
+            out.append(p)
+    return out
 
 
 def _changes(repo, a, b):
@@ -262,7 +368,9 @@ def _hunks(repo, before, after):
 
 def differs(repo, m, step):
     """[{path, reason}] where this step's change differs from its old step's change (SC-006).
-    A reason is None when nothing explains the difference."""
+    A reason is None when nothing explains the difference. The switch replays nothing: []."""
+    if is_target(step):
+        return []
     old = step["source"]["old_commit"]
     first = step["source"].get("old_from_commit") or old
     old_parent, old_tree = _git(repo, "rev-parse", f"{first}~1^{{tree}}"), _git(repo, "rev-parse", f"{old}^{{tree}}")
@@ -311,9 +419,20 @@ def integrity(repo, m, step, series_dir):
     parent's, or their clean merge; no new warning suppression the old step lacks; no new
     SpiderMonkey or gnustep-base dependency; src/ is clang-format clean (but for the reformat)."""
     from tools.series import normalise, verify
-    base, ours, theirs = inputs(repo, m, step)
     tree = _git(repo, "rev-parse", f"refs/heads/{step['branch']}^{{tree}}")
     parent = _git(repo, "rev-parse", f"refs/heads/{step['parent']}^{{tree}}")
+    if is_target(step):
+        bad = unlisted_tests(repo, step, parent, tree)
+        out = {
+            "tests_untouched": ("pass: every changed test is in the test ledger (FR-015)" if not bad
+                                else "fail: not in the test ledger: " + ", ".join(bad[:8])),
+            # the parent is the only source: the switch may bring no suppression at all
+            "no_new_suppressions": verify.check_no_new_suppressions(repo, parent, tree, parent),
+            "no_new_spidermonkey_or_gnustep": verify.check_no_new_legacy(repo, parent, tree),
+            "clang_format": verify.check_clang_format(repo, tree, normalise.normalise_tree(repo, tree, tree)),
+        }
+        return out
+    base, ours, theirs = inputs(repo, m, step)
     out = {
         "tests_untouched": verify.check_tests_untouched(repo, tree, theirs, ours, resolution_paths(series_dir, step), base),
         "no_new_suppressions": verify.check_no_new_suppressions(repo, parent, tree, theirs),
@@ -339,6 +458,11 @@ def parent_record(m, step):
 def message(step):
     """The step commit's message: the title, what it covers, and the old step it replays. No bead ids
     and no text from the old commit's message (spec FR-013)."""
+    if is_target(step):
+        src = step["source"]
+        return (f"{step['title']}\n\nThe scripting layer moves to upstream's QuickJS-ng binding: the tree of "
+                f"{src['ref']} ({src['commit'][:10]}), with the series' exclusions and additions. The tests that "
+                f"change with it are listed in {os.path.basename(src.get('test_ledger') or 'the test ledger')}.\n")
     ch = step.get("chapter")
     if ch:
         body = f"Migration phase {ch['phase'].lstrip('P')}: " + "; ".join(ch["work_items"]) + "."
