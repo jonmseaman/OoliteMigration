@@ -432,7 +432,10 @@ sources outside the replayed trees.
   a save writes `"0": {stick 3, button 79}` into `GuiJoystickButs`, which the next load assigns to
   increase-thrust, unbinding the player's own increase-thrust button. The faithful port
   (`765619143`, T051a) therefore fails the existing test `savesAndLoadsSettings` in
-  `test_OOJoystickManager`; the test is unchanged (hard rule 1). Awaiting Jon's decision.
+  `test_OOJoystickManager`; the test is unchanged (hard rule 1). **Jon, 2026-11-03: fix it in the
+  port.** `2042fac85` resets `guibuttonmap` in `clearMappings` with the other two tables, a
+  deliberate deviation from upstream that step 023's description must name (and suggest upstream
+  take). The new #783 tests pin the fixed behaviour; all 216 suites pass.
 - **New step 003 built (2026-11-03): `51a1ac527` on `seriesb/003-quickjs-switch`** (slug rename to
   `003-objective-cxx` waits for the manifest update, T052). 288 files, +2110/−1622 against 002
   (old 003: 407 files, about +34k/−25k). Build rc=0 with exactly 002's 7 warnings (QuickJS-ng's own

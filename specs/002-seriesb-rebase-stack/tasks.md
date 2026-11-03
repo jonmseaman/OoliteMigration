@@ -632,7 +632,7 @@ and `$S verify --steps N` exits 0, including the `no_facade` and `poc` checks fr
   to C++ (sources `.cpp`, `oofnd` in place of Foundation, `meson.build` on the `.cpp` game
   sources). The 7 `tests/*.js` scripts stay unchanged. Accept: `./mk.sh build test` passes, and so
   does a `-Dquickjs_poc=true` build with `meson test quickjs-poc`.
-- [ ] T051a [US7] Upstream #783 (`joystick_gui`, merged into upstream `master` as `28ceaaba0` on
+- [X] T051a [US7] Upstream #783 (`joystick_gui`, merged into upstream `master` as `28ceaaba0` on
   2026-11-03; #767/#768 unchanged): port it into the C++ code on `feature/upstream-quickjs-poc-cxx`,
   so the end target has it. In the stack it joins step 023, retitled "Port upstream #766, #774,
   #781 and #783" (slug `023-upstream-28ceaaba0-ports`). Accept: `./mk.sh build test` passes, and
