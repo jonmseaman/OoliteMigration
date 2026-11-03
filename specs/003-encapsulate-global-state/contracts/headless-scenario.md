@@ -15,8 +15,9 @@ class OOScenario {
  public:
   explicit OOScenario(OOScenarioOptions options = {});
   // Builds an OOGame with headless context options, a universe from OOUniverseOptions{NONE,
-  // populate=false, detail=minimum}, and the player in flight at the origin. Holds an
-  // OOGameContextScope for its lifetime.
+  // populate=false, detail=minimum}, and the player in flight at the origin. Holds no scope:
+  // every method below opens an OOGameContextScope for its own game for the length of the
+  // call, so two scenarios can be driven in turn on one thread.
 
   // Spawning
   ShipEntity* spawn(std::string_view role, Vector position);

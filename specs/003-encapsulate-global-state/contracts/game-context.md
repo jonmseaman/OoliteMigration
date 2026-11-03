@@ -64,6 +64,15 @@ Rules:
 - Universe and player are not registered through `set`. `OOGame` owns them and updates the hot
   members.
 - `current()` returns the context of the innermost live `OOGameContextScope`, or `nullptr`.
+- **Scopes are opened per call, never held by an object.**
+  - Every `OOGame` entry point (`startUniverse`, `replaceUniverse`, `simulate`,
+    `scheduleDeferredCall`) opens a scope for its own context for the length of the call, so
+    callers never manage scopes.
+  - The one long-lived scope is in `main`, around the GUI run.
+  - An object that kept a scope for its whole lifetime would leave its context current while
+    another game is being driven. Its scope would also be restored in the wrong order whenever
+    such objects are not destroyed last-created-first. `test_OOGameContext` covers nesting,
+    restoring after an exception, and two games driven in turn.
 
 ## The bridge macros (until M6)
 
