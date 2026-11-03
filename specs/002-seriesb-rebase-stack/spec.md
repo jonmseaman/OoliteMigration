@@ -123,25 +123,34 @@ the parent builds with GCC. Then compare the last step's tree with `develop`.
 
 ---
 
-### User Story 4 - The stack can be rebuilt when upstream moves again (Priority: P2)
+### User Story 4 - Upstream changes flow down the stack with `git town sync --stack` (Priority: P2)
 
-#767 and #768 are still open. They will gain commits, and they may be merged or squashed. Jon (or
-an agent) can rebuild the `seriesb` stack on the new heads from the recorded plan and stored
-resolutions, without redoing the conflict work done this time.
+#767 and #768 are still open. They will gain commits, and they may be merged into upstream
+`master`. Jon (or an agent) runs `git town sync --stack`. The new upstream commits reach the
+parents and are merged down through every step. Conflicts stop the sync and are resolved by hand
+in the step where they appear, the usual Git Town way. Nothing is rebuilt from scratch.
 
-**Why this priority**: The base is a pair of open PRs, so the stack will go stale. Rebuilding by
-hand each time would cost as much as this feature.
+**Why this priority**: The base is a pair of open PRs, so the stack will go stale. Git Town is the
+tool Jon already uses for stacks. A merge with manual conflict resolution is an acceptable cost.
 
-**Independent Test**: Point the recorded parents at a different pair of commits (for example the
-same PRs one commit earlier). Rebuild. Confirm that only conflicts with no stored resolution are
-reported, and that the rest of the stack is reproduced.
+**Independent Test**: Sync the stack after upstream adds a commit to #767 or #768, or simulate one
+with a scratch copy of the parent's tracking ref. Confirm that:
+
+- the parent's tip is again the PR's head;
+- every step contains the new commit;
+- no `develop` commit entered any `seriesb` branch;
+- after any conflicts are resolved, each step still meets its verification bar.
 
 **Acceptance Scenarios**:
 
-1. **Given** new heads for #767/#768, **When** the stack is rebuilt, **Then** previously resolved
-   conflicts are re-applied without manual work, and new ones are listed by step and file.
-2. **Given** upstream merges #767 and #768 into `master`, **When** the stack is rebuilt, **Then**
-   the parents can be replaced by `master` and steps 001 onward are unchanged in content.
+1. **Given** new commits on #767 or #768, **When** Jon runs `git town sync --stack` on the
+   `seriesb` stack, **Then** each parent fast-forwards to its PR's head, and the change is merged
+   into each step in order.
+2. **Given** a sync that hits a conflict, **When** it stops, **Then** the conflict is resolved by
+   hand in that step, the sync continues, and the step's notes record the files and why.
+3. **Given** upstream merges #767 and #768 into `master`, **When** the stack is next synced,
+   **Then** the parents can be retired, and `seriesb/001` can be re-parented onto upstream
+   `master`, without changing the content of steps 001 onward.
 
 ---
 
@@ -166,11 +175,18 @@ description file and verification record it names exists, and every base chains 
 
 ### Edge Cases
 
-- **#767 or #768 does not build or pass in our environment**: the parent is still mirrored
-  exactly; parents are not ours to fix. The failure is recorded. If a later step needs a fix, it
-  goes into the first step that needs it, and that step's description names it.
-- **#767 or #768 gains commits during the work**: the stack is built on the heads recorded at the
-  start. The newer heads are applied in a later rebuild (Story 4).
+- **#767 or #768 does not build or pass its own tests in our environment**: this is a gate. Work
+  on the steps stops, the parent stays an exact mirror (upstream's branches are not ours to
+  change), and the failure is flagged to Jon with what fails and why. Jon then picks one of two
+  courses:
+  - **(a)** a third parent, `seriesb/000c-<slug>`, is added between `000b` and `001`. It holds only
+    the fix, and the steps are built on it.
+  - **(b)** the `seriesb` series is held, and `series/*` remains the current series.
+
+  The plan records the flag and the chosen course in its Notes. Without a choice, the default is
+  (b), hold. A fix is never folded silently into step 001 or later.
+- **#767 or #768 gains commits during the work**: the steps are built on the heads recorded at the
+  start, and the newer commits arrive through `git town sync --stack` (Story 4).
 - **#767/#768 are merged upstream, squashed or closed**: if merged, the parents become upstream
   `master` (Story 4). If closed without merge, the stack is not rebased back onto `master` without
   Jon's say. The `series/*` stack remains the master-based option.
@@ -198,11 +214,16 @@ description file and verification record it names exists, and every base chains 
   `seriesb/<NNN>-<slug>`. Git Town MUST record each branch's parent, and the chain MUST hang from
   the root the user drew (`develop`, Git Town's main branch).
 - **FR-002**: The first two branches MUST be `seriesb/000a-upstream-767-quickjs-option` and
-  `seriesb/000b-upstream-768-quickjs-only`. Their tips MUST be exactly the recorded head commits
-  of upstream #767 and #768.
-- **FR-003**: No sync, rebuild or other stack operation MAY bring `develop`'s commits or content
-  into a `seriesb` parent or step. `develop` is the root in name only, and each step's content
-  derives from its parent.
+  `seriesb/000b-upstream-768-quickjs-only`. Their tips MUST be exactly the head commits
+  of upstream #767 and #768, as recorded at build time and as updated by each sync.
+- **FR-003**: `git town sync --stack` MUST be the way upstream changes reach the stack. It brings
+  each parent up to its upstream PR's head and merges changes down through the steps. It MUST NOT
+  bring `develop`'s commits or content into a `seriesb` parent or step. `develop` is the root in
+  name only.
+- **FR-003a**: Both parents MUST build, and pass their own tests, in our environment before any
+  step is built on them. On failure, the work stops and the failure is flagged to Jon. Jon either
+  adds a third parent `seriesb/000c-<slug>`, holding only the fix, between `000b` and `001`, or
+  holds the series. Without his choice, the series is held.
 - **FR-004**: Every step above the parents MUST derive from an old `series/*` step, in the old
   order. The new manifest MUST record, for each step, the old step it came from and every file
   whose resolution differs from the old step, with the reason.
@@ -222,10 +243,14 @@ description file and verification record it names exists, and every base chains 
   step with a date. The two parents are verified and recorded too, but they are not changed.
 - **FR-009**: The old `series/*` branches, their Git Town lineage, the old manifest and `develop`
   MUST be left unchanged.
-- **FR-010**: Every conflict resolved while building the stack MUST be stored so that a rebuild on
-  new parent heads re-applies it. A rebuild MUST report only conflicts with no stored resolution.
-- **FR-011**: A rebuild MUST accept new parent commits, including the case where #767/#768 have
-  been merged into upstream `master`, without editing the step definitions.
+- **FR-010**: The initial build of the stack MAY reuse feature 001's stored resolutions. Each
+  conflict resolved when building the stack, or during a later sync, MUST be recorded in the
+  affected step's notes (files and reason). Resolving by hand is acceptable.
+- **FR-011**: After a sync, every step MUST again meet FR-008 before the series check passes. Its
+  verification record is dated after the sync.
+- **FR-011a**: When #767/#768 are merged into upstream `master`, the stack MUST be able to drop
+  the parents and re-parent `seriesb/001` onto `master`, without changing the content of the
+  steps.
 - **FR-012**: The series MUST come with a manifest, a PR description per step and a handover
   (push commands, dry-run PR commands on the fork, upstream PR commands for steps 001 onward), as
   the old series did. A check command MUST exit 0 only when every branch, file, base and current
@@ -235,14 +260,18 @@ description file and verification record it names exists, and every base chains 
 
 ### Key Entities
 
-- **Parent branch**: a `seriesb/000x` branch mirroring one upstream PR head. It has the upstream PR
-  number, a head commit and a verification record. It is never modified.
-- **Step**: a `seriesb/NNN` branch holding one commit on its parent. It records its old step, title,
-  description file, size, re-resolution notes (files and reasons) and verification record.
+- **Parent branch**: a `seriesb/000a`/`000b` branch mirroring one upstream PR. It has the upstream
+  PR number, the head commit it mirrors and a verification record. It changes only by following
+  its PR on sync.
+- **Fix parent** (only if FR-003a calls for one): `seriesb/000c-<slug>`, our own fix above the
+  upstream parents. It records what it fixes and why.
+- **Step**: a `seriesb/NNN` branch. It starts as one commit on its parent and gains merge commits
+  from later syncs. It records its old step, title, description file, size, re-resolution notes
+  (files and reasons) and verification record.
 - **Dropped step**: an old step with no `seriesb` counterpart. It records the reason and the
   upstream PR that covers it.
-- **Stored resolution**: a resolved file keyed by the inputs it was resolved from, reused by later
-  rebuilds.
+- **Stored resolution**: feature 001's resolved files, reused when the stack is first built; later
+  conflicts are resolved by hand during sync.
 - **Manifest (`seriesb`)**: the ordered parents and steps, the anchors (upstream PR heads,
   `develop` commit) and the exclusions.
 
@@ -258,8 +287,11 @@ description file and verification record it names exists, and every base chains 
   old step (the old 003) is dropped or reduced to the delta that #767/#768 leave.
 - **SC-004**: All 27 `series/*` branches and `develop` point at the same commits before and after
   the work.
-- **SC-005**: A rebuild on the same parent heads reproduces every `seriesb` tree with zero new
-  conflicts and no manual steps.
+- **SC-005**: After a `git town sync --stack` that picks up new upstream commits, and once any
+  conflicts are resolved by hand, every parent matches its PR's head. Every step contains the new
+  commits, no `develop` commit appears in any `seriesb` branch, and the series check exits 0.
+- **SC-007**: If a parent fails to build or pass in our environment, the failure is flagged before
+  any step is built on it (0 steps built on an unflagged failing parent).
 - **SC-006**: Every difference between a `seriesb` step and its old step is accounted for by that
   step's re-resolution notes (0 unexplained files).
 
@@ -268,8 +300,7 @@ description file and verification record it names exists, and every base chains 
 - The "newer code" is upstream's #767 and #768 at their heads on 2026-11-02 (`3758f8a09`,
   `db4920103`), both above `master` `7437f22a5`. The user's sketch puts SpiderMonkey's removal
   (#768) on top of the QuickJS option (#767), and the PRs are stacked that way upstream.
-- `develop` stays at `3aa8d65e8` for the duration. Later `develop` work is a later rebuild's
-  concern.
+- `develop` stays at `3aa8d65e8` for the duration. Later `develop` work is out of scope here.
 - The feature 001 tooling (series tool, stored resolutions, verification shells, isolated MSYS2
   for Objective-C eras) is reused and extended, not replaced.
 - #772 (test harness) is out of scope. It is not stacked on #768 and conflicts with `master`.
@@ -295,5 +326,14 @@ default that was taken.
 - **D3 – numbering**: contiguous renumbering (the sketch's "seriesb/003…" is the next surviving
   step), with the old step number kept in the manifest and description. The rejected alternative
   keeps old numbers with gaps.
-- **D4 – root**: `develop` is the Git Town root as drawn, but the parents are pinned mirrors that
-  never sync with it (FR-003). The plan picks the Git Town branch types that enforce this.
+- **D4 – root**: `develop` is the Git Town root as drawn, but the parents follow their upstream PRs
+  and never sync with `develop` (FR-003). The plan picks the Git Town branch types and tracking
+  setup that make `git town sync --stack` behave this way.
+
+Settled by Jon (2026-11-02):
+
+- Upstream changes arrive through `git town sync --stack`. Conflicts are resolved by hand; a
+  rebuild-from-scratch tool is not required.
+- A parent that fails to build or pass its tests in our environment is flagged. Jon then either
+  adds a fix parent `seriesb/000c-<slug>` above the upstream parents, or holds the series. The
+  default without his choice is to hold.
