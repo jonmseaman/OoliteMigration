@@ -234,6 +234,17 @@ sources outside the replayed trees.
     matters; adopting it is one line in the wrap.
   - Left as the fork has them: CI workflows, install scripts, `meson.options`, README (#768's
     SpiderMonkey removals there do not apply; the fork never had SpiderMonkey's build).
+- T045 (2026-11-03): `feature/upstream-quickjs-binding` at `fb47a9c26`, in the MSYS2 UCRT64 shell
+  (Git Bash cannot run `get_version.sh`): `./mk.sh build test` with Clang exit 0, 0 warnings;
+  `tests/run.sh unit` 0 failures (oofnd 40, core 175, headers 1); `smoke` pass; `component` 19
+  passed; `gui` 178 passed. GCC: see the T042 GCC note (no worse than `develop`; its unit run waits
+  on `develop`'s two link failures).
+  - **js-parity not run.** `tools/js-parity/run_probe.sh` needs Linux (`xvfb-run`, `xdotool`, Mesa
+    llvmpipe), and `develop` has no copy of the tool. Default taken: the parity comparison
+    (`develop` vs the branch, then the SpiderMonkey baselines) waits for the Linux phase; writing a
+    Windows runner is new tooling outside this feature. So whether the unapplied primitive-property
+    patch (T044) matters is still open; nothing in the four suites shows it.
+  - Branch tip for T046: `fb47a9c2602274d7f5a1e3fd94ed9cc18fbdccc9`.
 - T043 (2026-11-03): the unit tests moved by five parallel groups (branches `…-t1`…`-t5`), merged
   `86e33d549`..`c977f6058`; `tests/unit/core/meson.build` conflicts were resolved line by line (each
   group's own tests). Ledger: `series/test-changes.md`. `git grep ooscript` is empty;
