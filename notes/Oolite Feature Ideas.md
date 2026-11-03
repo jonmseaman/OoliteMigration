@@ -1,6 +1,7 @@
 # Oolite Feature Ideas
 
-Features that Frontier: Elite II (1993), Frontier: First Encounters (1995), Elite Dangerous and the later ports of the original Elite have and core Oolite doesn't, plus a modern UI and multiplayer. The details and sources for each game are in the feature references in this folder: [Elite (1984)](<Elite (1984) — Feature Reference.md>), [Frontier: Elite II and First Encounters](<Frontier Elite II and First Encounters — Feature Reference.md>) and [Elite Dangerous](<Elite Dangerous — Feature Reference.md>).
+Features that Frontier: Elite II (1993), Frontier: First Encounters (1995), Elite Dangerous and the later ports of the original Elite have and core Oolite doesn't, plus a modern UI and multiplayer. The details and sources for each game are in the feature references in this folder: [Elite (1984)](<Elite (1984) — Feature Reference.md>), [Frontier: Elite II and First Encounters](<Frontier Elite II and First Encounters — Feature Reference.md>), [Elite Dangerous](<Elite Dangerous — Feature Reference.md>) , [EVE Online](<EVE Online — Feature Reference.md>) , [X4: Foundations](<X4 Foundations — Feature Reference.md>) and [Freelancer](<Freelancer — Feature Reference.md>).
+EVE Online's modules and fitting systems are covered in depth separately, in [EVE Online — Modules and Fitting](<EVE Online — Modules and Fitting Reference.md>).
 
 "Oolite today" describes the core game in `oolite-dev` (`Resources` and `src`), not expansions, so some of these may already exist as OXPs. Elite II and First Encounters together are "Frontier".
 
@@ -76,6 +77,7 @@ Features that Frontier: Elite II (1993), Frontier: First Encounters (1995), Elit
 | Rare goods | Elite Dangerous | 142 rares, each from one station and worth more the farther you carry it. Lavian Brandy, Leestian Evil Juice and Diso Ma Corn are named after Galaxy 1 systems | `trade-goods.plist` already has price, quantity and legality keys per commodity |
 | System states | Elite Dangerous | Boom, Famine, Outbreak, Lockdown and War shift prices and missions, and players' trading, fighting and missions push them | Government, economy and tech level are fixed per system |
 | News that moves markets | First Encounters | The plague report at Soholia comes with high medicine prices and a relief job | No news or market events |
+| Ore and refined materials | EVE Online | Raw ore is bulky and cheap; refined minerals are compact and are what blueprints actually consume, so the market carries a two-tier materials economy | Gold, platinum and gem-stones have no source in the game at all — nothing turns a rock into any of them. Minerals and Alloys are ordinary goods |
 | Salvage | Elite Dangerous | Black boxes, data cores and relics to scoop and hand in | Cargo pods and escape pods can be scooped (see Already in Oolite) |
 
 ## Mining and exploration
@@ -85,6 +87,14 @@ Features that Frontier: Elite II (1993), Frontier: First Encounters (1995), Elit
 | Mining as a craft | Elite Dangerous | Icy, rocky, metallic and metal-rich fields with hotspots; prospector limpets show what a rock holds; a refinery turns fragments into tonnes; seismic charges crack cores | The mining laser, the cargo scoop, asteroid fields and rock hermits |
 | Mining machine | Elite II | The MB4 lands on a world below 200 °C and mines and refines into a 10 t hopper over about 8 months; other pilots can steal it | None |
 | Mining contracts | Elite Dangerous | Factions ask for named minerals; gems such as Void Opals sell above 100,000 CR a tonne | Contracts cover cargo, parcels and passengers |
+| Ore types | EVE Online | Sixteen ores, each refining into a different *mix* of the eight minerals: Veldspar is pure Tritanium, Hedbergite gives Pyerite and Nocxium, Mercoxit alone gives Morphite. What you mine depends on what you mean to build | One rock type; every splinter is 1 t of Minerals at about 12 CR. `trade-goods.plist` already has `oolite-mining` and `oolite-rawmaterial` classes, and `cargo_carried` lets any entity hold any commodity |
+| Refining and compression | EVE Online | Ore reprocesses into minerals at 50–90% depending on structure, rigs, skills and standings, and compresses to 1% of its volume for hauling | No refining. But `quantity_unit` already models tonnes, kilograms and grams, and up to 499 kg or 499,999 g of a good rides free of the hold |
+| Rich ore where it is dangerous | EVE Online | The 2020–22 resource redistribution made each security band the only source of certain minerals, to force hauling and trade | Asteroid fields are identical everywhere. Government already decides rock hermit allegiance, so the hook exists |
+| Critical mining hits | EVE Online | A chance per laser cycle of bonus yield that does not deplete the asteroid, with its own sound and flash; skills and modules raise it from 1% to roughly 30–50% | Nothing. A mining-laser hit always splits a rock the same way |
+| Ore surveyor | EVE Online, Elite Dangerous | EVE puts a mineral surveyor on every starter hull, colour-coding asteroids by value in space with a remaining-quantity readout; Elite Dangerous uses prospector limpets and a Pulse Wave Analyser | You cannot tell one rock from another, or find a field without flying the lanes and looking |
+| Blueprints | EVE Online | Blueprints gate what you can build: bought, copied, looted from data sites, or invented from datacores, then researched for material efficiency | None. Equipment is bought at a station of sufficient tech level or not at all |
+| Manufacturing jobs | EVE Online | A job at a station or player structure consumes materials, a blueprint and time, with a fee set by a self-balancing system cost index. Ammunition takes minutes, a dreadnought hull 23 days | None. `station.setInterface` and the game clock would carry it; `installation_time` already adds hours on purchase |
+| Industry rank | EVE Online, Elite Dangerous | Mining and industry are first-class careers with their own progression and contracts | The engine already counts a `miner` role weight on every asteroid the player cracks and shows it nowhere. Contract reputations exist for cargo, parcels and passengers |
 | Exploration career | Elite Dangerous | Scan bodies and sell the data more than 20 ly away, valued by class, mass and terraforming. First-discovery tags carry your name, and a codex logs finds and phenomena such as Lagrange clouds and space molluscs | Exploring pays nothing |
 
 ## Missions, careers and law
@@ -169,6 +179,12 @@ Definitely like the idea of the system map. This along with UI improvements woul
 
 Maybe I could make an Oolite LLM?
 
-Right click mouse and drag to rotate camera and look around like in EVE online. That would be cool. It would be cool to make an EVE Online feature reference as well as some of the other space games too.
+Right click mouse and drag to rotate camera and look around like in EVE online. That would be cool. It would be cool to make an EVE Online feature reference as well as some of the other space games too. — written: [EVE Online](<EVE Online — Feature Reference.md>), and the mining and manufacturing career it suggests is sketched in [Mining and Manufacturing](<Mining and Manufacturing — Design Sketch.md>). [X4: Foundations](<X4 Foundations — Feature Reference.md>) and [Freelancer](<Freelancer — Feature Reference.md>) are written too.
 
 I'm not sure how I get fuel. Maybe I could add that to the tutorial?
+
+
+It would be cool to have a station defense arcade mode that is wave defense against a bunch of spaceships. Or, it could be a thing to pass the time.
+
+
+EVE Online ships: Have a pod as the default ship, eject, frigate as the most basic one, clones if you die???
