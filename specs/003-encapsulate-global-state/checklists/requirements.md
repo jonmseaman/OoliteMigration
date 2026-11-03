@@ -39,5 +39,8 @@
    inventory format.
 2. No clarification markers were raised. Per CLAUDE.md rule 8, the open choices (deliverable,
    mechanism, scope, order) were taken on conservative defaults and recorded under Assumptions.
-3. SC-007 leaves the stage size limit to the plan. This is deliberate: the limit depends on how
+3. Revalidated after the follow-up input on the purpose. The spec now centres on testability: a
+   headless game (User Story 3, FR-006–FR-008, SC-001–SC-003) for a diamond test strategy. Stage
+   order follows what the headless game needs. Every item still passes.
+4. SC-009 leaves the stage size limit to the plan. This is deliberate: the limit depends on how
    upstream reviews the `seriesb/*` series.
