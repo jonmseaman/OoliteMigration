@@ -91,9 +91,18 @@ Git Town behaviour the plan relies on.
   4. `develop` and the bare `origin` are unchanged.
 
   Repeat with a force-pushed (rewritten) `quickjs-default`, and record what happens in plan.md's
-  Notes. If (1)–(4) fail, switch to research R2's fallback and record `G0 fallback:` in Notes.
+  Notes. There are three outcomes, and they must be kept apart:
+  - **The probe passes**: G0 holds.
+  - **The probe ran and (1)–(4) failed**: switch to research R2's fallback and record
+    `G0 fallback:` in Notes, with the failing assertion.
+  - **The probe could not run** (for example, denied by the permission classifier, as in planning):
+    record `G0 unverified:` in Notes with the reason, and keep observed parents. Not being allowed
+    to run is not evidence against them. The behaviour is then confirmed on the real stack:
+    - T009: the parents equal their tracking heads, and `develop` has not moved;
+    - T030: a sync, if upstream has moved, or otherwise T026's fixture test.
+
   Accept: `bash .agent-tmp/seriesb-gt-probe.sh` exits 0, or plan.md Notes contain a line starting
-  `G0 fallback:`.
+  `G0 fallback:` or `G0 unverified:`.
 
 ---
 
@@ -125,7 +134,16 @@ R8).
   - `tools/series/hoist.py`: the `series/` literals come from the profile.
   - `tools/series/verify.py`: `TEST_WARNINGS` comes from the profile.
 
-  Accept, all of these:
+  **Keep the module-level names the old tests use.** `tools/series/tests/test_build.py` sets
+  `series.SERIES_DIR` during the test, and `tools/series/tests/test_stack.py` reads
+  `stack.ROOT_BRANCH`.
+  - `series.SERIES_DIR`, `stack.ROOT_BRANCH`, `manifest.ROOT_BRANCH`, `manifest.BRANCH_RE` and
+    `verify.TEST_WARNINGS` stay module attributes, defaulting to the `series` profile's values.
+  - `profile.activate(name)` (called once by `--series`) rebinds them.
+  - Every function reads them from the module at call time: no copies are captured at import, and
+    no default arguments are bound to them.
+
+  If an old test fails, fix the tool, never the test (hard rule 1). Accept, all of these:
   - `python -m unittest discover -s tools/series/tests` (old and new) passes;
   - `python -I tools/series/series.py check --verified` exits 0, so the old series is unaffected;
   - `git diff ae8845673 -- tools/series/tests/test_*.py` shows no change to pre-existing files.
@@ -346,8 +364,14 @@ recorded.
 - [ ] T025 [US3] Spot-check hard rule 1 across the stack. For each step, `git diff --name-status
   <parent> <step> -- tests/` must show no `M`/`D` of a test that exists in the parent unless the
   old step did the same (compare with `series/` at the same old step). Add this as `check
-  --only tests`, with a test in `tools/series/tests/test_seriesb_manifest.py`. Accept: `$S check
-  --only tests` exits 0.
+  --only tests`, with a test in `tools/series/tests/test_seriesb_manifest.py`.
+
+  In the same way, add `check --only messages` (spec FR-013, with the patterns in T035), and a test
+  that a step commit whose message carries `oo-abc12` fails. Replay `build` takes its commit
+  message from the step's title and description, as feature 001's message builder does ("no bead
+  ids, no history paths"), and never from the old commit's message.
+
+  Accept: `$S check --only tests,messages` exits 0.
 
 **Checkpoint**: the stack is verified, and it ends at `develop`.
 
@@ -378,8 +402,9 @@ has an entry.
   merges (research R9). Accept: `python -m unittest tools.series.tests.test_sync_check` passes.
 - [ ] T028 [US4] Implement FR-011a's re-parent path as `parents --retire`. It applies once #767/#768
   are in upstream `master`, and refuses otherwise:
-  - it moves `seriesb/001`'s Git Town parent to a new perennial `seriesb/000-upstream-master`
-    branch at upstream `master`;
+  - it creates `seriesb/000m-upstream-master` at upstream `master`, as a perennial branch and a
+    parent with `kind: upstream-master`;
+  - it moves `seriesb/001`'s Git Town parent onto that branch;
   - it marks the old parents `retired` in the manifest.
 
   It deletes no branch; deletion is Jon's. Test it in
@@ -425,9 +450,18 @@ has an entry.
   - per step: old step, base, title, size and verification;
   - a push command for the `seriesb/NNN` steps only (Git for Windows' git, as feature 001), with
     the parents never pushed;
-  - fork dry-run `gh pr create` commands against each step's parent, where step 001's base is a
-    pushed copy of `000b`, named `seriesb/000b-upstream-768-quickjs-only`, and the push line
-    includes it for the fork only;
+  - fork dry-run `gh pr create` commands against each step's parent. Step 001's base is a pushed
+    copy of `000b`, sent to the fork only with an explicit refspec:
+    `git push origin seriesb/000b-upstream-768-quickjs-only:refs/heads/seriesb/000b-upstream-768-quickjs-only`.
+    A bare push would go to the branch's tracking remote, `hobleyd`.
+  - an "Upstream, one at a time" section, as in feature 001, against `OoliteProject/oolite`
+    `master`:
+    - while any parent is `upstream` and not `retired`, the section says "wait: #767/#768 are not
+      merged yet". It explains that a PR for step 001 opened now would carry their commits, and
+      lists no commands;
+    - after `parents --retire`, it lists `gh pr create -R OoliteProject/oolite --base master --head
+      jonmseaman:seriesb/NNN-…` for each step, each opened when the one before it has merged
+      (spec FR-012);
   - the sync command from `docs/series-sync.md`.
 
   Add assertions to `tools/series/tests/test_replay.py`. Accept: those tests pass.
@@ -452,9 +486,12 @@ has an entry.
   - `$S check --verified` passes;
   - `git -C oolite-dev status --porcelain` is empty;
   - `$S check --only baseline` passes (`develop`, `master` and `series/*` unmoved);
+  - `$S check --only messages` passes (spec FR-013): no commit that is reachable from a
+    `seriesb/NNN` step and absent from its parent has a message matching `\boo-[a-z0-9]{3,}\b` or
+    `\bADR-?\d+`;
   - everything is committed in OoliteMigration.
 
-  Accept: all six exit 0.
+  Accept: all seven exit 0.
 
 ---
 

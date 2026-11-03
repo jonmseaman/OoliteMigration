@@ -275,8 +275,9 @@ description file and verification record it names exists, and every base chains 
   (files and reasons) and verification record.
 - **Dropped step**: an old step with no `seriesb` counterpart. It records the reason and the
   upstream PR that covers it.
-- **Stored resolution**: feature 001's resolved files, reused when the stack is first built; later
-  conflicts are resolved by hand during sync.
+- **Stored resolution**: a resolved file from a replay merge, stored per step and keyed by its
+  three input files. Feature 001's resolutions may be consulted, but they don't match replay inputs
+  and don't apply automatically. Conflicts during later syncs are resolved by hand and recorded.
 - **Manifest (`seriesb`)**: the ordered parents and steps, the anchors (upstream PR heads,
   `develop` commit) and the exclusions.
 
@@ -288,8 +289,11 @@ description file and verification record it names exists, and every base chains 
   check exits 0.
 - **SC-002**: The last step's tree differs from `develop` only in listed exclusions and additions
   (0 unlisted paths).
-- **SC-003**: The new series has no more steps than the old one (26 or fewer), and at least one
-  old step (the old 003) is dropped or reduced to the delta that #767/#768 leave.
+- **SC-003**: The new series has no more steps than the old one (26 or fewer). Every old step
+  that #767/#768 fully cover is in the dropped list, with the PR that covers it. Every old step
+  they cover in part has a narrowed title that names what is left (FR-005). (Amended 2026-11-02
+  after the analysis: research R4 measured the new 003 as no smaller than old 003, so "the old 003
+  is reduced" was not a criterion the work could meet.)
 - **SC-004**: All 27 `series/*` branches and `develop` point at the same commits before and after
   the work.
 - **SC-005**: After a `git town sync --stack` that picks up new upstream commits, and once any

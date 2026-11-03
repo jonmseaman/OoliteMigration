@@ -32,8 +32,8 @@ manifest is never written by `--series seriesb` (FR-009).
 
 | Field | Meaning | Rule |
 |---|---|---|
-| `branch` | `seriesb/000a-upstream-767-quickjs-option`, … | prefix `seriesb/000[a-z]-` |
-| `kind` | `upstream` or `fix-parent` | `fix-parent` only with a Notes entry naming Jon's choice (FR-003a) |
+| `branch` | `seriesb/000a-upstream-767-quickjs-option`, … | prefix `seriesb/000[a-z]-`; `000m` is reserved for `upstream-master` |
+| `kind` | `upstream`, `fix-parent` or `upstream-master` | `fix-parent` only with a Notes entry naming Jon's choice (FR-003a). `upstream-master` only from `parents --retire`, once both PRs are in upstream `master`. It is a perennial branch, `seriesb/000m-upstream-master`. |
 | `upstream_pr` | 767, 768 (absent for `fix-parent`) | |
 | `tracking` | `hobleyd/quickjs-poc`, `hobleyd/quickjs-default` | an `upstream` parent's tip must equal its tracking branch |
 | `head` | PR head the parent mirrors at the last build or sync | |
