@@ -234,8 +234,13 @@ description file and verification record it names exists, and every base chains 
   descriptions MUST follow the old step's, edited only where the new base changes what the step
   does.
 - **FR-007**: The last step's tree MUST equal the recorded `develop` commit's tree, apart from the
-  manifest's exclusions. Each exclusion carries a reason, and the old series' three exclusions are
-  the default.
+  manifest's exclusions and additions. Each carries a reason.
+  - Exclusions are what `develop` has and the series does not. The old series' three are the
+    default.
+  - Additions are paths #767/#768 add that the series keeps although `develop` lacks them, namely
+    upstream's stand-alone tools (`tools/js-parity/**`, `tools/oxp-upgrade/**`).
+
+  (Amended 2026-11-02 by the plan, research R5.)
 - **FR-008**: Every step MUST meet the old series' verification bar (feature 001 FR-003, FR-004,
   FR-005): it builds with no warnings under the project's flags; it builds with Clang, and with
   GCC wherever its parent does; unit and smoke pass; component scenarios pass where the step
@@ -281,8 +286,8 @@ description file and verification record it names exists, and every base chains 
 
 - **SC-001**: 100% of `seriesb` steps build and pass their recorded verification, and the series
   check exits 0.
-- **SC-002**: The last step's tree differs from `develop` only in listed exclusions (0 unlisted
-  paths).
+- **SC-002**: The last step's tree differs from `develop` only in listed exclusions and additions
+  (0 unlisted paths).
 - **SC-003**: The new series has no more steps than the old one (26 or fewer), and at least one
   old step (the old 003) is dropped or reduced to the delta that #767/#768 leave.
 - **SC-004**: All 27 `series/*` branches and `develop` point at the same commits before and after
@@ -312,14 +317,20 @@ Hard rule 8 and the agent contract say not to wait on a question, so each item b
 default that was taken.
 
 - **D1 – scripting layer (scope)**: the end tree stays `develop`, so the fork's engine façade and
-  its C++ scripting layer replace #768's QuickJS binding. Old steps 003 and 005 collapse into one
-  step placed where old 003 was, titled roughly "Put the QuickJS-ng binding behind the engine
-  façade". It holds only the delta between #768 and the fork's façade. *Why*: it keeps every
+  its C++ scripting layer replace #768's QuickJS binding. Old steps 003, 004 and 005 are each
+  replayed onto #768 as separate steps:
+  - the new 003 puts the game's JavaScript behind the façade in place of #768's binding;
+  - old 005 is dropped, or keeps only what #768 left undone.
+
+  (Amended 2026-11-02 by the plan, research R4. Collapsing 003 and 005 into one step would have
+  meant moving 004, which was cut on 003's tree.) *Why*: it keeps every
   verified result on `develop` meaningful and bounds the work to re-resolving known steps. The
   rejected alternative is to adopt upstream's binding as-is and port steps 004–026 onto it. The end
   tree would then no longer be `develop`, so that is a new migration and would need its own spec.
   The plan must measure this step's size. If it is not clearly smaller than old 003 + 005, the plan
-  records that as a finding for Jon.
+  records that as a finding for Jon. **Measured (plan R4): not smaller.** The replay gives 124
+  conflicted files and about 364 changed files, against 370 for old 002→005. The finding is
+  recorded, and the default stands.
 - **D2 – parent names**: `seriesb/000a-upstream-767-quickjs-option` and
   `seriesb/000b-upstream-768-quickjs-only` replace the sketch's `00-parent-spidermonkey` /
   `00-parent-remove-spidermonkey`. They sort before `001` and name the PR they mirror.

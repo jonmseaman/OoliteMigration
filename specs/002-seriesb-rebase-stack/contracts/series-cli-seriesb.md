@@ -1,0 +1,49 @@
+# Contract: `tools/series/series.py --series seriesb`
+
+This document lists only what changes against feature 001's contract
+(`specs/001-split-migration-prs/contracts/series-cli.md`). Exit codes are the same: `0` success,
+`1` a check or verification failed, `2` usage or environment error.
+
+## Global option
+
+`--series {series,seriesb}` (default `series`) selects the profile:
+
+| Profile | Branch prefix | Series dir | Root | Source types |
+|---|---|---|---|---|
+| `series` | `series/` | `specs/001-split-migration-prs/series/` | `series/000-upstream-base` | history, hoisted, tail |
+| `seriesb` | `seriesb/` | `specs/002-seriesb-rebase-stack/series/` | last parent | replay |
+
+Without the option, every command behaves byte-for-byte as before. Feature 001's tool tests pass
+unchanged.
+
+## Never
+
+The tool never pushes, and never touches `develop`, `master`, `main` or any `series/*` branch under
+the `seriesb` profile. It never runs `git town sync` itself: syncing is Jon's command, or an
+agent's under research R2's flags. It never reads expansion content. `tools/js-parity/` holds an
+OXP; the tool treats that path as opaque.
+
+## New and changed commands (profile `seriesb`)
+
+| Command | Does | Exit 0 when |
+|---|---|---|
+| `parents [--setup] [--refresh]` | `--setup`: adds remote `hobleyd` (fetch only the two PR branches), creates the parent branches at their tracking heads, sets Git Town lineage (`000a`→`develop`, `000b`→`000a`), and marks them observed. `--refresh`: fetches and records the current heads. Without flags: reports each parent's tip, tracking head and gate. | every parent tip equals its tracking head |
+| `gate <parent>` | Runs the parent's verification (research R6) and sets `gate` to `pass`, or to `flagged` with the failing checks. | gate is `pass` |
+| `cut --replay [--from-old a] [--to-old b]` | Writes one `planned` replay step per old step, in order, from the old manifest. Titles and descriptions start from the old ones. | manifest written |
+| `tree <n>` | As before, with a replay source: base = old parent tree, ours = new parent tree, theirs = old step tree (research R3). `--show`/`--record` as before, into `series/resolutions/NNN/`. Also accepts `--rule theirs --paths GLOB…` to resolve every conflict under those paths to the old step's side, recorded as `theirs-rule` with a reason. | no unresolved conflicts |
+| `drop <n> --covered-by PR --reason TEXT` | Moves step *n* to `dropped` when its tree equals its parent's. | the trees are equal |
+| `build` | As before. Refuses while any parent's gate is not `pass`. Refuses to reset a step with commits after `build_commit` unless `--reset`. | steps built |
+| `sync-record [--conflict STEP:PATH:REASON …]` | After a sync, records parent heads before and after and the hand-resolved conflicts, and marks every step `stale`. | record written |
+| `check [--verified]` | Rules 1–7 in `data-model.md`. | all hold |
+| `describe` / `describe --handover` | As before. Descriptions name the old step and list `differs_from_old`. The handover lists the parents (PR, head, gate), every step, push commands for `seriesb/*` steps only (parents are upstream's), fork dry-run PRs against each step's parent, and the sync command (research R2). | every required section present |
+| `renumber` | As before, for the `seriesb/` prefix. | `check` passes afterwards |
+
+## Files
+
+```text
+specs/002-seriesb-rebase-stack/series/
+├── manifest.json        # data-model.md
+├── resolutions/NNN/     # as feature 001, keyed by the replay's three input blobs
+├── pr/NNN-slug.md       # one description per step
+└── HANDOVER.md          # generated
+```
