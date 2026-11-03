@@ -378,6 +378,9 @@ sources outside the replayed trees.
   - Default, recorded here and applied in verification: a step's warnings check counts only
     warnings that its parent's build does not have. The parent's are listed, never silenced (hard
     rule 2), and a warning the step adds still fails it.
+- T030 (2026-11-03): n/a: no upstream change since T009 (`$S parents` after `git fetch hobleyd`:
+  PR #767 head `3758f8a09b`, PR #768 head `db49201034`, both equal to the parents' tips). The sync
+  procedure stays covered by T026's fixture test.
 - T009 (2026-11-02): parents set up in `oolite-dev`: `000a` = `3758f8a09`, `000b` = `db4920103` (unchanged
   since the baseline), observed, under `develop`. The remote `hobleyd` has `pushurl no-push`. The planning
   refs `refs/upstream-pr/*` are deleted.

@@ -355,7 +355,7 @@ recorded.
 
   Do this before verification, so that nothing is verified twice. Accept: `$S check --only
   final-tree` exits 0.
-- [ ] T023 [US3] Verify the Objective-C-era steps: `$S verify --from 1 --to <last objc step>` in
+- [X] T023 [US3] Verify the Objective-C-era steps: `$S verify --from 1 --to <last objc step>` in
   the isolated MSYS2.
   - On a failure, fix the step's resolution (never a test; hard rule 1), rebuild from that step,
     and re-verify from it.
@@ -364,7 +364,7 @@ recorded.
     failing check and log), and record it in plan.md's Notes.
 
   Accept: `$S check --verified --steps 1-<last objc step>` exits 0.
-- [ ] T024 [US3] Verify the C++-era steps: `$S verify --from <first cxx step>` in Jon's MSYS2,
+- [X] T024 [US3] Verify the C++-era steps: `$S verify --from <first cxx step>` in Jon's MSYS2,
   handling failures as in T023. Accept: `$S check --verified` exits 0.
 - [X] T025 [US3] Spot-check hard rule 1 across the stack. For each step, `git diff --name-status
   <parent> <step> -- tests/` must show no `M`/`D` of a test that exists in the parent unless the
@@ -425,7 +425,7 @@ has an entry.
 
   Link it from `docs/README.md`. Accept: `grep -q 'series-sync.md' docs/README.md && grep -q
   -- '--detached --no-push' docs/series-sync.md`.
-- [ ] T030 [US4] Rehearse a sync, but only if upstream's `quickjs-poc` or `quickjs-default` has
+- [X] T030 [US4] Rehearse a sync, but only if upstream's `quickjs-poc` or `quickjs-default` has
   moved since T009 (check with `git -C oolite-dev fetch hobleyd` and `$S parents`).
   - If they moved, follow `docs/series-sync.md` on the real stack, then run `$S sync-record`,
     re-verify, and update the Notes.
