@@ -458,3 +458,11 @@ sources outside the replayed trees.
   the fork's older form (the joystick managers: 002 equals upstream with #742/#748/#749, and old
   step 018 ports them forward again). If trimmed, 004 is redone on the trimmed 003 (rerere keeps
   its resolutions).
+- **Jon, 2026-11-03: keep recent upstream PRs in every step.** No step may take code that upstream
+  changed in `dc55e3e05..7437f22a5` (#369–#765, #766, #774, #780, #781: everything between the
+  fork's branch point and #767/#768's base, all already in 002) back to the fork's older form. A
+  replayed hunk that does so is dropped, or, where the step must change that code (Objective-C++,
+  Foundation → oofnd, C++), the change is made on upstream's version. Tests are added where a kept
+  upstream change has none, at the first step whose test suites can reach the code. Old steps 018
+  and 023 then shrink to whatever port is still needed. Step 003 is trimmed first, then 004 is redone
+  on it.
