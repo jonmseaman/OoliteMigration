@@ -75,7 +75,7 @@ its parent's tree (FR-005).
 
 ## State
 
-A parent goes from `planned` to `mirrored`, then `verified` (gate `pass`) or `flagged`. A flagged
+A parent goes from `planned` to `mirrored`, then `verified` (gate `pass`) or `flagged`. A parent becomes `retired` after `parents --retire` (FR-011a). A flagged
 parent becomes `pass` only through a Notes decision (`waived`), or Jon adds a `fix-parent` that
 passes.
 
@@ -90,8 +90,8 @@ A step goes `planned` → `built` → `verified`. A sync puts every step back to
    whose other parent is an ancestor of the parent's tip.
 4. No `seriesb` branch contains any commit of `develop` that is not in upstream `master` or in a
    parent (FR-003).
-5. Every `series/*` branch and `develop` is at the commit the old manifest and anchors record
-   (FR-009).
+5. Every `series/*` branch, `develop` and `master` is at the commit recorded in
+   `series/baseline.json`, which is written before any branch is created (FR-009).
 6. The final tree equals `develop_target`'s tree, modulo `exclusions` and `additions` (FR-007).
 7. With `--verified`: every parent's gate is `pass`, and every step's verification passes and is
    current after the latest sync.
