@@ -1603,10 +1603,37 @@
     "old_step": 16,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "3b21f892720e1f68522dea040dff231c548d91e4",
    "title": "Delete the Objective-C facades",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core",
+     "warnings_clang": "pass: 0 new warnings (6 inherited from the parent, 2 listed in test-warnings.md)"
+    },
+    "clean": false,
+    "commit": "ee94df4a1bd67fd9f4845094e67ca5c617bf5eda",
+    "date": "2026-11-03",
+    "era": "objc-quickjs",
+    "tree": "3b21f892720e1f68522dea040dff231c548d91e4",
+    "warning_keys": [
+     "tests/unit/core/test_OOJSConsole.mm: warning: unused variable 'sEntityProto' [-Wunused-variable]",
+     "tests/unit/core/test_OOJSShipGroup.mm: warning: variable 'sFinalized' set but not used [-Wunused-but-set-global]",
+     "tests/unit/core/test_OOJSWormhole.mm: warning: variable 'sFinalized' set but not used [-Wunused-but-set-global]",
+     "tests/unit/core/test_OOMaterialConvenienceCreators.mm: warning: expression with side effects will be evaluated despite being used as an operand to 'typeid' [-Wpotentially-evaluated-expression]",
+     "tests/unit/core/test_Universe.mm: warning: implicit conversion from constant value 2 to 'BOOL'; the only well defined values for 'BOOL' are YES and NO [-Wobjc-bool-constant-conversion]",
+     "tests/unit/core/test_Universe.mm: warning: implicit conversion from constant value 7 to 'BOOL'; the only well defined values for 'BOOL' are YES and NO [-Wobjc-bool-constant-conversion]"
+    ]
+   }
   },
   {
    "branch": "seriesb/015-entity-facade",
@@ -1638,10 +1665,32 @@
     "old_step": 17,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "e7e612298cdfc161d6b33d710e1c84cdb5d3b561",
    "title": "Delete the root Entity facade",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core",
+     "warnings_clang": "pass: 0 new warnings (1 inherited from the parent)"
+    },
+    "clean": false,
+    "commit": "850be031b55f8234828b924a4e1fc365e800c2ef",
+    "date": "2026-11-03",
+    "era": "objc-quickjs",
+    "tree": "e7e612298cdfc161d6b33d710e1c84cdb5d3b561",
+    "warning_keys": [
+     "tests/unit/core/test_OOJSShipGroup.mm: warning: variable 'sFinalized' set but not used [-Wunused-but-set-global]"
+    ]
+   }
   },
   {
    "branch": "seriesb/016-objc-runtime-out",
@@ -1674,10 +1723,32 @@
     "old_step": 18,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "33aa757bb2fee834e38ef1e5c93b9a020b28773a",
    "title": "Remove the Objective-C runtime and rename the sources to .cpp",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core",
+     "warnings_clang": "pass: 0 new warnings (0 inherited from the parent, 1 listed in test-warnings.md)"
+    },
+    "clean": true,
+    "commit": "1cfe5a027e8a317725ae32801443d9bd673504d4",
+    "date": "2026-11-03",
+    "era": "cxx",
+    "tree": "33aa757bb2fee834e38ef1e5c93b9a020b28773a",
+    "warning_keys": [
+     "tests/unit/core/test_OOJSShipGroup.cpp: warning: variable 'sFinalized' set but not used [-Wunused-but-set-global]"
+    ]
+   }
   },
   {
    "branch": "seriesb/017-gcc-build",
@@ -1709,10 +1780,32 @@
     "old_step": 19,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "9622719e0f3dcee0b7ae6a0a54a7d566866e6c09",
    "title": "Build with GCC as well as Clang",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core",
+     "warnings_clang": "pass: 0 new warnings (1 inherited from the parent)"
+    },
+    "clean": false,
+    "commit": "db43363c083e70c144721db09f3fab3ef872fa51",
+    "date": "2026-11-03",
+    "era": "cxx",
+    "tree": "9622719e0f3dcee0b7ae6a0a54a7d566866e6c09",
+    "warning_keys": [
+     "tests/unit/core/test_OOJSShipGroup.cpp: warning: variable 'sFinalized' set but not used [-Wunused-but-set-global]"
+    ]
+   }
   },
   {
    "branch": "seriesb/018-upstream-9ee8ff22f-port",
@@ -1744,10 +1837,30 @@
     "old_step": 20,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "376ff6df2358c08142dc76726fc402b031beab21",
    "title": "Port upstream changes #369 to #765 into the C++ code",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "d8571adf65f8f848241639c1d9cd9d3821cf65fb",
+    "date": "2026-11-03",
+    "era": "cxx",
+    "tree": "376ff6df2358c08142dc76726fc402b031beab21",
+    "warning_keys": []
+   }
   },
   {
    "branch": "seriesb/019-develop-fixes",
@@ -1771,10 +1884,30 @@
     "old_step": 21,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "3ec92d250331b3c54c0f6a8e1135c1bb2f59899e",
    "title": "Small fixes after the migration",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "pass: s6_damaged_ship_flees",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core, headers",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "a83f7ad7204a073a1dfce8d51adfaa7689c89dbc",
+    "date": "2026-11-03",
+    "era": "cxx",
+    "tree": "3ec92d250331b3c54c0f6a8e1135c1bb2f59899e",
+    "warning_keys": []
+   }
   },
   {
    "branch": "seriesb/020-source-hygiene",
@@ -1798,10 +1931,30 @@
     "old_step": 22,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "b5b1a6f19e262cc679ba4b86d313ff7d2fe72ae2",
    "title": "Make comments describe the code; use #pragma once",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core, headers",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "4d85d7996ecf9b6cd814892c63dfde0adc130d7b",
+    "date": "2026-11-03",
+    "era": "cxx",
+    "tree": "b5b1a6f19e262cc679ba4b86d313ff7d2fe72ae2",
+    "warning_keys": []
+   }
   },
   {
    "branch": "seriesb/021-tests-and-tooling",
@@ -1825,10 +1978,30 @@
     "old_step": 23,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "775aa2855fef562cae3b83f0efecb70032f0f010",
    "title": "Tests and developer tooling",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships, t1_tutorial_walkthrough",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core, headers",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "f00dd009d6f5bb16c50c1b98d54d3b3bab6ba13c",
+    "date": "2026-11-03",
+    "era": "cxx",
+    "tree": "775aa2855fef562cae3b83f0efecb70032f0f010",
+    "warning_keys": []
+   }
   },
   {
    "branch": "seriesb/022-c-as-cxx",
@@ -1852,10 +2025,30 @@
     "old_step": 24,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "b2c927c62809c24997f46ae504ebdcb23cff7426",
    "title": "Compile the remaining C sources as C++; upgrade QuickJS-ng",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships, t1_tutorial_walkthrough",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core, headers",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "f518b81af8252921a134867d0e3ebfd810098a19",
+    "date": "2026-11-03",
+    "era": "cxx",
+    "tree": "b2c927c62809c24997f46ae504ebdcb23cff7426",
+    "warning_keys": []
+   }
   },
   {
    "branch": "seriesb/023-upstream-49a5eb9fc-ports",
@@ -1879,10 +2072,30 @@
     "old_step": 25,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "fd18dfe5afa5c3a10077c2ca945e786826957df0",
    "title": "Port upstream #766, #774 and #781",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core, headers",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "3ff38673202b24aa64ca645b497f74370961059f",
+    "date": "2026-11-03",
+    "era": "cxx",
+    "tree": "fd18dfe5afa5c3a10077c2ca945e786826957df0",
+    "warning_keys": []
+   }
   },
   {
    "branch": "seriesb/024-google-style-format",
@@ -1906,10 +2119,30 @@
     "old_step": 26,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "1480777d86b241cc9143e817c85a13635717b56f",
    "title": "Reformat with Google-style clang-format (optional)",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "n/a: the reformat step changes the style; upstream's check follows it",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core, headers",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "29f6d6dead62894c17e89259cf8e2bad412a9008",
+    "date": "2026-11-03",
+    "era": "cxx",
+    "tree": "1480777d86b241cc9143e817c85a13635717b56f",
+    "warning_keys": []
+   }
   }
  ],
  "syncs": []
