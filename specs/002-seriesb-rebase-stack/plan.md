@@ -448,3 +448,13 @@ sources outside the replayed trees.
   target has none of the SpiderMonkey files, so later steps' deletions of them become no-ops; any
   remaining `develop`-only difference surfaces at T055's final-tree check and is placed then.
   Replays of 004–024 run `find_reverts.py` on each step for the same reason.
+- **Step 004 replayed (2026-11-03): `6f1c77819` on `seriesb/004-oofnd-core`**, on new 003
+  (`51a1ac527`). 7 conflicts; façade-only work (the watchdog thread, `MOZ_TRACE_JSCALLS` callbacks,
+  `ConsoleDumpNamedRoots`, the façade `OOJSDumpStack`) dropped as having no purpose on #768; the
+  step's Foundation changes (`@autoreleasepool`, `OOJSCall` signature matching) redone on #768's
+  code. No ledger rows. Build rc=0 (only the parent's `-pthread` warning), oofnd 20/20, smoke
+  passes with no leaked JS objects. Open with Jon: whether to trim step 003 to renames, the
+  Objective-C++ switch and the fixes it requires, dropping hunks that take upstream code back to
+  the fork's older form (the joystick managers: 002 equals upstream with #742/#748/#749, and old
+  step 018 ports them forward again). If trimmed, 004 is redone on the trimmed 003 (rerere keeps
+  its resolutions).
