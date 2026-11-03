@@ -106,6 +106,10 @@ def validate(m):
             last_old = old
         if manifest_mod.BOOKKEEPING_RE.search(s.get("title") or ""):
             out.append(f"rule 1: step {n} title carries a bead id or ADR number")
+    for f in m.get("folded", []):
+        if not f.get("old_steps") or not f.get("into_old_step") or not str(f.get("reason") or "").strip():
+            out.append(f"rule 1: folded entry {f.get('old_steps')!r} -> {f.get('into_old_step')!r} lacks old steps, "
+                       "a target or a reason")
     for d in m.get("dropped", []):
         missing = [k for k in ("old_step", "old_branch", "reason", "covered_by") if not d.get(k)]
         if missing:

@@ -346,7 +346,7 @@ def unit_suites(repo, tree):
 
 
 def verify_step(repo, step, parent_tree, parent_record, clean=False, integrity=None, inherited=None,
-                listed_n=None):
+                listed_n=None, component_attempts=1):
     """Run the step's matrix; returns its verification record. With `inherited` (seriesb), warnings
     are counted against the parent's; `listed_n` is the step number test-warnings.md is keyed by."""
     branch = step["branch"]
@@ -394,9 +394,18 @@ def verify_step(repo, step, parent_tree, parent_record, clean=False, integrity=N
             checks[check] = "fail: not run, the build failed"
             continue
         r = runner()
+        failed_first = 0
+        if check == "component":
+            # seriesb: a scenario known to be intermittent (s1 fails about 1 run in 5 on series/ too)
+            # gets further attempts; the record says how many failed (plan.md Notes)
+            while r != 0 and failed_first + 1 < component_attempts:
+                failed_first += 1
+                r = runner()
         checks[check] = "pass" + (f": {', '.join(suites)}" if check == "unit" else
                                   f": {', '.join(scenarios)}" if check == "component" else "") if r == 0 \
             else f"fail: exit {r} (see {os.path.relpath(log(check), ROOT)})"
+        if failed_first:
+            checks[check] += f" ({failed_first} earlier attempt(s) failed; see the log)"
     if integrity:
         checks.update(integrity)
     record = {"commit": commit, "tree": tree, "era": step_era, "date": datetime.date.today().isoformat(),

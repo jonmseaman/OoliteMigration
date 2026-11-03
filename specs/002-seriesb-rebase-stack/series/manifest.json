@@ -124,10 +124,37 @@
     "old_step": 1,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "def24e11d46974272d6f7b9ee2e84046f14df100",
    "title": "Let OO_RANDOM_SEED pin the random seed",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "n/a: the tree has no unit suites",
+     "warnings_clang": "pass: 0 new warnings (6 inherited from the parent)"
+    },
+    "clean": true,
+    "commit": "ebd84f7c406539e3d172ff40a903368031dec12b",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "def24e11d46974272d6f7b9ee2e84046f14df100",
+    "warning_keys": [
+     "clang++: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
+     "clang: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCString' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringRT' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringRT_UTF16' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringUTF16' should not return void expression [-Wpedantic]"
+    ]
+   }
   },
   {
    "branch": "seriesb/002-safety-net",
@@ -175,10 +202,37 @@
     "old_step": 2,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "015850d16f1e44ae27079be0d8ecb1541a2e3843",
    "title": "Add a test safety net: deterministic runs, GUI and component tests",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships (1 earlier attempt(s) failed; see the log)",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "n/a: the tree has no unit suites",
+     "warnings_clang": "pass: 0 new warnings (6 inherited from the parent)"
+    },
+    "clean": false,
+    "commit": "b5602101cd204f5ec3905d411fb33ad0e06e2ca7",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "015850d16f1e44ae27079be0d8ecb1541a2e3843",
+    "warning_keys": [
+     "clang++: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
+     "clang: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCString' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringRT' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringRT_UTF16' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringUTF16' should not return void expression [-Wpedantic]"
+    ]
+   }
   },
   {
    "branch": "seriesb/003-js-facade",

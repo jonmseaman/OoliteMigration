@@ -60,9 +60,12 @@ def cut(repo, m, old_m):
     already planned (matched by old step)."""
     have = {s["source"]["old_step"]: s for s in m.get("steps", [])}
     dropped = {d["old_step"] for d in m.get("dropped", [])}
+    folded = {n for f in m.get("folded", []) for n in f["old_steps"]}
+    into = {f["into_old_step"]: f for f in m.get("folded", [])}
+    by_n = {o["n"]: o for o in old_m["steps"]}
     steps = []
     for o in old_m["steps"]:
-        if o["n"] in dropped:
+        if o["n"] in dropped or o["n"] in folded:
             continue
         n = len(steps) + 1
         slug = slug_of(o["branch"])
@@ -73,7 +76,15 @@ def cut(repo, m, old_m):
              "description": f"series/pr/{n:03d}-{slug}.md",
              "source": {"type": "replay", "old_step": o["n"], "old_branch": o["branch"],
                         "old_commit": _git(repo, "rev-parse", f"refs/heads/{o['branch']}")}}
-        keep = prev.get("branch") == s["branch"] and prev.get("source", {}).get("old_commit") == s["source"]["old_commit"]
+        f = into.get(o["n"])
+        if f:
+            first = by_n[min(f["old_steps"])]
+            s["source"]["old_steps"] = sorted(f["old_steps"]) + [o["n"]]
+            s["source"]["old_from_commit"] = _git(repo, "rev-parse", f"refs/heads/{first['branch']}")
+            if f.get("title"):
+                s["title"] = prev.get("title") if prev.get("title") and prev.get("title") != o["title"] else f["title"]
+        keep = (prev.get("branch") == s["branch"] and prev.get("source", {}).get("old_commit") == s["source"]["old_commit"]
+                and prev.get("source", {}).get("old_steps") == s["source"].get("old_steps"))
         for k in STATE_FIELDS:
             s[k] = prev.get(k) if keep and k in prev else ([] if k in ("resolutions", "rules", "differs_from_old")
                                                           else {} if k == "reasons" else None)
@@ -101,7 +112,8 @@ def parent_tree(repo, m, step):
 def inputs(repo, m, step):
     """(base, ours, theirs) trees of the step's replay merge."""
     old = step["source"]["old_commit"]
-    return (_git(repo, "rev-parse", f"{old}~1^{{tree}}"), parent_tree(repo, m, step),
+    first = step["source"].get("old_from_commit") or old
+    return (_git(repo, "rev-parse", f"{first}~1^{{tree}}"), parent_tree(repo, m, step),
             _git(repo, "rev-parse", f"{old}^{{tree}}"))
 
 
@@ -155,6 +167,33 @@ def _apply_rules(repo, step, base, ours, theirs, rdir):
             f.write(json.dumps(index, indent=1, sort_keys=True) + "\n")
 
 
+def fold(repo, m, old_m, first_old, into_old, title, reason):
+    """Fold old steps first_old..into_old-1 into the step for into_old: one seriesb step whose change
+    is the whole range's. Re-cuts the plan."""
+    if not (0 < first_old < into_old):
+        raise SystemExit("fold: the range must name at least two old steps")
+    if not str(reason or "").strip():
+        raise SystemExit("fold: give a reason")
+    m.setdefault("folded", [])
+    m["folded"] = [f for f in m["folded"] if f["into_old_step"] != into_old]
+    m["folded"].append({"old_steps": list(range(first_old, into_old)), "into_old_step": into_old, "reason": reason})
+    for s in m.get("steps", []):
+        if s["source"]["old_step"] == into_old:
+            s["title"] = title
+    cut(repo, m, old_m)
+    for s in m["steps"]:
+        if s["source"]["old_step"] == into_old:
+            s["title"] = title
+    return m
+
+
+def take_old(step, keep, reason):
+    """The step's tree is its old step's tree whole, with the `keep` globs as the parent has them."""
+    if not str(reason or "").strip():
+        raise SystemExit("take-old: give a reason")
+    step["take_old"] = {"keep": list(keep), "reason": reason}
+
+
 def rule_reason(step, path):
     for r in step.get("rules", []):
         if _matches(path, r["paths"]):
@@ -167,9 +206,13 @@ def compute(repo, m, step, series_dir):
     a changed tree invalidates later steps' trees."""
     rdir = res_dir(series_dir, step)
     base, ours, theirs = inputs(repo, m, step)
-    _apply_rules(repo, step, base, ours, theirs, rdir)
     report = []
-    tree, conflicts = trees.target_tree(repo, base, ours, theirs, rdir, report=report)
+    if step.get("take_old"):
+        # the old step's tree whole, with the kept paths as the parent has them (research R4)
+        tree, conflicts = trees.take_paths(repo, theirs, ours, step["take_old"]["keep"]), []
+    else:
+        _apply_rules(repo, step, base, ours, theirs, rdir)
+        tree, conflicts = trees.target_tree(repo, base, ours, theirs, rdir, report=report)
     globs = rule_globs(step)
     report = [(p, "theirs-rule" if how == "stored" and _matches(p, globs) else how) for p, how in report]
     if tree is None:
@@ -221,7 +264,9 @@ def differs(repo, m, step):
     """[{path, reason}] where this step's change differs from its old step's change (SC-006).
     A reason is None when nothing explains the difference."""
     old = step["source"]["old_commit"]
-    old_parent, old_tree = _git(repo, "rev-parse", f"{old}~1^{{tree}}"), _git(repo, "rev-parse", f"{old}^{{tree}}")
+    first = step["source"].get("old_from_commit") or old
+    old_parent, old_tree = _git(repo, "rev-parse", f"{first}~1^{{tree}}"), _git(repo, "rev-parse", f"{old}^{{tree}}")
+    took = step.get("take_old")
     new_parent, new_tree = parent_tree(repo, m, step), step["target_tree"]
     a, b = _changes(repo, old_parent, old_tree), _changes(repo, new_parent, new_tree)
     res = {r["path"]: r for r in step.get("resolutions", [])}
@@ -234,7 +279,9 @@ def differs(repo, m, step):
             continue
         if ca and cb and _hunks(repo, *ca) == _hunks(repo, *cb):
             continue
-        if p in res:
+        if took and not _matches(p, took["keep"]):
+            why = f"the step takes the old step's tree whole: {took['reason']}"
+        elif p in res:
             r = res[p]
             why = f"conflict resolved ({r['how']})" + (f": {r['reason']}" if r.get("reason") else "")
         elif any(fnmatch.fnmatchcase(p, g) for g, _ in adds):

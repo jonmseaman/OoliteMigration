@@ -173,6 +173,24 @@ sources outside the replayed trees.
   2. Sync fetches only `origin`, and a force-pushed PR branch makes the observed rebase replay
      upstream's dropped commits. So `parents --refresh` (fetch `hobleyd`, then `update-ref` each
      parent to its tracking ref) runs before every sync.
+- T017 (2026-11-02): **old 003–005 fold into one step 003**, which is old 005's tree plus
+  `tools/js-parity/**` and `tools/oxp-upgrade/**`.
+  - Why: replaying old 003 alone reverts #768's removal of SpiderMonkey, and #780's engine-neutral
+    names (dropped by `develop` when it merged #780) would not compile against the façade.
+  - The spec's D1, research R4 and the data model are amended.
+  - The rejected alternative replays old 004 (the Objective-C++ rename) onto #768 first: a separate
+    rename step, but new, unverified resolutions in #768's binding and meson files. Jon can ask for
+    it.
+- Found at the step 2 verification (2026-11-02): component scenario `s1_police_kills_pirate` is
+  **intermittent**.
+  - Over 5 runs on the old `series/002-safety-net` (SpiderMonkey), 1 fails, at the 900-tick
+    timeout. On seriesb step 2 (#768, QuickJS-ng), 2 of 5 runs fail.
+  - When it passes, the police engage the pirate within about 5 s. When it fails, they never do in
+    112 s.
+  - It is not from #768, and the test is not changed (hard rule 1).
+  - Default: seriesb verification retries a failed component run up to twice and records the
+    failed attempts. The scenario's reliability is for Jon (a candidate fix belongs in the safety
+    net, not here).
 - T011 (2026-11-02), gate G1 passes for both parents, in the isolated MSYS2
   (`.agent-tmp/msys2-objc`), with logs in `.agent-tmp/seriesb-verify/gate-*.log`.
   - `000a` (#767): its CI's Windows matrix, `./mk.sh build deployment` and `./mk.sh test deployment`

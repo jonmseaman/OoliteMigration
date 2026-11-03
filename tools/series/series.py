@@ -11,7 +11,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-COMMANDS = ("inventory", "cut", "hoist", "tree", "build", "verify", "describe", "check", "renumber", "parents", "gate", "drop")
+COMMANDS = ("inventory", "cut", "hoist", "tree", "build", "verify", "describe", "check", "renumber", "parents", "gate", "drop", "fold")
 
 
 def parser():
@@ -36,6 +36,8 @@ def parser():
     t.add_argument("--reason", help="seriesb: why the recorded resolution (or rule) is right")
     t.add_argument("--rule", choices=("theirs",), help="seriesb: resolve conflicts under --paths to the old step's side")
     t.add_argument("--paths", nargs="+", metavar="GLOB", help="seriesb: the globs a --rule covers")
+    t.add_argument("--take-old", action="store_true", help="seriesb: the old step's tree whole, but --keep")
+    t.add_argument("--keep", nargs="+", metavar="GLOB", default=[], help="seriesb: with --take-old, paths kept as the parent has them")
     b = sub.add_parser("build", help="create or reset step branches")
     b.add_argument("steps", nargs="*", type=int)
     b.add_argument("--from", dest="from_", type=int)
@@ -55,6 +57,11 @@ def parser():
     k.add_argument("--only")
     k.add_argument("--steps")
     sub.add_parser("renumber", help="renumber branches and files after inserting or removing a step")
+    fo = sub.add_parser("fold", help="seriesb: fold a range of old steps into one step (research R4)")
+    fo.add_argument("first_old", type=int, help="the first old step folded in")
+    fo.add_argument("into_old", type=int, help="the old step the range folds into (its last)")
+    fo.add_argument("--title", required=True)
+    fo.add_argument("--reason", required=True)
     dr = sub.add_parser("drop", help="seriesb: drop a step whose replayed tree is its parent's (FR-005)")
     dr.add_argument("n", type=int)
     dr.add_argument("--covered-by", type=int, required=True, help="the upstream PR that covers it")
@@ -802,7 +809,7 @@ def cmd_verify_replay(args):
         try:
             record = verify.verify_step(GAME, step, replay.parent_tree(GAME, m, step), prec, clean=clean,
                                         integrity=checks, inherited=prec.get("warning_keys", []),
-                                        listed_n=step["source"]["old_step"])
+                                        listed_n=step["source"]["old_step"], component_attempts=3)
         finally:
             verify.TEST_WARNINGS = saved
         record["after_sync"] = len(m.get("syncs", []))
@@ -1277,6 +1284,12 @@ def cmd_tree_replay(args):
     step = _replay_step(m, args.n)
     scratch = os.path.join(RESOLVE_SCRATCH, f"{step['n']:03d}")
     rdir = replay.res_dir(SERIES_DIR, step)
+    if args.take_old:
+        if not args.reason:
+            print("tree: --take-old needs --reason", file=sys.stderr)
+            return 2
+        replay.take_old(step, args.keep, args.reason)
+        manifest.save(MANIFEST, m)
     if args.rule:
         if not args.paths or not args.reason:
             print("tree: --rule needs --paths and --reason", file=sys.stderr)
@@ -1364,6 +1377,23 @@ def cmd_build_replay(args):
     return 0
 
 
+def cmd_fold(args):
+    from tools.series import manifest, replay, seriesb
+    m = load_manifest()
+    for s in m["steps"]:
+        built = replay._sha(GAME, f"refs/heads/{s['branch']}")
+        if args.first_old <= s["source"]["old_step"] < args.into_old and built:
+            raise SystemExit(f"fold: {s['branch']} is built; a built step is not folded")
+    replay.fold(GAME, m, _old_manifest(m), args.first_old, args.into_old, args.title, args.reason)
+    problems = seriesb.validate(m)
+    if problems:
+        print("fold: manifest invalid:\n  " + "\n  ".join(problems), file=sys.stderr)
+        return 1
+    manifest.save(MANIFEST, m)
+    print(f"fold: old steps {args.first_old}-{args.into_old} are one step; {len(m['steps'])} steps")
+    return 0
+
+
 def cmd_drop(args):
     from tools.series import manifest, replay
     m = load_manifest()
@@ -1371,7 +1401,7 @@ def cmd_drop(args):
     manifest.save(MANIFEST, m)
     print(f"drop: step {args.n} dropped; {len(m['steps'])} steps, renumbered")
     return 0
-SERIESB_ONLY = ("parents", "gate", "drop")
+SERIESB_ONLY = ("parents", "gate", "drop", "fold")
 GATE_WORKTREE = os.path.join(ROOT, ".agent-tmp", "seriesb-gate")
 GATE_LOGS = os.path.join(ROOT, ".agent-tmp", "seriesb-verify")
 
@@ -1429,7 +1459,7 @@ def cmd_parents(args):
         return 1
     return 1 if problems else 0
 
-HANDLERS = {"drop": cmd_drop, "gate": cmd_gate, "parents": cmd_parents, "inventory": cmd_inventory, "cut": cmd_cut, "hoist": cmd_hoist, "renumber": cmd_renumber, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
+HANDLERS = {"fold": cmd_fold, "drop": cmd_drop, "gate": cmd_gate, "parents": cmd_parents, "inventory": cmd_inventory, "cut": cmd_cut, "hoist": cmd_hoist, "renumber": cmd_renumber, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
 
 
 def main(argv=None):

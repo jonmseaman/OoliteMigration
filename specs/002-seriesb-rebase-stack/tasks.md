@@ -292,7 +292,10 @@ recorded.
   3. Run `$S build n`.
 
   Accept: `$S check --only lineage,branches,differs --steps 1-2` exits 0.
-- [ ] T017 [US2] Replay old 003 as the new 003, "Put the game's JavaScript behind an engine façade,
+- [ ] T017 [US2] *(Changed at T017, 2026-11-02: see spec D1's second amendment and research R4.
+  Done as `fold 3 5 --title … --reason …`, then `tree 3 --take-old --keep 'tools/js-parity/**'
+  'tools/oxp-upgrade/**' --reason …`. The new 003 is old 005's tree plus the two tools, and T018's
+  separate old 004/005 replays no longer exist. The Accept command is unchanged.)* Replay old 003 as the new 003, "Put the game's JavaScript behind an engine façade,
   replacing the QuickJS-ng binding" (research R4).
   - Resolve the conflicts under `src/Core/Scripting/**` and the JavaScript files in
     `src/Core/Debug/**` with `--rule theirs`, reason "the fork's façade replaces #768's binding

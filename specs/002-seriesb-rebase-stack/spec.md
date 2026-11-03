@@ -327,7 +327,16 @@ default that was taken.
   - old 005 is dropped, or keeps only what #768 left undone.
 
   (Amended 2026-11-02 by the plan, research R4. Collapsing 003 and 005 into one step would have
-  meant moving 004, which was cut on 003's tree.) *Why*: it keeps every
+  meant moving 004, which was cut on 003's tree.)
+
+  **Amended again 2026-11-02 at T017, after building step 2.** Old 003 replayed on its own reverts
+  #768's removal of SpiderMonkey (old 003 still has it; old 005 removes it), so that step on top of
+  #768 is not reviewable. #780's engine-neutral names, which `develop` dropped when it merged #780,
+  would also stop compiling against the façade. So old 003, 004 and 005 fold into one new step
+  003. Its tree is old 005's tree whole, plus the two kept upstream tools (research R4, R5). The
+  later steps then replay cleanly. The rejected alternative replays old 004 (the Objective-C++
+  rename) onto #768 first: it keeps the rename separate, but needs new, unverified resolutions in
+  #768's binding and meson files. Jon can ask for it. *Why*: it keeps every
   verified result on `develop` meaningful and bounds the work to re-resolving known steps. The
   rejected alternative is to adopt upstream's binding as-is and port steps 004–026 onto it. The end
   tree would then no longer be `develop`, so that is a new migration and would need its own spec.

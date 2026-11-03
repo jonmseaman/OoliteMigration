@@ -58,6 +58,17 @@ manifest is never written by `--series seriesb` (FR-009).
 The other fields are as in feature 001: `title`, `description`, `kind` and `size`. `chapter` and
 `boundary_moved` are copied from the old step for the description and are informational only.
 
+## FoldedRange
+
+`{old_steps: [k, …], into_old_step: j, reason}` folds old steps k…j−1 into the step that replays
+old step j. That step's `source` gains `old_steps` (the whole range) and `old_from_commit` (the
+first folded old step's commit). Its merge base is that commit's parent tree (research R4).
+
+## Step policy: take_old
+
+`take_old: {keep: [glob, …], reason}` makes the step's tree its old step's tree whole, with the
+`keep` globs as the parent has them. It is reported in `differs_from_old` with the reason.
+
 ## DroppedStep
 
 `{old_step, old_branch, reason, covered_by: 767|768}`. Recorded when a replayed step's tree equals

@@ -115,6 +115,19 @@ Probe on top of #768 (`P1` = old 002's tree merged onto #768, base `49a5eb9fc`):
   - **Old 005**: replayed. Whatever #768 already did (removing SpiderMonkey) merges away. If its
     tree equals its parent's, it is dropped with `covered_by: 768`. Otherwise it keeps the
     remainder (expected: NSPR, the build switch, `install_deps.sh`) under a narrowed title.
+- **Superseded at T017 (2026-11-02)**, after step 2 was built and the step 3 conflicts were read:
+  - Old 003 on its own puts SpiderMonkey back on top of #768. Old 003 has a SpiderMonkey backend
+    beside QuickJS-ng; old 005 removes it.
+  - #780's engine-neutral names (`OOJSVal`, `OOJSPropID`, `OOJSFreeValue`, …) are defined in
+    `OOJavaScriptEngine.h` and `OOJSPropID.h` and used by #768's callers outside
+    `src/Core/Scripting`. Old 003's headers do not define them, and `develop` dropped them when it
+    merged #780 (no `OOJSVal` anywhere in `develop`).
+
+  So old 003–005 fold into one step 003 (`fold 3 5`), and its tree is old 005's tree whole, keeping
+  `tools/js-parity/**` and `tools/oxp-upgrade/**` from #768 (`tree 3 --take-old --keep …`). That
+  step removes everything #767/#768/#780 brought that `develop` lacks; R5's per-file table is the
+  same outcome. Steps 004 onward (old 006 onward) then merge with nothing but those two tools
+  differing.
 - **Amends** the spec's D1 wording ("collapse into one step placed where old 003 was"). That
   default needed 004 moved ahead of the façade, and old 004 was cut on top of 003's tree. The spec
   is updated to match.
