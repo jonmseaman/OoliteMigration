@@ -1,6 +1,6 @@
 # Oolite Feature Ideas
 
-Features that Frontier: Elite II (1993), Frontier: First Encounters (1995), Elite Dangerous and the later ports of the original Elite have and core Oolite doesn't, plus a modern UI and multiplayer. The details and sources for each game are in the feature references in this folder: [Elite (1984)](<Elite (1984) — Feature Reference.md>), [Frontier: Elite II and First Encounters](<Frontier Elite II and First Encounters — Feature Reference.md>), [Elite Dangerous](<Elite Dangerous — Feature Reference.md>) and [EVE Online](<EVE Online — Feature Reference.md>).
+Features that Frontier: Elite II (1993), Frontier: First Encounters (1995), Elite Dangerous and the later ports of the original Elite have and core Oolite doesn't, plus a modern UI and multiplayer. The details and sources for each game are in the feature references in this folder: [Elite (1984)](<Elite (1984) — Feature Reference.md>), [Frontier: Elite II and First Encounters](<Frontier Elite II and First Encounters — Feature Reference.md>), [Elite Dangerous](<Elite Dangerous — Feature Reference.md>) , [EVE Online](<EVE Online — Feature Reference.md>) and [X4: Foundations](<X4 Foundations — Feature Reference.md>).
 
 "Oolite today" describes the core game in `oolite-dev` (`Resources` and `src`), not expansions, so some of these may already exist as OXPs. Elite II and First Encounters together are "Frontier".
 
@@ -178,7 +178,7 @@ Definitely like the idea of the system map. This along with UI improvements woul
 
 Maybe I could make an Oolite LLM?
 
-Right click mouse and drag to rotate camera and look around like in EVE online. That would be cool. It would be cool to make an EVE Online feature reference as well as some of the other space games too. — written: [EVE Online](<EVE Online — Feature Reference.md>), and the mining and manufacturing career it suggests is sketched in [Mining and Manufacturing](<Mining and Manufacturing — Design Sketch.md>).
+Right click mouse and drag to rotate camera and look around like in EVE online. That would be cool. It would be cool to make an EVE Online feature reference as well as some of the other space games too. — written: [EVE Online](<EVE Online — Feature Reference.md>), and the mining and manufacturing career it suggests is sketched in [Mining and Manufacturing](<Mining and Manufacturing — Design Sketch.md>). [X4: Foundations](<X4 Foundations — Feature Reference.md>) is written too.
 
 I'm not sure how I get fuel. Maybe I could add that to the tutorial?
 
