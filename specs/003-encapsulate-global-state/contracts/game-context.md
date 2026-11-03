@@ -51,6 +51,15 @@ class OOMissingServiceException;         // what(): "no <TypeName> service in th
 ```
 
 Rules:
+- **The header stays small, to keep compiles fast.**
+  - `OOGameContext.h` includes only `oofnd/Ref.hpp`, `<typeindex>`, `<vector>`, `<optional>` and
+    `<cstdint>`.
+  - It forward-declares `Universe`, `PlayerEntity` and `OOGame`, and includes no service header.
+  - Adding a service never edits this file.
+  - There are no per-service accessors beyond the three hot members. Every other service uses
+    `get<T>()`, so `T` has to be complete only where it is called.
+  - Enforced by `test_OOGameContext`, which checks the header's `#include` list against this
+    allow-list.
 - A `T` passed to `set` derives from `oo::RefCounted`, which is enforced with a `static_assert`.
 - Universe and player are not registered through `set`. `OOGame` owns them and updates the hot
   members.

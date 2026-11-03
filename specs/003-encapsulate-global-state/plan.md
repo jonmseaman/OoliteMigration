@@ -227,6 +227,14 @@ These are also recorded in research.md, under the R item named.
 - **Cost of `UNIVERSE` through the bridge.** It is two loads instead of one. If the smoke run
   shows more than a 2% regression, the context's hot members are cached in `Entity` during M5,
   and that subsystem's conversion moves earlier.
+- **The context could become a header that drags in every service.** Per-service accessors would
+  make every file that includes the context pull in the whole game. The contract forbids them,
+  limits the header's includes to an allow-list, and a test enforces it
+  ([contracts/game-context.md](contracts/game-context.md)).
+  - **Opportunity:** today 96 files include `Universe.h` (25 includes of its own), and 57 include
+    `PlayerEntity.h`, mostly to reach the macros. M5 should replace those with forward
+    declarations where a file only needs the pointer.
+  - **Measure:** record the clean build time at M0 and at the end of M5. It must not grow.
 - **Determinism from systems not yet reviewed:** octree building, async completion order, and
   hash-map iteration order in `std::unordered_map` containers that the simulation walks. The
   100-run test in M4 exposes them, and each fix is its own bead.
