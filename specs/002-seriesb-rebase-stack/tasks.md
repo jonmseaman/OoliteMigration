@@ -486,7 +486,7 @@ has an entry.
 - [X] T034 Run quickstart.md end to end (sections 0–3; section 4 only if T030 ran a real sync), and
   correct quickstart.md and the contract wherever the tool differs. Accept: every command in
   quickstart.md sections 0–3 exits 0 as written.
-- [ ] T035 Final gate G4:
+- [X] T035 Final gate G4:
   - `python -m unittest discover -s tools/series/tests` passes;
   - `python -I tools/series/series.py check --verified` passes (the old series is untouched);
   - `$S check --verified` passes;

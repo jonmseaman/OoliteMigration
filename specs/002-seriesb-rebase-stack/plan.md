@@ -378,6 +378,9 @@ sources outside the replayed trees.
   - Default, recorded here and applied in verification: a step's warnings check counts only
     warnings that its parent's build does not have. The parent's are listed, never silenced (hard
     rule 2), and a warning the step adds still fails it.
+- T035 (2026-11-03): gate G4 passes on the 25-step stack: the tool suite (189 tests), the old
+  series' `check --verified`, `$S check --verified`, `--only baseline`, `--only messages`, a clean
+  `oolite-dev`, and everything committed here. Open: T045's js-parity run (Linux) and T046 (Jon).
 - T034 (2026-11-03): quickstart sections 0–3 run as written on the 25-step stack (section 4 n/a, T030).
   Two corrections: `unittest discover` needs `-t .` under `-I` (the repo root is not on `sys.path`),
   and `describe --handover` must come before `check --verified`, since any verify dates the handover.
