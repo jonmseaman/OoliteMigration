@@ -188,6 +188,31 @@ sources outside the replayed trees.
     SpiderMonkey left the function in the result slot). A native called on the wrong `this` throws
     where it returned `undefined` (Station's `launchMiner`).
   - **Time limiter**: `SoundFromJSValue` now resumes the limiter it pauses (#768's own fix).
+  - **Read-only properties throw in strict code**: #768 defines them with `OOJS_PROPERTY_RO` (no
+    setter), so a strict-mode write to e.g. `wormhole.origin` or `timer.isRunning` throws a
+    TypeError; SpiderMonkey ignored it.
+  - **SystemInfo enumeration**: #768 hides the four fixed properties (coordinates,
+    internalCoordinates, galaxyID, systemID) from `Object.keys()` and for..in, which list only the
+    system data keys. **The fork adds a `has_property` hook** (`73a7aa796`): QuickJS-ng 0.17's for..in
+    drops every key `JS_HasProperty()` denies, so with #768's hooks for..in listed nothing, on #768
+    itself too (same hook, same QuickJS-ng). With the hook, `'economy' in info` is `true`, where
+    SpiderMonkey gave `false`; `hasOwnProperty()` stays `false`. Default taken: for..in working (the
+    test asserts it, and #768's comment intends it) outweighs `in` matching SpiderMonkey, since no
+    hook can give both without patching QuickJS-ng. Worth reporting to #768.
+  - **Exceptions from a `filteredEntities` predicate** are reported and stop the script
+    (`OOJSNativeFailure`, #768's comment says so), so the script's own `catch` no longer sees them.
+  - **Timer** reads the callback's `name` once, in its constructor, and caches it.
+  - **`isExecutableJavaScript('1 +')`** is `false`: #768's `IsIncompleteSyntaxError()` treats
+    incomplete input as not executable, as SpiderMonkey's `JS_BufferIsCompilableUnit()` did.
+  - **`setExtraGuiScreenKeys` bad-argument messages** give the count of the definition's arguments
+    (`MIN(argc - 1, 2)`), and **`quitGame()`** is deferred until the script returns.
+  - **Debug monitor**: the strict-mode exception text is now `Exception: …` (no `(strict mode)`), and
+    the non-exception error message class is gone; the monitor API has only warning and exception.
+    `OOJSConsoleDestroy()` is gone.
+  - **Stack dumps** use #768's `OOJSDumpStack` frame format, and the stack-skip flag affects only the
+    error handler, not the dump.
+  - Removed as façade-only: `test_jsengine_quickjs.cpp` (the façade's own backend test), named-root
+    and request checks. The full list, per test, is in `series/test-changes.md`.
 - T042 (2026-11-03): the 50 files outside the scripting layer were ported in two parts, E (debug console
   and monitor, Universe, GuiDisplayGen, string and constant utilities) and F (the entities,
   OOEquipmentType, OOShipGroup), then merged (`49aad3e87`).
