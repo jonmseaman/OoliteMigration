@@ -283,7 +283,7 @@ recorded.
   `specs/002-seriesb-rebase-stack/series/resolutions/NNN/`. `tree --show/--record` keep refusing
   paths under `tests/`. Accept: `python -m unittest tools.series.tests.test_replay` passes, and
   T004's Accept still passes.
-- [ ] T015 [US2] Run `$S cut --replay` to write 26 planned steps from the old manifest. Accept:
+- [X] T015 [US2] Run `$S cut --replay` to write 26 planned steps from the old manifest. Accept:
   `$S check --only manifest` exits 0 with 26 steps whose `old_step` runs 1…26.
 - [ ] T016 [US2] Replay old 001 and 002 (Objective-C era). For each *n* in 1, 2:
   1. Run `$S tree n`.

@@ -92,6 +92,883 @@
    }
   }
  ],
- "steps": [],
+ "steps": [
+  {
+   "branch": "seriesb/001-random-seed-env",
+   "build_commit": null,
+   "chapter": null,
+   "description": "series/pr/001-random-seed-env.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "independent",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 1,
+   "parent": "seriesb/000b-upstream-768-quickjs-only",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/001-random-seed-env",
+    "old_commit": "ee25fd156bf6e98154c12ba55f4a96122aef8aaa",
+    "old_step": 1,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Let OO_RANDOM_SEED pin the random seed",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/002-safety-net",
+   "build_commit": null,
+   "chapter": {
+    "first": "7555b5d4254e0a89cc609a5c2263385d2b54904e",
+    "last": "8af7966e7d95101c57ceea1f66b338f0abeec2a1",
+    "merges": 41,
+    "phase": "P0",
+    "work_items": [
+     "0.1 iteration-order determinism",
+     "0.4 seed and floating-point hooks for reproducible runs",
+     "0.8 GUI tier",
+     "0.13 component tier"
+    ]
+   },
+   "description": "series/pr/002-safety-net.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 2,
+   "parent": "seriesb/001-random-seed-env",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/002-safety-net",
+    "old_commit": "1256b471a763993b0bca2f674f0d950116e84b3f",
+    "old_step": 2,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Add a test safety net: deterministic runs, GUI and component tests",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/003-js-facade",
+   "build_commit": null,
+   "chapter": {
+    "first": "3ca73e5a13571246ceaabc4fa989b80f83031b06",
+    "last": "7bc686c0af68d3b935bce3716a55b2e5dfbb82a4",
+    "merges": 55,
+    "phase": "P1",
+    "work_items": [
+     "1.1 define the façade",
+     "1.2 retarget call sites",
+     "1.3 QuickJS-ng backend"
+    ]
+   },
+   "description": "series/pr/003-js-facade.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 3,
+   "parent": "seriesb/002-safety-net",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/003-js-facade",
+    "old_commit": "47b3d274199bd790433dce17b8abb0baeddd04d7",
+    "old_step": 3,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Put the game's JavaScript behind an engine façade, with a QuickJS-ng backend beside SpiderMonkey",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/004-objective-cxx",
+   "build_commit": null,
+   "chapter": {
+    "first": "c9c052538370b03b976c6b5ac615490a873e6b21",
+    "last": "c9c052538370b03b976c6b5ac615490a873e6b21",
+    "merges": 1,
+    "phase": "P2",
+    "work_items": [
+     "2.1 the .m -> .mm switch"
+    ]
+   },
+   "description": "series/pr/004-objective-cxx.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 4,
+   "parent": "seriesb/003-js-facade",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/004-objective-cxx",
+    "old_commit": "08d7514a252c0036b83982b526a77a5805e3751d",
+    "old_step": 4,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Compile the game as Objective-C++",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/005-quickjs-switch",
+   "build_commit": null,
+   "chapter": {
+    "first": "3b6aec8c6ffca4445a742d4f9cd23251c9a5d57d",
+    "last": "a7e3ed1efcf202eb22d16951be73c23e3b2b264c",
+    "merges": 6,
+    "phase": "P1",
+    "work_items": [
+     "1.4 differential test",
+     "1.5 delete SpiderMonkey"
+    ]
+   },
+   "description": "series/pr/005-quickjs-switch.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 5,
+   "parent": "seriesb/004-objective-cxx",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/005-quickjs-switch",
+    "old_commit": "f6bfd5bff56090b8f00fcc9772cabb96d3ef4c4f",
+    "old_step": 5,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Run the game on QuickJS-ng and remove SpiderMonkey and NSPR",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/006-oofnd-core",
+   "build_commit": null,
+   "chapter": {
+    "first": "e31130fa0d6116abe5928624d276dfcf18eece16",
+    "last": "916311e66db2e9d025c763b9d028a9ff26d33ff0",
+    "merges": 19,
+    "phase": "P2",
+    "work_items": [
+     "2.2 Ref/WeakRef/AutoreleaseScope",
+     "2.2 PList",
+     "2.2 FileSystem",
+     "2.2 Defaults",
+     "Objective-C floor"
+    ]
+   },
+   "description": "series/pr/006-oofnd-core.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 6,
+   "parent": "seriesb/005-quickjs-switch",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/006-oofnd-core",
+    "old_commit": "0665c9b17d7c91743162317d9e8c814fe619bc80",
+    "old_step": 6,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/007-typed-accessors",
+   "build_commit": null,
+   "chapter": {
+    "first": "b73f2cd400db84dd246061c8b9cd95cb478a9534",
+    "last": "bc9a02ca7b948001da5824b9c073b42b3e24ca08",
+    "merges": 108,
+    "phase": "P2",
+    "work_items": [
+     "2.2 typed accessors, first sweep"
+    ]
+   },
+   "description": "series/pr/007-typed-accessors.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 7,
+   "parent": "seriesb/006-oofnd-core",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/007-typed-accessors",
+    "old_commit": "b0c5d47c8f6e945195da0f2fba4f67a34b75194e",
+    "old_step": 7,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Move most oo_*ForKey dictionary accessors to typed PListView::get",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/008-foundation-wave-1",
+   "build_commit": null,
+   "chapter": {
+    "first": "931bee60e9e766df7298710946f16fb5f43038fa",
+    "last": "ecfafab47981c8224790752d96f2340d6b07c833",
+    "merges": 210,
+    "phase": "P2",
+    "work_items": [
+     "2.3 Foundation -> oofnd, per file"
+    ]
+   },
+   "description": "series/pr/008-foundation-wave-1.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 8,
+   "parent": "seriesb/007-typed-accessors",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/008-foundation-wave-1",
+    "old_commit": "18950b2496cfd25da9b76c9efa693094d8f76c0a",
+    "old_step": 8,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Move Foundation usage to oofnd, part 1",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/009-foundation-wave-2",
+   "build_commit": null,
+   "chapter": {
+    "first": "5faa477a34d862eb81b59a6fe3d2e74592e1cad2",
+    "last": "fa9cbc6c24fec4d77881a47e47e7b2591ece94d4",
+    "merges": 240,
+    "phase": "P2",
+    "work_items": [
+     "2.3 Foundation sweeps",
+     "OOLog, NSAssert and NSUserDefaults gaps"
+    ]
+   },
+   "description": "series/pr/009-foundation-wave-2.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 9,
+   "parent": "seriesb/008-foundation-wave-1",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/009-foundation-wave-2",
+    "old_commit": "4955d538ceafa9af0e54b55b65d141111bd1620c",
+    "old_step": 9,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Move Foundation usage to oofnd, part 2",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/010-selector-families",
+   "build_commit": null,
+   "chapter": {
+    "first": "b75b5d1bc6f7957740adab23f8f09e65901302b3",
+    "last": "e0b9e24b22ab4f7373ccf71dbf4d58ac5553c4be",
+    "merges": 199,
+    "phase": "P2",
+    "work_items": [
+     "selector families",
+     "bridge callers"
+    ]
+   },
+   "description": "series/pr/010-selector-families.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 10,
+   "parent": "seriesb/009-foundation-wave-2",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/010-selector-families",
+    "old_commit": "41cc1872f7941623b44e5943427c22e6eb366476",
+    "old_step": 10,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Retire the remaining Foundation selectors and their bridge callers",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/011-leaf-conversions",
+   "build_commit": null,
+   "chapter": {
+    "first": "66914fbbede7e1b621fea3ffba830ac2130ccaf9",
+    "last": "67027c84d11fe03fcf208697938023d05d13f63c",
+    "merges": 61,
+    "phase": "P3",
+    "work_items": [
+     "2.4 delete libgnustep-base",
+     "3.1 oomath",
+     "3.2 OXPVerifier",
+     "3.3 leaf utilities"
+    ]
+   },
+   "description": "series/pr/011-leaf-conversions.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 11,
+   "parent": "seriesb/010-selector-families",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/011-leaf-conversions",
+    "old_commit": "1e0c474f26a0054a9fe88ae177cd061446e1d55e",
+    "old_step": 11,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Drop gnustep-base, then convert the first classes to C++: maths, leaf utilities, OXP verifier",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/012-module-conversions",
+   "build_commit": null,
+   "chapter": {
+    "first": "1964f76209e19f37b8f7311a6057e469cb919c7e",
+    "last": "ab5dc6cd728a5b26951c588d3d6e0ef99049009c",
+    "merges": 120,
+    "phase": "P3",
+    "work_items": [
+     "3.4 Materials",
+     "3.5 audio",
+     "3.6 scripting bindings",
+     "3.7 entities"
+    ]
+   },
+   "description": "series/pr/012-module-conversions.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 12,
+   "parent": "seriesb/011-leaf-conversions",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/012-module-conversions",
+    "old_commit": "89ef62f37bec6c651d7284cd84ff969110350c5a",
+    "old_step": 12,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Convert scripting, entities, audio and materials classes to C++",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/013-first-slices",
+   "build_commit": null,
+   "chapter": {
+    "first": "ad82bd1efe7e79a499cb62fc9ea52fc7f8123f08",
+    "last": "0c01939de79a4ac04237390d93dc78437057c5e0",
+    "merges": 80,
+    "phase": "P3",
+    "work_items": [
+     "slice plans",
+     "slices",
+     "facade deletions"
+    ]
+   },
+   "description": "series/pr/013-first-slices.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 13,
+   "parent": "seriesb/012-module-conversions",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/013-first-slices",
+    "old_commit": "b49b469d5e3c3c1a7e2c1d6af158a6dc57069969",
+    "old_step": 13,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Convert the large files in slices; delete the first Objective-C facades",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/014-shipentity-slices",
+   "build_commit": null,
+   "chapter": {
+    "first": "477a4919bcb8c6160d4765ee9d225e920fbf241f",
+    "last": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
+    "merges": 60,
+    "phase": "P3",
+    "work_items": [
+     "3.7 ShipEntity slices"
+    ]
+   },
+   "description": "series/pr/014-shipentity-slices.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 14,
+   "parent": "seriesb/013-first-slices",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/014-shipentity-slices",
+    "old_commit": "61f1d44220ed6e24e8969508419ec97b65dcc3fc",
+    "old_step": 14,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Convert ShipEntity to C++",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/015-universe-player-slices",
+   "build_commit": null,
+   "chapter": {
+    "first": "4b272b165ececbc7e183a328c4962cfbc65e4d78",
+    "last": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
+    "merges": 40,
+    "phase": "P3",
+    "work_items": [
+     "3.7 PlayerEntity slices",
+     "3.8 Universe slices"
+    ]
+   },
+   "description": "series/pr/015-universe-player-slices.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 15,
+   "parent": "seriesb/014-shipentity-slices",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/015-universe-player-slices",
+    "old_commit": "d6d77dd63d66e878dcf9bf54905cf091d0e5aa02",
+    "old_step": 15,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Convert Universe and PlayerEntity to C++",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/016-facade-deletions",
+   "build_commit": null,
+   "chapter": {
+    "first": "d01d45e47c50bda1ebbfd44c5f94596519ba840b",
+    "last": "2c2aae1316b5a125038a797c213162ffba389279",
+    "merges": 51,
+    "phase": "P3",
+    "work_items": [
+     "facade-deletion batches"
+    ]
+   },
+   "description": "series/pr/016-facade-deletions.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 16,
+   "parent": "seriesb/015-universe-player-slices",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/016-facade-deletions",
+    "old_commit": "f498adb87fbdbe0a80c87a66e75018212cc410b0",
+    "old_step": 16,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Delete the Objective-C facades",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/017-entity-facade",
+   "build_commit": null,
+   "chapter": {
+    "first": "d012b77f217a361b096ab70d04aa848eb174b04f",
+    "last": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
+    "merges": 70,
+    "phase": "P3",
+    "work_items": [
+     "the root Entity facade"
+    ]
+   },
+   "description": "series/pr/017-entity-facade.md",
+   "differs_from_old": [],
+   "era": "objc-quickjs",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 17,
+   "parent": "seriesb/016-facade-deletions",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/017-entity-facade",
+    "old_commit": "eabb728dc22ca36b042a7aa0f0f08e400e5f08f8",
+    "old_step": 17,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Delete the root Entity facade",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/018-objc-runtime-out",
+   "build_commit": null,
+   "chapter": {
+    "first": "1248d43e1bbf6f5de945fe89d898630122a8e641",
+    "last": "af1f220542e4917a23833902e8efc313a8eb463b",
+    "merges": 32,
+    "phase": "P4",
+    "work_items": [
+     "4.1 deferred release",
+     "4.2 runtime and rename"
+    ]
+   },
+   "description": "series/pr/018-objc-runtime-out.md",
+   "differs_from_old": [],
+   "era": "cxx",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 18,
+   "parent": "seriesb/017-entity-facade",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/018-objc-runtime-out",
+    "old_commit": "e8f357a33713356d0be6bfc1553563b49772fa20",
+    "old_step": 18,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Remove the Objective-C runtime and rename the sources to .cpp",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/019-gcc-build",
+   "build_commit": null,
+   "chapter": {
+    "first": "5fda5e404c04bbf37a5faadb2c685e3819a60662",
+    "last": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
+    "merges": 3,
+    "phase": "P4",
+    "work_items": [
+     "4.3 GCC"
+    ]
+   },
+   "description": "series/pr/019-gcc-build.md",
+   "differs_from_old": [],
+   "era": "cxx",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 19,
+   "parent": "seriesb/018-objc-runtime-out",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/019-gcc-build",
+    "old_commit": "0c9728594b5499374e9ef42e31b8aa534e062ba5",
+    "old_step": 19,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Build with GCC as well as Clang",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/020-upstream-9ee8ff22f-port",
+   "build_commit": null,
+   "chapter": {
+    "first": "883d339f93708db1a74f9a7f6426ed77622c449c",
+    "last": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
+    "merges": 4,
+    "phase": "P4",
+    "work_items": [
+     "upstream 9ee8ff22f pulled and ported"
+    ]
+   },
+   "description": "series/pr/020-upstream-9ee8ff22f-port.md",
+   "differs_from_old": [],
+   "era": "cxx",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 20,
+   "parent": "seriesb/019-gcc-build",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/020-upstream-9ee8ff22f-port",
+    "old_commit": "0eb3d8d1827a545aeb026904b5c76d37772b3a83",
+    "old_step": 20,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Port upstream changes #369 to #765 into the C++ code",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/021-develop-fixes",
+   "build_commit": null,
+   "chapter": null,
+   "description": "series/pr/021-develop-fixes.md",
+   "differs_from_old": [],
+   "era": "cxx",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 21,
+   "parent": "seriesb/020-upstream-9ee8ff22f-port",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/021-develop-fixes",
+    "old_commit": "9ebfd45f070e1a6abb40fcd05667d38b5a2c8a88",
+    "old_step": 21,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Small fixes after the migration",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/022-source-hygiene",
+   "build_commit": null,
+   "chapter": null,
+   "description": "series/pr/022-source-hygiene.md",
+   "differs_from_old": [],
+   "era": "cxx",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 22,
+   "parent": "seriesb/021-develop-fixes",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/022-source-hygiene",
+    "old_commit": "327ecfa99b28081991e3099cdcdc850dca87e833",
+    "old_step": 22,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Make comments describe the code; use #pragma once",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/023-tests-and-tooling",
+   "build_commit": null,
+   "chapter": null,
+   "description": "series/pr/023-tests-and-tooling.md",
+   "differs_from_old": [],
+   "era": "cxx",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 23,
+   "parent": "seriesb/022-source-hygiene",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/023-tests-and-tooling",
+    "old_commit": "725986317b902c8236954c5941b3fda566bb8ff9",
+    "old_step": 23,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Tests and developer tooling",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/024-c-as-cxx",
+   "build_commit": null,
+   "chapter": null,
+   "description": "series/pr/024-c-as-cxx.md",
+   "differs_from_old": [],
+   "era": "cxx",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 24,
+   "parent": "seriesb/023-tests-and-tooling",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/024-c-as-cxx",
+    "old_commit": "065635389d416cd2db5d10297ac94e5b9c220d94",
+    "old_step": 24,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Compile the remaining C sources as C++; upgrade QuickJS-ng",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/025-upstream-49a5eb9fc-ports",
+   "build_commit": null,
+   "chapter": null,
+   "description": "series/pr/025-upstream-49a5eb9fc-ports.md",
+   "differs_from_old": [],
+   "era": "cxx",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": null,
+   "n": 25,
+   "parent": "seriesb/024-c-as-cxx",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/025-upstream-49a5eb9fc-ports",
+    "old_commit": "bee3d78c0e23e6930754bea8c79b7cfb15567d42",
+    "old_step": 25,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Port upstream #766, #774 and #781",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/026-google-style-format",
+   "build_commit": null,
+   "chapter": null,
+   "description": "series/pr/026-google-style-format.md",
+   "differs_from_old": [],
+   "era": "cxx",
+   "kind": "mechanical",
+   "mechanical_command": "take .clang-format from 3aa8d65e8 and add mk.sh format/format-check (4ef61a09d), then run clang-format 22 -i on every .h/.hpp/.c/.cpp under src/ and tests/",
+   "merge_tree": null,
+   "n": 26,
+   "parent": "seriesb/025-upstream-49a5eb9fc-ports",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "old_branch": "series/026-google-style-format",
+    "old_commit": "d5f8e1af33df5c64029cca5a180d8e0f39cfe3fa",
+    "old_step": 26,
+    "type": "replay"
+   },
+   "state": "planned",
+   "target_tree": null,
+   "title": "Reformat with Google-style clang-format (optional)",
+   "verification": null
+  }
+ ],
  "syncs": []
 }
