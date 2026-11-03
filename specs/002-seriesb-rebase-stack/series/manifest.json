@@ -12,7 +12,7 @@
   }
  ],
  "anchors": {
-  "develop_target": "fb47a9c2602274d7f5a1e3fd94ed9cc18fbdccc9",
+  "develop_target": "531ddd6592c3723c84ab7698b4a5c4b430fe891a",
   "format": {
    "clang_format_version": "22.1.8",
    "style_file_from": "49a5eb9fc"
@@ -2146,14 +2146,14 @@
   },
   {
    "branch": "seriesb/025-upstream-quickjs-binding",
-   "build_commit": "6d6c5e9c99e5ca12b7345b001f7cbeecd2034954",
+   "build_commit": "57a0c89a9e06f716eb95128cf1bb0e6421566725",
    "chapter": null,
    "description": "series/pr/025-upstream-quickjs-binding.md",
    "differs_from_old": [],
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "6bbb616ab1505fb216a9e60a24b1972e5d82b121",
+   "merge_tree": "337f41d61619a114206bc0e7c480fac7a467a854",
    "n": 25,
    "parent": "seriesb/024-google-style-format",
    "reasons": {},
@@ -2161,15 +2161,35 @@
    "rules": [],
    "size": null,
    "source": {
-    "commit": "fb47a9c2602274d7f5a1e3fd94ed9cc18fbdccc9",
+    "commit": "531ddd6592c3723c84ab7698b4a5c4b430fe891a",
     "ref": "feature/upstream-quickjs-binding",
     "test_ledger": "specs/002-seriesb-rebase-stack/series/test-changes.md",
     "type": "target"
    },
-   "state": "built",
-   "target_tree": "6bbb616ab1505fb216a9e60a24b1972e5d82b121",
+   "state": "verified",
+   "target_tree": "337f41d61619a114206bc0e7c480fac7a467a854",
    "title": "Move the scripting layer to upstream's QuickJS-ng binding",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass: every changed test is in the test ledger (FR-015)",
+     "unit": "pass: oofnd, core, headers",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "57a0c89a9e06f716eb95128cf1bb0e6421566725",
+    "date": "2026-11-03",
+    "era": "cxx",
+    "tree": "337f41d61619a114206bc0e7c480fac7a467a854",
+    "warning_keys": []
+   }
   }
  ],
  "syncs": []

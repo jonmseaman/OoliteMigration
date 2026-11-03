@@ -244,7 +244,10 @@ sources outside the replayed trees.
     (`develop` vs the branch, then the SpiderMonkey baselines) waits for the Linux phase; writing a
     Windows runner is new tooling outside this feature. So whether the unapplied primitive-property
     patch (T044) matters is still open; nothing in the four suites shows it.
-  - Branch tip for T046: `fb47a9c2602274d7f5a1e3fd94ed9cc18fbdccc9`.
+  - Then `531ddd659` formats the 70 ported `src/` files with clang-format 22.1.8 (step 025's
+    `clang_format` gate failed on them; formatting only, 392+/405-). Step 025's verify rebuilds
+    and reruns unit and smoke on it; component and GUI ran on `fb47a9c26`.
+  - Branch tip for T046: `531ddd659` (full id in `series/manifest.json`, `anchors.develop_target`).
 - T043 (2026-11-03): the unit tests moved by five parallel groups (branches `…-t1`…`-t5`), merged
   `86e33d549`..`c977f6058`; `tests/unit/core/meson.build` conflicts were resolved line by line (each
   group's own tests). Ledger: `series/test-changes.md`. `git grep ooscript` is empty;
