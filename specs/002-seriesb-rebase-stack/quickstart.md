@@ -46,6 +46,7 @@ $S describe --handover        # specs/002-seriesb-rebase-stack/series/HANDOVER.m
 ## 4. When upstream moves (Jon, or an agent with the flags)
 
 ```bash
+$S parents --refresh                          # fetch hobleyd; reset parents to the PR heads (research R2)
 cd oolite-dev && git checkout seriesb/001-random-seed-env
 git town sync --stack --detached --no-push    # resolve conflicts by hand; git town continue
 cd .. && $S sync-record --conflict 003:src/Core/Scripting/OOJSShip.mm:"#768 renamed …"

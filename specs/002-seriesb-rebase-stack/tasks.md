@@ -68,14 +68,14 @@ with its **Accept:** command.
 **Purpose**: a recorded baseline that every later "nothing moved" check compares against, and the
 Git Town behaviour the plan relies on.
 
-- [ ] T001 Record the baseline. Write `specs/002-seriesb-rebase-stack/series/baseline.json` with:
+- [X] T001 Record the baseline. Write `specs/002-seriesb-rebase-stack/series/baseline.json` with:
   - `{branch: sha}` for every `series/*` branch, plus `develop` and `master`, from
     `git -C oolite-dev for-each-ref refs/heads`;
   - the PR heads of #767 and #768 (`3758f8a09…`, `db4920103…` as full SHAs);
   - upstream `master` (`7437f22a5…`).
 
   Accept: `python -I -c "import json;b=json.load(open('specs/002-seriesb-rebase-stack/series/baseline.json'));assert len([k for k in b['branches'] if k.startswith('series/')])==27 and 'develop' in b['branches']"`.
-- [ ] T002 [P] Run the Git Town probe of research R2 in scratch: `.agent-tmp/seriesb-gt-probe/`, local
+- [X] T002 [P] Run the Git Town probe of research R2 in scratch: `.agent-tmp/seriesb-gt-probe/`, local
   bare repos only, no network. The script is `.agent-tmp/seriesb-gt-probe.sh`. It builds:
   - a `develop` main with a commit absent from the PR branches;
   - a bare "hobleyd" remote with `quickjs-poc` and a `quickjs-default` stacked on it;
@@ -201,8 +201,10 @@ R8).
 - [ ] T008 [US1] Implement `parents [--setup] [--refresh]` in `tools/series/series.py` and
   `tools/series/stack.py`, per the contract. The remote is
   `hobleyd https://github.com/hobleyd/oolite.git`, with fetch refspecs
-  `+refs/heads/quickjs-poc:refs/remotes/hobleyd/quickjs-poc` and
-  `+refs/heads/quickjs-default:refs/remotes/hobleyd/quickjs-default` only. Mark the branches with
+  `+refs/heads/quickjs-poc:refs/remotes/hobleyd/seriesb/000a-upstream-767-quickjs-option` and
+  `+refs/heads/quickjs-default:refs/remotes/hobleyd/seriesb/000b-upstream-768-quickjs-only` only.
+  Git Town needs `<remote>/<local name>` (research R2, found by T002). `--refresh` fetches
+  `hobleyd` and resets each parent to its tracking ref with `update-ref`. Mark the branches with
   `git town observe`. Write the `parents[]` entries to
   `specs/002-seriesb-rebase-stack/series/manifest.json`, creating the manifest with `anchors`:
   - `develop_target` `3aa8d65e8`;
@@ -411,7 +413,8 @@ has an entry.
   `tools/series/tests/test_sync_check.py` with the fixture's PR branches merged into its master.
   Accept: that test passes.
 - [ ] T029 [US4] Write `docs/series-sync.md`, the procedure for Jon and agents:
-  - which command to run, and why agents add `--detached --no-push`;
+  - which commands to run, in research R2's order: `parents --refresh`, then
+    `git town sync --stack --detached --no-push`, and why agents add the two flags;
   - resolving a conflict, with `git town continue`;
   - `sync-record`;
   - re-verify from the first changed step;
@@ -419,8 +422,8 @@ has an entry.
 
   Link it from `docs/README.md`. Accept: `grep -q 'series-sync.md' docs/README.md && grep -q
   -- '--detached --no-push' docs/series-sync.md`.
-- [ ] T030 [US4] Rehearse a sync, but only if `hobleyd/quickjs-poc` or `quickjs-default` has moved
-  since T009 (check with `git -C oolite-dev fetch hobleyd` and `$S parents`).
+- [ ] T030 [US4] Rehearse a sync, but only if upstream's `quickjs-poc` or `quickjs-default` has
+  moved since T009 (check with `git -C oolite-dev fetch hobleyd` and `$S parents`).
   - If they moved, follow `docs/series-sync.md` on the real stack, then run `$S sync-record`,
     re-verify, and update the Notes.
   - If they have not moved, mark this task "n/a: no upstream change since T009" in plan.md's

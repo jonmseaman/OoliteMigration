@@ -1,0 +1,39 @@
+{
+  "branches": {
+    "develop": "3aa8d65e8c349bcae462078a684cc182905004ef",
+    "master": "0e1cc17a468b63df915634c2ed85a16f51b07bc1",
+    "series/000-upstream-base": "49a5eb9fc87a76ef9980f6436dc81f112e068935",
+    "series/001-random-seed-env": "ee25fd156bf6e98154c12ba55f4a96122aef8aaa",
+    "series/002-safety-net": "1256b471a763993b0bca2f674f0d950116e84b3f",
+    "series/003-js-facade": "47b3d274199bd790433dce17b8abb0baeddd04d7",
+    "series/004-objective-cxx": "08d7514a252c0036b83982b526a77a5805e3751d",
+    "series/005-quickjs-switch": "f6bfd5bff56090b8f00fcc9772cabb96d3ef4c4f",
+    "series/006-oofnd-core": "0665c9b17d7c91743162317d9e8c814fe619bc80",
+    "series/007-typed-accessors": "b0c5d47c8f6e945195da0f2fba4f67a34b75194e",
+    "series/008-foundation-wave-1": "18950b2496cfd25da9b76c9efa693094d8f76c0a",
+    "series/009-foundation-wave-2": "4955d538ceafa9af0e54b55b65d141111bd1620c",
+    "series/010-selector-families": "41cc1872f7941623b44e5943427c22e6eb366476",
+    "series/011-leaf-conversions": "1e0c474f26a0054a9fe88ae177cd061446e1d55e",
+    "series/012-module-conversions": "89ef62f37bec6c651d7284cd84ff969110350c5a",
+    "series/013-first-slices": "b49b469d5e3c3c1a7e2c1d6af158a6dc57069969",
+    "series/014-shipentity-slices": "61f1d44220ed6e24e8969508419ec97b65dcc3fc",
+    "series/015-universe-player-slices": "d6d77dd63d66e878dcf9bf54905cf091d0e5aa02",
+    "series/016-facade-deletions": "f498adb87fbdbe0a80c87a66e75018212cc410b0",
+    "series/017-entity-facade": "eabb728dc22ca36b042a7aa0f0f08e400e5f08f8",
+    "series/018-objc-runtime-out": "e8f357a33713356d0be6bfc1553563b49772fa20",
+    "series/019-gcc-build": "0c9728594b5499374e9ef42e31b8aa534e062ba5",
+    "series/020-upstream-9ee8ff22f-port": "0eb3d8d1827a545aeb026904b5c76d37772b3a83",
+    "series/021-develop-fixes": "9ebfd45f070e1a6abb40fcd05667d38b5a2c8a88",
+    "series/022-source-hygiene": "327ecfa99b28081991e3099cdcdc850dca87e833",
+    "series/023-tests-and-tooling": "725986317b902c8236954c5941b3fda566bb8ff9",
+    "series/024-c-as-cxx": "065635389d416cd2db5d10297ac94e5b9c220d94",
+    "series/025-upstream-49a5eb9fc-ports": "bee3d78c0e23e6930754bea8c79b7cfb15567d42",
+    "series/026-google-style-format": "d5f8e1af33df5c64029cca5a180d8e0f39cfe3fa"
+  },
+  "recorded": "2026-11-02",
+  "upstream_master": "7437f22a543c442830774dea0f2cad4e59c04cbb",
+  "upstream_prs": {
+    "767": "3758f8a09ba6b00be61519bcaab543cc8450b631",
+    "768": "db49201034e5ab3857342fb4dca199d5f17b93fb"
+  }
+}

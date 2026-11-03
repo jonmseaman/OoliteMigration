@@ -22,13 +22,24 @@ lists are in `.agent-tmp/probe-*.txt`.
 ## R2. Git Town branch types and the sync command
 
 - **Decision**:
-  - **Parents** are **observed** branches. Each tracks its PR branch through a new remote `hobleyd`
-    (`https://github.com/hobleyd/oolite.git`, fetching `quickjs-poc` and `quickjs-default` only).
-    Lineage: `000a` → parent `develop`, `000b` → parent `000a`.
+  - **Parents** are **observed** branches. Each one tracks its PR branch through a new remote
+    `hobleyd` (`https://github.com/hobleyd/oolite.git`).
+    - Git Town refuses to observe a branch unless `<remote>/<local name>` exists (found by T002), so
+      the fetch refspecs map each PR branch onto the seriesb name:
+      `+refs/heads/quickjs-poc:refs/remotes/hobleyd/seriesb/000a-upstream-767-quickjs-option` and
+      `+refs/heads/quickjs-default:refs/remotes/hobleyd/seriesb/000b-upstream-768-quickjs-only`.
+      Nothing else is fetched.
+    - Lineage: `000a` → parent `develop`, `000b` → parent `000a`.
   - **Steps** are **prototype** branches, as in feature 001, created with
     `git town append --prototype`.
-  - **The sync command** is `git town sync --stack --detached --no-push`, run from any `seriesb`
-    step.
+  - **The sync procedure** (T002 found that both preliminary steps are needed):
+    1. `git fetch hobleyd`. Git Town's own `git fetch --prune --tags` fetches only `origin`, so the
+       parents would otherwise never see upstream's commits.
+    2. `series.py --series seriesb parents --refresh`, which resets each parent to its tracking ref
+       with `update-ref`. If upstream force-pushes a PR branch, Git Town's observed-branch rebase
+       treats the dropped upstream commits as ours and replays them onto the new head, so the
+       parent would no longer mirror the PR.
+    3. `git town sync --stack --detached --no-push`, run from any `seriesb` step.
 - **Rationale** (from `git town observe --help` and `git town sync --help`, Git Town 24.0.0):
   - On an observed branch, sync "pulls down updates from the tracking branch (always via rebase),
     does not push, does not pull updates from the parent branch". So `develop` never flows into
@@ -42,12 +53,16 @@ lists are in `.agent-tmp/probe-*.txt`.
 
   This is Jon's `git town sync --stack` with the two flags that keep it inside the rules. Jon may
   run it bare from his own shell; agents always add both flags.
-- **Not yet observed**: a scratch-repo probe of this exact setup was denied by the permission
-  classifier in the planning session, because it pushes to local bare repos. Task T002 repeats it
-  inside `.agent-tmp/` (local bare repos only, no network) and must pass before any real branch is
-  created. If observed parents misbehave, the fallback is **contribution** branches with
-  `push branches: no` for the seriesb branches, then perennial parents updated by a fetch-and-reset
-  helper (`series.py follow`). The fallback is recorded in Notes if taken.
+- **Observed (T002, 2026-11-02)**: `.agent-tmp/seriesb-gt-probe.sh` (local bare repos, no
+  network) passes with the procedure above, for both a normal update and a force-pushed
+  `quickjs-default`.
+  - The parents equal their PR heads.
+  - Each step gets one merge per sync.
+  - No `develop`-only commit reaches any seriesb branch.
+  - `develop` and `origin` are unchanged.
+
+  Without step 1, nothing updates. Without step 2, a force-push leaves stale commits on `000b`.
+  The fallback (contribution branches) is not needed.
 - **Alternatives**:
   - Perennial parents: perennial sync pulls and pushes, and Git Town gives perennials no parent,
     which breaks the `develop` → … tree Jon drew.

@@ -166,8 +166,15 @@ sources outside the replayed trees.
 - 2026-11-02: the planning session fetched the upstream PR heads into
   `refs/upstream-pr/{767,768,772}` in `oolite-dev`. These are local refs, not branches, and can be
   deleted once `hobleyd` is set up.
-- 2026-11-02: the scratch Git Town probe was denied by the permission classifier in planning. It
-  is task work under G0, in `.agent-tmp/`, with local bare repos and no network.
+- T002 (2026-11-02): G0's Git Town probe passes (`.agent-tmp/seriesb-gt-probe.sh`). It found two
+  things, both now in research R2 and the tasks:
+  1. Git Town only observes a branch whose `<remote>/<local name>` exists, so `hobleyd`'s refspecs
+     map each PR branch onto its seriesb name.
+  2. Sync fetches only `origin`, and a force-pushed PR branch makes the observed rebase replay
+     upstream's dropped commits. So `parents --refresh` (fetch `hobleyd`, then `update-ref` each
+     parent to its tracking ref) runs before every sync.
+- T001: `series/baseline.json` records 27 `series/*` branches, `develop`, `master`, the PR heads
+  (`3758f8a09`, `db4920103`) and upstream `master` (`7437f22a5`).
 - Open, with the default taken: whether #768's QuickJS-ng patch and `oolite-quickjs-compat.js` are
   needed by `develop`'s engine. The default is to remove both in the new 003. A step test failure
   at G2 reverses this for the file involved, recorded with the evidence (R5).
