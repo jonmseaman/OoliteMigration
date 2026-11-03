@@ -176,6 +176,21 @@ sources outside the replayed trees.
   to upstream's engine API (FR-015). Hard rule 6 is amended in `CLAUDE.md` (FR-016). The
   verification of steps 3–24 was stopped after step 8 passed: those steps stay as built, but the
   series now ends with the switch step.
+- T042 (2026-11-03): the 50 files outside the scripting layer were ported in two parts, E (debug console
+  and monitor, Universe, GuiDisplayGen, string and constant utilities) and F (the entities,
+  OOEquipmentType, OOShipGroup), then merged (`49aad3e87`).
+  - Group D's temporary EquipmentInfo bridge is gone, and `getJSClass()` is replaced everywhere by
+    `jsClassID()`, as in #768.
+  - Two use-after-free hazards under explicit ownership were fixed as upstream fixes them: the
+    ship-killed event reused a freed value, and the ECM blast shared argument values across
+    targets.
+  - Removed as #768 removes them: the console's `dumpNamedRoots` and `OOJSConsoleDestroy`, and
+    Universe's GC-byte logging. `pedanticMode` is now a flag with no effect.
+  - Kept from the fork: the jump cause is passed as `""` when nil (upstream passes null), and the
+    console holds the monitor strongly.
+- T041 (2026-11-03): `src/Core/Scripting/ooscript/` is removed, with its meson entry (`8fe16dcc6`). `git grep
+  ooscript -- src` is empty. The unit tests' meson file still links the deleted backend (T043), so
+  the game alone is checked with a deployment build, which leaves the core unit tests out.
 - T039/T040 (2026-11-03): the 38 class bindings were ported by four parallel groups (branches
   `feature/upstream-quickjs-binding-a`…`-d`) and merged into `feature/upstream-quickjs-binding`
   (`cbf075918`).
