@@ -147,7 +147,7 @@ R8).
   - `python -m unittest discover -s tools/series/tests` (old and new) passes;
   - `python -I tools/series/series.py check --verified` exits 0, so the old series is unaffected;
   - `git diff ae8845673 -- tools/series/tests/test_*.py` shows no change to pre-existing files.
-- [ ] T005 [P] Write the tests for the seriesb manifest rules in
+- [X] T005 [P] Write the tests for the seriesb manifest rules in
   `tools/series/tests/test_seriesb_manifest.py`, on a fixture repo built in a temporary directory.
   `tools/series/tests/fixtures_seriesb.py` builds `develop`, an "upstream" with two stacked PR
   branches, the old `series/*` stack of 3 steps, and a `seriesb` stack replaying it. Cover each of
