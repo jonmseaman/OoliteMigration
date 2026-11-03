@@ -176,6 +176,18 @@ sources outside the replayed trees.
   to upstream's engine API (FR-015). Hard rule 6 is amended in `CLAUDE.md` (FR-016). The
   verification of steps 3–24 was stopped after step 8 passed: those steps stay as built, but the
   series now ends with the switch step.
+- T039/T040 (2026-11-03): the 38 class bindings were ported by four parallel groups (branches
+  `feature/upstream-quickjs-binding-a`…`-d`) and merged into `feature/upstream-quickjs-binding`
+  (`cbf075918`).
+  - Merge conflicts in shared headers took the owning group's port (C: Vector, Quaternion,
+    ConstToJSString; D: EquipmentInfo; A: OOJSShip).
+  - After the merge, all 50 scripting objects compile with no warnings, except four calls in
+    `OOJSGlobal`/`OOJSMission` to `GuiDisplayGen::textureDescriptorFromJSValue`, which is T042's.
+  - **Temporary code** (removed in T042): file-local `WeakSelfValue`/`WeakSelfStorage` in
+    `OOJSEquipmentInfo.cpp`, until `OOEquipmentType::_jsSelf` is a `JSValue`. `getJSClass()` stays
+    beside group A's new `Entity::jsClassID()` until T042 removes it.
+  - The groups report that the game objects build at `-Wall`, not `-Wextra`. That is the build's
+    existing setup, checked at T045.
 - T038 (2026-11-03): the engine core is ported on `feature/upstream-quickjs-binding` (`34fc9465c`; #768's
   compat script in `c39eb267d`). No `ooscript` remains in it, and its 9 objects compile with no
   warnings (rebuilt by the orchestrator). Decisions, all following #768:

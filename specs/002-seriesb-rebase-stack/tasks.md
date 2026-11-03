@@ -538,12 +538,12 @@ for tests and FR-016's amended hard rule 6.
   files is empty, and their objects compile:
   `ninja -C build/meson_test $(ninja -C build/meson_test -t targets all | grep -oE '[^ :]*(OOJavaScriptEngine|OOJSScript|OOJSFunction|OOJSCall|OOJSEngineTimeManagement|OOJSEngineDebuggerHelpers|OOJSClasses)\.cpp\.obj')`
   exits 0 in the worktree.
-- [ ] T039 [P] [US6] Port the entity bindings the same way: `OOJSEntity`, `OOJSShip`, `OOJSStation`,
+- [X] T039 [P] [US6] Port the entity bindings the same way: `OOJSEntity`, `OOJSShip`, `OOJSStation`,
   `OOJSDock`, `OOJSPlanet`, `OOJSSun`, `OOJSWormhole`, `OOJSPlayer`, `OOJSPlayerShip`,
   `OOJSVisualEffect`, `OOJSExhaustPlume`, `OOJSFlasher`, `OOJSWaypoint`, `OOJSShipGroup` and
   `EntityOOJavaScriptExtensions`. Accept: no `ooscript` in them, and their objects compile (the
   T038 form, with these names).
-- [ ] T040 [P] [US6] Port the remaining bindings: `OOJSVector`, `OOJSQuaternion`, `OOJSTimer`,
+- [X] T040 [P] [US6] Port the remaining bindings: `OOJSVector`, `OOJSQuaternion`, `OOJSTimer`,
   `OOJSClock`, `OOJSSound`, `OOJSSoundSource`, `OOJSFont`, `OOJSManifest`, `OOJSMission`,
   `OOJSMissionVariables`, `OOJSSystem`, `OOJSSystemInfo`, `OOJSOolite`, `OOJSGlobal`,
   `OOJSWorldScripts`, `OOJSSpecialFunctions`, `OOJSFrameCallbacks`, `OOJSEquipmentInfo`,
