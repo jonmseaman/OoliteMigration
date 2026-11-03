@@ -66,7 +66,7 @@ def variants(workflow_text):
 
 def run(repo, parent, worktree, log_dir, runner=None):
     """Run the gate for `parent` (a manifest entry); updates and returns it."""
-    runner = runner or verify.run_script
+    runner = runner or (lambda era, _worktree, body, log: verify.run_script(era, body, log))
     branch = parent["branch"]
     commit = verify._git(repo, "rev-parse", f"refs/heads/{branch}").strip()
     tree = verify._git(repo, "rev-parse", f"{commit}^{{tree}}").strip()
