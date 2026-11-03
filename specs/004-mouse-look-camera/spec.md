@@ -30,6 +30,9 @@ The player controls the camera with the mouse alone, the way EVE Online's camera
 None of these changes where the ship flies or where its weapons point. They change only what the
 player sees.
 
+In the cockpit, pressing the current view's key again (for example F1 while in the forward view)
+puts that view back to normal: straight ahead and unmagnified.
+
 ## Context
 
 How the game behaves today, as seen by a player:
@@ -58,14 +61,16 @@ hand.
 
 A player flying in the forward view holds the right mouse button and drags left. The view turns
 left, as if the pilot turned their head. The ship keeps flying straight, and the forward weapon
-stays the active one. When the player releases the button, the view eases back to straight ahead.
+stays the active one. When the player releases the button, the view stays where it is. Pressing
+the forward view key again puts the view back to straight ahead.
 
 **Why this priority**: It's the gesture the user asked for first, and it has no workaround today:
 switching to a side view changes the weapon and the view jumps 90°.
 
 **Independent Test**: In flight, right-drag horizontally in the forward view. Check that the view
 direction changes in proportion to the drag, the ship's heading is unchanged, the active weapon is
-still the forward one, and the view is back to forward shortly after release.
+still the forward one, and the view holds after release. Then press the forward view key and
+check the view is straight ahead again.
 
 **Acceptance Scenarios**:
 
@@ -75,11 +80,16 @@ still the forward one, and the view is back to forward shortly after release.
 2. **Given** the player is right-dragging, **When** they drag up or down, **Then** the view tilts
    up or down.
 3. **Given** the view is turned away from straight ahead, **When** the player releases the right
-   button, **Then** the view returns smoothly to straight ahead within half a second.
-4. **Given** the player keeps dragging in one direction, **When** the view reaches its limit,
+   button, **Then** the view stays where it is.
+4. **Given** the forward view is turned away from straight ahead, **When** the player presses the
+   forward view key, **Then** the view returns to straight ahead within half a second and the
+   forward weapon stays active.
+5. **Given** the player keeps dragging in one direction, **When** the view reaches its limit,
    **Then** it stops turning (it never turns the full way round).
-5. **Given** the player is in the port, aft or starboard view, **When** they right-drag, **Then**
-   the view turns relative to that view's direction, and the same rules apply.
+6. **Given** the player is in the port, aft or starboard view, **When** they right-drag, **Then**
+   the view turns relative to that view's direction, and pressing that view's key recentres it.
+7. **Given** the forward view is turned, **When** the player presses a different view key (for
+   example port), **Then** the player gets that view, straight out of its window, as today.
 
 ---
 
@@ -224,8 +234,10 @@ the normal field of view and no wider.
   active or where it points.
 - **FR-003**: Cockpit look MUST be limited to 150° either side of the view's direction
   horizontally and 75° up or down vertically.
-- **FR-004**: On release of the right button, the cockpit view MUST return smoothly to the view's
-  normal direction within 0.5 seconds.
+- **FR-004**: Cockpit look MUST persist after the right button is released. Pressing the key or
+  joystick button for the current cockpit view MUST return the view smoothly to its normal
+  direction within 0.5 seconds and reset magnification to none. Switching to a different cockpit
+  view MUST show that view at its normal direction.
 - **FR-005**: While the cockpit view is turned off-axis, the crosshair MUST be hidden.
 
 **External camera**
@@ -247,8 +259,8 @@ the normal field of view and no wider.
   dragging up magnifies, dragging down demagnifies.
 - **FR-012**: Magnification MUST range from the player's normal field of view setting (no
   magnification) to at least 8× magnification.
-- **FR-013**: Magnification MUST persist after release and reset to none when the player changes
-  view.
+- **FR-013**: Magnification MUST persist after release, and reset to none when the player changes
+  view or recentres a cockpit view.
 
 **Coexistence**
 
@@ -266,7 +278,7 @@ the normal field of view and no wider.
 ### Key Entities
 
 - **Cockpit look offset**: how far the cockpit view is turned from the view's normal direction,
-  horizontally and vertically. Transient: returns to zero on release.
+  horizontally and vertically. Persists until the player presses the view's key or changes view.
 - **External camera state**: the external camera's position around the ship (orbit), its
   distance from the ship, and its aim relative to the line to the ship. Persists until the view
   changes.
@@ -280,8 +292,9 @@ the normal field of view and no wider.
 
 - **SC-001**: In the forward view, a horizontal right-drag of the same length always turns the
   view by the same angle (to within 1°), and the ship's heading changes by 0° over the drag.
-- **SC-002**: After the right button is released in the cockpit, the view is straight ahead again
-  within 0.5 seconds, every time.
+- **SC-002**: In each of the four cockpit views, a turned view holds its angle after release (to
+  within 1°), and is straight ahead and unmagnified within 0.5 seconds of pressing that view's
+  key, every time.
 - **SC-003**: In an external view, a left-drag that goes the full way round brings the camera back
   to its start position (to within 1°), at the same distance from the ship throughout (to within
   1%).
@@ -291,8 +304,9 @@ the normal field of view and no wider.
   to the player's field of view setting.
 - **SC-006**: With mouse look turned off, or with mouse-steering mode on, every existing test
   passes unchanged.
-- **SC-007**: A player new to the feature can look sideways from the cockpit, orbit their ship
-  and zoom in on a distant station within one minute, without reading instructions.
+- **SC-007**: A player new to the feature can look sideways from the cockpit, orbit their ship,
+  zoom in on a distant station and get back to straight ahead within one minute, without reading
+  instructions.
 
 ## Assumptions
 
@@ -311,9 +325,13 @@ the normal field of view and no wider.
 Each one was taken as the conservative default without asking. `/speckit-clarify` can revisit
 any of them.
 
-1. **Cockpit look springs back on release; the external camera holds its aim.** The cockpit's
-   reference is the gunsight, so a view that stayed turned would leave the player flying with no
-   crosshair. The external camera is a spectator camera, so it keeps its aim, as in EVE.
+1. **Cockpit look holds after release, and pressing the current view's key recentres it.**
+   Chosen by the user as the most intuitive control. Pressing the key of the view the player is
+   already in does nothing today, so this takes no existing control away. The external camera's
+   aim also holds. Its view key can't recentre it, because pressing that key cycles to the next
+   external view; orbiting returns its aim to the ship instead (FR-010).
+7. **Recentring also clears zoom.** The view key puts the view back to its normal state, and the
+   normal state is unmagnified. A player who wants to keep the zoom drags it back in.
 2. **Mouse look is off while mouse-steering mode is on.** In that mode the left button fires and
    the right button recentres the stick. Taking those over would change the controls that
    mouse-steering players already rely on.
