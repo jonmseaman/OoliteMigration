@@ -933,12 +933,13 @@ def cmd_check_seriesb(args):
     import json
     from tools.series import seriesb
     m = load_manifest()
-    groups = set(args.only.split(",")) if args.only else set(seriesb.GROUPS) - {"verified"}
+    groups = set(args.only.split(",")) if args.only else (set(seriesb.GROUPS) | {"descriptions", "handover"}) - {"verified"}
     if args.verified:
         groups.add("verified")
-    unknown = groups - set(seriesb.GROUPS)
+    known = set(seriesb.GROUPS) | {"descriptions", "handover"}
+    unknown = groups - known
     if unknown:
-        print(f"check: unknown group(s) {', '.join(sorted(unknown))}; groups are {', '.join(seriesb.GROUPS)}", file=sys.stderr)
+        print(f"check: unknown group(s) {', '.join(sorted(unknown))}; groups are {', '.join(sorted(known))}", file=sys.stderr)
         return 2
     if not m:
         print(f"check: no manifest at {os.path.relpath(MANIFEST, ROOT)}", file=sys.stderr)
@@ -952,7 +953,14 @@ def cmd_check_seriesb(args):
         print(f"check: no {os.path.relpath(baseline_path, ROOT)}", file=sys.stderr)
         return 1
     steps = m.get("steps", [])
-    problems = seriesb.check(GAME, m, groups, baseline, parse_range(args.steps, len(steps)))
+    wanted = parse_range(args.steps, len(steps))
+    problems = seriesb.check(GAME, m, groups, baseline, wanted)
+    if "descriptions" in groups:
+        for step in steps:
+            if step["n"] in wanted:
+                problems += check_descriptions(m, step)
+    if "handover" in groups:
+        problems += check_handover_replay(m)
     for p in problems:
         print(p)
     print(f"check: {len(problems)} problem(s) in {', '.join(sorted(groups))} for steps "
@@ -1146,7 +1154,9 @@ def render_description(m, step, kept):
 
 
 def cmd_describe(args):
-    from tools.series import manifest
+    from tools.series import manifest, profile
+    if profile.current() == "seriesb":
+        return cmd_describe_replay(args)
     m = load_manifest()
     if args.handover:
         return cmd_handover(m)
@@ -1164,6 +1174,191 @@ def cmd_describe(args):
         print(os.path.relpath(path, ROOT))
     manifest.save(MANIFEST, m)
     return 0
+
+
+# --- seriesb: descriptions and the handover (contracts/series-cli-seriesb.md) ----------------------
+
+def _old_range(step):
+    olds = step["source"].get("old_steps") or [step["source"]["old_step"]]
+    return "old " + ", ".join(str(n) for n in olds)
+
+
+def _root_pr(m):
+    from tools.series import seriesb
+    root = seriesb.root(m)
+    p = next((p for p in m.get("parents", []) if p["branch"] == root), {})
+    if p.get("kind") == "upstream":
+        return f"upstream #{p['upstream_pr']}'s branch"
+    if p.get("kind") == "upstream-master":
+        return "upstream `master`"
+    return f"`{root}` (a fix on top of upstream's PRs)"
+
+
+def render_description_replay(m, step, kept):
+    steps = m["steps"]
+    nxt = steps[step["n"]]["branch"] if step["n"] < len(steps) else "—"
+    size = step.get("size")
+    size_txt = (f"{fmt_k(size['src'])} src, {fmt_k(size['tests'])} tests, {fmt_k(size['other'])} other changed lines; "
+                f"{fmt_k(size['deleted_files'])} lines in deleted files") if size else "not built yet"
+    src = step["source"]
+    lines = [f"# {step['title']}", "",
+             f"**Series:** step {step['n']} of {len(steps)} · base `{step['parent']}` · next `{nxt}` **(gen)**", "",
+             f"**Replays:** `{src['old_branch']}` ({_old_range(step)} of the master-based series) · {size_txt} **(gen)**",
+             "",
+             f"**Based on:** {_root_pr(m)}, so this step is not independent of upstream's QuickJS-ng PRs "
+             "(#767, #768). **(gen)**", ""]
+    for h in HAND_SECTIONS:
+        lines += [f"## {h}", "", kept.get(h) or TODO, ""]
+    differs = step.get("differs_from_old") or []
+    lines += ["## Differences from the old step **(gen)**", ""]
+    if differs:
+        lines.append(f"Where this step's change differs from `{src['old_branch']}`'s, and why:")
+        lines.append("")
+        for d in differs[:40]:
+            lines.append(f"- `{d['path']}`: {d['reason']}")
+        if len(differs) > 40:
+            lines.append(f"- ... and {len(differs) - 40} more (the manifest lists them all)")
+    else:
+        lines.append(f"None: the same change as `{src['old_branch']}`.")
+    lines += ["", "## Verified **(gen)**", ""]
+    v = step.get("verification")
+    if v:
+        lines += [f"Windows x64, `{v.get('commit', '')[:10]}`, {v.get('date', '')}.", "",
+                  "| Check | Result |", "|---|---|"]
+        for k, r in sorted(v.get("checks", {}).items()):
+            lines.append(f"| {k} | {r} |")
+        lines.append("")
+    else:
+        lines += ["Not verified yet.", ""]
+    lines += [NOT_VERIFIED_PLATFORMS, ""]
+    return "\n".join(lines)
+
+
+def _old_description(m, step):
+    """The hand-written sections of the old step's description, as a starting point (FR-006)."""
+    old = _old_manifest(m)
+    o = next((x for x in old["steps"] if x["branch"] == step["source"]["old_branch"]), None)
+    if not o:
+        return {}
+    path = os.path.join(ROOT, os.path.dirname(m["anchors"]["old_manifest"]), "pr", os.path.basename(o["description"]))
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return {k: v for k, v in parse_sections(f.read()).items() if k in HAND_SECTIONS and v != TODO}
+
+
+def cmd_describe_replay(args):
+    from tools.series import manifest, replay
+    m = load_manifest()
+    if args.handover:
+        with open(HANDOVER, "w", encoding="utf-8", newline="\n") as f:
+            f.write(render_handover_replay(m))
+        print(os.path.relpath(HANDOVER, ROOT))
+        return 0
+    targets = [_replay_step(m, args.n)] if args.n else m["steps"]
+    for step in targets:
+        if step.get("target_tree"):
+            step["size"] = step_size(step, replay.parent_tree(GAME, m, step)) or step.get("size")
+        path = os.path.join(SERIES_DIR, "pr", os.path.basename(step["description"]))
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as f:
+                kept = {k: v for k, v in parse_sections(f.read()).items() if k in HAND_SECTIONS and v != TODO}
+        else:
+            kept = _old_description(m, step) if not step["source"].get("old_steps") else {}
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(render_description_replay(m, step, kept))
+        print(os.path.relpath(path, ROOT))
+    manifest.save(MANIFEST, m)
+    return 0
+
+
+def render_handover_replay(m):
+    from tools.series import seriesb
+    a, steps = m["anchors"], m["steps"]
+    spec_dir = os.path.relpath(os.path.dirname(SERIES_DIR), ROOT).replace(os.sep, "/")
+    body = lambda s: f"{spec_dir}/{s['description']}"
+    live = seriesb.live_parents(m)
+    root = seriesb.root(m)
+    out = ["# Handover: the PR series on upstream's QuickJS-ng PRs (seriesb)", "",
+           "Generated by `python -I tools/series/series.py --series seriesb describe --handover` from the manifest. "
+           f"{len(steps)} steps, replaying the master-based `series/*` steps on upstream #767 and #768. Run "
+           "`python -I tools/series/series.py --series seriesb check --verified` first: it exits 0 only if every "
+           "step's verification below is current.", "",
+           "## Parents", "",
+           "| Parent | Mirrors | Head | Gate |", "|---|---|---|---|"]
+    for p in m.get("parents", []):
+        what = (f"upstream #{p['upstream_pr']}" if p.get("kind") == "upstream" else
+                "upstream `master`" if p.get("kind") == "upstream-master" else "a fix on top of the PRs")
+        state = " (retired)" if p.get("state") == "retired" else ""
+        out.append(f"| `{p['branch']}`{state} | {what} | `{str(p.get('head'))[:10]}` | {p.get('gate')} |")
+    out += ["", f"- End: the fork's `develop` at `{a['develop_target'][:10]}`, outside the exclusions and "
+            "additions below (and paths upstream changed in a recorded sync).", "",
+            "## Folded and dropped old steps", ""]
+    for f in m.get("folded", []):
+        olds = ", ".join(str(n) for n in f["old_steps"] + [f["into_old_step"]])
+        out.append(f"- old {olds} are one step: {f['reason']}.")
+    for d in m.get("dropped", []):
+        out.append(f"- `{d['old_branch']}` is dropped: covered by #{d['covered_by']}; {d['reason']}.")
+    if not m.get("folded") and not m.get("dropped"):
+        out.append("None.")
+    out += ["", "## Exclusions and additions", "", "What `develop` has and the series does not carry:", ""]
+    for e in m.get("exclusions", []):
+        what = f"`{e['path_glob']}`" if e.get("path_glob") else f"commit `{e['revert_commit']}` (reverted)"
+        out.append(f"- {what}: {e['reason']}.")
+    out += ["", "What the series keeps from upstream's PRs and `develop` does not have:", ""]
+    for e in m.get("additions", []):
+        out.append(f"- `{e['path_glob']}` (#{e.get('from_pr')}): {e['reason']}.")
+    out += ["", "## Steps", "", "| Step | Branch | Replays | Base | Title | Size (src / tests / other) | Verification |",
+            "|---|---|---|---|---|---|---|"]
+    for s in steps:
+        z = s.get("size") or {}
+        size = f"{fmt_k(z.get('src', 0))} / {fmt_k(z.get('tests', 0))} / {fmt_k(z.get('other', 0))}" if z else "—"
+        title = s["title"].replace("|", "\\|")
+        out.append(f"| {s['n']} | `{s['branch']}` | `{s['source']['old_branch']}` ({_old_range(s)}) | `{s['parent']}` "
+                   f"| {title} | {size} | {verification_summary(s)} |")
+    branches = " ".join(s["branch"] for s in steps)
+    out += ["", "## Keeping it current", "",
+            "When upstream's PRs move: `parents --refresh`, then `git town sync --stack --detached --no-push`, then "
+            "`sync-record` and `verify --from 1`. See `docs/series-sync.md`.", "",
+            "## Push (Jon)", "",
+            "The steps, with Git for Windows' git (MSYS2's has no credentials and waits for a username forever). "
+            f"`{root}` goes to the fork too, as the base of step 1's dry-run PR; the explicit refspec is needed "
+            "because its tracking remote is the PR author's:", "", "```bash",
+            f"GIT_TERMINAL_PROMPT=0 {PUSH_GIT} -C oolite-dev push origin {branches}"]
+    if any(p["branch"] == root for p in live if p.get("kind") == "upstream"):
+        out.append(f"GIT_TERMINAL_PROMPT=0 {PUSH_GIT} -C oolite-dev push origin {root}:refs/heads/{root}")
+    out += ["```", "", "## Dry run on the fork (Jon)", "",
+            f"Each PR against the previous branch in `{FORK_REPO}`, so every diff is one step:", "", "```bash"]
+    for s in steps:
+        out.append(f"gh pr create -R {FORK_REPO} --draft --base {s['parent']} --head {s['branch']} "
+                   f"--title {sh_quote(s['title'])} --body-file {body(s)}")
+    out += ["```", "", "## Upstream, one at a time (Jon)", ""]
+    open_prs = [p for p in live if p.get("kind") == "upstream"]
+    if open_prs:
+        prs = ", ".join(f"#{p['upstream_pr']}" for p in open_prs)
+        out += [f"Wait: {prs} are not merged into upstream `master` yet. A PR for step 1 opened against `master` "
+                "now would carry their commits as well as its own. When they are merged, run `parents --retire` "
+                "(it moves step 1 onto `seriesb/000m-upstream-master`), sync, re-verify and regenerate this "
+                "handover; this section then lists the commands.", ""]
+    else:
+        out += [f"Against `{UPSTREAM_REPO}` `master`, each opened when the one before it has merged:", "", "```bash"]
+        for s in steps:
+            out.append(f"gh pr create -R {UPSTREAM_REPO} --base master --head jonmseaman:{s['branch']} "
+                       f"--title {sh_quote(s['title'])} --body-file {body(s)}")
+        out += ["```", ""]
+    return "\n".join(out)
+
+
+def check_handover_replay(m):
+    """The handover exists and names every parent and step (contract: describe --handover)."""
+    if not os.path.exists(HANDOVER):
+        return [f"rule 8: no {os.path.relpath(HANDOVER, ROOT)}; run `describe --handover`"]
+    with open(HANDOVER, encoding="utf-8") as f:
+        text = f.read()
+    if text != render_handover_replay(m):
+        return ["rule 8: the handover is out of date; run `describe --handover`"]
+    return []
 
 
 HANDOVER = os.path.join(SERIES_DIR, "HANDOVER.md")

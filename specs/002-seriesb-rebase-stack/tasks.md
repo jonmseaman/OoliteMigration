@@ -442,7 +442,7 @@ has an entry.
 
 **Independent Test**: `$S check --verified --only descriptions,handover` exits 0.
 
-- [ ] T031 [P] [US5] Extend `describe` for the `seriesb` profile in `tools/series/series.py`. Each
+- [X] T031 [P] [US5] Extend `describe` for the `seriesb` profile in `tools/series/series.py`. Each
   description:
   - names its old step (`series/NNN-slug`);
   - lists `differs_from_old` with reasons;

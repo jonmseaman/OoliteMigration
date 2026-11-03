@@ -143,5 +143,75 @@ class ReplayTest(unittest.TestCase):
         self.assertEqual(seriesb.validate(self.m), [])
 
 
+
+class DescribeReplayTest(unittest.TestCase):
+    """Descriptions and the handover for seriesb (T031)."""
+
+    M = {"anchors": {"develop_target": "3aa8d65e8" + "0" * 31, "upstream_master": "7437f22a5" + "0" * 31},
+         "parents": [
+             {"branch": "seriesb/000a-upstream-767-quickjs-option", "kind": "upstream", "upstream_pr": 767,
+              "head": "3758f8a09" + "0" * 31, "gate": "pass", "tracking": "hobleyd/x", "parent": "develop"},
+             {"branch": "seriesb/000b-upstream-768-quickjs-only", "kind": "upstream", "upstream_pr": 768,
+              "head": "db4920103" + "0" * 31, "gate": "pass", "tracking": "hobleyd/y",
+              "parent": "seriesb/000a-upstream-767-quickjs-option"}],
+         "exclusions": [{"path_glob": ".zed/**", "reason": "editor settings"}],
+         "additions": [{"path_glob": "tools/js-parity/**", "from_pr": 767, "reason": "upstream's tool"}],
+         "folded": [{"old_steps": [3, 4], "into_old_step": 5, "reason": "SpiderMonkey would come back"}],
+         "dropped": [], "syncs": [], "ledger": [],
+         "steps": [{"n": 1, "branch": "seriesb/001-a", "parent": "seriesb/000b-upstream-768-quickjs-only",
+                    "title": "Fix the seed", "kind": "independent", "description": "series/pr/001-a.md",
+                    "source": {"type": "replay", "old_step": 1, "old_branch": "series/001-a"},
+                    "differs_from_old": [], "size": {"src": 11, "tests": 0, "other": 0, "deleted_files": 0},
+                    "verification": {"date": "2026-11-02", "commit": "c" * 40,
+                                     "checks": {"build_clang": "pass", "unit": "n/a: none"}}},
+                   {"n": 2, "branch": "seriesb/002-b", "parent": "seriesb/001-a", "title": "Facade, folded",
+                    "kind": "hand-written", "description": "series/pr/002-b.md",
+                    "source": {"type": "replay", "old_step": 5, "old_branch": "series/005-b", "old_steps": [3, 4, 5]},
+                    "differs_from_old": [{"path": "src/js.c", "reason": "the step takes the old step's tree whole: D1"}],
+                    "size": None, "verification": None}]}
+
+    def test_handover_lists_parents_and_pushes_000b_to_the_fork_only_with_a_refspec(self):
+        from tools.series import series
+        text = series.render_handover_replay(self.M)
+        self.assertIn("#768", text)
+        self.assertIn("db4920103", text)
+        self.assertIn("seriesb/000b-upstream-768-quickjs-only:refs/heads/seriesb/000b-upstream-768-quickjs-only", text)
+        self.assertIn("--base seriesb/000b-upstream-768-quickjs-only --head seriesb/001-a", text)
+        self.assertIn("--base seriesb/001-a --head seriesb/002-b", text)
+        self.assertIn("tools/js-parity/**", text)
+        self.assertIn("old 3, 4, 5", text)
+        self.assertIn("docs/series-sync.md", text)
+        self.assertNotRegex(text, r"<[a-z-]+>|…")
+
+    def test_upstream_section_waits_while_the_prs_are_open(self):
+        from tools.series import series
+        text = series.render_handover_replay(self.M)
+        upstream = text.split("## Upstream, one at a time (Jon)")[1]
+        self.assertIn("wait", upstream.lower())
+        self.assertNotIn("gh pr create -R OoliteProject/oolite", upstream)
+
+    def test_upstream_commands_after_retire(self):
+        import copy
+        from tools.series import series
+        m = copy.deepcopy(self.M)
+        for p in m["parents"]:
+            p["state"] = "retired"
+        m["parents"].append({"branch": "seriesb/000m-upstream-master", "kind": "upstream-master", "gate": "pass",
+                             "head": "a" * 40, "parent": None})
+        m["steps"][0]["parent"] = "seriesb/000m-upstream-master"
+        upstream = series.render_handover_replay(m).split("## Upstream, one at a time (Jon)")[1]
+        self.assertIn("gh pr create -R OoliteProject/oolite --base master --head jonmseaman:seriesb/001-a", upstream)
+
+    def test_description_names_the_old_step_and_its_differences(self):
+        from tools.series import series
+        text = series.render_description_replay(self.M, self.M["steps"][1], {})
+        self.assertTrue(text.startswith("# Facade, folded\n"))
+        self.assertIn("series/005-b", text)
+        self.assertIn("old 3, 4, 5", text)
+        self.assertIn("src/js.c", text)
+        self.assertIn("#768", text)
+        self.assertIn("not independent", text)
+
+
 if __name__ == "__main__":
     unittest.main()
