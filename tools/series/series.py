@@ -11,7 +11,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-COMMANDS = ("inventory", "cut", "hoist", "tree", "build", "verify", "describe", "check", "renumber", "parents")
+COMMANDS = ("inventory", "cut", "hoist", "tree", "build", "verify", "describe", "check", "renumber", "parents", "gate")
 
 
 def parser():
@@ -51,6 +51,8 @@ def parser():
     pa = sub.add_parser("parents", help="seriesb: set up, refresh or report the upstream-PR parents")
     pa.add_argument("--setup", action="store_true", help="add the remote, mirror the PR heads, set lineage")
     pa.add_argument("--refresh", action="store_true", help="fetch and reset each parent to its PR head")
+    g = sub.add_parser("gate", help="seriesb: build and test a parent with its own CI commands (gate G1)")
+    g.add_argument("parent", help="the parent branch, or its 000x stem")
     return p
 
 
@@ -1165,7 +1167,25 @@ def cmd_handover(m):
 
 
 SERIES_ONLY = ("inventory", "hoist")  # history commands: feature 001 only
-SERIESB_ONLY = ("parents",)
+SERIESB_ONLY = ("parents", "gate")
+GATE_WORKTREE = os.path.join(ROOT, ".agent-tmp", "seriesb-gate")
+GATE_LOGS = os.path.join(ROOT, ".agent-tmp", "seriesb-verify")
+
+
+def cmd_gate(args):
+    """Gate G1 for one parent (research R6); records it and exits 0 only on pass (or a waiver)."""
+    from tools.series import gate, manifest
+    m = load_manifest()
+    match = [p for p in m.get("parents", []) if p["branch"] == args.parent or p["branch"].startswith(f"seriesb/{args.parent}-")]
+    if len(match) != 1:
+        print(f"gate: no single parent matches {args.parent!r}", file=sys.stderr)
+        return 2
+    p = gate.run(GAME, match[0], GATE_WORKTREE, GATE_LOGS)
+    manifest.save(MANIFEST, m)
+    for k, v in sorted(p["verification"]["checks"].items()):
+        print(f"  {k}: {v}")
+    print(f"gate {p['branch']}: {p['gate']}" + (f" ({p['flag']})" if p.get("flag") else ""))
+    return 0 if p["gate"] in ("pass", "waived") else 1
 
 
 SERIESB_ANCHORS = {"develop_target": "3aa8d65e8", "upstream_master": "7437f22a5"}
@@ -1205,7 +1225,7 @@ def cmd_parents(args):
         return 1
     return 1 if problems else 0
 
-HANDLERS = {"parents": cmd_parents, "inventory": cmd_inventory, "cut": cmd_cut, "hoist": cmd_hoist, "renumber": cmd_renumber, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
+HANDLERS = {"gate": cmd_gate, "parents": cmd_parents, "inventory": cmd_inventory, "cut": cmd_cut, "hoist": cmd_hoist, "renumber": cmd_renumber, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
 
 
 def main(argv=None):

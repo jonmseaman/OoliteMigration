@@ -222,7 +222,7 @@ R8).
 
   Accept: `$S parents` exits 0, and `$S check --only baseline` exits 0, so no `series/*`, `develop`
   or `master` moved.
-- [ ] T010 [US1] Implement `gate <parent>` (research R6) in `tools/series/series.py` and
+- [X] T010 [US1] Implement `gate <parent>` (research R6) in `tools/series/series.py` and
   `tools/series/verify.py`:
   - for `000a`, the `objc-spidermonkey` era, plus a second build with `-Djs_engine=quickjs`;
   - for `000b`, the `objc-quickjs` era;
