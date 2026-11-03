@@ -176,6 +176,19 @@ sources outside the replayed trees.
   to upstream's engine API (FR-015). Hard rule 6 is amended in `CLAUDE.md` (FR-016). The
   verification of steps 3–24 was stopped after step 8 passed: those steps stay as built, but the
   series now ends with the switch step.
+- T037 (2026-11-02): `series/facade-map.md` maps all 362 public names of `ooscript/JSEngine.hpp`
+  (`python -I tools/series/facade_map_check.py` exits 0). 152 have no counterpart in #768. Defaults
+  for T038–T040 all follow #768's own design (Jon chose it):
+  - **ownership**: the façade's arena, which emulates SpiderMonkey's GC, goes. Every call site takes
+    #768's explicit `JS_FreeValue` ownership, so each binding is re-read, not rewritten mechanically;
+  - **rooting, requests, versions and GC tuning** have no counterpart and are dropped with their
+    callers;
+  - **class hooks**: resolve and enumerate become #768's per-class `JSClassExoticMethods`
+    (`Manifest`, `MissionVariables`, `SystemInfo`), and `convert` becomes a `toString` method;
+  - **script scope**: #768's `with(this){(function(){…})}` wrapper. Its bytecode-only script cache
+    replaces the façade's format, so caches made before the change are not reused;
+  - **reset**: `clearScope` gives way to #768's free-the-context-and-notify-holders reset;
+  - **strings** cross the engine boundary as UTF-8, as in #768, so every `Char16` user changes.
 - T036 (2026-11-02): `feature/upstream-quickjs-binding` created at `develop` (`3aa8d65e8`), with its worktree
   at `.agent-tmp/upstream-binding-wt`. Its baseline `./mk.sh build test` (C++ shell) passes: 1,026 build
   steps, 0 warnings. `tools/deny-list.txt`, which `ooscript/JSEngine.hpp`'s comment says bans the `JS_`

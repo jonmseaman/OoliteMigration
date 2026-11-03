@@ -521,11 +521,11 @@ for tests and FR-016's amended hard rule 6.
   then build it once (`./mk.sh build test` in the C++ shell) to record the starting point.
   Accept: `git -C oolite-dev merge-base --is-ancestor develop feature/upstream-quickjs-binding`, and
   the worktree's build exits 0.
-- [ ] T037 [US6] Write the façade dictionary `specs/002-seriesb-rebase-stack/series/facade-map.md`.
+- [X] T037 [US6] Write the façade dictionary `specs/002-seriesb-rebase-stack/series/facade-map.md`.
   It has one row per public name in `src/Core/Scripting/ooscript/JSEngine.hpp`: the façade name,
   how `JSEngine_quickjs.cpp` implements it on QuickJS, and the form #768's binding uses for the same
   job (with a file:line example from `seriesb/000b-upstream-768-quickjs-only`). Accept: a script
-  `.agent-tmp/facade_map_check.py` lists `JSEngine.hpp`'s public names, and every one appears in the
+  `tools/series/facade_map_check.py` lists `JSEngine.hpp`'s public names, and every one appears in the
   table.
 - [ ] T038 [US6] Port the engine core to #768's design, in C++:
   - `OOJavaScriptEngine.{h,cpp}`, `OOJSScript`, `OOJSFunction`, `OOJSCall`,
