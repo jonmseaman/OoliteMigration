@@ -527,7 +527,7 @@ for tests and FR-016's amended hard rule 6.
   job (with a file:line example from `seriesb/000b-upstream-768-quickjs-only`). Accept: a script
   `tools/series/facade_map_check.py` lists `JSEngine.hpp`'s public names, and every one appears in the
   table.
-- [ ] T038 [US6] Port the engine core to #768's design, in C++:
+- [X] T038 [US6] Port the engine core to #768's design, in C++:
   - `OOJavaScriptEngine.{h,cpp}`, `OOJSScript`, `OOJSFunction`, `OOJSCall`,
     `OOJSEngineTimeManagement`, `OOJSEngineDebuggerHelpers`, `OOJSPropID.h`;
   - a new `OOJSClasses`, from #768's `OOJSClasses.m`.

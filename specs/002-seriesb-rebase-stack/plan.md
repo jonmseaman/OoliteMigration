@@ -176,6 +176,17 @@ sources outside the replayed trees.
   to upstream's engine API (FR-015). Hard rule 6 is amended in `CLAUDE.md` (FR-016). The
   verification of steps 3–24 was stopped after step 8 passed: those steps stay as built, but the
   series now ends with the switch step.
+- T038 (2026-11-03): the engine core is ported on `feature/upstream-quickjs-binding` (`34fc9465c`; #768's
+  compat script in `c39eb267d`). No `ooscript` remains in it, and its 9 objects compile with no
+  warnings (rebuilt by the orchestrator). Decisions, all following #768:
+  - `OOJSPrivateObject` is kept, reduced to the C++ stand-in for #768's NSObject category;
+  - the time limiter is QuickJS's interrupt handler, and the watchdog thread is gone;
+  - errors are logged from the exception's stack, with location lines on by default;
+  - the monitor receives severity, file and line;
+  - the script cache has a new name, so old caches are not reused;
+  - #768's QuickJS-ng patch is not applied (the core warns without it; T044 decides).
+  The binding API is in T039/T040's briefs. `OOJavaScriptEngine` lost `removeGC*Root` and
+  `objectClass()` etc. (T042).
 - Estimate (2026-11-02, corrected): 4–7 days to a final seriesb step passing on upstream's binding, or
   about 3 with binding files ported in parallel. The precedent is old steps 003–005 (the façade and
   all ~3,800 call sites moved onto it), which took 3.5 days in the history (2026-09-19 → 09-22). The

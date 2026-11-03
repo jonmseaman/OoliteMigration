@@ -1299,10 +1299,30 @@
     "old_step": 11,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "135b5a71064a2d77f899f5dce18be78ad80a188d",
    "title": "Drop gnustep-base, then convert the first classes to C++: maths, leaf utilities, OXP verifier",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "81a1b9d7d3230de8e621e1299471b0df6ee50b65",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "135b5a71064a2d77f899f5dce18be78ad80a188d",
+    "warning_keys": []
+   }
   },
   {
    "branch": "seriesb/010-module-conversions",
@@ -1337,10 +1357,34 @@
     "old_step": 12,
     "type": "replay"
    },
-   "state": "built",
+   "state": "failed",
    "target_tree": "390352140e33486390f548e99ba0c66aef31500b",
    "title": "Convert scripting, entities, audio and materials classes to C++",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd, core",
+     "warnings_clang": "fail: 1 new warnings (0 inherited from the parent, 3 listed in test-warnings.md): tests/unit/core/test_OOJSShipGroup.mm: warning: variable 'sFinalized' set but not used [-Wunused-but-set-global]"
+    },
+    "clean": false,
+    "commit": "2e613e4a446d0a24af2e52caeaa3bc97ef3a8f4b",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "390352140e33486390f548e99ba0c66aef31500b",
+    "warning_keys": [
+     "tests/unit/core/test_OOJSConsole.mm: warning: unused variable 'sEntityProto' [-Wunused-variable]",
+     "tests/unit/core/test_OOJSShipGroup.mm: warning: variable 'sFinalized' set but not used [-Wunused-but-set-global]",
+     "tests/unit/core/test_OOJSWormhole.mm: warning: variable 'sFinalized' set but not used [-Wunused-but-set-global]"
+    ]
+   }
   },
   {
    "branch": "seriesb/011-first-slices",
