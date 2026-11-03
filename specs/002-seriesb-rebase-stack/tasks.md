@@ -263,7 +263,7 @@ recorded.
 **Independent Test**: `$S check --only manifest,lineage,branches,differs` exits 0, and every
 `steps[].source.old_step` is strictly increasing.
 
-- [ ] T013 [US2] Write `tools/series/tests/test_replay.py` on T005's fixture. It checks that:
+- [X] T013 [US2] Write `tools/series/tests/test_replay.py` on T005's fixture. It checks that:
   - `cut --replay` writes one `planned` step per old step, with the old title and description copied
     and `source.type == "replay"`;
   - `tree <n>` merges (base = old parent tree, ours = new parent tree, theirs = old step tree), and
