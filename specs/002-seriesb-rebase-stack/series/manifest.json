@@ -72,7 +72,7 @@
      "./mk.sh build test"
     ],
     "commit": "3758f8a09ba6b00be61519bcaab543cc8450b631",
-    "date": "2026-11-02",
+    "date": "2026-11-03",
     "era": "objc-spidermonkey",
     "tree": "d109de5e402f9df04a3136bee75c82fcc15f77e0",
     "warning_keys": [],
@@ -104,7 +104,7 @@
      "./mk.sh build test"
     ],
     "commit": "db49201034e5ab3857342fb4dca199d5f17b93fb",
-    "date": "2026-11-02",
+    "date": "2026-11-03",
     "era": "objc-quickjs",
     "tree": "55462f20a827804de7fe1d18c9ce1b3e455c3e5b",
     "warning_keys": [

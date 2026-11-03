@@ -49,7 +49,7 @@ Town 24.0.0.
 
 **Testing**:
 
-- `python -I -m unittest discover -s tools/series/tests`: old tests unchanged, plus new tests for
+- `python -I -m unittest discover -s tools/series/tests -t .`: old tests unchanged, plus new tests for
   the profile;
 - per step, feature 001's verification matrix (build Clang/GCC, unit, smoke, component where
   touched, format, warnings);

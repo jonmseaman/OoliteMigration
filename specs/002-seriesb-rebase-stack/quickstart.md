@@ -5,7 +5,7 @@ Run these from the OoliteMigration root in an MSYS2 UCRT64 shell. `S="python -I 
 ## 0. The tool still works for the old series
 
 ```bash
-python -I -m unittest discover -s tools/series/tests      # all pass, old and new
+python -I -m unittest discover -s tools/series/tests -t . # all pass, old and new
 python -I tools/series/series.py check --verified          # old series: exit 0, nothing moved
 ```
 
