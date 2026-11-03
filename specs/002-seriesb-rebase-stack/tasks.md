@@ -516,7 +516,7 @@ Work happens in the worktree `.agent-tmp/upstream-binding-wt`, never in `oolite-
 Commit to the feature branch as each task finishes. The rules above apply, with FR-015's exception
 for tests and FR-016's amended hard rule 6.
 
-- [ ] T036 [US6] Create the branch and the worktree:
+- [X] T036 [US6] Create the branch and the worktree:
   `git -C oolite-dev worktree add -b feature/upstream-quickjs-binding .agent-tmp/upstream-binding-wt develop`,
   then build it once (`./mk.sh build test` in the C++ shell) to record the starting point.
   Accept: `git -C oolite-dev merge-base --is-ancestor develop feature/upstream-quickjs-binding`, and
