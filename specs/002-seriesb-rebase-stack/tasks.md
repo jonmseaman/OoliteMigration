@@ -471,7 +471,7 @@ has an entry.
   - the sync command from `docs/series-sync.md`.
 
   Add assertions to `tools/series/tests/test_replay.py`. Accept: those tests pass.
-- [ ] T032 [US5] Run `$S describe` for every step and `$S describe --handover`. Hand-edit only the
+- [X] T032 [US5] Run `$S describe` for every step and `$S describe --handover`. Hand-edit only the
   hand-written sections, for the steps whose purpose changed (the new 003, and old 005 if
   narrowed). Accept: `$S check --verified --only descriptions,handover` exits 0, and
   `specs/002-seriesb-rebase-stack/series/HANDOVER.md` exists.
@@ -594,7 +594,7 @@ for tests and FR-016's amended hard rule 6.
   tree minus `exclusions`, plus the parent's `additions`. `differs_from_old` does not apply; the
   description says it is the switch. `cut --replay` keeps it last. Accept:
   `python -m unittest tools.series.tests.test_replay` passes.
-- [ ] T048 [US6] Add step 025, "Move the scripting layer to upstream's QuickJS-ng binding", with
+- [X] T048 [US6] Add step 025, "Move the scripting layer to upstream's QuickJS-ng binding", with
   source `feature/upstream-quickjs-binding`. Set `anchors.develop_target` to the branch tip, build
   the step, and verify steps 9–25 (the stopped run's remainder). Accept:
   `$S check --only manifest,lineage,branches,final-tree` exits 0, and

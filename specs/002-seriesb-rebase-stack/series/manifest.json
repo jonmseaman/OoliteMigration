@@ -138,7 +138,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 0,
+    "src": 11,
+    "tests": 0
+   },
    "source": {
     "old_branch": "series/001-random-seed-env",
     "old_commit": "ee25fd156bf6e98154c12ba55f4a96122aef8aaa",
@@ -216,7 +221,12 @@
     }
    ],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 27,
+    "src": 493,
+    "tests": 13624
+   },
    "source": {
     "old_branch": "series/002-safety-net",
     "old_commit": "1256b471a763993b0bca2f674f0d950116e84b3f",
@@ -940,7 +950,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 21569,
+    "other": 6957,
+    "src": 30608,
+    "tests": 920
+   },
    "source": {
     "old_branch": "series/005-quickjs-switch",
     "old_commit": "f6bfd5bff56090b8f00fcc9772cabb96d3ef4c4f",
@@ -1012,7 +1027,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 460,
+    "other": 3,
+    "src": 10045,
+    "tests": 6371
+   },
    "source": {
     "old_branch": "series/006-oofnd-core",
     "old_commit": "0665c9b17d7c91743162317d9e8c814fe619bc80",
@@ -1067,7 +1087,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 43,
+    "src": 11063,
+    "tests": 2074
+   },
    "source": {
     "old_branch": "series/007-typed-accessors",
     "old_commit": "b0c5d47c8f6e945195da0f2fba4f67a34b75194e",
@@ -1122,7 +1147,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 0,
+    "src": 35301,
+    "tests": 1202
+   },
    "source": {
     "old_branch": "series/008-foundation-wave-1",
     "old_commit": "18950b2496cfd25da9b76c9efa693094d8f76c0a",
@@ -1178,7 +1208,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 1663,
+    "other": 40,
+    "src": 48303,
+    "tests": 2815
+   },
    "source": {
     "old_branch": "series/009-foundation-wave-2",
     "old_commit": "4955d538ceafa9af0e54b55b65d141111bd1620c",
@@ -1234,7 +1269,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 10546,
+    "other": 12,
+    "src": 18612,
+    "tests": 1071
+   },
    "source": {
     "old_branch": "series/010-selector-families",
     "old_commit": "41cc1872f7941623b44e5943427c22e6eb366476",
@@ -1292,7 +1332,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 1783,
+    "other": 20,
+    "src": 28512,
+    "tests": 17797
+   },
    "source": {
     "old_branch": "series/011-leaf-conversions",
     "old_commit": "1e0c474f26a0054a9fe88ae177cd061446e1d55e",
@@ -1350,7 +1395,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 2354,
+    "other": 112,
+    "src": 38987,
+    "tests": 40623
+   },
    "source": {
     "old_branch": "series/012-module-conversions",
     "old_commit": "89ef62f37bec6c651d7284cd84ff969110350c5a",
@@ -1411,7 +1461,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 5058,
+    "other": 51,
+    "src": 26165,
+    "tests": 12894
+   },
    "source": {
     "old_branch": "series/013-first-slices",
     "old_commit": "b49b469d5e3c3c1a7e2c1d6af158a6dc57069969",
@@ -1471,7 +1526,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 57,
+    "other": 105,
+    "src": 29141,
+    "tests": 6861
+   },
    "source": {
     "old_branch": "series/014-shipentity-slices",
     "old_commit": "61f1d44220ed6e24e8969508419ec97b65dcc3fc",
@@ -1534,7 +1594,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 1154,
+    "other": 0,
+    "src": 17641,
+    "tests": 3606
+   },
    "source": {
     "old_branch": "series/015-universe-player-slices",
     "old_commit": "d6d77dd63d66e878dcf9bf54905cf091d0e5aa02",
@@ -1596,7 +1661,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 22068,
+    "other": 0,
+    "src": 50330,
+    "tests": 25925
+   },
    "source": {
     "old_branch": "series/016-facade-deletions",
     "old_commit": "f498adb87fbdbe0a80c87a66e75018212cc410b0",
@@ -1658,7 +1728,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 17792,
+    "other": 59,
+    "src": 29706,
+    "tests": 17111
+   },
    "source": {
     "old_branch": "series/017-entity-facade",
     "old_commit": "eabb728dc22ca36b042a7aa0f0f08e400e5f08f8",
@@ -1716,7 +1791,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 8523,
+    "other": 10260,
+    "src": 6552,
+    "tests": 1805
+   },
    "source": {
     "old_branch": "series/018-objc-runtime-out",
     "old_commit": "e8f357a33713356d0be6bfc1553563b49772fa20",
@@ -1773,7 +1853,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 0,
+    "src": 218,
+    "tests": 1680
+   },
    "source": {
     "old_branch": "series/019-gcc-build",
     "old_commit": "0c9728594b5499374e9ef42e31b8aa534e062ba5",
@@ -1830,7 +1915,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 45,
+    "src": 12392,
+    "tests": 303
+   },
    "source": {
     "old_branch": "series/020-upstream-9ee8ff22f-port",
     "old_commit": "0eb3d8d1827a545aeb026904b5c76d37772b3a83",
@@ -1877,7 +1967,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 9,
+    "src": 833,
+    "tests": 386
+   },
    "source": {
     "old_branch": "series/021-develop-fixes",
     "old_commit": "9ebfd45f070e1a6abb40fcd05667d38b5a2c8a88",
@@ -1924,7 +2019,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 48,
+    "src": 56796,
+    "tests": 153167
+   },
    "source": {
     "old_branch": "series/022-source-hygiene",
     "old_commit": "327ecfa99b28081991e3099cdcdc850dca87e833",
@@ -1971,7 +2071,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 13,
+    "src": 35,
+    "tests": 1094
+   },
    "source": {
     "old_branch": "series/023-tests-and-tooling",
     "old_commit": "725986317b902c8236954c5941b3fda566bb8ff9",
@@ -2018,7 +2123,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 167,
+    "src": 14389,
+    "tests": 5350
+   },
    "source": {
     "old_branch": "series/024-c-as-cxx",
     "old_commit": "065635389d416cd2db5d10297ac94e5b9c220d94",
@@ -2065,7 +2175,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 223,
+    "other": 169,
+    "src": 5967,
+    "tests": 197
+   },
    "source": {
     "old_branch": "series/025-upstream-49a5eb9fc-ports",
     "old_commit": "bee3d78c0e23e6930754bea8c79b7cfb15567d42",
@@ -2112,7 +2227,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 0,
+    "other": 55,
+    "src": 431864,
+    "tests": 5
+   },
    "source": {
     "old_branch": "series/026-google-style-format",
     "old_commit": "d5f8e1af33df5c64029cca5a180d8e0f39cfe3fa",
@@ -2159,7 +2279,12 @@
    "reasons": {},
    "resolutions": [],
    "rules": [],
-   "size": null,
+   "size": {
+    "deleted_files": 6553,
+    "other": 285,
+    "src": 28379,
+    "tests": 11273
+   },
    "source": {
     "commit": "531ddd6592c3723c84ab7698b4a5c4b430fe891a",
     "ref": "feature/upstream-quickjs-binding",
