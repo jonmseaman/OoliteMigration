@@ -113,7 +113,7 @@ R8).
 
 **⚠️ CRITICAL**: no story work can begin until this phase is complete.
 
-- [ ] T003 Write the tests first, in `tools/series/tests/test_profile.py`:
+- [X] T003 Write the tests first, in `tools/series/tests/test_profile.py`:
   - `profile.get("series")` returns prefix `series/`, dir `specs/001-split-migration-prs/series`
     and root `series/000-upstream-base`;
   - `profile.get("seriesb")` returns prefix `seriesb/`, dir `specs/002-seriesb-rebase-stack/series`,
