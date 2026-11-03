@@ -240,7 +240,9 @@ description file and verification record it names exists, and every base chains 
   - Additions are paths #767/#768 add that the series keeps although `develop` lacks them, namely
     upstream's stand-alone tools (`tools/js-parity/**`, `tools/oxp-upgrade/**`).
 
-  (Amended 2026-11-02 by the plan, research R5.)
+  (Amended 2026-11-02 by the plan, research R5.) After a sync, paths that upstream's PRs changed
+  since the stack was built may differ too: `develop` does not have upstream's newer work. Each
+  sync record lists them. (Amended 2026-11-02 at T027.)
 - **FR-008**: Every step MUST meet the old series' verification bar (feature 001 FR-003, FR-004,
   FR-005): it builds with no warnings under the project's flags; it builds with Clang, and with
   GCC wherever its parent does; unit and smoke pass; component scenarios pass where the step

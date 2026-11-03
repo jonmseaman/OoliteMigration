@@ -401,11 +401,11 @@ has an entry.
     `develop` commit fails rule 4, and a non-merge commit after `build_commit` fails rule 3.
 
   Accept: the file exists and fails before T027.
-- [ ] T027 [US4] Implement `sync-record [--conflict STEP:PATH:REASON …]` in `tools/series/series.py`.
+- [X] T027 [US4] Implement `sync-record [--conflict STEP:PATH:REASON …]` in `tools/series/series.py`.
   It writes `syncs[]` (`date`, `command`, `parent_heads_before`, `parent_heads_after`,
   `conflicts`), updates `parents[].head`, and sets every step to `stale`. Make `check` accept sync
   merges (research R9). Accept: `python -m unittest tools.series.tests.test_sync_check` passes.
-- [ ] T028 [US4] Implement FR-011a's re-parent path as `parents --retire`. It applies once #767/#768
+- [X] T028 [US4] Implement FR-011a's re-parent path as `parents --retire`. It applies once #767/#768
   are in upstream `master`, and refuses otherwise:
   - it creates `seriesb/000m-upstream-master` at upstream `master`, as a perennial branch and a
     parent with `kind: upstream-master`;

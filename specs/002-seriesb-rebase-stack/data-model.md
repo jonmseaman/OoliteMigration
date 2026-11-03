@@ -81,7 +81,9 @@ its parent's tree (FR-005).
 
 ## SyncRecord
 
-`{date, command, parent_heads_before, parent_heads_after, conflicts: [{step, path, reason}]}`.
+`{date, command, parent_heads_before, parent_heads_after, upstream_paths, conflicts: [{step, path, reason}]}`.
+`upstream_paths` lists the paths the root parent changed in the sync. Rule 6 accepts differences
+from `develop` at those paths, because `develop` does not have upstream's newer work.
 `series.py sync-record` writes one after Jon or an agent has run the sync.
 
 ## State
@@ -103,6 +105,7 @@ A step goes `planned` → `built` → `verified`. A sync puts every step back to
    parent (FR-003).
 5. Every `series/*` branch, `develop` and `master` is at the commit recorded in
    `series/baseline.json`, which is written before any branch is created (FR-009).
-6. The final tree equals `develop_target`'s tree, modulo `exclusions` and `additions` (FR-007).
+6. The final tree equals `develop_target`'s tree, modulo `exclusions`, `additions` and every sync's
+   `upstream_paths` (FR-007).
 7. With `--verified`: every parent's gate is `pass`, and every step's verification passes and is
    current after the latest sync.

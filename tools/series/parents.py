@@ -140,6 +140,8 @@ def refresh(repo, m, remote=REMOTE):
     _fetch(repo, remote)
     busy = _checked_out(repo)
     live = [p for p in m.get("parents", []) if p.get("kind") == "upstream" and p.get("state") != "retired"]
+    # the heads before this refresh, for the next `sync-record` (only the first refresh of a sync counts)
+    m.setdefault("pending_sync", {"before": {p["branch"]: _sha(repo, f"refs/heads/{p['branch']}") for p in live}})
     held = sorted(p["branch"] for p in live if p["branch"] in busy)
     if held:
         raise SystemExit(f"parents: {', '.join(held)} checked out; switch away first (a parent is never worked on)")
@@ -152,4 +154,39 @@ def refresh(repo, m, remote=REMOTE):
             _git(repo, "update-ref", f"refs/heads/{p['branch']}", head)
         if p.get("head") != head:
             p["head"] = head
+    return m
+
+
+UPSTREAM_MASTER_BRANCH = "seriesb/000m-upstream-master"
+
+
+def retire(repo, m, upstream_ref="refs/remotes/upstream/master"):
+    """FR-011a: once every upstream parent's head is in upstream master, add the perennial
+    seriesb/000m-upstream-master at master, move step 1 onto it, and mark the parents retired. Deletes
+    nothing; Jon deletes the old parents when he wants to."""
+    master = _sha(repo, upstream_ref)
+    if master is None:
+        raise SystemExit(f"parents --retire: no {upstream_ref}; fetch upstream first")
+    live = [p for p in m.get("parents", []) if p.get("kind") == "upstream" and p.get("state") != "retired"]
+    if not live:
+        raise SystemExit("parents --retire: no upstream parents to retire")
+    unmerged = [p["branch"] for p in live
+                if _git(repo, "merge-base", "--is-ancestor", p["head"], master, ok=(0, 1)).returncode != 0]
+    if unmerged:
+        raise SystemExit(f"parents --retire: not in upstream master yet: {', '.join(unmerged)}")
+    if _sha(repo, f"refs/heads/{UPSTREAM_MASTER_BRANCH}") is None:
+        _git(repo, "branch", "--no-track", UPSTREAM_MASTER_BRANCH, master)
+    perennial = _git(repo, "config", "--get-all", "git-town.perennial-branches", ok=(0, 1)).stdout.split()
+    if UPSTREAM_MASTER_BRANCH not in perennial:
+        _git(repo, "config", "--replace-all", "git-town.perennial-branches", " ".join(perennial + [UPSTREAM_MASTER_BRANCH]))
+    for p in live:
+        p["state"] = "retired"
+    entry = _record(m, UPSTREAM_MASTER_BRANCH, kind="upstream-master", head=master, parent=None,
+                    git_town_type="perennial", tracking=upstream_ref.replace("refs/remotes/", "", 1))
+    entry.setdefault("gate", "pending")
+    entry.setdefault("verification", None)
+    steps = m.get("steps", [])
+    if steps:
+        steps[0]["parent"] = UPSTREAM_MASTER_BRANCH
+        _git(repo, "config", f"git-town-branch.{steps[0]['branch']}.parent", UPSTREAM_MASTER_BRANCH)
     return m

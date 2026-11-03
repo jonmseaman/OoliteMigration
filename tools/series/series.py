@@ -11,7 +11,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-COMMANDS = ("inventory", "cut", "hoist", "tree", "build", "verify", "describe", "check", "renumber", "parents", "gate", "drop", "fold")
+COMMANDS = ("inventory", "cut", "hoist", "tree", "build", "verify", "describe", "check", "renumber", "parents", "gate", "drop", "fold", "sync-record")
 
 
 def parser():
@@ -69,6 +69,10 @@ def parser():
     pa = sub.add_parser("parents", help="seriesb: set up, refresh or report the upstream-PR parents")
     pa.add_argument("--setup", action="store_true", help="add the remote, mirror the PR heads, set lineage")
     pa.add_argument("--refresh", action="store_true", help="fetch and reset each parent to its PR head")
+    pa.add_argument("--retire", action="store_true", help="once the PRs are in upstream master: step 1 onto it")
+    sr = sub.add_parser("sync-record", help="seriesb: record a git town sync and its hand-resolved conflicts")
+    sr.add_argument("--conflict", action="append", default=[], metavar="STEP:PATH:REASON")
+    sr.add_argument("--command", default="git town sync --stack --detached --no-push")
     g = sub.add_parser("gate", help="seriesb: build and test a parent with its own CI commands (gate G1)")
     g.add_argument("parent", help="the parent branch, or its 000x stem")
     return p
@@ -1394,6 +1398,16 @@ def cmd_fold(args):
     return 0
 
 
+def cmd_sync_record(args):
+    from tools.series import manifest, sync
+    m = load_manifest()
+    entry = sync.record(GAME, m, args.command, [sync.parse_conflict(c) for c in args.conflict])
+    manifest.save(MANIFEST, m)
+    print(f"sync-record: sync {len(m['syncs'])} on {entry['date']}, {len(entry['conflicts'])} conflict(s); "
+          "every step is stale until `verify --from 1`")
+    return 0
+
+
 def cmd_drop(args):
     from tools.series import manifest, replay
     m = load_manifest()
@@ -1401,7 +1415,7 @@ def cmd_drop(args):
     manifest.save(MANIFEST, m)
     print(f"drop: step {args.n} dropped; {len(m['steps'])} steps, renumbered")
     return 0
-SERIESB_ONLY = ("parents", "gate", "drop", "fold")
+SERIESB_ONLY = ("parents", "gate", "drop", "fold", "sync-record")
 GATE_WORKTREE = os.path.join(ROOT, ".agent-tmp", "seriesb-gate")
 GATE_LOGS = os.path.join(ROOT, ".agent-tmp", "seriesb-verify")
 
@@ -1444,7 +1458,10 @@ def cmd_parents(args):
         if not m:
             raise SystemExit("parents: no manifest; run `parents --setup` first")
         parents.refresh(GAME, m)
-    if args.setup or args.refresh:
+    elif args.retire:
+        history.git(GAME, "fetch", "-q", "upstream", "master")
+        parents.retire(GAME, m)
+    if args.setup or args.refresh or args.retire:
         os.makedirs(SERIES_DIR, exist_ok=True)
         manifest.save(MANIFEST, m)
     for p in m.get("parents", []):
@@ -1459,7 +1476,7 @@ def cmd_parents(args):
         return 1
     return 1 if problems else 0
 
-HANDLERS = {"fold": cmd_fold, "drop": cmd_drop, "gate": cmd_gate, "parents": cmd_parents, "inventory": cmd_inventory, "cut": cmd_cut, "hoist": cmd_hoist, "renumber": cmd_renumber, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
+HANDLERS = {"sync-record": cmd_sync_record, "fold": cmd_fold, "drop": cmd_drop, "gate": cmd_gate, "parents": cmd_parents, "inventory": cmd_inventory, "cut": cmd_cut, "hoist": cmd_hoist, "renumber": cmd_renumber, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
 
 
 def main(argv=None):

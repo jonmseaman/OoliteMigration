@@ -246,8 +246,11 @@ def check_final_tree(repo, m):
             target = trees.revert(repo, target, e["revert_commit"])
     tip = _out(repo, "rev-parse", f"refs/heads/{steps[-1]['branch']}^{{tree}}")
     globs = _globs(m)
+    # paths upstream's PRs changed after the stack was built (recorded by sync-record) differ by
+    # design: develop does not have upstream's newer work
+    upstream = {p for s in m.get("syncs", []) for p in s.get("upstream_paths", [])}
     diff = [p for p in _out(repo, "diff", "--name-only", "--no-renames", tip, target).splitlines()
-            if not any(fnmatch.fnmatchcase(p, g) for g in globs)]
+            if not any(fnmatch.fnmatchcase(p, g) for g in globs) and p not in upstream]
     out += [f"rule 6: the last step differs from develop at {p}" for p in diff[:20]]
     if len(diff) > 20:
         out.append(f"rule 6: ... and {len(diff) - 20} more paths")
