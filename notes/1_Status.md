@@ -61,7 +61,8 @@ Here's a summary of my current progress.
 - **TODO** More thorough code review. Read through many files to compare to the
   objective c source code. I need to compare against the current upstream code
   to spot discrepancies in recent commits.
-
+- **TODO** Repeat review of recent PRs to make sure the C++ conversion doesn't
+  revert those recent changes.
 
 
 ## Questions
