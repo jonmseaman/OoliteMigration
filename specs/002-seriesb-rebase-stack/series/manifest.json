@@ -1,0 +1,54 @@
+{
+ "additions": [],
+ "anchors": {
+  "develop_target": "3aa8d65e8c349bcae462078a684cc182905004ef",
+  "format": {
+   "clang_format_version": "22.1.8",
+   "style_file_from": "49a5eb9fc"
+  },
+  "old_manifest": "specs/001-split-migration-prs/series/manifest.json",
+  "upstream_master": "7437f22a543c442830774dea0f2cad4e59c04cbb"
+ },
+ "dropped": [],
+ "exclusions": [
+  {
+   "path_glob": ".zed/**",
+   "reason": "editor settings for the fork's own setup"
+  },
+  {
+   "path_glob": ".vscode/**",
+   "reason": "editor settings for the fork's own setup"
+  },
+  {
+   "reason": "the fork's CI filter (push builds only for master and develop)",
+   "revert_commit": "3aa8d65e8"
+  }
+ ],
+ "ledger": [],
+ "parents": [
+  {
+   "branch": "seriesb/000a-upstream-767-quickjs-option",
+   "gate": "pending",
+   "git_town_type": "observed",
+   "head": "3758f8a09ba6b00be61519bcaab543cc8450b631",
+   "kind": "upstream",
+   "parent": "develop",
+   "tracking": "hobleyd/seriesb/000a-upstream-767-quickjs-option",
+   "upstream_pr": 767,
+   "verification": null
+  },
+  {
+   "branch": "seriesb/000b-upstream-768-quickjs-only",
+   "gate": "pending",
+   "git_town_type": "observed",
+   "head": "db49201034e5ab3857342fb4dca199d5f17b93fb",
+   "kind": "upstream",
+   "parent": "seriesb/000a-upstream-767-quickjs-option",
+   "tracking": "hobleyd/seriesb/000b-upstream-768-quickjs-only",
+   "upstream_pr": 768,
+   "verification": null
+  }
+ ],
+ "steps": [],
+ "syncs": []
+}

@@ -173,6 +173,9 @@ sources outside the replayed trees.
   2. Sync fetches only `origin`, and a force-pushed PR branch makes the observed rebase replay
      upstream's dropped commits. So `parents --refresh` (fetch `hobleyd`, then `update-ref` each
      parent to its tracking ref) runs before every sync.
+- T009 (2026-11-02): parents set up in `oolite-dev`: `000a` = `3758f8a09`, `000b` = `db4920103` (unchanged
+  since the baseline), observed, under `develop`. The remote `hobleyd` has `pushurl no-push`. The planning
+  refs `refs/upstream-pr/*` are deleted.
 - T001: `series/baseline.json` records 27 `series/*` branches, `develop`, `master`, the PR heads
   (`3758f8a09`, `db4920103`) and upstream `master` (`7437f22a5`).
 - Open, with the default taken: whether #768's QuickJS-ng patch and `oolite-quickjs-compat.js` are

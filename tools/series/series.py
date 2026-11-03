@@ -1195,8 +1195,8 @@ def cmd_parents(args):
         manifest.save(MANIFEST, m)
     for p in m.get("parents", []):
         tip = history.git(GAME, "rev-parse", "-q", "--verify", f"refs/heads/{p['branch']}", check=False).stdout.strip()
-        print(f"{p['branch']}: tip {tip[:10] or '-'} · PR #{p.get('upstream_pr', '-')} head {str(p.get('head'))[:10]} "
-              f"· gate {p.get('gate')}")
+        print(f"{p['branch']}: tip {tip[:10] or '-'} | PR #{p.get('upstream_pr', '-')} head {str(p.get('head'))[:10]} "
+              f"| gate {p.get('gate')}")
     problems = parents.status(GAME, m)
     for line in problems:
         print(line, file=sys.stderr)

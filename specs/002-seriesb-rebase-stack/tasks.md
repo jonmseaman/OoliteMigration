@@ -213,7 +213,7 @@ R8).
   - `format` copied from feature 001.
 
   Accept: `python -m unittest tools.series.tests.test_parents` passes.
-- [ ] T009 [US1] Run `$S parents --setup` against the real `oolite-dev`.
+- [X] T009 [US1] Run `$S parents --setup` against the real `oolite-dev`.
   - If the PR heads have moved since `baseline.json`, use the new heads and record both in plan.md's
     Notes.
   - Delete the planning refs `refs/upstream-pr/{767,768,772}`
