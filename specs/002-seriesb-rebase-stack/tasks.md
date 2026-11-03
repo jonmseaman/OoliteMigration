@@ -480,7 +480,7 @@ has an entry.
 
 ## Phase 8: Polish and cross-cutting
 
-- [ ] T033 [P] Update `docs/README.md`'s index and `ROADMAP.md` with the `seriesb` stack: what it is,
+- [X] T033 [P] Update `docs/README.md`'s index and `ROADMAP.md` with the `seriesb` stack: what it is,
   where its manifest is, and that `series/*` remains the master-based option. Describe the code as
   it is now. Accept: `grep -q seriesb ROADMAP.md && grep -q 002-seriesb-rebase-stack docs/README.md`.
 - [ ] T034 Run quickstart.md end to end (sections 0–3; section 4 only if T030 ran a real sync), and

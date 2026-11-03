@@ -26,6 +26,8 @@ source hygiene, and the write-up for the Oolite maintainers. `bd ready` lists wh
 | [docs/README.md](docs/README.md) | Index of the docs, and what to read for which task |
 | [docs/current-state.md](docs/current-state.md) | What the code is now: layout, builds, tests, known differences |
 | [docs/workflow.md](docs/workflow.md) | Running the tests, bead sizing, definition of done |
+| [specs/001-split-migration-prs/series/HANDOVER.md](specs/001-split-migration-prs/series/HANDOVER.md) | The migration as a PR series on upstream `master` (`series/*`, 26 steps) |
+| [specs/002-seriesb-rebase-stack/series/HANDOVER.md](specs/002-seriesb-rebase-stack/series/HANDOVER.md) | The same series on upstream's QuickJS-ng PRs #767/#768 (`seriesb/*`, 24 steps); `series/*` stays the master-based option. Syncing: [docs/series-sync.md](docs/series-sync.md) |
 | [GLOSSARY.md](GLOSSARY.md) | Terms |
 | [tools/setup-windows.sh](tools/setup-windows.sh) | Setting up the Windows machine from scratch |
 
