@@ -415,7 +415,7 @@ has an entry.
   It deletes no branch; deletion is Jon's. Test it in
   `tools/series/tests/test_sync_check.py` with the fixture's PR branches merged into its master.
   Accept: that test passes.
-- [ ] T029 [US4] Write `docs/series-sync.md`, the procedure for Jon and agents:
+- [X] T029 [US4] Write `docs/series-sync.md`, the procedure for Jon and agents:
   - which commands to run, in research R2's order: `parents --refresh`, then
     `git town sync --stack --detached --no-push`, and why agents add the two flags;
   - resolving a conflict, with `git town continue`;
