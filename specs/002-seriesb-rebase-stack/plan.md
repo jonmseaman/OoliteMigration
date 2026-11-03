@@ -176,6 +176,18 @@ sources outside the replayed trees.
   to upstream's engine API (FR-015). Hard rule 6 is amended in `CLAUDE.md` (FR-016). The
   verification of steps 3–24 was stopped after step 8 passed: those steps stay as built, but the
   series now ends with the switch step.
+- **Behaviour changes that follow #768, for Jon to confirm** (found while porting and moving tests,
+  2026-11-03). Tests expecting the old behaviour are updated, and each update is in the test ledger:
+  - **Manifest**: assigning an invalid value to a manifest entry, or deleting one, now throws
+    (`Cannot set property food of instance of Manifest to invalid value x.`). Before, the error was
+    reported and the assignment ignored. This matches #768's `OOJSManifest.m` (group D).
+  - **Class tags**: `Object.prototype.toString.call(<game object>)` now gives `[object Object]`, not
+    e.g. `[object Vector3D]`. The façade tagged class prototypes with `Symbol.toStringTag`; #768 does
+    not. Scripts that test those strings would change behaviour. T045's parity probe measures it.
+  - **Native results**: `effect.scale(2)` returns `undefined` (#768's `JS_UNDEFINED`, where
+    SpiderMonkey left the function in the result slot). A native called on the wrong `this` throws
+    where it returned `undefined` (Station's `launchMiner`).
+  - **Time limiter**: `SoundFromJSValue` now resumes the limiter it pauses (#768's own fix).
 - T042 (2026-11-03): the 50 files outside the scripting layer were ported in two parts, E (debug console
   and monitor, Universe, GuiDisplayGen, string and constant utilities) and F (the entities,
   OOEquipmentType, OOShipGroup), then merged (`49aad3e87`).
