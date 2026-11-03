@@ -176,6 +176,9 @@ sources outside the replayed trees.
   to upstream's engine API (FR-015). Hard rule 6 is amended in `CLAUDE.md` (FR-016). The
   verification of steps 3–24 was stopped after step 8 passed: those steps stay as built, but the
   series now ends with the switch step.
+- **2026-11-03, Jon: keep the façade in steps 3–24.** Step 003 restores the fork's `ooscript` façade
+  so steps 4–24 replay as built and tested; step 025 alone moves to #768's binding. Porting each of
+  steps 3–24 to #768's API instead was rejected (same final tree, far more work and churn).
 - **Behaviour changes that follow #768, for Jon to confirm** (found while porting and moving tests,
   2026-11-03). Tests expecting the old behaviour are updated, and each update is in the test ledger:
   - **Manifest**: assigning an invalid value to a manifest entry, or deleting one, now throws
