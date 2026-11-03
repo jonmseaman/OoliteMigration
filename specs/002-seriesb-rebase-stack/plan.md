@@ -173,6 +173,22 @@ sources outside the replayed trees.
   2. Sync fetches only `origin`, and a force-pushed PR branch makes the observed rebase replay
      upstream's dropped commits. So `parents --refresh` (fetch `hobleyd`, then `update-ref` each
      parent to its tracking ref) runs before every sync.
+- T011 (2026-11-02), gate G1 passes for both parents, in the isolated MSYS2
+  (`.agent-tmp/msys2-objc`), with logs in `.agent-tmp/seriesb-verify/gate-*.log`.
+  - `000a` (#767): its CI's Windows matrix, `./mk.sh build deployment` and `./mk.sh test deployment`
+    with `-Djs_engine=spidermonkey` and `-Djs_engine=quickjs`. Both builds pass (245 and 259 steps),
+    and both launch snapshots pass the quality check. `./mk.sh build test` passes.
+  - `000b` (#768): `./mk.sh build deployment`, `./mk.sh test deployment` (snapshot passed) and
+    `./mk.sh build test` all pass.
+  - T012 (fix parent) does not apply.
+  - Found for T023: #768's own build has 6 warnings that the old series' QuickJS-era steps did not
+    have. Four come from the vendored `subprojects/quickjs-ng/quickjs.c`, at lines 5009–5024
+    (`-Wpedantic`: a void function returns a void expression). Two are the clang driver's unused
+    `-pthread`. Every step built on #768 inherits them until a step replaces that QuickJS-ng (old
+    step 024 upgrades it).
+  - Default, recorded here and applied in verification: a step's warnings check counts only
+    warnings that its parent's build does not have. The parent's are listed, never silenced (hard
+    rule 2), and a warning the step adds still fails it.
 - T009 (2026-11-02): parents set up in `oolite-dev`: `000a` = `3758f8a09`, `000b` = `db4920103` (unchanged
   since the baseline), observed, under `develop`. The remote `hobleyd` has `pushurl no-push`. The planning
   refs `refs/upstream-pr/*` are deleted.

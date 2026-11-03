@@ -232,7 +232,7 @@ R8).
   The record is written to `parents[].verification`, and `gate` becomes `pass` or `flagged` with the
   failing checks. Add `tools/series/tests/test_gate.py` (a fake verify runner) for pass, flagged and
   re-run. Accept: `python -m unittest tools.series.tests.test_gate` passes.
-- [ ] T011 [US1] Gate G1. Run `$S gate seriesb/000a-upstream-767-quickjs-option` and `$S gate
+- [X] T011 [US1] Gate G1. Run `$S gate seriesb/000a-upstream-767-quickjs-option` and `$S gate
   seriesb/000b-upstream-768-quickjs-only`. If either is `flagged`:
   - write `G1 flagged:` lines in plan.md's Notes (what fails, the log path under
     `.agent-tmp/seriesb-verify/`, and whether it looks environmental or a defect in the PR);
@@ -241,11 +241,11 @@ R8).
     record Jon's choice: a `000c` fix parent (then do T012) or waive.
 
   Accept: `$S check --only gates` exits 0 (both `pass`), or plan.md's Notes contain `G1 flagged:`.
-- [ ] T012 [US1] *(Only if Jon chose a fix parent at T011.)* Create `seriesb/000c-<slug>` with
+- [X] T012 [US1] *(Only if Jon chose a fix parent at T011.)* Create `seriesb/000c-<slug>` with
   `git town append --prototype --no-sync --no-push` from `000b`, holding only the fix Jon named.
   Add it to `parents[]` with `kind: fix-parent` and the Notes reference, and gate it. Accept: `$S
   check --only gates,lineage` exits 0. If T011 passed, mark this task skipped, with "n/a: G1
-  passed".
+  passed". **Done: n/a, G1 passed (plan.md Notes, T011).**
 
 **Checkpoint**: the parents exist, mirror upstream, and pass, or the work is held with the flag
 recorded.
@@ -277,7 +277,7 @@ recorded.
     `build_commit` unless given `--reset`.
 
   Accept: the file exists and fails before T014.
-- [ ] T014 [US2] Implement `cut --replay`, the replay source in `tree`/`build`, `--rule theirs`,
+- [X] T014 [US2] Implement `cut --replay`, the replay source in `tree`/`build`, `--rule theirs`,
   `differs_from_old` and `drop` in `tools/series/series.py`, `tools/series/stack.py` and
   `tools/series/manifest.py`. Reuse `trees.target_tree` unchanged, with the resolutions directory
   `specs/002-seriesb-rebase-stack/series/resolutions/NNN/`. `tree --show/--record` keep refusing

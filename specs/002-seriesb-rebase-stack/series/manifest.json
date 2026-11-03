@@ -28,25 +28,68 @@
  "parents": [
   {
    "branch": "seriesb/000a-upstream-767-quickjs-option",
-   "gate": "pending",
+   "gate": "pass",
    "git_town_type": "observed",
    "head": "3758f8a09ba6b00be61519bcaab543cc8450b631",
    "kind": "upstream",
    "parent": "develop",
    "tracking": "hobleyd/seriesb/000a-upstream-767-quickjs-option",
    "upstream_pr": 767,
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_quickjs": "pass",
+     "build_spidermonkey": "pass",
+     "build_test": "pass",
+     "test_quickjs": "pass",
+     "test_spidermonkey": "pass"
+    },
+    "commands": [
+     "./mk.sh build deployment --setup-flags=\"-Djs_engine=spidermonkey\"",
+     "./mk.sh test deployment --setup-flags=\"-Djs_engine=spidermonkey\"",
+     "./mk.sh build deployment --setup-flags=\"-Djs_engine=quickjs\"",
+     "./mk.sh test deployment --setup-flags=\"-Djs_engine=quickjs\"",
+     "./mk.sh build test"
+    ],
+    "commit": "3758f8a09ba6b00be61519bcaab543cc8450b631",
+    "date": "2026-11-02",
+    "era": "objc-spidermonkey",
+    "tree": "d109de5e402f9df04a3136bee75c82fcc15f77e0",
+    "warnings": {
+     "quickjs": 7,
+     "spidermonkey": 1,
+     "test": 0
+    }
+   }
   },
   {
    "branch": "seriesb/000b-upstream-768-quickjs-only",
-   "gate": "pending",
+   "gate": "pass",
    "git_town_type": "observed",
    "head": "db49201034e5ab3857342fb4dca199d5f17b93fb",
    "kind": "upstream",
    "parent": "seriesb/000a-upstream-767-quickjs-option",
    "tracking": "hobleyd/seriesb/000b-upstream-768-quickjs-only",
    "upstream_pr": 768,
-   "verification": null
+   "verification": {
+    "checks": {
+     "build_default": "pass",
+     "build_test": "pass",
+     "test_default": "pass"
+    },
+    "commands": [
+     "./mk.sh build deployment",
+     "./mk.sh test deployment",
+     "./mk.sh build test"
+    ],
+    "commit": "db49201034e5ab3857342fb4dca199d5f17b93fb",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "55462f20a827804de7fe1d18c9ce1b3e455c3e5b",
+    "warnings": {
+     "default": 7,
+     "test": 6
+    }
+   }
   }
  ],
  "steps": [],

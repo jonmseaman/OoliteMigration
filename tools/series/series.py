@@ -11,7 +11,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-COMMANDS = ("inventory", "cut", "hoist", "tree", "build", "verify", "describe", "check", "renumber", "parents", "gate")
+COMMANDS = ("inventory", "cut", "hoist", "tree", "build", "verify", "describe", "check", "renumber", "parents", "gate", "drop")
 
 
 def parser():
@@ -21,7 +21,9 @@ def parser():
     sub = p.add_subparsers(dest="command", required=True, metavar="{" + ",".join(COMMANDS) + "}")
     sub.add_parser("inventory", help="list the history's first-parent merges into series/inventory.tsv")
     c = sub.add_parser("cut", help="write the planned steps into the manifest")
-    c.add_argument("--chapters", action="store_true", required=True, help="use research R14's chapters")
+    cg = c.add_mutually_exclusive_group(required=True)
+    cg.add_argument("--chapters", action="store_true", help="use research R14's chapters (series)")
+    cg.add_argument("--replay", action="store_true", help="one replay step per old series/ step (seriesb)")
     h = sub.add_parser("hoist", help="turn history commits into an independent step at the front")
     h.add_argument("commits", nargs="+")
     h.add_argument("--slug", required=True)
@@ -31,10 +33,14 @@ def parser():
     t.add_argument("--show", metavar="PATH", help="write the conflicted file and its inputs to .agent-tmp/series-resolve")
     t.add_argument("--record", metavar="PATH", help="store the edited file from .agent-tmp/series-resolve as the resolution")
     t.add_argument("--commit", metavar="LABEL", help="for a tail step: the replayed commit the conflict is in")
+    t.add_argument("--reason", help="seriesb: why the recorded resolution (or rule) is right")
+    t.add_argument("--rule", choices=("theirs",), help="seriesb: resolve conflicts under --paths to the old step's side")
+    t.add_argument("--paths", nargs="+", metavar="GLOB", help="seriesb: the globs a --rule covers")
     b = sub.add_parser("build", help="create or reset step branches")
     b.add_argument("steps", nargs="*", type=int)
     b.add_argument("--from", dest="from_", type=int)
     b.add_argument("--to", type=int)
+    b.add_argument("--reset", action="store_true", help="seriesb: rebuild a step even after a sync added merges")
     v = sub.add_parser("verify", help="run a step's verification matrix")
     v.add_argument("n", nargs="?", type=int)
     v.add_argument("--from", dest="from_", type=int)
@@ -48,6 +54,10 @@ def parser():
     k.add_argument("--only")
     k.add_argument("--steps")
     sub.add_parser("renumber", help="renumber branches and files after inserting or removing a step")
+    dr = sub.add_parser("drop", help="seriesb: drop a step whose replayed tree is its parent's (FR-005)")
+    dr.add_argument("n", type=int)
+    dr.add_argument("--covered-by", type=int, required=True, help="the upstream PR that covers it")
+    dr.add_argument("--reason", required=True)
     pa = sub.add_parser("parents", help="seriesb: set up, refresh or report the upstream-PR parents")
     pa.add_argument("--setup", action="store_true", help="add the remote, mirror the PR heads, set lineage")
     pa.add_argument("--refresh", action="store_true", help="fetch and reset each parent to its PR head")
@@ -103,6 +113,9 @@ def load_manifest():
 
 
 def cmd_cut(args):
+    from tools.series import profile
+    if profile.current() == "seriesb" or args.replay:
+        return cmd_cut_replay(args)
     from tools.series import chapters, history, manifest
     inv = read_inventory()
     idx = {r["commit"]: int(r["idx"]) for r in inv}
@@ -467,6 +480,9 @@ RESOLVE_SCRATCH = os.path.join(ROOT, ".agent-tmp", "series-resolve")
 
 
 def cmd_tree(args):
+    from tools.series import profile
+    if profile.current() == "seriesb":
+        return cmd_tree_replay(args)
     from tools.series import history, trees
     m = load_manifest()
     step = step_by_n(m, args.n)
@@ -578,6 +594,9 @@ def build_one(m, step):
 
 
 def cmd_build(args):
+    from tools.series import profile
+    if profile.current() == "seriesb":
+        return cmd_build_replay(args)
     m = load_manifest()
     if args.steps:
         ns = sorted(args.steps)
@@ -1167,7 +1186,143 @@ def cmd_handover(m):
 
 
 SERIES_ONLY = ("inventory", "hoist")  # history commands: feature 001 only
-SERIESB_ONLY = ("parents", "gate")
+
+
+# --- seriesb: the replay (research R3; contracts/series-cli-seriesb.md) ----------------------------
+
+def _old_manifest(m):
+    from tools.series import manifest
+    return manifest.load(os.path.join(ROOT, m["anchors"]["old_manifest"]))
+
+
+def cmd_cut_replay(args):
+    from tools.series import manifest, profile, replay, seriesb
+    if profile.current() != "seriesb" or not args.replay:
+        print("cut: --replay is for --series seriesb, and seriesb takes only --replay", file=sys.stderr)
+        return 2
+    m = load_manifest()
+    if not m.get("parents"):
+        print("cut: no parents; run `parents --setup` first", file=sys.stderr)
+        return 1
+    replay.cut(GAME, m, _old_manifest(m))
+    problems = seriesb.validate(m)
+    if problems:
+        print("cut: manifest invalid:\n  " + "\n  ".join(problems), file=sys.stderr)
+        return 1
+    manifest.save(MANIFEST, m)
+    print(f"cut: {len(m['steps'])} replay steps; {len(m.get('dropped', []))} dropped")
+    return 0
+
+
+def _replay_step(m, n):
+    for s in m.get("steps", []):
+        if s["n"] == n:
+            return s
+    raise SystemExit(f"no step {n}")
+
+
+def cmd_tree_replay(args):
+    """Compute a seriesb step's tree; --rule/--show/--record resolve its conflicts."""
+    from tools.series import manifest, replay, trees
+    m = load_manifest()
+    step = _replay_step(m, args.n)
+    scratch = os.path.join(RESOLVE_SCRATCH, f"{step['n']:03d}")
+    rdir = replay.res_dir(SERIES_DIR, step)
+    if args.rule:
+        if not args.paths or not args.reason:
+            print("tree: --rule needs --paths and --reason", file=sys.stderr)
+            return 2
+        if any(g.startswith("tests/") for g in args.paths):
+            print("tree: a rule never covers tests/ (rule 1)", file=sys.stderr)
+            return 1
+        replay.add_rule(step, args.paths, args.reason)
+        manifest.save(MANIFEST, m)
+    if args.show or args.record:
+        path = args.show or args.record
+        if path.startswith("tests/"):
+            print(f"tree {args.n}: {path} is a test file; tests are never resolved by hand (rule 1)", file=sys.stderr)
+            return 1
+        base, ours, theirs = replay.inputs(GAME, m, step)
+        if args.show:
+            merged, conflicts = trees.merge(GAME, base, ours, theirs)
+            key = conflicts.get(path, {})
+            os.makedirs(os.path.dirname(os.path.join(scratch, path)), exist_ok=True)
+            if all(key.get(k) for k in ("base", "ours", "theirs")):
+                lines = trees.merge_file_by_hunks(GAME, key["base"], key["ours"], key["theirs"], ours, path)[0]
+                content = "".join(lines).encode("utf-8", "surrogateescape")
+            else:
+                content = trees._git(GAME, "cat-file", "-p", f"{merged}:{path}", ok=(0, 128)).stdout
+            blobs = {"": content}
+            for side, suffix in (("ours", ".new-parent"), ("theirs", ".old-step"), ("base", ".old-parent")):
+                blobs[suffix] = trees._git(GAME, "cat-file", "blob", key[side]).stdout if key.get(side) else b""
+            for suffix, data in blobs.items():
+                with open(os.path.join(scratch, path + suffix), "wb") as f:
+                    f.write(data)
+            print(os.path.join(scratch, path))
+            return 0
+        if not args.reason:
+            print("tree --record: give --reason (what each side changed, and why this resolution)", file=sys.stderr)
+            return 2
+        src = os.path.join(scratch, path)
+        content = None
+        if os.path.exists(src):
+            with open(src, "rb") as f:
+                content = f.read()
+            if b"<<<<<<<" in content or b">>>>>>>" in content:
+                print(f"tree {args.n}: {src} still has conflict markers", file=sys.stderr)
+                return 1
+        trees.record_resolution(GAME, base, ours, theirs, rdir, path, content)
+        step.setdefault("reasons", {})[path] = args.reason
+        manifest.save(MANIFEST, m)
+        print(f"recorded: {path}" + (" deleted" if content is None else ""))
+        return 0
+    tree, conflicts, report = replay.compute(GAME, m, step, SERIES_DIR)
+    if tree:
+        step["differs_from_old"] = replay.differs(GAME, m, step)
+    manifest.save(MANIFEST, m)
+    if conflicts:
+        print(f"tree {args.n}: {len(conflicts)} conflicts")
+        for p in conflicts:
+            print(f"  {p}")
+        return 1
+    if report:
+        import collections
+        kinds = collections.Counter(how for _, how in report)
+        print(f"tree {args.n}: {len(report)} conflicts resolved ("
+              + ", ".join(f"{v} {k}" for k, v in sorted(kinds.items())) + ")", file=sys.stderr)
+    unexplained = [d["path"] for d in step["differs_from_old"] if not d["reason"]]
+    if unexplained:
+        print(f"tree {args.n}: {len(unexplained)} path(s) differ from the old step with no reason: "
+              + ", ".join(unexplained[:8]), file=sys.stderr)
+    print(tree)
+    return 0
+
+
+def cmd_build_replay(args):
+    from tools.series import manifest, replay
+    m = load_manifest()
+    if args.steps:
+        ns = sorted(args.steps)
+    else:
+        ns = list(range(args.from_ or 1, (args.to or len(m["steps"])) + 1))
+    for n in ns:
+        step = _replay_step(m, n)
+        try:
+            result = replay.build(GAME, m, step, SERIES_DIR, STACK_WORKTREE, reset=args.reset)
+        finally:
+            manifest.save(MANIFEST, m)
+        print(f"build {n}: {step['branch']} {result}", flush=True)
+    return 0
+
+
+def cmd_drop(args):
+    from tools.series import manifest, replay
+    m = load_manifest()
+    replay.drop(GAME, m, args.n, args.covered_by, args.reason, SERIES_DIR)
+    manifest.save(MANIFEST, m)
+    print(f"drop: step {args.n} dropped; {len(m['steps'])} steps, renumbered")
+    return 0
+SERIESB_ONLY = ("parents", "gate", "drop")
 GATE_WORKTREE = os.path.join(ROOT, ".agent-tmp", "seriesb-gate")
 GATE_LOGS = os.path.join(ROOT, ".agent-tmp", "seriesb-verify")
 
@@ -1225,7 +1380,7 @@ def cmd_parents(args):
         return 1
     return 1 if problems else 0
 
-HANDLERS = {"gate": cmd_gate, "parents": cmd_parents, "inventory": cmd_inventory, "cut": cmd_cut, "hoist": cmd_hoist, "renumber": cmd_renumber, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
+HANDLERS = {"drop": cmd_drop, "gate": cmd_gate, "parents": cmd_parents, "inventory": cmd_inventory, "cut": cmd_cut, "hoist": cmd_hoist, "renumber": cmd_renumber, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
 
 
 def main(argv=None):

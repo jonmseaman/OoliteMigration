@@ -15,7 +15,7 @@ PARENT_RE = re.compile(r"^seriesb/000[a-z]-[a-z0-9]+(?:-[a-z0-9]+)*$")
 STEP_RE = profile.step_branch_re("seriesb/")
 PARENT_KINDS = ("upstream", "fix-parent", "upstream-master")
 GATE_OK = ("pass", "waived")
-GROUPS = ("manifest", "branches", "lineage", "baseline", "gates", "final-tree", "verified")
+GROUPS = ("manifest", "branches", "lineage", "baseline", "gates", "differs", "final-tree", "verified")
 
 
 def _git(repo, *args, ok=(0,)):
@@ -275,6 +275,21 @@ def check_verified(repo, m, wanted):
     return out
 
 
+def check_differs(m, wanted):
+    """SC-006: every path where a step's change differs from its old step's has a reason."""
+    out = []
+    for s in m.get("steps", []):
+        if s["n"] not in wanted or not s.get("target_tree"):
+            continue
+        if s.get("differs_from_old") is None:
+            out.append(f"rule 1: step {s['n']} has a tree but no differs_from_old (run `tree {s['n']}`)")
+            continue
+        for d in s["differs_from_old"]:
+            if not str(d.get("reason") or "").strip():
+                out.append(f"rule 1: step {s['n']} differs from {s['source']['old_branch']} at {d['path']} with no reason")
+    return out
+
+
 def check(repo, m, groups, baseline=None, wanted=None):
     wanted = wanted if wanted is not None else {s["n"] for s in m.get("steps", [])}
     out = []
@@ -286,6 +301,8 @@ def check(repo, m, groups, baseline=None, wanted=None):
         out += check_branches(repo, m, wanted)
     if "baseline" in groups:
         out += check_baseline(repo, baseline)
+    if "differs" in groups:
+        out += check_differs(m, wanted)
     if "final-tree" in groups:
         out += check_final_tree(repo, m)
     if "verified" in groups:
