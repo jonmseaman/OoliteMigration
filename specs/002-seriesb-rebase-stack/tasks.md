@@ -605,6 +605,53 @@ run on the 25-step stack.
 
 ---
 
+## Phase 11: No façade in any step (P1, added 2026-11-03, User Story 7, FR-017)
+
+**Goal**: #768's binding and `poc/` run through every step. The façade appears nowhere in the
+history.
+
+**How a step is rebuilt**: `git checkout -B seriesb/NNN-… <rebuilt parent>`, then
+`git cherry-pick -x archive/seriesb-facade/NNN`. This is the same 3-way merge as `$S tree`, and
+`rerere` is on. Every hunk, conflicted or clean, that uses the façade is re-expressed in #768's
+API. Old step 025's version of the same code is the reference, adjusted back to the step's
+conversion stage. For mechanical steps (20, 22, 24), re-run the transformation if the
+cherry-pick conflicts widely. A defect found later is fixed on the earliest branch it belongs to,
+then merged up with `git town sync --stack --detached --no-push`.
+
+**Per-step Accept** (`F='ooscript|JSEngine\.hpp'`): `! git -C oolite-dev grep -qE "$F" seriesb/NNN -- src tests`,
+and `$S verify --steps N` exits 0, including the `no_facade` and `poc` checks from T050.
+
+- [X] T049 [US7] Tag the old heads (`archive/seriesb-facade/000b`, `001`–`025`). Accept:
+  `git -C oolite-dev tag -l 'archive/seriesb-facade/*' | wc -l` prints 26.
+- [ ] T050 [US7] Tool: add the verify checks `no_facade` and `poc` (`-Dquickjs_poc=true` build, then
+  `meson test quickjs-poc`, n/a when the tree has no `poc/`). Let `tests_untouched` accept a ledger
+  entry for any step. New tests go in `tools/series/tests/test_nofacade.py`. Accept:
+  `python -m unittest discover -s tools/series/tests` passes.
+- [ ] T051 [US7] The end target: branch `feature/upstream-quickjs-poc-cxx` from
+  `feature/upstream-quickjs-binding`. Restore `src/Core/Scripting/poc/` from `000b` and convert it
+  to C++ (sources `.cpp`, `oofnd` in place of Foundation, `meson.build` on the `.cpp` game
+  sources). The 7 `tests/*.js` scripts stay unchanged. Accept: `./mk.sh build test` passes, and so
+  does a `-Dquickjs_poc=true` build with `meson test quickjs-poc`.
+- [ ] T052 [US7] Set `anchors.develop_target` to T051's tip. Rebuild step 003 as "Compile as
+  Objective-C++" (slug `003-objective-cxx`): it is old 003's renames and build changes, with none
+  of the façade. #768's binding and `poc/` are kept and renamed to `.mm`. Accept: per-step.
+- [ ] T053 [US7] Rebuild steps 004–009, which take the binding and `poc/` off Foundation before
+  gnustep-base goes. Accept: per-step, for each.
+- [ ] T054 [US7] Rebuild steps 010–016, which take the binding and `poc/` to C++ (010) and off the
+  Objective-C runtime to `.cpp` (016). Accept: per-step, for each.
+- [ ] T055 [US7] Rebuild steps 017–024. Accept: per-step, for each, and
+  `git -C oolite-dev diff --quiet seriesb/024-google-style-format feature/upstream-quickjs-poc-cxx -- . ':!tools/js-parity' ':!tools/oxp-upgrade' ':!.zed' ':!.vscode' ':!.github'`.
+- [ ] T056 [US7] Step 025: `$S drop 25 --covered-by "steps 003-024"` if its tree equals 024's.
+  Otherwise shrink it to the remainder and describe that. Accept:
+  `$S check --only manifest,lineage,branches,final-tree` exits 0, and
+  `git -C oolite-dev log -S'ooscript::' --oneline seriesb/000b-upstream-768-quickjs-only..<last step>` is empty.
+- [ ] T057 [US7] Descriptions, ledger, handover: rewrite the hand-written parts of 003's
+  description and of every step whose scripting part changed. Move the test ledger's rows to the
+  steps that first need them. Regenerate `HANDOVER.md` (with force-push commands) and the review
+  issue. Accept: `$S check --verified` exits 0.
+
+---
+
 ## Dependencies and execution order
 
 ### Phases

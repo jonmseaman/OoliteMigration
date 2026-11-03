@@ -179,6 +179,11 @@ sources outside the replayed trees.
 - **2026-11-03, Jon: keep the façade in steps 3–24.** Step 003 restores the fork's `ooscript` façade
   so steps 4–24 replay as built and tested; step 025 alone moves to #768's binding. Porting each of
   steps 3–24 to #768's API instead was rejected (same final tree, far more work and churn).
+  **Reversed by Jon later on 2026-11-03** (spec User Story 7, FR-017): reviewers should never see
+  the façade. Steps 3–24 are rebuilt on #768's binding, `poc/` is carried and converted to C++,
+  and step 025 is dropped or shrinks to what is left. The old heads are kept as local tags
+  `archive/seriesb-facade/NNN` (`000b` and `001`–`025`). Branches are updated in place, so Jon
+  force-pushes them. Tasks T049–T057.
 - **Behaviour changes that follow #768, for Jon to confirm** (found while porting and moving tests,
   2026-11-03). Tests expecting the old behaviour are updated, and each update is in the test ledger:
   - **Manifest**: assigning an invalid value to a manifest entry, or deleting one, now throws

@@ -205,6 +205,35 @@ it.
 3. **Given** the seriesb series, **When** its last step's tree is compared with the merged feature
    branch, **Then** they are equal, apart from the listed exclusions and additions.
 
+### User Story 7 - No step shows the façade; #768's binding runs through the stack (Priority: P1)
+
+*(Added 2026-11-03 at Jon's direction: "get rid of my facade from the history entirely and just
+use their new quickjs engine and bindings through each branch".)*
+
+Reviewers who know #767/#768 see their binding carried through every step and converted along
+with the rest of the game: compiled as Objective-C++, moved off Foundation, converted to C++,
+taken off the Objective-C runtime, and formatted. The `ooscript` façade never appears. #767's
+proof-of-concept harness (`src/Core/Scripting/poc/`) is kept and converted the same way.
+
+**Why this priority**: it decides what every step from 003 onward contains, and it makes the
+series reviewable by the people who wrote #767/#768.
+
+**Independent Test**:
+- `git log -S'ooscript::' seriesb/000b-upstream-768-quickjs-only..<last step>` is empty.
+- `git grep -E 'ooscript|JSEngine\.hpp' <step> -- src tests` is empty for every step.
+- `-Dquickjs_poc=true` builds, and `meson test quickjs-poc` passes on every step.
+- The last step's tree equals the end target (`feature/upstream-quickjs-poc-cxx`, which is
+  `feature/upstream-quickjs-binding` plus the C++ `poc/`), apart from the listed exclusions and
+  additions.
+
+**Acceptance Scenarios**:
+
+1. **Given** any step from 003 on, **When** its diff against its parent is read, **Then** the
+   scripting code in it uses #768's API (`OOJS_NATIVE_ARGS`, `JSCFunctionListEntry`, `JSValue`).
+2. **Given** a test that a step adds or changes, **When** that test calls the engine, **Then** it
+   uses #768's API, and if it differs from the old step's version, the test-change ledger names
+   that step.
+
 ### Edge Cases
 
 - **#767 or #768 does not build or pass its own tests in our environment**: this is a gate. Work
@@ -309,6 +338,12 @@ it.
     why) for Jon.
 - **FR-016**: Hard rule 6 is amended (Jon, 2026-11-02). QuickJS-ng's own `JS_*` API is allowed;
   `libgnustep-base` and SpiderMonkey are still never reintroduced.
+- **FR-017**: No step introduces the `ooscript` façade (Jon, 2026-11-03). Step 003 keeps #768's
+  binding, `OOJSClasses`, `oolite-quickjs-compat.js`, its QuickJS-ng patch and `poc/`, and each later
+  step carries them through its own conversion. FR-015's test exception applies to the step that
+  first needs the change, and the ledger lists each test under that step. The previous stack is
+  kept as local tags `archive/seriesb-facade/NNN`. The rebuilt branches replace the old ones in
+  place, so Jon force-pushes them.
 - **FR-013**: Nothing is pushed. Jon pushes and opens PRs (hard rule 3). Commits on `seriesb/*`
   branches carry no bead ids or ADR numbers in their messages (as feature 001 FR-017).
 
