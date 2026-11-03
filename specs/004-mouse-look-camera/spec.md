@@ -209,8 +209,11 @@ the normal field of view and no wider.
   look straight ahead, no zoom). External camera orbit and distance follow the existing rules for
   external views.
 - **The game is paused**: orbit, aim, distance and zoom still work, as the Caps Lock controls do
-  today, so the player can frame a view while paused. Cockpit look also works and springs back on
-  release.
+  today, so the player can frame a view while paused. Cockpit look and recentring also work.
+- **The view key is held down.** The view stays recentred while the key is held. Right-drag
+  still turns it, but it recentres again on the next frame, so a held key pins the view straight
+  ahead.
+- **A joystick view button** recentres the same way as the key for that view.
 - **The window loses focus, or the pointer leaves the window, mid-drag.** Leaving the window does
   not end the drag. Losing focus ends it as if the buttons were released.
 - **The ship has no external views.** The external-view gestures have nothing to act on. The
@@ -322,16 +325,14 @@ the normal field of view and no wider.
 
 ## Decisions
 
-Each one was taken as the conservative default without asking. `/speckit-clarify` can revisit
-any of them.
+Decision 1 was the user's choice. The rest were taken as conservative defaults without asking;
+`/speckit-clarify` can revisit any of them.
 
 1. **Cockpit look holds after release, and pressing the current view's key recentres it.**
    Chosen by the user as the most intuitive control. Pressing the key of the view the player is
    already in does nothing today, so this takes no existing control away. The external camera's
    aim also holds. Its view key can't recentre it, because pressing that key cycles to the next
    external view; orbiting returns its aim to the ship instead (FR-010).
-7. **Recentring also clears zoom.** The view key puts the view back to its normal state, and the
-   normal state is unmagnified. A player who wants to keep the zoom drags it back in.
 2. **Mouse look is off while mouse-steering mode is on.** In that mode the left button fires and
    the right button recentres the stick. Taking those over would change the controls that
    mouse-steering players already rely on.
@@ -343,3 +344,5 @@ any of them.
    description assigns it one.
 6. **Look limits of 150° horizontal and 75° vertical**, and a minimum of 8× zoom, are starting
    values. The plan can tune them. The tests check the limits that the plan sets.
+7. **Recentring also clears zoom.** The view key puts the view back to its normal state, and the
+   normal state is unmagnified. A player who wants to keep the zoom drags it back in.
