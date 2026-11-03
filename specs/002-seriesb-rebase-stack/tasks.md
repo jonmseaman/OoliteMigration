@@ -198,7 +198,7 @@ R8).
 
   It also checks that a second run changes nothing, and that `parents` exits 1 when a tip differs
   from its tracking head. Accept: the file exists and fails before T008.
-- [ ] T008 [US1] Implement `parents [--setup] [--refresh]` in `tools/series/series.py` and
+- [X] T008 [US1] Implement `parents [--setup] [--refresh]` in `tools/series/series.py` and
   `tools/series/stack.py`, per the contract. The remote is
   `hobleyd https://github.com/hobleyd/oolite.git`, with fetch refspecs
   `+refs/heads/quickjs-poc:refs/remotes/hobleyd/seriesb/000a-upstream-767-quickjs-option` and

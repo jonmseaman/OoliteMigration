@@ -11,7 +11,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-COMMANDS = ("inventory", "cut", "hoist", "tree", "build", "verify", "describe", "check", "renumber")
+COMMANDS = ("inventory", "cut", "hoist", "tree", "build", "verify", "describe", "check", "renumber", "parents")
 
 
 def parser():
@@ -48,6 +48,9 @@ def parser():
     k.add_argument("--only")
     k.add_argument("--steps")
     sub.add_parser("renumber", help="renumber branches and files after inserting or removing a step")
+    pa = sub.add_parser("parents", help="seriesb: set up, refresh or report the upstream-PR parents")
+    pa.add_argument("--setup", action="store_true", help="add the remote, mirror the PR heads, set lineage")
+    pa.add_argument("--refresh", action="store_true", help="fetch and reset each parent to its PR head")
     return p
 
 
@@ -1162,14 +1165,56 @@ def cmd_handover(m):
 
 
 SERIES_ONLY = ("inventory", "hoist")  # history commands: feature 001 only
+SERIESB_ONLY = ("parents",)
 
-HANDLERS = {"inventory": cmd_inventory, "cut": cmd_cut, "hoist": cmd_hoist, "renumber": cmd_renumber, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
+
+SERIESB_ANCHORS = {"develop_target": "3aa8d65e8", "upstream_master": "7437f22a5"}
+
+
+def cmd_parents(args):
+    """Set up, refresh or report the seriesb parents (contracts/series-cli-seriesb.md)."""
+    from tools.series import history, manifest, parents
+    m = load_manifest()
+    if args.setup:
+        old_path = os.path.join(ROOT, "specs", "001-split-migration-prs", "series", "manifest.json")
+        old = manifest.load(old_path)
+        full = lambda c: history.git(GAME, "rev-parse", "--verify", f"{c}^{{commit}}")
+        anchors = {k: full(v) for k, v in SERIESB_ANCHORS.items()}
+        anchors["old_manifest"] = os.path.relpath(old_path, ROOT).replace(os.sep, "/")
+        anchors["format"] = old["anchors"]["format"]
+        parents.setup(GAME, m, anchors=anchors)
+        m.setdefault("exclusions", old.get("exclusions", []))
+        for k in ("steps", "dropped", "additions", "ledger", "syncs"):
+            m.setdefault(k, [])
+    elif args.refresh:
+        if not m:
+            raise SystemExit("parents: no manifest; run `parents --setup` first")
+        parents.refresh(GAME, m)
+    if args.setup or args.refresh:
+        os.makedirs(SERIES_DIR, exist_ok=True)
+        manifest.save(MANIFEST, m)
+    for p in m.get("parents", []):
+        tip = history.git(GAME, "rev-parse", "-q", "--verify", f"refs/heads/{p['branch']}", check=False).stdout.strip()
+        print(f"{p['branch']}: tip {tip[:10] or '-'} · PR #{p.get('upstream_pr', '-')} head {str(p.get('head'))[:10]} "
+              f"· gate {p.get('gate')}")
+    problems = parents.status(GAME, m)
+    for line in problems:
+        print(line, file=sys.stderr)
+    if not m.get("parents"):
+        print("parents: none set up; run `parents --setup`", file=sys.stderr)
+        return 1
+    return 1 if problems else 0
+
+HANDLERS = {"parents": cmd_parents, "inventory": cmd_inventory, "cut": cmd_cut, "hoist": cmd_hoist, "renumber": cmd_renumber, "tree": cmd_tree, "build": cmd_build, "check": cmd_check, "verify": cmd_verify, "describe": cmd_describe}
 
 
 def main(argv=None):
     args = parser().parse_args(argv)
     from tools.series import profile
     profile.activate(args.series)
+    if args.series == "series" and args.command in SERIESB_ONLY:
+        print(f"series.py {args.command}: only for --series seriesb", file=sys.stderr)
+        return 2
     if args.series == "seriesb" and args.command in SERIES_ONLY:
         print(f"series.py {args.command}: not for --series seriesb (its steps replay the series/ steps)", file=sys.stderr)
         return 2
