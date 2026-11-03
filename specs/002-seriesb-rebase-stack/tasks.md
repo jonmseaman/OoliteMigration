@@ -393,7 +393,7 @@ recorded.
 **Independent Test**: after a real or rehearsed sync, `$S check --verified` exits 0, and `syncs[]`
 has an entry.
 
-- [ ] T026 [US4] Write `tools/series/tests/test_sync_check.py` on T005's fixture. Its scenario:
+- [X] T026 [US4] Write `tools/series/tests/test_sync_check.py` on T005's fixture. Its scenario:
   - add a commit to both fixture PR branches;
   - run `git town sync --stack --detached --no-push` in the fixture;
   - run `sync-record --conflict …`;
