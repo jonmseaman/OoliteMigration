@@ -39,8 +39,8 @@ Expected:
 ## 3. Final checks
 
 ```bash
+$S describe --handover        # specs/002-seriesb-rebase-stack/series/HANDOVER.md (again after any verify)
 $S check --verified           # exit 0: lineage, mirrors, no develop leak, final tree = develop ± lists
-$S describe --handover        # specs/002-seriesb-rebase-stack/series/HANDOVER.md
 ```
 
 ## 4. When upstream moves (Jon, or an agent with the flags)

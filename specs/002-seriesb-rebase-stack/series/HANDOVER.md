@@ -32,7 +32,7 @@ What the series keeps from upstream's PRs and `develop` does not have:
 
 | Step | Branch | Replays | Base | Title | Size (src / tests / other) | Verification |
 |---|---|---|---|---|---|---|
-| 1 | `seriesb/001-random-seed-env` | `series/001-random-seed-env` (old 1) | `seriesb/000b-upstream-768-quickjs-only` | Let OO_RANDOM_SEED pin the random seed | 11 / 0 / 0 | 7 pass, 3 n/a (2026-11-02) |
+| 1 | `seriesb/001-random-seed-env` | `series/001-random-seed-env` (old 1) | `seriesb/000b-upstream-768-quickjs-only` | Let OO_RANDOM_SEED pin the random seed | 11 / 0 / 0 | 7 pass, 3 n/a (2026-11-03) |
 | 2 | `seriesb/002-safety-net` | `series/002-safety-net` (old 2) | `seriesb/001-random-seed-env` | Add a test safety net: deterministic runs, GUI and component tests | 493 / 13.6k / 27 | 8 pass, 2 n/a (2026-11-02) |
 | 3 | `seriesb/003-quickjs-switch` | `series/005-quickjs-switch` (old 3, 4, 5) | `seriesb/002-safety-net` | Put the game's JavaScript behind an engine façade on QuickJS-ng, replacing the PRs' binding; compile as Objective-C++ | 30.6k / 920 / 7.0k | 7 pass, 3 n/a (2026-11-02) |
 | 4 | `seriesb/004-oofnd-core` | `series/006-oofnd-core` (old 6) | `seriesb/003-quickjs-switch` | Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation | 10.0k / 6.4k / 3 | 8 pass, 2 n/a (2026-11-02) |

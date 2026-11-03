@@ -483,7 +483,7 @@ has an entry.
 - [X] T033 [P] Update `docs/README.md`'s index and `ROADMAP.md` with the `seriesb` stack: what it is,
   where its manifest is, and that `series/*` remains the master-based option. Describe the code as
   it is now. Accept: `grep -q seriesb ROADMAP.md && grep -q 002-seriesb-rebase-stack docs/README.md`.
-- [ ] T034 Run quickstart.md end to end (sections 0–3; section 4 only if T030 ran a real sync), and
+- [X] T034 Run quickstart.md end to end (sections 0–3; section 4 only if T030 ran a real sync), and
   correct quickstart.md and the contract wherever the tool differs. Accept: every command in
   quickstart.md sections 0–3 exits 0 as written.
 - [ ] T035 Final gate G4:
