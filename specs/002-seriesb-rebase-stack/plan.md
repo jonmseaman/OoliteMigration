@@ -416,3 +416,17 @@ sources outside the replayed trees.
   at G2 reverses this for the file involved, recorded with the evidence (R5).
 - Open, with the default taken: if a gate is `flagged`, the default is to hold. G2 does not start,
   and the flag goes to the handover for Jon (FR-003a).
+- **Phase 11 state (2026-11-03).** End target: `feature/upstream-quickjs-poc-cxx` (`6fe168427` =
+  binding branch + C++ `poc/`), worktree `.agent-tmp/poc-cxx-wt`; #783's port (T051a) lands there
+  next. New step 003 is being assembled in `.agent-tmp/seriesb-nofacade-wt` (detached at
+  `archive/seriesb-facade/002`, uncommitted) by `.agent-tmp/step3/build_tree.sh` (old 003 path by
+  path; Scripting and `poc/` from 002 renamed `.mm`), then `apply_nonfacade_hunks.py` (old 003's
+  hunks on the 35 façade users that neither add façade code nor remove #768 API code) and
+  `rename_this.py` (`this` → `thisObj` in #768's code, as the C++ end state names it). It keeps
+  #768's QuickJS-ng 0.17.0 wrap and patch, `oolite-quickjs-compat.js` and `poc/`, which reverses
+  the earlier default above for those files. Steps 004–024 replay by `git cherry-pick -x
+  archive/seriesb-facade/NNN` onto the rebuilt parent.
+- **Upstream #783 oddity, for Jon (2026-11-03).** Upstream's `clearMappings` resets `axismap` and
+  `buttonmap` but not the new `guibuttonmap`, which therefore starts all zero, and 0 is
+  `BUTTON_FIRE`. The port keeps this, as directed ("the new behavior preserved"); the T051a report
+  records its run-time effect. Not fixed here: a fix would be a separate upstream PR.
