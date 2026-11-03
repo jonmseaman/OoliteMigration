@@ -22,10 +22,15 @@ def moves(m):
     for s in m.get("steps", []):
         mt = BRANCH_RE.match(s["branch"])
         if not mt:
-            raise ValueError(f"step {s['n']}: branch {s['branch']!r} is not series/NNN-slug")
+            raise ValueError(f"step {s['n']}: branch {s['branch']!r} is not {_prefix()}NNN-slug")
         if int(mt.group(1)) != s["n"]:
-            out.append((s, int(mt.group(1)), f"series/{s['n']:03d}-{mt.group(2)}"))
+            out.append((s, int(mt.group(1)), f"{_prefix()}{s['n']:03d}-{mt.group(2)}"))
     return out
+
+
+def _prefix():
+    from tools.series import stack
+    return stack.PREFIX
 
 
 def _town_config(repo, branch):

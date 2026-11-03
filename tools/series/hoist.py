@@ -40,7 +40,8 @@ def insert(m, commits, slug, title, tree, root_branch, era):
     while at < len(steps) and steps[at].get("kind") == "independent":
         at += 1
     n = at + 1
-    step = {"n": n, "branch": f"series/{n:03d}-{slug}", "kind": "independent", "title": title,
+    from tools.series import stack
+    step = {"n": n, "branch": f"{stack.PREFIX}{n:03d}-{slug}", "kind": "independent", "title": title,
             "source": {"type": "hoisted", "commits": list(commits)}, "chapter": None,
             "mechanical_command": None, "description": f"series/pr/{n:03d}-{slug}.md", "era": era,
             "target_tree": tree, "merge_tree": tree, "verification": None, "resolutions": [],

@@ -9,6 +9,7 @@ import os
 import subprocess
 
 ROOT_BRANCH = "series/000-upstream-base"
+PREFIX = "series/"  # the active profile's branch prefix (profile.activate)
 
 
 def _run(args, cwd=None, inp=None, ok=(0,)):
@@ -43,7 +44,7 @@ def _town(worktree, *args):
 
 def make_step(repo, worktree, branch, parent, tree, message):
     """Create or reset `branch` to one commit with `tree` on `parent`'s tip; set its lineage. Returns the commit."""
-    if branch in ("develop", "master", "main") or not branch.startswith("series/"):
+    if branch in ("develop", "master", "main") or not branch.startswith(PREFIX):
         raise ValueError(f"refusing to write branch {branch!r}")
     ensure_worktree(repo, worktree)
     parent_tip = git(repo, "rev-parse", f"refs/heads/{parent}")

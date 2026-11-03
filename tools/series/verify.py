@@ -84,8 +84,9 @@ TEST_WARNINGS = os.path.join(ROOT, "specs", "001-split-migration-prs", "series",
 _ROW_RE = re.compile(r"^\|\s*(\d+)(?:\s*[–-]\s*(\d+))?\s*\|\s*`(tests/[^`]+)`\s*\|\s*`([^`]+)`\s*\|", re.M)
 
 
-def listed_test_warnings(path=TEST_WARNINGS):
-    """[(first step, last step, test file, warning text)] from the table in `path`."""
+def listed_test_warnings(path=None):
+    """[(first step, last step, test file, warning text)] from the table in `path` (default: the profile's)."""
+    path = path or TEST_WARNINGS
     if not os.path.exists(path):
         return []
     return [(int(lo), int(hi or lo), f, w) for lo, hi, f, w in _ROW_RE.findall(_read(path))]

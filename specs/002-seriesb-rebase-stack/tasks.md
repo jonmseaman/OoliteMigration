@@ -125,7 +125,7 @@ R8).
 
   Accept: the file exists, and `python -m unittest tools.series.tests.test_profile` fails before
   T004 and passes after.
-- [ ] T004 Implement `tools/series/profile.py` and thread the profile through the code:
+- [X] T004 Implement `tools/series/profile.py` and thread the profile through the code:
   - `tools/series/series.py`: a global `--series {series,seriesb}`, default `series`. `SERIES_DIR`,
     the description path in the handover, and the `ROOT_BRANCH` uses come from the profile.
   - `tools/series/stack.py`: `ROOT_BRANCH` and the `series/` prefix check come from the profile.
