@@ -637,6 +637,11 @@ and `$S verify --steps N` exits 0, including the `no_facade` and `poc` checks fr
   so the end target has it. In the stack it joins step 023, retitled "Port upstream #766, #774,
   #781 and #783" (slug `023-upstream-28ceaaba0-ports`). Accept: `./mk.sh build test` passes, and
   each behaviour #783 adds is pinned by a new unit test.
+- [ ] T051b [US7] Bring the end target up to recent upstream PRs (Jon, 2026-11-03): audit
+  `feature/upstream-quickjs-poc-cxx` for code that `dc55e3e05..7437f22a5` changed and the fork still has
+  in its older form (known: #742's joystick layout, #780's `playerWillSaveGame`), port each into the
+  C++ code with tests that pin it. Accept: `find_reverts5.py`-style audit of the end target against the
+  range reports nothing unexplained; `./mk.sh build test` and the unit suites pass.
 - [ ] T052 [US7] Set `anchors.develop_target` to T051's tip. Rebuild step 003 as "Compile as
   Objective-C++" (slug `003-objective-cxx`): it is old 003's renames and build changes, with none
   of the façade. #768's binding and `poc/` are kept and renamed to `.mm`. Accept: per-step.

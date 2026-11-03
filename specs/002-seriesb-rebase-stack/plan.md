@@ -466,3 +466,18 @@ sources outside the replayed trees.
   upstream change has none, at the first step whose test suites can reach the code. Old steps 018
   and 023 then shrink to whatever port is still needed. Step 003 is trimmed first, then 004 is redone
   on it.
+- **Step 003 trimmed, 004 redone (2026-11-03).** 003 = `de8858b2c` (284 files, +1672/−1304 vs
+  002), 004 = `494a1a4c4`, both on their branches; gates pass (build rc=0 with 002's 7 warnings;
+  oofnd 20/20 at 004; smoke; no façade; tests unchanged). 775 hunks classified in
+  `.agent-tmp/step3/trim-classification.md`: 729 required by Objective-C++ (kept, each made on
+  upstream's code); 29 reverted upstream (#742/#748/#749 joystick layout, #780
+  `playerWillSaveGame` via `doScriptEvent:`), restored to 002; 17 neither (post_build's `ldd`
+  closure, anonymous-namespace wrapping, split `if ((self = [super init]))`, `static`), dropped as
+  not needed for the build. History ids are dropped from comments step 003 adds.
+  `.agent-tmp/step3/trim/find_reverts5.py` detects lines a hunk adds that the range removed (ignoring
+  #749's reformat); it finds none in new 003 or 004.
+- **The end target reverts recent upstream PRs too (found 2026-11-03).** `feature/upstream-quickjs-
+  poc-cxx` (from `develop`) still has the fork's pre-#742 joystick layout and calls
+  `ShipScriptEventNoCx` where #780 calls `doScriptEvent:OOJSID("playerWillSaveGame")`. Under Jon's
+  rule the end target must take upstream's forms first (T051b), or the last step would have to
+  revert them to match it.
