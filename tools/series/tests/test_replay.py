@@ -185,6 +185,11 @@ class ReplayTest(unittest.TestCase):
         self.assertEqual(replay.differs(self.repo, self.m, s), [])
         self.assertEqual(seriesb.validate(self.m), [])
 
+    def test_cut_again_keeps_a_recorded_take_old(self):
+        replay.take_old(self.m["steps"][1], ["README"], "the old step's README")
+        replay.cut(self.repo, self.m, self.old)
+        self.assertEqual(self.m["steps"][1].get("take_old"), {"keep": ["README"], "reason": "the old step's README"})
+
     def test_cut_keeps_the_target_step_last(self):
         self._build_replays()
         _, ledger = self._target()

@@ -104,6 +104,8 @@ def cut(repo, m, old_m):
             s[k] = prev.get(k) if keep and k in prev else ([] if k in ("resolutions", "rules", "differs_from_old")
                                                           else {} if k == "reasons" else None)
         s["state"] = s["state"] or "planned"
+        if keep and prev.get("take_old"):  # a recorded resolution, like the rules
+            s["take_old"] = prev["take_old"]
         steps.append(s)
     for t in targets:  # the switch stays last
         n = len(steps) + 1

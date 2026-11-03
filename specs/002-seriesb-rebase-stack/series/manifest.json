@@ -12,7 +12,7 @@
   }
  ],
  "anchors": {
-  "develop_target": "3aa8d65e8c349bcae462078a684cc182905004ef",
+  "develop_target": "fb47a9c2602274d7f5a1e3fd94ed9cc18fbdccc9",
   "format": {
    "clang_format_version": "22.1.8",
    "style_file_from": "49a5eb9fc"
@@ -2143,6 +2143,33 @@
     "tree": "1480777d86b241cc9143e817c85a13635717b56f",
     "warning_keys": []
    }
+  },
+  {
+   "branch": "seriesb/025-upstream-quickjs-binding",
+   "build_commit": "6d6c5e9c99e5ca12b7345b001f7cbeecd2034954",
+   "chapter": null,
+   "description": "series/pr/025-upstream-quickjs-binding.md",
+   "differs_from_old": [],
+   "era": "cxx",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": "6bbb616ab1505fb216a9e60a24b1972e5d82b121",
+   "n": 25,
+   "parent": "seriesb/024-google-style-format",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": null,
+   "source": {
+    "commit": "fb47a9c2602274d7f5a1e3fd94ed9cc18fbdccc9",
+    "ref": "feature/upstream-quickjs-binding",
+    "test_ledger": "specs/002-seriesb-rebase-stack/series/test-changes.md",
+    "type": "target"
+   },
+   "state": "built",
+   "target_tree": "6bbb616ab1505fb216a9e60a24b1972e5d82b121",
+   "title": "Move the scripting layer to upstream's QuickJS-ng binding",
+   "verification": null
   }
  ],
  "syncs": []
