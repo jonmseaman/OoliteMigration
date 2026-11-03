@@ -188,7 +188,7 @@ R8).
 
 **Independent Test**: `$S parents` exits 0, and `$S check --only lineage,branches,baseline` exits 0.
 
-- [ ] T007 [US1] Write `tools/series/tests/test_parents.py` on T005's fixture. It checks that
+- [X] T007 [US1] Write `tools/series/tests/test_parents.py` on T005's fixture. It checks that
   `parents --setup`:
   - adds a remote (fetch refspecs limited to the two PR branches);
   - creates both branches at the remote heads;

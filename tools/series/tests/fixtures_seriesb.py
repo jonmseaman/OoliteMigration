@@ -48,7 +48,8 @@ def commit(repo, tree, parents, msg):
     return git(repo, *args, "-m", msg)
 
 
-def make_seriesb_repo(tmp):
+def make_seriesb_repo(tmp, seriesb=True):
+    """The repository; with seriesb=False, only up to the bare "hobleyd" (no remote, parents or steps)."""
     repo = os.path.join(tmp, "game")
     os.makedirs(repo)
     git(repo, "init", "-q", "-b", "develop")
@@ -90,6 +91,9 @@ def make_seriesb_repo(tmp):
     git(repo, "branch", "fixture-default", dflt)
     git(hob, "fetch", "-q", repo, "fixture-poc:quickjs-poc", "fixture-default:quickjs-default")
     git(repo, "branch", "-D", "fixture-poc", "fixture-default")
+    if not seriesb:
+        return {"repo": repo, "hob": hob, "u": u, "poc": poc, "default": dflt, "develop_only": dev_only,
+                "old_trees": old_trees}
     git(repo, "remote", "add", "hobleyd", hob)
     git(repo, "config", "--unset-all", "remote.hobleyd.fetch")
     git(repo, "config", "--add", "remote.hobleyd.fetch", f"+refs/heads/quickjs-poc:refs/remotes/hobleyd/{A}")
