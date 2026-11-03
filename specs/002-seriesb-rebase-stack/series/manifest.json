@@ -953,7 +953,7 @@
     ],
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "take_old": {
     "keep": [
      "tools/js-parity/**",
@@ -963,7 +963,27 @@
    },
    "target_tree": "6f42fe4e74aebe315741b3aedfc795bcf7f1d94b",
    "title": "Put the game's JavaScript behind an engine façade on QuickJS-ng, replacing the PRs' binding; compile as Objective-C++",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "n/a: the tree has no unit suites",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "a6e785314ddf6bb2b42d7e829ea63e222c81e6bb",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "6f42fe4e74aebe315741b3aedfc795bcf7f1d94b",
+    "warning_keys": []
+   }
   },
   {
    "branch": "seriesb/004-oofnd-core",
@@ -999,10 +1019,30 @@
     "old_step": 6,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "1e8ea118622e0f1ee288549073a119c7c4cf5c24",
    "title": "Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "6e3649712d6cab6ce058449fa1bfd40056a8f301",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "1e8ea118622e0f1ee288549073a119c7c4cf5c24",
+    "warning_keys": []
+   }
   },
   {
    "branch": "seriesb/005-typed-accessors",
@@ -1034,10 +1074,30 @@
     "old_step": 7,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "a0aaae98011de1b740cae5e13817c6955f004706",
    "title": "Move most oo_*ForKey dictionary accessors to typed PListView::get",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "39f37df90bb17280353548cf4569dc69827b5773",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "a0aaae98011de1b740cae5e13817c6955f004706",
+    "warning_keys": []
+   }
   },
   {
    "branch": "seriesb/006-foundation-wave-1",
@@ -1069,10 +1129,30 @@
     "old_step": 8,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "6d0c48efffd66b15bcc2dfe2f605aa510b14bf3e",
    "title": "Move Foundation usage to oofnd, part 1",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships (1 earlier attempt(s) failed; see the log)",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "02c82ec354db6617b9792f1713d9bb7ebc679145",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "6d0c48efffd66b15bcc2dfe2f605aa510b14bf3e",
+    "warning_keys": []
+   }
   },
   {
    "branch": "seriesb/007-foundation-wave-2",
@@ -1105,10 +1185,30 @@
     "old_step": 9,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "e7f333f7f2291999562e6335a5a0dbdfafa2e6b3",
    "title": "Move Foundation usage to oofnd, part 2",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "7add964f145ec6abf83cb69640b989a4a5b45f58",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "e7f333f7f2291999562e6335a5a0dbdfafa2e6b3",
+    "warning_keys": []
+   }
   },
   {
    "branch": "seriesb/008-selector-families",
@@ -1141,10 +1241,30 @@
     "old_step": 10,
     "type": "replay"
    },
-   "state": "built",
+   "state": "verified",
    "target_tree": "b13bd9d1bc75bff1c2a67fe339e10904c66464ae",
    "title": "Retire the remaining Foundation selectors and their bridge callers",
-   "verification": null
+   "verification": {
+    "after_sync": 0,
+    "checks": {
+     "build_clang": "pass",
+     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "clang_format": "pass",
+     "component": "n/a: no component scenario touched",
+     "no_new_spidermonkey_or_gnustep": "pass",
+     "no_new_suppressions": "pass",
+     "smoke": "pass",
+     "tests_untouched": "pass",
+     "unit": "pass: oofnd",
+     "warnings_clang": "pass: 0 warnings"
+    },
+    "clean": false,
+    "commit": "741729301ab7fd157d46bc0014b6ebe2778c135f",
+    "date": "2026-11-02",
+    "era": "objc-quickjs",
+    "tree": "b13bd9d1bc75bff1c2a67fe339e10904c66464ae",
+    "warning_keys": []
+   }
   },
   {
    "branch": "seriesb/009-leaf-conversions",
