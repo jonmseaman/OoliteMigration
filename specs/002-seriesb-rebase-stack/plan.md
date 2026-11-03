@@ -10,6 +10,18 @@
 
 ## Summary
 
+**Changed 2026-11-02 at Jon's direction (spec User Story 6, FR-014–FR-016):** the end state uses
+upstream's QuickJS-ng binding converted to C++, not the fork's `ooscript` façade. Two new phases
+follow the built stack:
+
+- **G5, target:** port `develop` to that binding on `oolite-dev`'s
+  `feature/upstream-quickjs-binding`. Jon merges it into `develop`.
+- **G6, switch step:** a last seriesb step whose change is that port (`develop` → target). It ends
+  the series on upstream's binding.
+
+Research R11–R12 have the measurements and the choice of series shape. Everything below this
+paragraph is the plan as built up to step 24.
+
 Mirror upstream #767 and #768 as two observed Git Town parents. Then replay each verified
 `series/*` step onto them as a prototype branch, using feature 001's merge-and-resolution tool
 under a new `--series seriesb` profile. Before anything is built, the parents must pass a gate
@@ -136,6 +148,15 @@ sources outside the replayed trees.
   - Old 005 is dropped or narrowed (R4).
   - The R5 decisions are applied in the new 003.
 - **G3, C++-era replays** (old 011–026): built and verified.
+- **G5, target (User Story 6)**: on `feature/upstream-quickjs-binding`, `develop`'s scripting
+  layer is replaced by #768's binding converted to C++.
+  - Callers and tests move to upstream's API.
+  - All suites pass with Clang and GCC.
+  - `git grep ooscript -- src tests` is empty.
+  - The test-change ledger (`specs/002-seriesb-rebase-stack/series/test-changes.md`) lists every
+    changed test.
+- **G6, switch step**: seriesb step 025 (source: the target branch) takes the target's tree. The
+  final tree equals the target, and the step is verified.
 - **G4, finish**:
   - `check --verified` exits 0.
   - The handover is written.
@@ -150,6 +171,20 @@ sources outside the replayed trees.
 | The end tree is not exactly `develop`: two retained upstream tools | Deleting upstream's own tools in a PR to upstream would be gratuitous, and they are not part of the game | Strict equality would make step 003 remove `tools/js-parity` and `tools/oxp-upgrade` (R5) |
 
 ## Notes (decisions and state that outlive the session)
+
+- **2026-11-02, Jon: adopt upstream's QuickJS-ng binding; drop the fork's interface.** Tests may move
+  to upstream's engine API (FR-015). Hard rule 6 is amended in `CLAUDE.md` (FR-016). The
+  verification of steps 3–24 was stopped after step 8 passed: those steps stay as built, but the
+  series now ends with the switch step.
+- **Series shape (default, research R12):** the built steps 3–24 keep the fork's façade, and a
+  final step switches to the converted upstream binding.
+  - Why: `src/Core/Scripting` is edited by 23 of the 26 old steps, 50–100 files each in about 15 of
+    them. Carrying #768's binding through every step means re-porting all those edits onto #768's
+    files by hand.
+  - Cost: reviewers see #768's binding replaced at step 3 and brought back, converted, at step 25.
+  - The rejected alternative carries the binding through every step. It is reviewable as one story
+    but has that porting cost, and it is a follow-up Jon can ask for once the target exists. Its
+    end tree is the same target, so G5 is needed either way.
 
 - 2026-11-02:
   - **D1 finding for Jon**: on #768 the fork's façade is not smaller than old 003 + 005 (R4).

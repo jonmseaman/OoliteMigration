@@ -173,6 +173,38 @@ description file and verification record it names exists, and every base chains 
    fork target each step's parent, and upstream PRs are not offered for the two parents (they
    are upstream's own).
 
+### User Story 6 - The game runs on upstream's QuickJS-ng binding, not the fork's façade (Priority: P1)
+
+*(Added 2026-11-02 at Jon's direction: "do not keep my interface, I want to use theirs as it is
+improved from mine".)*
+
+The fork's scripting layer is replaced by upstream's: #767/#768's QuickJS-ng binding, converted to
+C++ in the fork's style. The `ooscript` engine façade (`JSEngine.hpp`, `JSEngine_quickjs.cpp`) is
+gone. Code outside the scripting layer uses #780's engine-neutral names and #768's API. This lands
+first on a feature branch of `oolite-dev`, which Jon merges into `develop`. The seriesb series then
+ends at that tree.
+
+**Why this priority**: it is Jon's decision about the end state, and every later step depends on
+it.
+
+**Independent Test**:
+- On the feature branch: the build, unit, component, GUI and smoke suites all pass with Clang and
+  GCC.
+- `git grep ooscript -- src tests` finds nothing.
+- The scripting layer's sources correspond file for file to #768's (the 47 shared files, plus
+  `OOJSClasses`).
+- Every changed test is listed with what changed.
+
+**Acceptance Scenarios**:
+
+1. **Given** the feature branch, **When** it is built and all suites run, **Then** they pass with no
+   new warnings.
+2. **Given** a test that used the façade, **When** it is compared with `develop`'s version, **Then**
+   only the engine API it calls has changed. What it asserts has not, unless the test-change ledger
+   names the change and why.
+3. **Given** the seriesb series, **When** its last step's tree is compared with the merged feature
+   branch, **Then** they are equal, apart from the listed exclusions and additions.
+
 ### Edge Cases
 
 - **#767 or #768 does not build or pass its own tests in our environment**: this is a gate. Work
@@ -234,7 +266,9 @@ description file and verification record it names exists, and every base chains 
   descriptions MUST follow the old step's, edited only where the new base changes what the step
   does.
 - **FR-007**: The last step's tree MUST equal the recorded `develop` commit's tree, apart from the
-  manifest's exclusions and additions. Each carries a reason.
+  manifest's exclusions and additions. Each carries a reason. *(From 2026-11-02, User Story 6: the
+  recorded commit is `develop` after Jon merges the upstream-binding branch, or that branch's tip
+  until he does.)*
   - Exclusions are what `develop` has and the series does not. The old series' three are the
     default.
   - Additions are paths #767/#768 add that the series keeps although `develop` lacks them, namely
@@ -262,6 +296,19 @@ description file and verification record it names exists, and every base chains 
   (push commands, dry-run PR commands on the fork, upstream PR commands for steps 001 onward), as
   the old series did. A check command MUST exit 0 only when every branch, file, base and current
   verification is present.
+- **FR-014**: The scripting layer MUST be upstream's #767/#768 QuickJS-ng binding, converted to
+  C++. The `ooscript` façade and the fork-only `OOJSEngineNativeWrappers` and `OOJSPrivateObject`
+  are removed, or reduced to what #768's design also has. The work happens on an `oolite-dev`
+  feature branch (`feature/upstream-quickjs-binding`) off `develop`.
+- **FR-015**: Tests that call the façade MAY be changed to call upstream's engine API (Jon signed
+  this off on 2026-11-02, an exception to hard rule 1 for this migration only).
+  - A changed test keeps what it asserts.
+  - A test of the façade itself, which has no counterpart once the façade is gone, may be replaced
+    by #768's equivalent or removed.
+  - Every changed, replaced or removed test is listed in a test-change ledger (path, what changed,
+    why) for Jon.
+- **FR-016**: Hard rule 6 is amended (Jon, 2026-11-02). QuickJS-ng's own `JS_*` API is allowed;
+  `libgnustep-base` and SpiderMonkey are still never reintroduced.
 - **FR-013**: Nothing is pushed. Jon pushes and opens PRs (hard rule 3). Commits on `seriesb/*`
   branches carry no bead ids or ADR numbers in their messages (as feature 001 FR-017).
 
@@ -322,7 +369,11 @@ description file and verification record it names exists, and every base chains 
 Hard rule 8 and the agent contract say not to wait on a question, so each item below records the
 default that was taken.
 
-- **D1 – scripting layer (scope)**: the end tree stays `develop`, so the fork's engine façade and
+- **D1 – reversed by Jon, 2026-11-02 (see User Story 6, FR-014–FR-016).** The end state uses
+  upstream's QuickJS-ng binding, not the fork's façade. The default below was the original one;
+  its measurements still describe the built steps 3–24, which now lead up to the final switch step
+  (plan Notes).
+- **D1 (original) – scripting layer (scope)**: the end tree stays `develop`, so the fork's engine façade and
   its C++ scripting layer replace #768's QuickJS binding. Old steps 003, 004 and 005 are each
   replayed onto #768 as separate steps:
   - the new 003 puts the game's JavaScript behind the façade in place of #768's binding;
@@ -357,6 +408,9 @@ default that was taken.
   setup that make `git town sync --stack` behave this way.
 
 Settled by Jon (2026-11-02):
+
+- Adopt upstream's QuickJS-ng binding and drop the fork's interface (D1 reversed). Tests may be
+  updated to upstream's engine API (FR-015), and hard rule 6 is amended (FR-016).
 
 - Upstream changes arrive through `git town sync --stack`. Conflicts are resolved by hand; a
   rebuild-from-scratch tool is not required.

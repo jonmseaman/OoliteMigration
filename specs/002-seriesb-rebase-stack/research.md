@@ -216,3 +216,43 @@ content (hard rule 4):
   symbols (SpiderMonkey's in `000a`, QuickJS's in every QuickJS-era step) and GNUstep exist only
   in parents and intermediate steps. `check final-tree` enforces the rule on the last step, which
   is `develop`.
+
+
+## R11. Porting develop to upstream's binding (spec User Story 6; measured 2026-11-02)
+
+| | `develop` (fork) | #768 (upstream) |
+|---|---|---|
+| Language | C++20 | Objective-C, 52 `.m` and 49 `.h` |
+| Scripting layer | 45.3k lines: 50 `.cpp`, 53 `.h` | 31.6k lines |
+| Reaches QuickJS from | `ooscript/JSEngine_quickjs.cpp` only (4,125 lines), behind `ooscript/JSEngine.hpp` (825 lines): a SpiderMonkey-shaped API (`RootedValue`, `CallArgs`, `Request`, …) implemented on QuickJS | 42 files including `quickjs.h`: native QuickJS idiom (`JSValue`, `JS_ToFloat64`, `OOJS_PROPERTY_*` macros, getters and setters returning `JSValue`) |
+| Outside the scripting layer | 50 files name `ooscript`; 16 include `OOJavaScriptEngine.h`; no raw `JS_*` | 13 files call `JS_*`; #780's engine-neutral names (`OOJSVal`, `OOJSFreeValue`, …) for the rest |
+| Tests on the engine API | 73 in `tests/unit/core`, 2 in `tests/unit/expander`, 1 in `tests/unit`; `test_jsengine_quickjs.cpp` tests the façade itself | `src/Core/Scripting/poc/tests/*.js`, the js-parity probe |
+
+The class bindings correspond: 47 files exist on both sides. `OOJSEngineNativeWrappers` and
+`OOJSPrivateObject` exist only in the fork; `OOJSClasses` only upstream.
+
+- **Decision**: port per file. Base = upstream's pre-#768 file (`7437f22a5`), A = #768's (the engine
+  change), B = `develop`'s C++ file (the C++ conversion plus the façade). The result is B with every
+  façade call replaced by #768's QuickJS form, and #768's structure (class registration, property
+  tables, getter and setter signatures) adopted.
+- `JSEngine_quickjs.cpp` is the dictionary: it implements each façade call on QuickJS, so it shows
+  the QuickJS form a façade call becomes.
+- The engine core (`OOJavaScriptEngine`, `OOJSScript`, `OOJSFunction`, `OOJSCall`, time management,
+  debugger helpers) takes #768's design.
+- Behaviour is checked by the existing suites, plus `tools/js-parity` (#767's probe) run against
+  `develop` and the target.
+- **QuickJS-ng version**: the fork's (newer, from old step 024) stays. #768's
+  `0001-oolite-primitive-property-assignment.patch` and `oolite-quickjs-compat.js` come with the
+  binding, kept if its tests need them (research R5's rule, now applied in the target).
+
+## R12. Series shape after the switch
+
+`src/Core/Scripting` changes in 23 of the 26 old steps (files changed: 002 1; 003 97; 004 13;
+005 92; 006 6; 007 25; 008–013 52–104 each; 014 5; 015 20; 016–018 69–103 each; 019 2; 020 9; 021 1;
+022 92; 023 1; 024 60; 025 6; 026 92).
+
+- **Decision (default)**: keep the built steps 3–24, and add step 025, "Move the scripting layer to
+  upstream's QuickJS-ng binding", whose tree is the target's.
+- **Rejected alternative**: carry #768's binding through every step. Each of those steps' scripting
+  edits would be re-ported onto #768's files, by hand where they are not mechanical. It is a
+  follow-up once the target exists; see plan Notes.

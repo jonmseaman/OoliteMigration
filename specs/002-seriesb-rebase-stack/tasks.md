@@ -501,6 +501,110 @@ has an entry.
 
 ---
 
+## Phase 9: User Story 6: the game runs on upstream's QuickJS-ng binding (P1, added 2026-11-02)
+
+**Goal**: `develop`'s scripting layer replaced by #767/#768's binding converted to C++, on
+`oolite-dev`'s `feature/upstream-quickjs-binding`. The `ooscript` façade goes. Callers and tests use
+upstream's API (spec FR-014–FR-016; research R11).
+
+**Independent Test**:
+- All suites pass on the branch with Clang and GCC.
+- `git -C oolite-dev grep -n ooscript feature/upstream-quickjs-binding -- src tests` is empty.
+- `series/test-changes.md` lists every test that differs from `develop`.
+
+Work happens in the worktree `.agent-tmp/upstream-binding-wt`, never in `oolite-dev`'s main checkout.
+Commit to the feature branch as each task finishes. The rules above apply, with FR-015's exception
+for tests and FR-016's amended hard rule 6.
+
+- [ ] T036 [US6] Create the branch and the worktree:
+  `git -C oolite-dev worktree add -b feature/upstream-quickjs-binding .agent-tmp/upstream-binding-wt develop`,
+  then build it once (`./mk.sh build test` in the C++ shell) to record the starting point.
+  Accept: `git -C oolite-dev merge-base --is-ancestor develop feature/upstream-quickjs-binding`, and
+  the worktree's build exits 0.
+- [ ] T037 [US6] Write the façade dictionary `specs/002-seriesb-rebase-stack/series/facade-map.md`.
+  It has one row per public name in `src/Core/Scripting/ooscript/JSEngine.hpp`: the façade name,
+  how `JSEngine_quickjs.cpp` implements it on QuickJS, and the form #768's binding uses for the same
+  job (with a file:line example from `seriesb/000b-upstream-768-quickjs-only`). Accept: a script
+  `.agent-tmp/facade_map_check.py` lists `JSEngine.hpp`'s public names, and every one appears in the
+  table.
+- [ ] T038 [US6] Port the engine core to #768's design, in C++:
+  - `OOJavaScriptEngine.{h,cpp}`, `OOJSScript`, `OOJSFunction`, `OOJSCall`,
+    `OOJSEngineTimeManagement`, `OOJSEngineDebuggerHelpers`, `OOJSPropID.h`;
+  - a new `OOJSClasses`, from #768's `OOJSClasses.m`.
+
+  Method (research R11): for each file, `develop`'s C++ file with every façade call replaced by
+  #768's QuickJS form, adopting #768's structure. Keep the fork's C++ conventions (`oo::Ref<T>`,
+  `oofnd` types, the exemplar `src/Core/OOColor.*`). Accept: `git grep -n ooscript` over those
+  files is empty, and their objects compile:
+  `ninja -C build/meson_test $(ninja -C build/meson_test -t targets all | grep -oE '[^ :]*(OOJavaScriptEngine|OOJSScript|OOJSFunction|OOJSCall|OOJSEngineTimeManagement|OOJSEngineDebuggerHelpers|OOJSClasses)\.cpp\.obj')`
+  exits 0 in the worktree.
+- [ ] T039 [P] [US6] Port the entity bindings the same way: `OOJSEntity`, `OOJSShip`, `OOJSStation`,
+  `OOJSDock`, `OOJSPlanet`, `OOJSSun`, `OOJSWormhole`, `OOJSPlayer`, `OOJSPlayerShip`,
+  `OOJSVisualEffect`, `OOJSExhaustPlume`, `OOJSFlasher`, `OOJSWaypoint`, `OOJSShipGroup` and
+  `EntityOOJavaScriptExtensions`. Accept: no `ooscript` in them, and their objects compile (the
+  T038 form, with these names).
+- [ ] T040 [P] [US6] Port the remaining bindings: `OOJSVector`, `OOJSQuaternion`, `OOJSTimer`,
+  `OOJSClock`, `OOJSSound`, `OOJSSoundSource`, `OOJSFont`, `OOJSManifest`, `OOJSMission`,
+  `OOJSMissionVariables`, `OOJSSystem`, `OOJSSystemInfo`, `OOJSOolite`, `OOJSGlobal`,
+  `OOJSWorldScripts`, `OOJSSpecialFunctions`, `OOJSFrameCallbacks`, `OOJSEquipmentInfo`,
+  `OOJSInterfaceDefinition`, `OOJSGuiScreenKeyDefinition`, `OOJSPopulatorDefinition` and
+  `OOConstToJSString`. Accept: as T039.
+- [ ] T041 [US6] Remove `src/Core/Scripting/ooscript/`, plus `OOJSEngineNativeWrappers` and
+  `OOJSPrivateObject` where #768's design has no counterpart (otherwise reduce them to it), and
+  update the meson lists. Accept: `git grep -n ooscript -- src/Core/Scripting` is empty in the
+  worktree, and `./mk.sh build test` gets past `src/Core/Scripting`.
+- [ ] T042 [US6] Move the 50 files outside the scripting layer that name `ooscript`, and the 16 that
+  include `OOJavaScriptEngine.h`, to #780's engine-neutral names and #768's API. Accept:
+  `git grep -n ooscript -- src` is empty, and `./mk.sh build test` exits 0 with Clang, and with
+  `--native-file=gcc.ini`.
+- [ ] T043 [US6] Move the tests (FR-015): the 73 in `tests/unit/core`, 2 in `tests/unit/expander` and
+  1 in `tests/unit` that use the façade.
+  - Keep every assertion. Replace `tests/unit/test_jsengine_quickjs.cpp` (a test of the façade) by
+    #768's equivalent where one exists, or remove it.
+  - Write `specs/002-seriesb-rebase-stack/series/test-changes.md`: one row per test file that differs
+    from `develop` (path, what changed, why, and whether any assertion changed, which should be
+    none).
+
+  Accept, all of these:
+  - `git grep -n ooscript -- tests` is empty;
+  - `tests/run.sh unit` passes;
+  - every path in `git diff --name-only develop -- tests` appears in `test-changes.md`.
+- [ ] T044 [US6] Bring #768's non-source parts: `Resources/Scripts/oolite-quickjs-compat.js`, the
+  QuickJS-ng patch (applied to the fork's newer QuickJS-ng if it still applies and the tests need
+  it; research R5's rule), `tools/js-parity/**` and `tools/oxp-upgrade/**`. Record each decision
+  with its evidence in plan.md's Notes. Accept: both tools exist on the branch, and plan.md's Notes
+  have a `T044:` line.
+- [ ] T045 [US6] Verify the target: `./mk.sh build test` with Clang and with GCC (no new warnings),
+  then `tests/run.sh unit`, `tests/run.sh component`, `tests/run.sh smoke` and `tests/run.sh gui`
+  (one GUI run at a time). Also run `tools/js-parity` against `develop` and the branch, and record
+  the differences. Accept: every suite exits 0, and plan.md's Notes have a `T045:` line with the
+  results and the parity differences.
+- [ ] T046 [US6] *(Jon)* Merge `feature/upstream-quickjs-binding` into `develop` and push. Until he
+  does, seriesb's `anchors.develop_target` is the branch tip (spec FR-007). Agents do not do this
+  task. Accept: n/a for agents. Record the branch tip in plan.md's Notes when T045 passes.
+
+---
+
+## Phase 10: The switch step (P1, added 2026-11-02)
+
+**Goal**: seriesb ends on upstream's binding. Step 025 takes the target's tree.
+
+- [ ] T047 [US6] Add a `target` source type to the tool, with tests in
+  `tools/series/tests/test_replay.py`. A step with `source: {type: "target", ref}` has the target's
+  tree minus `exclusions`, plus the parent's `additions`. `differs_from_old` does not apply; the
+  description says it is the switch. `cut --replay` keeps it last. Accept:
+  `python -m unittest tools.series.tests.test_replay` passes.
+- [ ] T048 [US6] Add step 025, "Move the scripting layer to upstream's QuickJS-ng binding", with
+  source `feature/upstream-quickjs-binding`. Set `anchors.develop_target` to the branch tip, build
+  the step, and verify steps 9–25 (the stopped run's remainder). Accept:
+  `$S check --only manifest,lineage,branches,final-tree` exits 0, and
+  `$S check --verified --steps 1-25` exits 0.
+
+After Phase 10, T030 (sync rehearsal), T032 (descriptions), T034 (quickstart) and T035 (final gate)
+run on the 25-step stack.
+
+---
+
 ## Dependencies and execution order
 
 ### Phases
