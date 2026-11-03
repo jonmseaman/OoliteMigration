@@ -15,7 +15,10 @@ PARENT_RE = re.compile(r"^seriesb/000[a-z]-[a-z0-9]+(?:-[a-z0-9]+)*$")
 STEP_RE = profile.step_branch_re("seriesb/")
 PARENT_KINDS = ("upstream", "fix-parent", "upstream-master")
 GATE_OK = ("pass", "waived")
-GROUPS = ("manifest", "branches", "lineage", "baseline", "gates", "differs", "final-tree", "verified")
+GROUPS = ("manifest", "branches", "lineage", "baseline", "gates", "differs", "tests", "messages", "final-tree",
+          "verified")
+# a bead id or an ADR number (spec FR-013)
+MESSAGE_RE = re.compile(r"\boo-[a-z0-9]{3,}\b|\bADR-?\d+")
 
 
 def _git(repo, *args, ok=(0,)):
@@ -294,6 +297,55 @@ def check_differs(m, wanted):
     return out
 
 
+def _name_status(repo, a, b, path):
+    """{path: (status, after blob)} between trees a and b under `path`."""
+    out = {}
+    for line in _out(repo, "diff", "--name-status", "--no-renames", a, b, "--", path).splitlines():
+        status, p = line.split("\t", 1)
+        out[p] = (status, _sha(repo, f"{b}:{p}") if status != "D" else None)
+    return out
+
+
+def check_tests(repo, m, wanted):
+    """Hard rule 1: a step modifies or deletes an existing test only where its old step did the same
+    (same resulting text, or deleted in both)."""
+    out = []
+    for s in m.get("steps", []):
+        if s["n"] not in wanted or not _sha(repo, f"refs/heads/{s['branch']}"):
+            continue
+        tree = _out(repo, "rev-parse", f"refs/heads/{s['branch']}^{{tree}}")
+        parent = _out(repo, "rev-parse", f"refs/heads/{s['parent']}^{{tree}}")
+        old = s["source"]["old_commit"]
+        first = s["source"].get("old_from_commit") or old
+        old_changes = _name_status(repo, _out(repo, "rev-parse", f"{first}~1^{{tree}}"),
+                                   _out(repo, "rev-parse", f"{old}^{{tree}}"), "tests/")
+        for p, (status, after) in _name_status(repo, parent, tree, "tests/").items():
+            if status == "A":
+                continue
+            o = old_changes.get(p)
+            if o is None or o[0] == "A" or o[1] != after:
+                what = "deletes" if status == "D" else "modifies"
+                out.append(f"rule 1: step {s['n']} {what} the existing test {p}, which {s['source']['old_branch']} does not")
+    return out
+
+
+def check_messages(repo, m, wanted):
+    """Spec FR-013: no bead id or ADR number in a step's own commits (those not in its parent)."""
+    out = []
+    for s in m.get("steps", []):
+        if s["n"] not in wanted or not _sha(repo, f"refs/heads/{s['branch']}"):
+            continue
+        log = _out(repo, "log", "--format=%H%x00%B%x01", s["branch"], f"^{s['parent']}")
+        for entry in log.split("\x01"):
+            if not entry.strip():
+                continue
+            c, _, body = entry.strip().partition("\x00")
+            hit = MESSAGE_RE.search(body)
+            if hit:
+                out.append(f"rule 1: step {s['n']} commit {c[:10]} message carries {hit.group(0)!r}")
+    return out
+
+
 def check(repo, m, groups, baseline=None, wanted=None):
     wanted = wanted if wanted is not None else {s["n"] for s in m.get("steps", [])}
     out = []
@@ -307,6 +359,10 @@ def check(repo, m, groups, baseline=None, wanted=None):
         out += check_baseline(repo, baseline)
     if "differs" in groups:
         out += check_differs(m, wanted)
+    if "tests" in groups:
+        out += check_tests(repo, m, wanted)
+    if "messages" in groups:
+        out += check_messages(repo, m, wanted)
     if "final-tree" in groups:
         out += check_final_tree(repo, m)
     if "verified" in groups:

@@ -366,7 +366,7 @@ recorded.
   Accept: `$S check --verified --steps 1-<last objc step>` exits 0.
 - [ ] T024 [US3] Verify the C++-era steps: `$S verify --from <first cxx step>` in Jon's MSYS2,
   handling failures as in T023. Accept: `$S check --verified` exits 0.
-- [ ] T025 [US3] Spot-check hard rule 1 across the stack. For each step, `git diff --name-status
+- [X] T025 [US3] Spot-check hard rule 1 across the stack. For each step, `git diff --name-status
   <parent> <step> -- tests/` must show no `M`/`D` of a test that exists in the parent unless the
   old step did the same (compare with `series/` at the same old step). Add this as `check
   --only tests`, with a test in `tools/series/tests/test_seriesb_manifest.py`.

@@ -131,5 +131,36 @@ class RepoRulesTest(SeriesbFixture):
         self.assertRule("7", self.problems("gates"))
 
 
+class TestsAndMessagesTest(SeriesbFixture):
+    def replace_tip(self, branch, files=None, message=None):
+        from tools.series.tests.fixtures_seriesb import tree_with
+        tip = git(self.repo, "rev-parse", branch)
+        tree = git(self.repo, "rev-parse", f"{tip}^{{tree}}")
+        if files:
+            tree = tree_with(self.repo, tree, files)
+        msg = message or git(self.repo, "log", "-1", "--format=%B", tip)
+        c = commit(self.repo, tree, [git(self.repo, "rev-parse", f"{tip}^")], msg)
+        git(self.repo, "update-ref", f"refs/heads/{branch}", c)
+
+    def test_fixture_passes_tests_and_messages(self):
+        self.assertEqual(self.problems("tests", "messages"), [])
+
+    def test_a_step_that_edits_an_existing_test_the_old_step_did_not(self):
+        self.replace_tip(STEPS[2], files={"tests/t1.txt": "t1, edited\n"})
+        self.assertTrue(any("tests/t1.txt" in p for p in self.problems("tests")), self.problems("tests"))
+
+    def test_a_step_that_deletes_an_existing_test(self):
+        self.replace_tip(STEPS[2], files={"tests/t2.txt": None})
+        self.assertTrue(any("tests/t2.txt" in p for p in self.problems("tests")))
+
+    def test_a_bead_id_in_a_step_commit_message(self):
+        self.replace_tip(STEPS[0], message="Step 1\n\nCloses oo-abc12.\n")
+        self.assertTrue(any("oo-abc12" in p for p in self.problems("messages")), self.problems("messages"))
+
+    def test_an_adr_number_in_a_step_commit_message(self):
+        self.replace_tip(STEPS[1], message="Step 2\n\nPer ADR-0066.\n")
+        self.assertTrue(any("ADR-0066" in p for p in self.problems("messages")))
+
+
 if __name__ == "__main__":
     unittest.main()
