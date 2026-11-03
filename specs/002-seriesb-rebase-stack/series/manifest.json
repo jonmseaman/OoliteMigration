@@ -95,14 +95,14 @@
  "steps": [
   {
    "branch": "seriesb/001-random-seed-env",
-   "build_commit": null,
+   "build_commit": "ebd84f7c406539e3d172ff40a903368031dec12b",
    "chapter": null,
    "description": "series/pr/001-random-seed-env.md",
    "differs_from_old": [],
    "era": "objc-quickjs",
    "kind": "independent",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "def24e11d46974272d6f7b9ee2e84046f14df100",
    "n": 1,
    "parent": "seriesb/000b-upstream-768-quickjs-only",
    "reasons": {},
@@ -115,14 +115,14 @@
     "old_step": 1,
     "type": "replay"
    },
-   "state": "planned",
-   "target_tree": null,
+   "state": "built",
+   "target_tree": "def24e11d46974272d6f7b9ee2e84046f14df100",
    "title": "Let OO_RANDOM_SEED pin the random seed",
    "verification": null
   },
   {
    "branch": "seriesb/002-safety-net",
-   "build_commit": null,
+   "build_commit": "b5602101cd204f5ec3905d411fb33ad0e06e2ca7",
    "chapter": {
     "first": "7555b5d4254e0a89cc609a5c2263385d2b54904e",
     "last": "8af7966e7d95101c57ceea1f66b338f0abeec2a1",
@@ -136,15 +136,28 @@
     ]
    },
    "description": "series/pr/002-safety-net.md",
-   "differs_from_old": [],
+   "differs_from_old": [
+    {
+     "path": "src/Core/Scripting/OOJSShip.m",
+     "reason": "conflict resolved (stored): #768 rewrote OOJSShip.m for QuickJS-ng (its property table as OOJS_PROPERTY_* macros, setters returning JSValue); the old step made ship.speed read/write for the safety net's tests. Kept #768's file with speed as OOJS_PROPERTY_RW and the old step's setter case in #768's idiom (JS_ToFloat64, JS_UNDEFINED, OOJSNativeFailure)."
+    }
+   ],
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": null,
+   "merge_tree": "015850d16f1e44ae27079be0d8ecb1541a2e3843",
    "n": 2,
    "parent": "seriesb/001-random-seed-env",
-   "reasons": {},
-   "resolutions": [],
+   "reasons": {
+    "src/Core/Scripting/OOJSShip.m": "#768 rewrote OOJSShip.m for QuickJS-ng (its property table as OOJS_PROPERTY_* macros, setters returning JSValue); the old step made ship.speed read/write for the safety net's tests. Kept #768's file with speed as OOJS_PROPERTY_RW and the old step's setter case in #768's idiom (JS_ToFloat64, JS_UNDEFINED, OOJSNativeFailure)."
+   },
+   "resolutions": [
+    {
+     "how": "stored",
+     "path": "src/Core/Scripting/OOJSShip.m",
+     "reason": "#768 rewrote OOJSShip.m for QuickJS-ng (its property table as OOJS_PROPERTY_* macros, setters returning JSValue); the old step made ship.speed read/write for the safety net's tests. Kept #768's file with speed as OOJS_PROPERTY_RW and the old step's setter case in #768's idiom (JS_ToFloat64, JS_UNDEFINED, OOJSNativeFailure)."
+    }
+   ],
    "rules": [],
    "size": null,
    "source": {
@@ -153,8 +166,8 @@
     "old_step": 2,
     "type": "replay"
    },
-   "state": "planned",
-   "target_tree": null,
+   "state": "built",
+   "target_tree": "015850d16f1e44ae27079be0d8ecb1541a2e3843",
    "title": "Add a test safety net: deterministic runs, GUI and component tests",
    "verification": null
   },

@@ -285,7 +285,7 @@ recorded.
   T004's Accept still passes.
 - [X] T015 [US2] Run `$S cut --replay` to write 26 planned steps from the old manifest. Accept:
   `$S check --only manifest` exits 0 with 26 steps whose `old_step` runs 1…26.
-- [ ] T016 [US2] Replay old 001 and 002 (Objective-C era). For each *n* in 1, 2:
+- [X] T016 [US2] Replay old 001 and 002 (Objective-C era). For each *n* in 1, 2:
   1. Run `$S tree n`.
   2. Resolve each conflict with `--show`/`--record`. The probe expects one, `src/Core/Scripting/OOJSShip.m`.
      Give each a reason: what #767/#768 changed against what the old step changed.
