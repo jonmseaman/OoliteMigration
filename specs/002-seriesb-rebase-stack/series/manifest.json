@@ -54,6 +54,7 @@
     "date": "2026-11-02",
     "era": "objc-spidermonkey",
     "tree": "d109de5e402f9df04a3136bee75c82fcc15f77e0",
+    "warning_keys": [],
     "warnings": {
      "quickjs": 7,
      "spidermonkey": 1,
@@ -85,6 +86,14 @@
     "date": "2026-11-02",
     "era": "objc-quickjs",
     "tree": "55462f20a827804de7fe1d18c9ce1b3e455c3e5b",
+    "warning_keys": [
+     "clang++: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
+     "clang: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCString' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringRT' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringRT_UTF16' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringUTF16' should not return void expression [-Wpedantic]"
+    ],
     "warnings": {
      "default": 7,
      "test": 6

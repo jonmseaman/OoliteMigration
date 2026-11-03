@@ -23,6 +23,9 @@ PROFILES = {
         "sources": ("history", "hoisted", "develop"),
         "stack_worktree": os.path.join(AGENT_TMP, "series-stack"),
         "resolve_scratch": os.path.join(AGENT_TMP, "series-resolve"),
+        "verify_worktrees": {"clang": os.path.join(AGENT_TMP, "series-verify"),
+                             "gcc": os.path.join(AGENT_TMP, "series-verify-gcc")},
+        "verify_logs": os.path.join(AGENT_TMP, "series-verify-logs"),
     },
     "seriesb": {
         "prefix": "seriesb/",
@@ -31,6 +34,9 @@ PROFILES = {
         "sources": ("replay",),
         "stack_worktree": os.path.join(AGENT_TMP, "seriesb-stack"),
         "resolve_scratch": os.path.join(AGENT_TMP, "seriesb-resolve"),
+        "verify_worktrees": {"clang": os.path.join(AGENT_TMP, "seriesb-verify-wt"),
+                             "gcc": os.path.join(AGENT_TMP, "seriesb-verify-wt-gcc")},
+        "verify_logs": os.path.join(AGENT_TMP, "seriesb-verify-logs"),
     },
 }
 
@@ -85,6 +91,8 @@ def activate(name, m=None):
     renumber.BRANCH_RE = re.compile(rf"^{re.escape(p['prefix'])}(\d{{3}})-(.+)$")
     renumber.TMP = p["prefix"] + "renumbering/"
     verify.TEST_WARNINGS = p["test_warnings"]
+    verify.WORKTREES = dict(p["verify_worktrees"])
+    verify.LOG_DIR = p["verify_logs"]
     return p
 
 

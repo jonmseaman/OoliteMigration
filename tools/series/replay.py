@@ -249,6 +249,44 @@ def differs(repo, m, step):
     return out
 
 
+# --- verification --------------------------------------------------------------------------------
+
+def resolution_paths(series_dir, step):
+    index = os.path.join(res_dir(series_dir, step), "index.json")
+    if not os.path.exists(index):
+        return []
+    with open(index, encoding="utf-8") as f:
+        return sorted(json.load(f))
+
+
+def integrity(repo, m, step, series_dir):
+    """Research R11's construction checks for a replayed step: its tests are the old step's, the
+    parent's, or their clean merge; no new warning suppression the old step lacks; no new
+    SpiderMonkey or gnustep-base dependency; src/ is clang-format clean (but for the reformat)."""
+    from tools.series import normalise, verify
+    base, ours, theirs = inputs(repo, m, step)
+    tree = _git(repo, "rev-parse", f"refs/heads/{step['branch']}^{{tree}}")
+    parent = _git(repo, "rev-parse", f"refs/heads/{step['parent']}^{{tree}}")
+    out = {
+        "tests_untouched": verify.check_tests_untouched(repo, tree, theirs, ours, resolution_paths(series_dir, step), base),
+        "no_new_suppressions": verify.check_no_new_suppressions(repo, parent, tree, theirs),
+        "no_new_spidermonkey_or_gnustep": verify.check_no_new_legacy(repo, parent, tree),
+    }
+    if step.get("kind") == "mechanical":
+        out["clang_format"] = "n/a: the reformat step changes the style; upstream's check follows it"
+    else:
+        out["clang_format"] = verify.check_clang_format(repo, tree, normalise.normalise_tree(repo, tree, tree))
+    return out
+
+
+def parent_record(m, step):
+    """The verification record of the step's parent: the previous step's, or the root parent's gate."""
+    if step["n"] > 1:
+        return m["steps"][step["n"] - 2].get("verification")
+    root = seriesb.root(m)
+    return next((p.get("verification") for p in m.get("parents", []) if p["branch"] == root), None)
+
+
 # --- branches ------------------------------------------------------------------------------------
 
 def message(step):

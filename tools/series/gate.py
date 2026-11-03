@@ -102,8 +102,10 @@ def run(repo, parent, worktree, log_dir, runner=None):
     rc = runner(era, wt, cd + "./mk.sh build test", log)
     checks["build_test"] = "pass" if rc == 0 else f"fail: exit {rc} (see {os.path.relpath(log, verify.ROOT)})"
     warnings["test"] = verify.warning_count(verify._read(log)) if os.path.exists(log) else 0
+    keys = sorted(verify.warning_keys(verify._read(log))) if os.path.exists(log) else []
     parent["verification"] = {"commit": commit, "tree": tree, "era": era, "date": datetime.date.today().isoformat(),
-                              "commands": commands, "warnings": warnings, "checks": checks}
+                              "commands": commands, "warnings": warnings, "checks": checks,
+                              "warning_keys": keys}
     failing = sorted(k for k, v in checks.items() if not v.startswith("pass"))
     if parent.get("gate") == "waived":
         return parent  # Jon's decision stands (plan.md Notes)

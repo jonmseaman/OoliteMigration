@@ -77,6 +77,38 @@ def warning_count(log):
     return len(_warnings(log))
 
 
+_LOCATION_RE = re.compile(r"^(?:\.\./)*(?:[A-Za-z]:)?[^:]*?(?=[^/:]*/|[^/:]*:)")
+
+
+def warning_keys(log):
+    """The build's warnings without line and column numbers or the build directory's prefix, so the
+    same warning matches across steps that move it (seriesb: a step is judged by the warnings its
+    parent does not have)."""
+    out = set()
+    for w in _warnings(log):
+        loc, sep, rest = w.partition(": warning: ")
+        loc = re.sub(r":\d+(?::\d+)?$", "", loc.strip())
+        loc = re.sub(r"^(?:\.\./)+", "", loc.replace("\\", "/"))
+        loc = re.sub(r"^.*?/(?=(?:src|subprojects|tests|deps)/)", "", loc)
+        out.add(f"{loc}: warning: {rest.strip()}" if sep else w.strip())
+    return out
+
+
+def warnings_verdict_relative(log, n, listed, inherited):
+    """warnings_verdict, counting only warnings the parent's build does not have (`inherited`)."""
+    keys = warning_keys(log)
+    found = _warnings(log)
+    known = {w for w in found if _is_listed(w, n, listed)}
+    known_keys = warning_keys("\n".join(known))
+    new = keys - set(inherited) - known_keys
+    note = f"{len(keys & set(inherited))} inherited from the parent"
+    if known:
+        note += f", {len(known)} listed in {os.path.basename(TEST_WARNINGS)}"
+    if not new:
+        return f"pass: 0 new warnings ({note})" if keys else "pass: 0 warnings"
+    return f"fail: {len(new)} new warnings ({note}): " + "; ".join(sorted(new)[:3])
+
+
 # Warnings the history's own test files raise under the series' newer compiler. The series never
 # edits a test and never silences a warning, so these are listed, per step range, instead of fixed;
 # every other warning fails the step. Only files under tests/ can be listed.
@@ -313,8 +345,10 @@ def unit_suites(repo, tree):
     return suites
 
 
-def verify_step(repo, step, parent_tree, parent_record, clean=False, integrity=None):
-    """Run the step's matrix; returns its verification record."""
+def verify_step(repo, step, parent_tree, parent_record, clean=False, integrity=None, inherited=None,
+                listed_n=None):
+    """Run the step's matrix; returns its verification record. With `inherited` (seriesb), warnings
+    are counted against the parent's; `listed_n` is the step number test-warnings.md is keyed by."""
     branch = step["branch"]
     commit = _git(repo, "rev-parse", f"refs/heads/{branch}").strip()
     tree = _git(repo, "rev-parse", f"{commit}^{{tree}}").strip()
@@ -331,14 +365,17 @@ def verify_step(repo, step, parent_tree, parent_record, clean=False, integrity=N
 
     wt = ensure_worktree(repo, WORKTREES["clang"], commit)
     listed = listed_test_warnings()
+    ln = listed_n or step["n"]
+    verdict = (lambda text: warnings_verdict(text, ln, listed)) if inherited is None else \
+        (lambda text: warnings_verdict_relative(text, ln, listed, inherited))
     rc, _ = run_build(step_era, wt, "clang", clean, log("build_clang"))
     checks["build_clang"] = "pass" if rc == 0 else f"fail: exit {rc} (see {os.path.relpath(log('build_clang'), ROOT)})"
-    checks["warnings_clang"] = warnings_verdict(_read(log("build_clang")), step["n"], listed) if rc == 0 \
+    checks["warnings_clang"] = verdict(_read(log("build_clang"))) if rc == 0 \
         else "n/a: the build failed"
     if checks["build_gcc"] == "run":
         gwt = ensure_worktree(repo, WORKTREES["gcc"], commit)
         grc, _ = run_build(step_era, gwt, "gcc", clean, log("build_gcc"))
-        gverdict = warnings_verdict(_read(log("build_gcc")), step["n"], listed)
+        gverdict = verdict(_read(log("build_gcc")))
         if grc == 0 and gverdict.startswith("pass"):
             checks["build_gcc"] = gverdict.replace("pass: 0 warnings", "pass", 1) if gverdict != "pass: 0 warnings" else "pass"
         elif grc == 0:
@@ -362,8 +399,11 @@ def verify_step(repo, step, parent_tree, parent_record, clean=False, integrity=N
             else f"fail: exit {r} (see {os.path.relpath(log(check), ROOT)})"
     if integrity:
         checks.update(integrity)
-    return {"commit": commit, "tree": tree, "era": step_era, "date": datetime.date.today().isoformat(),
-            "clean": clean, "checks": checks}
+    record = {"commit": commit, "tree": tree, "era": step_era, "date": datetime.date.today().isoformat(),
+              "clean": clean, "checks": checks}
+    if inherited is not None and rc == 0:
+        record["warning_keys"] = sorted(warning_keys(_read(log("build_clang"))))
+    return record
 
 
 def record_passes(record):

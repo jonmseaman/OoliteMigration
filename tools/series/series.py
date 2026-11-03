@@ -44,6 +44,7 @@ def parser():
     v = sub.add_parser("verify", help="run a step's verification matrix")
     v.add_argument("n", nargs="?", type=int)
     v.add_argument("--from", dest="from_", type=int)
+    v.add_argument("--to", type=int, help="seriesb: the last step to verify with --from")
     v.add_argument("--clean", action="store_true")
     v.add_argument("--integrity-only", action="store_true", help="run only the construction checks (no build)")
     d = sub.add_parser("describe", help="write a step's PR description, or the handover")
@@ -771,8 +772,56 @@ def stack_tree(step):
     return stack.git(GAME, "rev-parse", f"refs/heads/{step['branch']}^{{tree}}")
 
 
+def cmd_verify_replay(args):
+    """Verify seriesb steps in order (spec FR-008); stops at the first failure."""
+    from tools.series import manifest, replay, stack, verify
+    m = load_manifest()
+    steps = m["steps"]
+    if args.n:
+        ns = [args.n]
+    elif args.from_:
+        ns = list(range(args.from_, (args.to or len(steps)) + 1))
+    else:
+        print("verify: give a step or --from", file=sys.stderr)
+        return 2
+    old_listed = os.path.join(ROOT, "specs", "001-split-migration-prs", "series", "test-warnings.md")
+    for n in ns:
+        step = _replay_step(m, n)
+        if not stack.exists(GAME, step["branch"]):
+            print(f"verify {n}: {step['branch']} is not built; stopping", file=sys.stderr)
+            return 1
+        checks = replay.integrity(GAME, m, step, SERIES_DIR)
+        if args.integrity_only:
+            print(f"verify {n}: " + "; ".join(f"{k}={v}" for k, v in checks.items()), flush=True)
+            continue
+        prec = replay.parent_record(m, step) or {}
+        tree = stack.git(GAME, "rev-parse", f"refs/heads/{step['branch']}^{{tree}}")
+        clean = args.clean or n == 1 or verify.era(GAME, tree) != prec.get("era")
+        saved = verify.TEST_WARNINGS
+        verify.TEST_WARNINGS = old_listed  # the history's test warnings, keyed by old step
+        try:
+            record = verify.verify_step(GAME, step, replay.parent_tree(GAME, m, step), prec, clean=clean,
+                                        integrity=checks, inherited=prec.get("warning_keys", []),
+                                        listed_n=step["source"]["old_step"])
+        finally:
+            verify.TEST_WARNINGS = saved
+        record["after_sync"] = len(m.get("syncs", []))
+        step["verification"] = record
+        step["era"] = record["era"]
+        ok = verify.record_passes(record)
+        step["state"] = "verified" if ok else "failed"
+        manifest.save(MANIFEST, m)
+        print(f"verify {n}: {'pass' if ok else 'FAIL'} " + "; ".join(f"{k}={v}" for k, v in record["checks"].items()),
+              flush=True)
+        if not ok:
+            return 1
+    return 0
+
+
 def cmd_verify(args):
-    from tools.series import manifest, verify
+    from tools.series import manifest, profile, verify
+    if profile.current() == "seriesb":
+        return cmd_verify_replay(args)
     m = load_manifest()
     steps = m["steps"]
     if args.n:
