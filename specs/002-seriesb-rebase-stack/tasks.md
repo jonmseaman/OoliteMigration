@@ -627,7 +627,7 @@ and `$S verify --steps N` exits 0, including the `no_facade` and `poc` checks fr
   `meson test quickjs-poc`, n/a when the tree has no `poc/`). Let `tests_untouched` accept a ledger
   entry for any step. New tests go in `tools/series/tests/test_nofacade.py`. Accept:
   `python -m unittest discover -s tools/series/tests` passes.
-- [ ] T051 [US7] The end target: branch `feature/upstream-quickjs-poc-cxx` from
+- [X] T051 [US7] The end target: branch `feature/upstream-quickjs-poc-cxx` from
   `feature/upstream-quickjs-binding`. Restore `src/Core/Scripting/poc/` from `000b` and convert it
   to C++ (sources `.cpp`, `oofnd` in place of Foundation, `meson.build` on the `.cpp` game
   sources). The 7 `tests/*.js` scripts stay unchanged. Accept: `./mk.sh build test` passes, and so
