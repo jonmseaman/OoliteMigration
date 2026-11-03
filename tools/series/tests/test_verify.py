@@ -269,5 +269,22 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(d["component"], "run")
 
 
+class RelativeWarningsTest(unittest.TestCase):
+    """seriesb: warnings are judged against the parent's, and listed test warnings are not new."""
+
+    def test_listed_test_warnings_are_not_new_even_when_last(self):
+        log = ("../../tests/unit/core/test_A.mm:3:5: warning: variable 'x' set but not used [-Wunused-but-set-global]\n"
+               "../../tests/unit/core/test_B.mm:9:1: warning: variable 'y' set but not used [-Wunused-but-set-global]\n")
+        listed = [(1, 5, "tests/unit/core/test_A.mm", "variable 'x' set but not used"),
+                  (1, 5, "tests/unit/core/test_B.mm", "variable 'y' set but not used")]
+        self.assertTrue(verify.warnings_verdict_relative(log, 3, listed, []).startswith("pass"))
+
+    def test_a_warning_the_parent_lacks_fails(self):
+        log = "../src/Core/X.cpp:1:2: warning: unused variable 'z' [-Wunused-variable]\n"
+        self.assertTrue(verify.warnings_verdict_relative(log, 3, [], []).startswith("fail"))
+        inherited = verify.warning_keys(log)
+        self.assertTrue(verify.warnings_verdict_relative(log, 3, [], inherited).startswith("pass"))
+
+
 if __name__ == "__main__":
     unittest.main()

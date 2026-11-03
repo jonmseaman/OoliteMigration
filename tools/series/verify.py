@@ -99,7 +99,7 @@ def warnings_verdict_relative(log, n, listed, inherited):
     keys = warning_keys(log)
     found = _warnings(log)
     known = {w for w in found if _is_listed(w, n, listed)}
-    known_keys = warning_keys("\n".join(known))
+    known_keys = warning_keys("".join(w + "\n" for w in known))  # _warnings reads each up to a newline
     new = keys - set(inherited) - known_keys
     note = f"{len(keys & set(inherited))} inherited from the parent"
     if known:
