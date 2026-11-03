@@ -428,5 +428,8 @@ sources outside the replayed trees.
   archive/seriesb-facade/NNN` onto the rebuilt parent.
 - **Upstream #783 oddity, for Jon (2026-11-03).** Upstream's `clearMappings` resets `axismap` and
   `buttonmap` but not the new `guibuttonmap`, which therefore starts all zero, and 0 is
-  `BUTTON_FIRE`. The port keeps this, as directed ("the new behavior preserved"); the T051a report
-  records its run-time effect. Not fixed here: a fix would be a separate upstream PR.
+  `BUTTON_INCTHRUST`. At run time every unassigned joystick button also drives increase-thrust, and
+  a save writes `"0": {stick 3, button 79}` into `GuiJoystickButs`, which the next load assigns to
+  increase-thrust, unbinding the player's own increase-thrust button. The faithful port
+  (`765619143`, T051a) therefore fails the existing test `savesAndLoadsSettings` in
+  `test_OOJoystickManager`; the test is unchanged (hard rule 1). Awaiting Jon's decision.
