@@ -176,6 +176,10 @@ sources outside the replayed trees.
   to upstream's engine API (FR-015). Hard rule 6 is amended in `CLAUDE.md` (FR-016). The
   verification of steps 3–24 was stopped after step 8 passed: those steps stay as built, but the
   series now ends with the switch step.
+- Estimate (2026-11-02, corrected): 4–7 days to a final seriesb step passing on upstream's binding, or
+  about 3 with binding files ported in parallel. The precedent is old steps 003–005 (the façade and
+  all ~3,800 call sites moved onto it), which took 3.5 days in the history (2026-09-19 → 09-22). The
+  ownership switch is the main risk. An earlier figure of 2–3 weeks was too high.
 - T037 (2026-11-02): `series/facade-map.md` maps all 362 public names of `ooscript/JSEngine.hpp`
   (`python -I tools/series/facade_map_check.py` exits 0). 152 have no counterpart in #768. Defaults
   for T038–T040 all follow #768's own design (Jon chose it):
