@@ -754,6 +754,18 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
   016–017; old stack 0), left by conflict resolution. Check 003–013 too. Default: one format
   commit per affected branch, lowest first, `git town sync` upward, after the replay chain; replays
   from 019 on format the files they resolve. Needed for T058 (CI green on every branch).
+- [ ] T072 `ShellScripts/common/post_build.sh`'s Windows DLL transitive-closure loop (`staged_dlls`,
+  e.g. `libtre-5.dll` pulls in `libsystre-0.dll`) came in with old 003 and is in the end target,
+  but no rebuilt step has it (step 023's remainder report). Default: a follow-up commit on rebuilt
+  003, in the same `git town sync` batch as T071, after 024 is rebuilt. Accept: the loop's hunk is
+  absent from `git diff seriesb/003-objcpp-switch 8a0a3c97a -- ShellScripts/common/post_build.sh`,
+  and the step-003 build passes.
+- [ ] T073 The end target's pinning tests for ports already in the stack:
+  `test_OOJoystickDecoding` (#742, `4f1896f10`), `test_OOOpenGLOnly` (#748, `8fb30e6ee`),
+  `test_EntityScriptEvents` (#780, `3978a13b4`). Adding tests is expected (Jon: design new tests
+  where needed). Default: add each at the earliest rebuilt step whose tree compiles and passes it
+  (at the latest 023), in the T071/T072 sync batch. Accept: each test is in that step's suite
+  and passes there and at every later step.
 
 ---
 
