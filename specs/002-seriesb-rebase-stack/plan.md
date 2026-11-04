@@ -761,6 +761,21 @@ sources outside the replayed trees.
   component test `test_exit_runs_js_leak_check.py` fails without the call and passes with it. Gates:
   build 0 warnings, unit 220 Ok, smoke clean, harness 23/23, deployment build and its smoke pass
   (NDEBUG, so the check is compiled out there, as upstream does).
+- **T051d (2026-11-04): the end target uses #756's debug-monitor guard for the shader bindings.**
+  `8a0a3c97a` on `feature/upstream-quickjs-poc-cxx` (on `9d4ce2b1e`) = `anchors.develop_target`.
+  `EntityShaderBindings.cpp`'s table is under `#if OO_SHADERS || defined(OO_DEBUG_MONITOR_ENABLED)`, as
+  `OOShaderUniformMethodType.h/.cpp` and step 014's `Entity+ObjCBridge.mm` are, and
+  `PlayerEntity::suppressClangStuff` (it reads the monitor-only `n_key_dump_*`/`n_key_debug_*` and is
+  inside upstream's #756 `dumpSelfState` block) moved from `#ifndef NDEBUG` to `#ifdef
+  OO_DEBUG_MONITOR_ENABLED`. The other 118 NDEBUG guards in `src` stay: each matches a guard upstream
+  (`7437f22a5`) still keeps on NDEBUG (asserts, sanity checks, AI debug stack, time-limiter console
+  hooks under `OOJS_PROFILE`, STAGE_TRACKING, entity-list verification) or is fork-only with no
+  monitor use (#768's leak check, the poc engine). Test: `tests/check_debug_monitor_guards.py` (meson
+  suite `headers`), a source check because no runtime tier can see the guard: the deployment flavour
+  has `OO_SHADERS` on, so the table compiles either way except with `no_shaders`. Default taken: the
+  check lives in oolite-dev beside `check_headers_standalone.py`, not in `tools/series/tests`. Gates:
+  build 0 warnings, unit 40+179+2 Ok, smoke clean (port 8627), harness 23/23, deployment build 0
+  warnings and its smoke pass.
 - **T054: step 014 replayed on #768's binding (2026-11-04): `d461ca10a` on
   `seriesb/014-facade-deletions`**, on 013 (`9304fedba`). 124 conflicted files (707 blocks) and 48
   modify/delete (the old step's bridge deletions, taken), resolved by ten parallel agents

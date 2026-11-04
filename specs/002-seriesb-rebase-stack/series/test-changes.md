@@ -194,6 +194,7 @@ links `SDL/OOSDLJoystickManager.cpp` into `test_OOJoystickManager`.
 | `tests/unit/core/test_OOJSCall.cpp` | removed case playerStatisticsByName (with the four `PlayerEntity` statistics stand-ins and `sStatisticsCalls`, which only that case used) | Jon 2026-11-03: statistics removed as #768 did |
 | `tests/unit/core/test_OOSDLJoystickManager.cpp` (`makesEvents`) | The event makers' results are held as `SDL_JoyAxisEvent`/`SDL_JoyButtonEvent`/`SDL_JoyHatEvent` (were the core header's `Joy*Event` typedefs of the same types). | #742: `makeJoy*Event()` answer SDL's types and the typedefs are gone. |
 | `tests/component/test_exit_runs_js_leak_check.py` (new, `9d4ce2b1e`) | **Addition, not a change**: quits through `quitGame()` and requires the clean `script.javaScript.shutDown` line in `Latest.log`. No existing test changed. | T051c: #768's shutdown leak check in `GameController::exitAppWithContext`, which the end target had dropped, is restored; the test fails without it. |
+| `tests/check_debug_monitor_guards.py` (new, `8a0a3c97a`, meson test `debug_monitor_guards`, suite `headers`) | **Addition, not a change**: fails on a conditional pairing `OO_SHADERS` with `NDEBUG`, or on a name upstream declares only under `OO_DEBUG_MONITOR_ENABLED` inside an NDEBUG-only block, in `src/`. No existing test changed. | T051d: #756's guard for the entity shader bindings and `PlayerEntity::suppressClangStuff`; 6 hits before the fix, 0 after. |
 
 ## Step 004
 
