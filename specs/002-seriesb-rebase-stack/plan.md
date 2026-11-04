@@ -601,3 +601,7 @@ sources outside the replayed trees.
   files that held only their `PlayerEntity` categories deleted) and `1912db791` (the
   primitive-property harness test, 23/23); oofnd 46 + core 55 Ok, smoke clean. Ledger `10e88e853`.
   Tip of 009 = `1912db791`.
+- **Jon, 2026-11-04: step 003's branch is `seriesb/003-objcpp-switch`** (was `003-quickjs-switch`;
+  it no longer switches the engine). Git Town lineage, manifest (branch, description, title) and
+  references updated; the description file is `series/pr/003-objcpp-switch.md`. `origin` still has
+  the old name: the handover deletes it after pushing the new one.

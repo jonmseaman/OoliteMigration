@@ -266,7 +266,7 @@
    }
   },
   {
-   "branch": "seriesb/003-quickjs-switch",
+   "branch": "seriesb/003-objcpp-switch",
    "build_commit": "a6e785314ddf6bb2b42d7e829ea63e222c81e6bb",
    "chapter": {
     "first": "3b6aec8c6ffca4445a742d4f9cd23251c9a5d57d",
@@ -278,7 +278,7 @@
      "1.5 delete SpiderMonkey"
     ]
    },
-   "description": "series/pr/003-quickjs-switch.md",
+   "description": "series/pr/003-objcpp-switch.md",
    "differs_from_old": [
     {
      "path": ".eslintrc.json",
@@ -977,7 +977,7 @@
     "reason": "the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
    },
    "target_tree": "6f42fe4e74aebe315741b3aedfc795bcf7f1d94b",
-   "title": "Put the game's JavaScript behind an engine façade on QuickJS-ng, replacing the PRs' binding; compile as Objective-C++",
+   "title": "Compile the game as Objective-C++, keeping #768's QuickJS-ng binding",
    "verification": {
     "after_sync": 0,
     "checks": {
@@ -1023,7 +1023,7 @@
    "mechanical_command": null,
    "merge_tree": "1e8ea118622e0f1ee288549073a119c7c4cf5c24",
    "n": 4,
-   "parent": "seriesb/003-quickjs-switch",
+   "parent": "seriesb/003-objcpp-switch",
    "reasons": {},
    "resolutions": [],
    "rules": [],

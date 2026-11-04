@@ -1,6 +1,6 @@
 # Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation
 
-**Series:** step 4 of 25 · base `seriesb/003-quickjs-switch` · next `seriesb/005-typed-accessors` **(gen)**
+**Series:** step 4 of 25 · base `seriesb/003-objcpp-switch` · next `seriesb/005-typed-accessors` **(gen)**
 
 **Replays:** `series/006-oofnd-core` (old 6 of the master-based series) · 10.0k src, 6.4k tests, 3 other changed lines; 460 lines in deleted files **(gen)**
 

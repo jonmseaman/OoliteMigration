@@ -1,6 +1,6 @@
 # Add a test safety net: deterministic runs, GUI and component tests
 
-**Series:** step 2 of 25 · base `seriesb/001-random-seed-env` · next `seriesb/003-quickjs-switch` **(gen)**
+**Series:** step 2 of 25 · base `seriesb/001-random-seed-env` · next `seriesb/003-objcpp-switch` **(gen)**
 
 **Replays:** `series/002-safety-net` (old 2 of the master-based series) · 493 src, 13.6k tests, 27 other changed lines; 0 lines in deleted files **(gen)**
 

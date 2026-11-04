@@ -1,4 +1,4 @@
-# Put the game's JavaScript behind an engine façade on QuickJS-ng, replacing the PRs' binding; compile as Objective-C++
+# Compile the game as Objective-C++, keeping #768's QuickJS-ng binding
 
 **Series:** step 3 of 25 · base `seriesb/002-safety-net` · next `seriesb/004-oofnd-core` **(gen)**
 
