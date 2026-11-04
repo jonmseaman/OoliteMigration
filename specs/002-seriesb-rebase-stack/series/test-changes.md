@@ -194,6 +194,14 @@ links `SDL/OOSDLJoystickManager.cpp` into `test_OOJoystickManager`.
 | `tests/unit/core/test_OOJSCall.cpp` | removed case playerStatisticsByName (with the four `PlayerEntity` statistics stand-ins and `sStatisticsCalls`, which only that case used) | Jon 2026-11-03: statistics removed as #768 did |
 | `tests/unit/core/test_OOSDLJoystickManager.cpp` (`makesEvents`) | The event makers' results are held as `SDL_JoyAxisEvent`/`SDL_JoyButtonEvent`/`SDL_JoyHatEvent` (were the core header's `Joy*Event` typedefs of the same types). | #742: `makeJoy*Event()` answer SDL's types and the typedefs are gone. |
 
+## Step 004
+
+Follow-up `5b609646a` on `seriesb/004-oofnd-core` (T059: keep upstream's fixes; placement review a5).
+
+| path | what changed | why |
+|---|---|---|
+| `meson.build` (`subdir('tests/unit/oofnd')`) | The oofnd suite is built only when `deployment_release` is off and the host is Windows (a5). No test file or check changes; the test flavour runs every oofnd test as before. | Upstream's CI builds `./mk.sh build deployment` (since #756), which builds every default target; `test_objc_assert` refuses NDEBUG with `#error`, and the suite uses Windows-only headers and LLP64 types. |
+
 ## Step 007
 
 Step 007 (`seriesb/007-foundation-wave-2`, T053) replayed on #768's binding. One test file set uses the
@@ -202,6 +210,7 @@ façade in the old step; it is not registered in meson (the old step's PR says s
 | path | what changed | why |
 |---|---|---|
 | `tests/unit/expander/OOJavaScriptEngine.h`, `tests/unit/expander/test_string_expander.mm` (the three engine stubs) | The stubs of `OOJSAcquireContext`, `OOJSRelinquishContext` and `OOJSReportWarningWithArguments` take and return `JSContext*` (an incomplete `typedef struct JSContext JSContext`), where they used a stand-in `ooscript::Context` struct; `OOJSAcquireContext` returns `nullptr`. The digests and every check are unchanged. | The façade is gone; `OOStringExpander.mm` calls these functions with #768's `JSContext*`. |
+| `tests/unit/oofnd/meson.build`, `meson.build`, `meson.options` (follow-up `8f62d84da`, T059) | Registers the new `test_objc_assert_ndebug` (a176, a new test); skips `test_objc_assert` when `deployment_release` is set (a174, a175); the new option `deployment_unit_tests` builds the oofnd suite in a deployment build directory (a6). The merge of 006 (`4d75f03a8`) puts `tests/unit/game` under the same flavour gate. `test_objc_assert` itself and its checks are unchanged. | OOAssert is live in every flavour (a162, a163); `test_objc_assert` tests the live macros and refuses NDEBUG by design, and its NDEBUG twin covers the deployment flavour. |
 
 ## Step 009
 
@@ -234,6 +243,8 @@ needs are added (`cxx_OOJSIDFromString`, `OOJSNativeFailure`, `OOJSReportPending
 | `tests/unit/core/test_OOJSVector.mm` | removed case statistics | Jon 2026-11-03: statistics removed as #768 did | yes: the case and its checks are gone |
 | `tests/unit/core/test_OOJSQuaternion.mm` | removed case statistics | Jon 2026-11-03: statistics removed as #768 did | yes: the case and its checks are gone |
 | `tests/unit/core/meson.build` | `Core/Scripting/OOJSVector+ObjCBridge.mm` and `Core/Scripting/OOJSQuaternion+ObjCBridge.mm` leave the `test_OOJSVector` and `test_OOJSQuaternion` source lists | Jon 2026-11-03: statistics removed as #768 did; the two files held only the statistics' `PlayerEntity` categories and are deleted | n/a |
+| `tests/unit/expander/test_string_expander.mm` (follow-up `f18e064bc`, T059) | `kKeysDigest` 0x6349f869900cf779 → 0xea38daecff933503 and `kStringsDigest` 0xef7448c0016ba2ed → 0x338f336558c7db67, with a comment naming the old values (a173). | Upstream #747 changed `descriptions.plist` (key_oxzmanager_copyurl, the OXZ-manager help strings, "Info URL:"); Jon approved the re-capture 2026-10-25. | yes: the two digest constants, re-captured; against the pre-#747 plist the old digests still match. The test is not built by meson at this step, so this follow-up did not run it. |
+| `tests/unit/core/meson.build`, `meson.build` (follow-up `f18e064bc`, T059) | Adds the entry for the new `test_OoliteEquipmentControlScript` (a165, a170: a new test, #369, on QuickJS-ng's own API); the core suite is built only when `deployment_release` is off and the host is Windows (a5). | As the oofnd gate at step 004. | none |
 
 ## Step 010
 
