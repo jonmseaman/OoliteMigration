@@ -662,6 +662,55 @@ and `$S verify --steps N` exits 0, including the `no_facade` and `poc` checks fr
   steps that first need them. Regenerate `HANDOVER.md` (with force-push commands) and the review
   issue. Accept: `$S check --verified` exits 0.
 
+
+---
+
+## Phase 12: Pending work (added 2026-11-04, Jon)
+
+Tasks recorded so they outlive the session. Each still needs its Accept command met.
+
+- [ ] T058 [US7] **CI passes on every branch** (Jon). Each `seriesb/*` step carries upstream's
+  workflows (`build-all.yaml`: clang-format-check (clang-format 22), build-linux, build-flatpak,
+  build-windows, build-macos, release; `test_builds.yaml`: oxp-upgrade (Node 22), ubuntu, fedora,
+  arch, windows, macos), and they run on `push` and `pull_request` of any branch.
+  - Locally, per step:
+    - **clang-format-check:** run with a pinned clang-format 22 (the local one is 23, which
+      differs on wrapped enum initialisers). Get it as the PyPI `clang-format==22.*` wheel in a
+      venv under `.agent-tmp/`.
+    - **oxp-upgrade:** run with Node (installed).
+    - **Windows jobs:** follow the workflow's own steps (`install_deps.sh`, its meson options), not
+      just `mk.sh`.
+    - **Linux jobs (ubuntu, fedora, arch, flatpak):** run in WSL Ubuntu (installed). Fedora and
+      Arch use their containers, if Docker is usable.
+    - **macOS:** cannot run here. See the default below.
+  - After Jon's force-push, check the real runs per branch with `gh run list -R jonmseaman/oolite
+    --branch <b>` (read-only).
+  - Accept: every job green on every step, or a recorded reason per job and step that Jon accepts.
+  - *Default until Jon decides*: macOS jobs are expected to fail from the first step that needs
+    the fork's unconverted macOS platform code. That is recorded as "macOS not verified" (the
+    series already says so), not fixed here. The Apple Silicon phase owns it.
+- [ ] T059 [US7] **Old 018/023's upstream ports move earlier** (Jon). Follow
+  `.agent-tmp/s018/placement.md`:
+  - give the rebuilt steps 003–009 a follow-up commit for each port they own, then run
+    `git town sync --stack --detached --no-push`;
+  - replays of 010–017 fold in theirs;
+  - drop 018 and 023 (`$S drop`). #783's port stays as its own late step.
+  - Accept: `find_reverts`-style check of every step against `dc55e3e05..7437f22a5` reports
+    nothing, and old 018/023 leave no remainder.
+- [ ] T060 [US7] Consider shrinking 014/015 (deleting the Objective-C `+ObjCBridge` wrappers). A
+  conversion step could delete each wrapper once its last caller is gone. Decide at the 011–013
+  replays.
+- [ ] T061 [US7] Rewrite the step descriptions and the review issue from the review
+  (`.agent-tmp/prreview/review.md`), after T055 (part of T057).
+- [ ] T062 [US7] Retitle step 017 at its replay ("Fix code that GCC warns about": its code fixes
+  stay, GCC is not required, Jon 2026-11-04).
+- [ ] T063 GCC LTO link failure on the end target (`oo::EntityDescription` undefined in two core
+  tests): `develop`'s own problem, outside seriesb gating. A separate task for the fork.
+- [ ] T064 [US7] #767's harness `meson.build` in steps 005–008 probably no longer builds on Linux
+  (missing `src/` include and oofnd deps). Fix it at T058's Linux run.
+- [ ] T065 [US7] Handover: push `seriesb/003-objcpp-switch` and delete `origin`'s
+  `seriesb/003-quickjs-switch`; `--force-with-lease` for every rebuilt step (Jon).
+
 ---
 
 ## Dependencies and execution order
