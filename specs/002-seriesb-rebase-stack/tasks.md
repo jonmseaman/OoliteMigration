@@ -701,7 +701,25 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
   conversion step could delete each wrapper once its last caller is gone. Decide at the 011–013
   replays.
 - [ ] T061 [US7] Rewrite the step descriptions and the review issue from the review
-  (`.agent-tmp/prreview/review.md`), after T055 (part of T057).
+  (`series/review/pr-descriptions-2026-11-04.md`), after T055 (part of T057).
+  - Verdicts: keep 001 and 020; rewrite 003, 017 and 023; rewrite or drop 018; drop 025;
+    light edits for the rest.
+  - Across 004–024 the prose uses old step numbers (old N = new N−2) and old `series/0NN-…`
+    branches.
+  - Say "bridge", not "Objective-C facade", for `+ObjCBridge` (009–016).
+  - The tool-written Differences rows cite "spec D1"/"research R5": fix the series tool.
+  - The Replays line and the Verified section are regenerated (`build_gcc` n/a; `poc` from
+    009).
+  - The review issue: drop the GCC claim and "single commit"; new rows, links and stats;
+    harness on Windows from 009.
+- [ ] T061a [US7] Old step 025 carried fork fixes of its own: the `has_property` hook, two
+  use-after-free fixes, jump cause `""`, and the console holding the monitor. Each needs a home
+  in the step that adds or converts its code, not a late switch step. Check them at the 010–016
+  replays, and at T056 when 025 is dropped.
+- [ ] T061b [US7] Old 006, 010 and 011 removed or deferred #766/#774 pieces (`builtInPath`, the
+  Cocoa-UI resource path, the #774 splash window, the #766 screenshot), and old 023/025 restored
+  them. Under the no-revert rule the rebuilt steps keep them throughout; confirm at T059 with the
+  placement plan.
 - [ ] T062 [US7] Retitle step 017 at its replay ("Fix code that GCC warns about": its code fixes
   stay, GCC is not required, Jon 2026-11-04).
 - [ ] T063 GCC LTO link failure on the end target (`oo::EntityDescription` undefined in two core
