@@ -616,3 +616,48 @@ sources outside the replayed trees.
   being drawn up (`series/review/placement-018-023.md`); replays of 010–017 fold in their hunks, and any
   hunk owned by rebuilt 003–009 gets a follow-up commit there, merged up. 018 and 023 are then
   dropped; #783's port stays as its own late step.
+- **Step 010 replayed (2026-11-04): `a7764d6a9` on `seriesb/010-module-conversions`**, on 009
+  (`1912db791`). 73 conflicted files (571 blocks) plus 58 new façade files. Ten parallel agents
+  (`.agent-tmp/step10/brief.md`) rebuilt most bindings from 009 with the old hunks re-applied.
+  Gates, all in the isolated Objective-C MSYS2:
+  - clean build rc=0, with only QuickJS-ng's 4 `-Wpedantic` warnings;
+  - oofnd 46/46 and core 153/153;
+  - smoke clean, with no leaked JS objects;
+  - component 8/8 scenarios and `test_world_setup_clear` 3/3;
+  - harness 23 checks, 0 failures;
+  - no façade and no statistics left.
+
+  The tests are equal to old 010's except those ledgered under "## Step 010". Defaults taken:
+  1. `OOJavaScriptEngine.h` is split as the old step split it. The plain C++ part becomes
+     `OOJSEngineCore.h`. The native-wrapper macros move into `OOJSEngineNativeWrappers.h`, which
+     the core includes; this is the old step's and the end target's layout, with #768's macro
+     names. It reverses 009's default 1, which applied while the header was whole.
+  2. Old 018/023 placement for 010 (`series/review/placement-018-023.md`) is folded in:
+     - #756: `OO_DEBUG_MONITOR_ENABLED` guards in the converted entity, drawable, material and
+       texture headers and in the Entity, texture and debug bridges. Step 009 itself still has
+       `#ifndef NDEBUG` on the Materials headers it converted; this step fixes them.
+     - #737 comments, a69 and a105.
+     - #766: `OOLITE_MAC_COCOA_UI` is kept in GameController, and the GLSL 3.30→1.20 translator
+       is converted to C++ with its `test_OOShaderProgram` cases, plus `OOLITE_MACOS`.
+     - a167-168 are already satisfied (the new test has no unused counter).
+  3. The joystick SDL decoders become members of the C++ `OOSDLJoystickManager`. They reach the
+     base's state as a friend, through the facade, until the SDL class derives from the base.
+     **For Jon:** `test_OOJoystickManager`'s `facadeContract` changes the receiver of one check
+     (ledger row). It has no end-target counterpart.
+  4. The limiter cases of the old `test_OOJSEngineTimeManagement` move to a new
+     `test_OOJSTimeLimiter.mm` on the real engine, as the end target does. The engine starts in an
+     `@autoreleasepool`: an autoreleased `OOJSValue` otherwise outlived the notification centre at
+     process exit (`std::system_error`).
+  5. The fork's SystemInfo `has_property` hook comes in with SystemInfo's conversion. Manifest and
+     MissionVariables' exotic hooks catch with C++ `try`/`catch (...)`, the end target's form,
+     because `@catch (id)` cannot catch the C++ exception the test throws.
+  6. `OOProfilingStopwatch.h` includes `<windows.h>`, with BOOL renamed as `OOFoundation.h` does,
+     for plain C++ translation units (`OOJSFont.cpp`).
+
+  Found:
+  - Another session's automation used console port 8563 during the first component run, so s3,
+    s4 and s8 connected to the wrong listener or none. A sequential rerun that waits for the port
+    to be free passed all of them (`.agent-tmp/step10/component_seq.sh`).
+  - A debug-flavour build (the harness's build dir) does not link 8 Materials core tests
+    (`OOGLNoteCurrentFunction`), because the test lists lack `OOOpenGLStateManager`. The harness
+    target itself is fine.
