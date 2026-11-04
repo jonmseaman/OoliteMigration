@@ -852,3 +852,43 @@ sources outside the replayed trees.
      tables and every `Entity*` signature needed it. Moving them would change 014 (already ~1,000 files
      with its bridges) and save little review in 015 (most of its 492 files are the entity conversion);
      default: keep 015 whole.
+- **T054: step 016 replayed on #768's binding (2026-11-04): `ff8664462` on
+  `seriesb/016-objc-runtime-out`**, on 015 (`5309798dc`). 154 conflicted files (341 blocks), 14
+  modify/delete and one delete/modify (`ooscript/JSEngine_quickjs.cpp`, kept deleted), resolved by ten
+  parallel agents (`.agent-tmp/step16/brief.md`; mostly the parent's file plus the old step's change, the
+  end target `8a0a3c97a` as the reference) and the orchestrator (GameController, Universe, meson lists,
+  README). The new-stack `.mm` files the old step never saw (#768's `OOJSClasses`, #767's `poc/`,
+  `test_OOJSTimeLimiter`, `test_OoliteEquipmentControlScript`, `test_objc_assert_ndebug`) are renamed
+  `.cpp` and converted. First step in the C++ era (`verify.py` `era()` = cxx: scoop MSYS2, no `.m`/`.mm`
+  left). Gates: clean build rc=0 with only QuickJS-ng's 4 `-Wpedantic`; oofnd 40/40, core 175/175 (the
+  parent's 178 less the retired `test_OOWeakReference`, `test_OOWeakSet`, `test_OOAsyncQueue`), headers
+  and game-unit pass; smoke clean (no leaked JS objects); component 10/10 on the first attempt (port 8628,
+  private `OO_ADDITIONALADDONSDIRS`); harness 23/23; deployment build rc=0 (only the parent's
+  `legacy_random.c` warning) and its smoke pass; `no_new_spidermonkey_or_gnustep` pass; no façade, no
+  statistics; tests equal to old 016's except the rows under "## Step 016". Revert check: no `+!` line;
+  291 `-!` lines, all Objective-C syntax this step converts (`@try`/`@catch`/`@finally`, `#import`, pools,
+  `OOLITE_MAC_OS_X` to `OOLITE_MACOS` on the folded hunks) or Objective-C paths the old step deletes
+  (callObjC on a non-entity, `OOShaderUniform::setBindingTarget(id)`, the objc meson arguments). Defaults
+  taken:
+  1. Old 018/023 folded: a58, a62, a63, a68, a71, a116, a123 (#748 include order); a100, a101
+     (`OOTypeEncodings.h` in the generator's layout, marker without bead id); a134 (#737); b439 (#766
+     legacy-context check in C++); b381, b420-b429, b581-b584, b592, b594 (`OOLITE_MACOS`), plus the three
+     `MyOpenGLView.cpp` snapshot guards for consistency (old 023, 025 and the end target agree); b6/b7 in
+     part (the README's Objective-C section and source-tree lines). **Skipped (Jon's pending default, keep
+     macOS CI):** b1-b4 (macOS CI jobs and the artifact count) and b6/b7's removal of the macOS build docs
+     and "Windows, Linux and macOS"; T058 records macOS as "not verified".
+  2. Tests keep old 016's `#import` lines (clang accepts them; step 017 converts them); only real
+     Objective-C in tests is converted.
+  3. `OOProfilingStopwatch.h`'s Windows block (the parent's) gains `__OBJC_BOOL` around `<windows.h>`, as
+     `OOFoundation.h` has it: without an Objective-C compiler `<minwindef.h>` declared its own `BOOL`.
+  4. #768's own Objective-C becomes C++ in the end target's form: the mission reset observer, `@try`/
+     `@catch (id)` in the console, world scripts and `OOJSSystem`, the engine's `OOJSObjectWrapperFinalize`/
+     `OOJSBasicPrivateObjectConverter`; `OOJSReportWrappedException(id)`, which #768 had re-added, goes.
+  5. `clang.ini` drops only the objc lines; the end target's `ar = 'llvm-ar'` came from the old façade
+     step and is not taken (the parent never needed it).
+  6. **For Jon:** `test_objc_assert_ndebug` loses its 4 method-form checks with the method forms (as the
+     end target); `test_OOJavaScriptEngine`'s T068 check and `aValueLeftInTheThreadPoolAtExit` go with old
+     016's retirements.
+  7. T070 not done here: the tree passes `check_debug_monitor_guards.py` (run from scratch, rc=0, no guard
+     to fix), but the check imports `tests/idiom_check.py`, which arrives with step 022, and its meson hook
+     sits in the `headers` suite, which arrives with step 019. Default: add it at 022's replay.
