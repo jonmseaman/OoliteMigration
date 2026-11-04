@@ -726,6 +726,9 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
   tests): `develop`'s own problem, outside seriesb gating. A separate task for the fork.
 - [ ] T064 [US7] #767's harness `meson.build` in steps 005–008 probably no longer builds on Linux
   (missing `src/` include and oofnd deps). Fix it at T058's Linux run.
+- [ ] T066 Debug-config (`-Ddebug=true`) core tests fail to link from 009 (missing
+  `OOOpenGLStateManager` in their meson source lists, so `OOGLNoteCurrentFunction` is undefined). Fix
+  at the step that introduced the lists; release-flavour gates are unaffected.
 - [ ] T065 [US7] Handover: push `seriesb/003-objcpp-switch` and delete `origin`'s
   `seriesb/003-quickjs-switch`; `--force-with-lease` for every rebuilt step (Jon).
 

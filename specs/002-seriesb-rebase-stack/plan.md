@@ -661,3 +661,21 @@ sources outside the replayed trees.
   - A debug-flavour build (the harness's build dir) does not link 8 Materials core tests
     (`OOGLNoteCurrentFunction`), because the test lists lack `OOOpenGLStateManager`. The harness
     target itself is fine.
+- **T059 follow-ups on 004–009 (2026-11-04)**, each a commit on its step, merged up (no rewrites):
+  tips 004 `5b609646a`, 005 `a4d0a10cb`, 006 `404b8369c`, 007 `8f62d84da`, 008 `037cf9049`, 009
+  `f18e064bc`; ledger `4f8ead04b`. The deployment build was broken from 006 (`AI.mm` `debugContext`;
+  `Universe.mm`'s bridge import under `OO_LOCALIZATION_TOOLS`) and could not launch from 008
+  (`OOAssert` compiled out under NDEBUG skipped `-deferredInit`'s ship set-up); it now compiles at
+  006–009 and its smoke passes at 006, 008 and 009. New tests: `test_objc_assert_ndebug` (007, fails
+  on the old header), `test_OoliteEquipmentControlScript` (009, #369). Step 010 merged the new 009
+  (`0747c771a`, four trivial conflicts) and is re-gated.
+- **Rule learned (2026-11-04): one game instance at a time, or private console ports.** Two agents
+  launching the game on the default debug-console port 8563 broke each other's smoke and component
+  runs. Agents running in parallel set `OO_CONSOLE_PORT` to a private port; GUI tests still run
+  alone (CLAUDE.md).
+- **Open: debug-config core tests do not link** (`-Ddebug=true`, e.g. the harness build dir): 8–9
+  Materials/GL core tests miss `OOGLNoteCurrentFunction` (their meson source lists lack
+  `OOOpenGLStateManager`). Present since 009; the release-flavour gates are unaffected (T066).
+- **For Jon: `test_OOJoystickManager` `facadeContract` (step 010).** One check's receiver moves from
+  the base manager to the decoding manager under #742; the expected value is unchanged. There is no
+  end-target counterpart, so it waits for his sign-off.
