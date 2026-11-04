@@ -1000,3 +1000,55 @@ sources outside the replayed trees.
      `test_g6` `test_the_fullscreen_flag_is_only_assigned_by_the_toggle_at_runtime`). Both fail the same way
      on old 021's tree and pass on the end target, so they are the old stack's state at this step, not the
      replay's; a later step's sources satisfy them.
+- **T054, T070: step 022 replayed on #768's binding (2026-11-04): `272aac108` on `seriesb/022-c-as-cxx`**,
+  on 021 (`ecbc3e19c`), plus T070 as its own commit `c3417fdff`. The cherry-pick conflicted in 175 files
+  (1,151 blocks) and 4 modify/delete, so the step is re-applied by rule (`.agent-tmp/step22/merge22.py`,
+  `rule.py`, `tokmerge.py`): a file whose code the parent has as old 021 had it (238) takes old 022's file;
+  any other (230) is a 3-way merge of old 022's file onto the parent's with both bases put through old 022's
+  spelling rule first (`BOOL`/`YES`/`NO`/`nil` to `bool`/`true`/`false`/`nullptr` in code tokens), conflict
+  blocks then resolved by code-token comparison and a token-level merge, and 29 by hand. The rule is also
+  applied to #768's files old 022 never saw (`OOJSClasses.cpp`, `poc/OOJavaScriptEnginePoc.cpp`).
+  Checks: code-token edits parent→step that old 022 does not make: 6 files, all the intended guard and
+  Windows-header changes below; old 022's edits not carried: 41 files, all façade code #768's files do not
+  have (`OOJS_EXTERN_C`, per-declaration `extern "C"`), the kept `OOLITE_SDL` guards, and old 022's leftover
+  `BOOL`/`nil` in two places the parent already had as `bool`; no lone `)` line in C++; revert check: 4
+  hunks flagged, explained below. Gates (C++ era, scoop MSYS2 UCRT64 login shell): clean build rc=0 with
+  **0 warnings** (QuickJS-ng's 4 `-Wpedantic` are gone with the void-return patch); oofnd 40/40, core
+  176/176, headers 2/2 (with T070's check), game-unit pass; smoke clean (no leaked JS objects); component
+  14/14 (port 8633, private `OO_ADDITIONALADDONSDIRS`), s6 on its second attempt (the known flake);
+  harness 23/23; deployment build rc=0 with 0 warnings and its smoke pass; `no_new_spidermonkey_or_gnustep`,
+  no new suppressions, no façade, no statistics; clang-format 22.1.8: every `src/` file the step changes is
+  formatted (the tree's one unformatted file is the parent's `OORegExpMatcher.cpp`). Tests equal old 022's
+  except the rows under "## Step 022". Defaults taken:
+  1. **QuickJS-ng wrap.** `quickjs-ng-o2.patch` and `quickjs-ng-void-return.patch` first appear in old 003
+     (`a6e785314`, the façade step), with the `[wrap-file]` form; old 022 only moved them from 0.16.2 to
+     0.17.0, which is moot here (#768's wrap is 0.17.0). No later old step touches `subprojects/`, so they
+     land at 022 (its title's "upgrade QuickJS-ng"): the wrap is the end target's (`[wrap-file]` for the
+     0.17.0 tarball, `diff_files = quickjs-ng-o2.patch, quickjs-ng-void-return.patch,
+     quickjs-ng/0001-oolite-primitive-property-assignment.patch`, #768's comment as the end target words it,
+     `program_names`), with `subprojects/.gitignore`, and the flatpak manifest fetches the same tarball
+     (needed with a wrap-file; replaces #768's git source and patch step, revert flag [B]). #768's
+     primitive-property patch is kept. #768's build wiring is kept: `dependency('quickjs-ng')` in
+     `src/meson/meson.build` (with `libc=false`, `b_lto=false`), `force_fallback_for`, `-ffp-contract=off`
+     as a project argument; the end target's `subproject()` call in `src/meson.build` and global argument
+     came from old 003's façade build and are left to the 025 remainder for Jon.
+  2. **Upstream's `OOLITE_SDL` guards are kept** (rule 2): upstream's macOS port (`3193dfe80`, in
+     `dc55e3e05..7437f22a5`) turned the `OOLITE_GNUSTEP` guards in `OODebugMonitor.h/.cpp`, `OOJSConsole.cpp`,
+     `GameController.cpp` and `MyOpenGLView.cpp` into `OOLITE_SDL`; old 022 and the end target drop them.
+     They are always true on every build now, so behaviour is the same either way. The `OOLITE_GNUSTEP`
+     guards go, and `main.cpp`'s `GNUSTEP_BASE_LIBRARY || OOLITE_SDL_MAC` guards go with the
+     `-DGNUSTEP_BASE_LIBRARY` define they tested. `OOFoundation.h` takes old 022's form (no GNUstep
+     emulation; `OOLITE_SDL` 1 everywhere, which also covers upstream's `OOLITE_SDL_MAC` block it drops).
+  3. `OOProfilingStopwatch.h` keeps #768's `timeGetTime()` timer (the end target's `std::chrono` one is the
+     façade's) and includes `<windef.h>` and `<timeapi.h>` for it, since `OOFoundation.h` no longer gives
+     every file `<windows.h>`; including `<windows.h>` there would put `<winsock.h>` ahead of a later
+     `<winsock2.h>`.
+  4. Old 022's 80-column rewraps on merged lines are not taken where the parent's layout differs (e.g. a
+     split string in `OOJSEngineCore.h`, `OOMatrixDescription`/`QuaternionDescription` declarations); the
+     maths headers take the end target's `#ifndef OO_PLAIN_CPP_UNIT` guards (#748's layout).
+  5. Test `Run:` lines follow old 022's (`tests/run.sh unit`, or old 022's own `meson test -C
+     build/meson_test …` wording); old 022's `.clang-tidy`, `.editorconfig`, `mk.sh`'s
+     `compile_commands.json` copy, `tests/idiom_check.py` and `tests/unit/asan-suppressions.txt` come along
+     unchanged. The `poc/` harness drops `c_args` (its last C source is now C++).
+  6. T070 lands here (its `idiom_check.py` import arrives at 022), as a commit after the replay; the tree
+     passes it with no guard to fix.

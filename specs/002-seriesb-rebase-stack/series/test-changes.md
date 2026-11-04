@@ -524,3 +524,25 @@ from old 020's (rows above). No assertion changed.
 | `tests/unit/core/test_OOJSMissionVariables.cpp` (`deletingAVariableTheScriptNeverSet`), `tests/unit/core/test_ShipEntity.cpp` (`CountingFlasher`, `updateReachesNonShipSubentities`, the `OOFlasherEntity.h` include) | Added as old 021 adds them, in the parent's layout (tabs, braces on their own lines, one line per call; the include in the parent's include order). | The parent's layout; step 024 reformats. | None. |
 | `tests/component/test_exit_runs_js_leak_check.py` (new, T069) | Added in its own commit after the replay, the end target's file unchanged (`8a0a3c97a`). | It pins #768's exit `shutDown` leak check, which the stack keeps throughout; added at 021, the tests-and-tooling step. | New test. |
 | `tests/run.sh` | Committed `100755` (old 021 had `100644`). | It is run as a bare program and has a shebang (repo rule); the end target has it `100755`. | n/a |
+
+## Step 022
+
+Step 022 (`seriesb/022-c-as-cxx`, T054) replayed on #768's binding, re-applied by rule (the cherry-pick
+conflicted in 175 files). Old 022's test changes are mechanical: `BOOL`/`YES`/`NO`/`nil` become
+`bool`/`true`/`false`/`nullptr` in code, `extern "C"` and `extern "C" { … }` go, `OOLITE_GNUSTEP` guards go,
+the `.c` sources in `tests/unit/core/meson.build` become `.cpp`, and each test's `Run:` line names
+`tests/run.sh unit` (or `meson test -C build/meson_test …`) instead of `tools/check-core-tests.sh`. The
+component and GUI tests, `tests/launch_snapshot.py`, `tests/source_paths.py`, `tests/idiom_check.py` and
+`tests/unit/asan-suppressions.txt` come along byte for byte. Each unit test differs from old 022's only as
+below and as the parent's already differed from old 021's (rows above); the same rules are applied to the
+parent's (#768-based) test code. No assertion changed.
+
+| path | what changed | why | assertions changed? |
+|---|---|---|---|
+| `tests/unit/test_jsengine_quickjs.cpp` | Old 022's edits (its `BOOL`/`nil` spellings) not carried. | The façade backend's own test, absent since step 003 (FR-015). | n/a (absent) |
+| `tests/unit/core/test_OOJSConsole.cpp` | Keeps the `#if OOLITE_SDL` guard around the `applicationWillTerminate()` stand-in (old 022 removed the `OOLITE_GNUSTEP` one, and the end target has no guard). | It mirrors `OODebugMonitor.h`, where the guard is upstream's (`7437f22a5`, the macOS port) and is kept (rule 2). | None. |
+| `tests/unit/core/test_OOJSEquipmentInfo.cpp`, `tests/unit/core/test_OOJSMission.cpp` | `extern "C"` dropped from the `OOEnforceStandards()` stand-in. | Old 022's rule, on a line the parent (#768-based) has and old 021 did not. | None. |
+| `tests/unit/core/test_PlayerEntityStickProfile.cpp` | `Run:` line names `tests/run.sh unit` (was `bash tools/check-core-tests.sh test_PlayerEntityStickProfile`). | Old 022's rule; old 021/022 had a truncated `Run: bash` here. | None. |
+| `tests/unit/core/meson.build` | The parent's entries (#768's `OOJSClasses.cpp`, no façade backend, no `openal` suite) with `legacy_random.cpp`, `OOTCPStreamDecoder.cpp`, `unzip.cpp`, `ioapi.cpp`; old 022's edit to the `openal` suite comment not carried. | The parent has no `openal` suite comment (step 016's file). | n/a |
+| `tests/unit/core/*` (the tests the parent rebuilt on #768's API) | Old 022's spelling and linkage rules applied to the parent's code: `BOOL`→`bool`, `nil`→`nullptr`, `YES`/`NO`→`true`/`false`, `extern "C"` removed where the parent had it; `test_OOJSTimeLimiter.cpp` (#768's, new since 016) only has its `Run:` line changed. | Old 022's rule; old 022 never saw these files' current code. | None. |
+| `tests/check_debug_monitor_guards.py` (new, T070), its `debug_monitor_guards` test in the `headers` suite (`meson.build`) | Added in its own commit after the replay, the end target's file unchanged (`8a0a3c97a`, `100755`) and registered as the end target registers it. It imports `tests/idiom_check.py`, which this step brings. | It pins #756's rule that debug-monitor code is guarded by `OO_DEBUG_MONITOR_ENABLED`, not `NDEBUG`. The tree passes it as it stands (no guard to fix). | New test. |
