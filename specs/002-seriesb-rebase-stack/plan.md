@@ -1100,3 +1100,36 @@ sources outside the replayed trees.
      split string literals and definition order (024). Other: the 3 end-target tests above,
      `.vscode`/`.zed`, CI and meson wiring, `post_build.sh`'s Windows DLL closure (the old stack's, not in
      the new one: for Jon at T055), and `src/meson/darwin/meson.build` (default 2).
+- **T055: step 024 replayed on #768's binding (2026-11-04): `9157d0993` on `seriesb/024-google-style-format`**,
+  on 023 (`167118dff`). Re-applied by rule: old 024's `.clang-format`, `mk.sh` `format`/`format-check` and
+  README paragraph (all three taken unchanged; none reverts upstream or #768), then clang-format 22.1.8
+  (`.agent-tmp/series-venv`) `-i` to a fixed point (two passes; one pass leaves comment reflows) over every
+  `.h/.hpp/.c/.cpp/.m/.mm` under `src/` (533) and the tests old 024 formats; the 85 test files that are not
+  clang-format-clean at old 024 (82 also not at the end target) stay as they are. 567 source files change (515
+  `src/`, 52 tests). Checks: `./mk.sh format-check` rc=0; code tokens equal before and after in every file
+  (include lines as a set; `.agent-tmp/step24/tokcheck24.py`) except two Objective-C `@"…"` literals in fenced
+  Mac code that clang-format splits (old 024 splits them too); comment-only changes are `// namespace` closing
+  comments and reflow; no façade, no statistics. Gates (C++ era, scoop MSYS2 UCRT64 login shell): clean build
+  rc=0 with **0 warnings**; oofnd 40/40, core 176/176, headers 2/2, game-unit pass; smoke clean (no leaked JS
+  objects); component 13/13 files (20 tests) on the first attempt, s6 included (port 8635, private
+  `OO_ADDITIONALADDONSDIRS`); harness 23/23; deployment build rc=0 with 0 warnings and its smoke pass; GUI tier
+  window-free checks (`-m offline` in g2, g6, g8, g9): 50/50, **g2 and g6 now pass**. Tests: ledger
+  "## Step 024". Defaults taken:
+  1. **Include sorting broke #768's stopwatch.** Google style regroups includes, which put `<timeapi.h>` ahead
+     of `<windef.h>` in `OOProfilingStopwatch.h` (022 default 3) and broke the build. A comment line between
+     them keeps clang-format from sorting them; no code token changes. Recorded in the commit body.
+  2. `ShipEntityAI.cpp`: the parent glued a stale façade comment ("Byte-identical façade <-> jsapi view …
+     (see / OOJSVector.mm).") to a namespace's closing brace; clang-format's namespace comment replaces its
+     first line and leaves `// OOJSVector.mm).` on its own. Left as clang-format made it (mechanical step);
+     **for Jon**: delete the fragment where the comment came in (the end target has neither line).
+  3. T055 remainder `seriesb/024-… → 8a0a3c97a`: 292 files, +34,188/−30,187 (023: 657). C/C++ 272: 9 known
+     (`OOLITE_SDL` guards, `timeGetTime` stopwatch, `|| defined(LINUX)`, the three T073 tests), 59
+     comment-only, 55 layout-only (mostly the 85 tests above), 11 include order only, 138 code. Of the code
+     differences, 115 are the scripting layer and its tests where the end target has old 025's binding-move
+     form and the stack has #768's binding (→ T056: step 025 cannot be dropped as covered); 23 others belong to
+     018 (2), 019/022 (1), 017/022 (1), 022 (7, of which 4 are #742's definition order), 022/025 (6, incl.
+     `GuiDisplayGen`'s `JSValue`/`OOJSVal`), 023 (5), 023/025 (1). Other 20 files: #768's `dependency()` wiring
+     vs `subproject()` (with the end target's llvm-ar and XP_* defines), the T072 loop, darwin lines, the
+     T073 meson entries, `.eslintrc.json`/`.gitignore`/README, `src/Core/Scripting/README.md` (deleted in the
+     end target), and **the end target's Mozilla-compat polyfills in `oolite-global-prefix.js` (+186 lines),
+     in no rebuilt step: for Jon**. Full list: `.agent-tmp/step24/t055-remainder.md`.
