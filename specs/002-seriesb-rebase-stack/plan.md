@@ -510,3 +510,20 @@ sources outside the replayed trees.
   `bca7f1b95`; new `test_OOJoystickDecoding.cpp`) and #748's maths headers (`21c8c1df0`: upstream's
   form, shared part split into `OOMathsBase.h`; new `test_OOMathsHeaders.cpp`). Clang: 0 warnings,
   220 suites Ok, harness Ok. Audit: no recent upstream PR left in older form.
+- **Steps 005–006 replayed (2026-11-03).** 005 = `fdea6440f` (21 conflicts; oofnd 28/28), 006 =
+  `ab8b54991` (65 files, ~380 conflict blocks, re-expressed by hand on #768's code; oofnd 33/33,
+  all 8 component scenarios). Both: clean build with exactly 002's 7 warnings, smoke with no leaked
+  JS objects, no façade, tests equal to the old steps' (bar the ledgered façade test), no
+  unexplained revert. Kept upstream #742's joystick layout through both (so `OOJoystickManager`'s
+  ivars stay non-`@private`: the SDL subclass decodes through them). 005 also posts the engine's
+  reset notification from `-shutDown` on `oo::NotificationCenter`, which the old step did not need:
+  `OOJSValue`/`OOJSTimer` observe that centre and would otherwise leak at shutdown. 006 found that
+  git's auto-merge silently deleted #768 code in heavily conflicted files (matching banner lines);
+  those files were rebuilt from #768's version with the old hunks re-applied, and
+  `.agent-tmp/step6/mismerge.py` checks clean merges for unexpected removals — use it on every
+  later replay.
+- **Open, default taken: the harness's `meson.build` in steps 005–009.** From 005 the engine header
+  imports `oofnd/objc/OOObject.h`, but #767's `poc/meson.build` lacks `src/` on its include path and
+  the oofnd dependencies, so it probably no longer builds on Linux. It cannot be built here (it needs
+  GNUstep, Linux only), so it is left unchanged until the step that converts the harness (the first
+  C++ step), which gives it the end target's build file; recorded for the Linux phase.
