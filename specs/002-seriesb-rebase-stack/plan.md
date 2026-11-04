@@ -726,6 +726,33 @@ sources outside the replayed trees.
      checks unchanged (ledger row).
   5. T060: no `+ObjCBridge` wrapper loses its last caller in this step beyond
      `OOJSGlobal+ObjCBridge.mm`, which the old step already deletes.
+- **T054: step 013 replayed on #768's binding (2026-11-04): `9304fedba` on
+  `seriesb/013-universe-player-slices`**, on 012 (`f8f3c21af`). 31 conflicted files (5 modify/delete,
+  the old step's facade deletions, taken), resolved by three parallel agents (`.agent-tmp/step13/brief.md`;
+  bindings and OOJSPrivateObject; plume/flasher/visual effect and Entity; PlayerEntity, OORegExpMatcher,
+  ShipEntityAI) and the orchestrator (Universe: old 013's file with the parent's #768 delta re-applied, 9
+  hunks by hand). Gates (isolated Objective-C MSYS2): clean build rc=0 with only QuickJS-ng's 4
+  `-Wpedantic`; oofnd 47/47, core 172/172, headers and game-unit pass; smoke clean (no leaked JS
+  objects); component 10/10 on the first attempt (port 8623, private `OO_ADDITIONALADDONSDIRS`); harness
+  23/23; deployment build rc=0 (only the parent's `legacy_random.c` warning) and its smoke pass; no
+  façade, no statistics; revert flags all explained (moves, or the step's own conversion on #768's form);
+  tests equal to old 013's except the rows under "## Step 013". Defaults taken:
+  1. Old 018/023 folded: a118-119 (#756 `OO_DEBUG_MONITOR_ENABLED` on `cxx::Universe`'s
+     `debugDumpEntities`/`entityList`), extended to the facade's declarations and forwarders; b554-557
+     (#766 MSAA renderbuffer) kept, now in `cxx::Universe`'s framebuffer code; also #766's
+     `OOLITE_MAC_COCOA_UI` for the Mac speech routines the old step moved (it wrote `OOLITE_MAC_OS_X`).
+  2. `OOJSPrivateObject` takes the end target's #768 form; at this stage its finalizer is
+     `OOJSCxxObjectWrapperFinalize` (the engine's `OOJSObjectWrapperFinalize` is still Objective-C).
+     The Timer keeps #768's `transferJSSelf()` ownership and the old step's converter answering the
+     facade (`OOJSBasicPrivateObjectConverter` would read the C++ slot as an `id`).
+  3. **Old-step bug fixed:** old 013 opened slice 26's `namespace cxx` inside `#if OO_LOCALIZATION_TOOLS`,
+     so the deployment build (tools off) failed; the guard now sits inside the namespace. The test build
+     (tools on) preprocesses to the same code.
+  4. `test_OOJavaScriptEngine`'s `aValueLeftInTheThreadPoolAtExit`, added by the old step and not in the
+     end target, is kept, rewritten on #768.
+  5. T060: no `+ObjCBridge` wrapper loses its last caller here beyond the five the old step deletes
+     (and `OOJSVisualEffect+ObjCBridge.mm`); `OOJSTimer+ObjCBridge` still serves the timer queue and
+     converter, `PlayerEntity+ObjCBridge` is the Objective-C player itself.
 - **T051c (2026-11-04): the end target restores #768's shutdown leak check.** `9d4ce2b1e` on
   `feature/upstream-quickjs-poc-cxx` (on `655583067`) = `anchors.develop_target`.
   `GameController::exitAppWithContext` calls `OOJavaScriptEngine::sharedEngine()->shutDown()` after
