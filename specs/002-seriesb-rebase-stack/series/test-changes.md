@@ -189,6 +189,9 @@ links `SDL/OOSDLJoystickManager.cpp` into `test_OOJoystickManager`.
 | `tests/unit/core/test_OOJoystickManager.cpp` (`subclassOverrides`, `sharedHandlerOfTheRegisteredClass`) | `TestStickManager` derives from `OOSDLJoystickManager` (was `OOJoystickManager`), so the press it decodes goes through the SDL manager's decoder; its overrides and the base's other members are unchanged. | #742: only the SDL manager decodes. |
 | `tests/unit/core/test_OOJoystickManager.cpp` (`decodesGuiButtons`) | As `decodesAxes`; hat values `SDL_HAT_UP`, `SDL_HAT_CENTERED`. | #742, with #783's GUI-button decoding now in `OOSDLJoystickManager::decodeButtonEvent`. |
 | `tests/unit/core/test_OOJoystickManager.cpp` (`savesAndLoadsGuiButtons`) | The reloaded manager that decodes a press is a `DecodingStickManager`. | #742. |
+| `tests/unit/core/test_OOJSVector.cpp` | removed case statistics | Jon 2026-11-03: statistics removed as #768 did |
+| `tests/unit/core/test_OOJSQuaternion.cpp` | removed case statistics | Jon 2026-11-03: statistics removed as #768 did |
+| `tests/unit/core/test_OOJSCall.cpp` | removed case playerStatisticsByName (with the four `PlayerEntity` statistics stand-ins and `sStatisticsCalls`, which only that case used) | Jon 2026-11-03: statistics removed as #768 did |
 | `tests/unit/core/test_OOSDLJoystickManager.cpp` (`makesEvents`) | The event makers' results are held as `SDL_JoyAxisEvent`/`SDL_JoyButtonEvent`/`SDL_JoyHatEvent` (were the core header's `Joy*Event` typedefs of the same types). | #742: `makeJoy*Event()` answer SDL's types and the typedefs are gone. |
 
 ## Step 007
@@ -228,3 +231,6 @@ needs are added (`cxx_OOJSIDFromString`, `OOJSNativeFailure`, `OOJSReportPending
 | `tests/unit/core/test_OOWeakReference.mm`, `tests/unit/core/test_OOWeakSet.mm` | The `ooscript/JSEngine.hpp` include and the `ooscript::undefinedValue()` stand-in are removed. | The code under test returns QuickJS-ng's `JS_UNDEFINED`. | None. |
 | `tests/unit/core/test_OOSDLJoystickManager.mm` (`makesEvents`) | The event makers' results are held as `SDL_JoyAxisEvent`/`SDL_JoyButtonEvent`/`SDL_JoyHatEvent` (were the fork's `Joy*Event` types). | #742's layout is kept (Jon, 2026-11-03): `makeJoy*Event` answer SDL's types; the same change as the end target's row above. | None. |
 | `tests/unit/expander/OOJavaScriptEngine.h`, `tests/unit/expander/test_string_expander.mm` | The old step's new `cxx_OOJSReportWarningWithArguments` stub takes `JSContext*` (was `ooscript::Context`), as step 007 did for the other three stubs. Not registered in meson. | Façade removed. | None. |
+| `tests/unit/core/test_OOJSVector.mm` | removed case statistics | Jon 2026-11-03: statistics removed as #768 did | yes: the case and its checks are gone |
+| `tests/unit/core/test_OOJSQuaternion.mm` | removed case statistics | Jon 2026-11-03: statistics removed as #768 did | yes: the case and its checks are gone |
+| `tests/unit/core/meson.build` | `Core/Scripting/OOJSVector+ObjCBridge.mm` and `Core/Scripting/OOJSQuaternion+ObjCBridge.mm` leave the `test_OOJSVector` and `test_OOJSQuaternion` source lists | Jon 2026-11-03: statistics removed as #768 did; the two files held only the statistics' `PlayerEntity` categories and are deleted | n/a |
