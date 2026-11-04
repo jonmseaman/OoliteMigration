@@ -476,3 +476,16 @@ the parent's already differed from old 016's (rows above). No assertion changed.
 | `test_OODebugMonitor.cpp` | The `OOJSEngineCore.h` include old 017 adds for GCC is the parent's line (no bead id), now `#include`. | As the parent. | None. |
 | `test_OOJSPrivateObject.cpp`, `test_OOJSTimer.cpp`, `test_OOJSCall.cpp` | Old 017's `#import "OOJSEngineNativeWrappers.h"` to `#include` has no counterpart: the parent's tests do not include it (#768's engine). | Façade removed. | None. |
 | Comment-only: the test files whose converted `#include` lines carry a comment (`test_AI.cpp`, `test_CollisionRegion.cpp`, `test_OOBreakPatternEntity.cpp`, `test_OODebugMonitor.cpp`, `test_OOECMBlastEntity.cpp`, `test_OOFlashEffectEntity.cpp`, `test_OOJSCall.cpp`, `test_OOLaserShotEntity.cpp`, `test_OOLightParticleEntity.cpp`, `test_OOOXZManager.cpp`, `test_OOParticleSystem.cpp`, `test_OOPlanetDrawable.cpp`, `test_OOPlasmaShotEntity.cpp`, `test_OOQuiriumCascadeEntity.cpp`, `test_OOSparkEntity.cpp`, `test_ShipEntityAI.cpp`, `test_StationEntity.cpp`) | The parent's comments (bead ids already dropped) kept. | As the parent did. | None. |
+
+## Step 019
+
+Step 019 (`seriesb/019-develop-fixes`, T054) replayed on #768's binding, on step 017 (old step 018 is
+dropped: its hunks went to earlier steps). Its tests are old 019's: `tests/check_headers_standalone.py` and
+the `headers` suite, the path fixes in the component and GUI tiers and `tests/source_paths.py`, and
+`test_objc_assert.cpp`'s `clang-format off` helpers come along unchanged. Each test differs from old 019's
+only as below and as the parent's already differed from old 018's (rows above). No assertion changed.
+
+| path | what changed | why | assertions changed? |
+|---|---|---|---|
+| `tests/unit/core/test_OOMathsHeaders.cpp` (new) and its `tests/unit/core/meson.build` line | Added, as the end target has them (`21c8c1df0`, unchanged since): `OOFastArithmetic.h`, `OOQuaternion.h` and `OOVector.h` included without `OOMaths.h`, no umbrella macros, `OOScalar` is `GLfloat`, their inline functions work. | Old 019 put the maths headers in the fork's umbrella form (`#error Do not include … directly`), which reverts upstream #748; the step takes #748's form plus the `OOMathsBase.h` split instead, and the placement plan lands this test with the headers suite. It fails to compile on old 019's headers. | New test. |
+| `tests/unit/core/test_OOJSEngineTimeManagement.hpp` | Old 019's edit (an `OOFoundation.h` include, rewrapped) is not carried: the file is not in the parent. | It redeclared the façade's profile API; removed since step 010 (rows above). | n/a |

@@ -915,3 +915,30 @@ sources outside the replayed trees.
   4. **For Jon:** clang-format 22.1.8 finds 17 unformatted files at 016 and 017 (5 at 014, 6 at 015; 0 in
      the old stack), all in files the rebuilt steps resolved by hand; the old step's gate had the check.
      Step 024 reformats everything; until then the rebuilt steps fail the per-step `clang_format` check.
+- **T054: step 019 replayed on #768's binding (2026-11-04): `84209ee26` on `seriesb/019-develop-fixes`**,
+  **on 017** (`c37c508dd`): old 018 is being dropped (every hunk folded earlier per the placement plan), so
+  019's Git Town parent is now `seriesb/017-gcc-build`. The `seriesb/018-…` branch and its manifest entry
+  are left as they are; the drop (`$S drop 18`, rewiring 019's manifest parent) is T056/T059 bookkeeping,
+  pending. 5 conflicted maths headers and 2 modify/delete (the façade's `ooscript/README.md` and
+  `test_OOJSEngineTimeManagement.hpp`, kept deleted). Gates (C++ era, scoop MSYS2): clean build rc=0 with
+  only QuickJS-ng's 4 `-Wpedantic`; oofnd 40/40, core 176/176 (+ `test_OOMathsHeaders`), headers 298/298
+  headers, game-unit pass; smoke clean (no leaked JS objects); component 10/10, s6 on its second attempt
+  (the known police-engagement flake, retry default above); harness 23/23; deployment build rc=0 with 0
+  warnings and its smoke pass; `no_new_spidermonkey_or_gnustep`, no new suppressions, no façade, no
+  statistics; clang-format 22.1.8: 16 unformatted files (the parent's 17 less `OOJSEngineNativeWrappers.h`,
+  which this step touches and formats), none that the step changes. Revert check: no hunk flagged. Tests
+  equal old 019's except the rows under "## Step 019". Defaults taken:
+  1. Maths headers: old 019's umbrella form (`INCLUDED_OOMATHS_h` + `#error`, `OOMATHS_STANDALONE`,
+     `OOMATHS_OPENGL_INTEGRATION`, and the `#if` switches in the maths `.cpp` files) reverts #748 and is
+     not taken. The step takes the end target's #748 port (`21c8c1df0`): `OOMathsBase.h` holds OOMaths.h's
+     shared top, every maths header includes it and the maths headers it uses (`#pragma once` added where
+     upstream had none), and `test_OOMathsHeaders` arrives here. Kept from the parent for now, as old
+     020/022 change them: `OOMaths.h`'s `extern "C"` block and the `defined(__cplusplus) &&
+     !defined(OO_PLAIN_CPP_UNIT)` guards (OOVoxel.c and legacy_random.c are C until 022), and the bead-id
+     comments (020). Old 019's 80-column rewraps of the maths files are not taken (formatting only; the
+     step's WebKit style keeps either; 024 reformats).
+  2. Fix found by the new headers suite: `OOJSEngineNativeWrappers.h` (#768's file) used
+     `OOJSPauseTimeLimiter`/`OOJSResumeTimeLimiter` without declaring them; it declares them, as the end
+     target does (the old stack's façade header declared them).
+  3. T070 (`check_debug_monitor_guards.py`) still waits for 022 (it imports `tests/idiom_check.py`); T069
+     not done here.
