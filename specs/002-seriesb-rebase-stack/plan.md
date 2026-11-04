@@ -542,3 +542,12 @@ sources outside the replayed trees.
   the oofnd dependencies, so it probably no longer builds on Linux. It cannot be built here (it needs
   GNUstep, Linux only), so it is left unchanged until the step that converts the harness (the first
   C++ step), which gives it the end target's build file; recorded for the Linux phase.
+- **Jon, 2026-11-03: take #768's QuickJS-ng patch** (reverses the earlier "Not applied" default
+  above). The end target logged `script.javaScript.init.unpatchedEngine` on every launch because it
+  kept #768's start-up check but not the patch. `fce807b50` adds
+  `packagefiles/quickjs-ng/0001-oolite-primitive-property-assignment.patch` (unchanged, #768's path)
+  to the wrap after the fork's `o2` and `void-return` patches, and a new harness script
+  `poc/tests/primitive_property.js` with two checks in `poc/main.cpp` (they fail without the patch
+  with "TypeError: not an object"). Gates: build 0 warnings, 220 suites Ok, harness 23/23, smoke with
+  no warning. `anchors.develop_target` = `fce807b50`. Replays of old step 022 (QuickJS-ng upgrade)
+  must keep the patch.
