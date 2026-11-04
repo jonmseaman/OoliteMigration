@@ -190,3 +190,12 @@ links `SDL/OOSDLJoystickManager.cpp` into `test_OOJoystickManager`.
 | `tests/unit/core/test_OOJoystickManager.cpp` (`decodesGuiButtons`) | As `decodesAxes`; hat values `SDL_HAT_UP`, `SDL_HAT_CENTERED`. | #742, with #783's GUI-button decoding now in `OOSDLJoystickManager::decodeButtonEvent`. |
 | `tests/unit/core/test_OOJoystickManager.cpp` (`savesAndLoadsGuiButtons`) | The reloaded manager that decodes a press is a `DecodingStickManager`. | #742. |
 | `tests/unit/core/test_OOSDLJoystickManager.cpp` (`makesEvents`) | The event makers' results are held as `SDL_JoyAxisEvent`/`SDL_JoyButtonEvent`/`SDL_JoyHatEvent` (were the core header's `Joy*Event` typedefs of the same types). | #742: `makeJoy*Event()` answer SDL's types and the typedefs are gone. |
+
+## Step 007
+
+Step 007 (`seriesb/007-foundation-wave-2`, T053) replayed on #768's binding. One test file set uses the
+façade in the old step; it is not registered in meson (the old step's PR says so), so no suite runs it.
+
+| path | what changed | why |
+|---|---|---|
+| `tests/unit/expander/OOJavaScriptEngine.h`, `tests/unit/expander/test_string_expander.mm` (the three engine stubs) | The stubs of `OOJSAcquireContext`, `OOJSRelinquishContext` and `OOJSReportWarningWithArguments` take and return `JSContext*` (an incomplete `typedef struct JSContext JSContext`), where they used a stand-in `ooscript::Context` struct; `OOJSAcquireContext` returns `nullptr`. The digests and every check are unchanged. | The façade is gone; `OOStringExpander.mm` calls these functions with #768's `JSContext*`. |
