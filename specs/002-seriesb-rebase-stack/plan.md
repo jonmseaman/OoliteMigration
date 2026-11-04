@@ -1052,3 +1052,51 @@ sources outside the replayed trees.
      unchanged. The `poc/` harness drops `c_args` (its last C source is now C++).
   6. T070 lands here (its `idiom_check.py` import arrives at 022), as a commit after the replay; the tree
      passes it with no guard to fix.
+- **T051a, T055: step 023 replayed on #768's binding (2026-11-04): `e46db2373`, `d94938de9`, `167118dff` on
+  `seriesb/023-upstream-49a5eb9fc-ports`**, on 022 (`c3417fdff`); branch updated in place. The slug rename to
+  `023-upstream-28ceaaba0-ports` (title "Port upstream #766, #774, #781 and #783") is deferred to T057. 022's
+  tree had none of #783. Commits: (a) the end target's #783 port (`765619143`) and its fix (`2042fac85`) as
+  two cherry-picks, re-applied by code token onto the parent's layout (`.agent-tmp/step23/merge23.py`,
+  `tokmerge23.py`; the token edits equal the end target's, `tokcheck.py`); (b) old 023's fork-only tail
+  (`3ff386732`): version 1.95, `InfoPlist.strings` stored as UTF-8, Info-gnustep.plist kept in the macOS
+  bundle, the macOS build without Foundation (ICU, no objc in `darwin.ini`, `bundle_dylibs` siblings), the
+  macOS harness in `console.py`/`launch_snapshot.py`. Checks: mismerge flags only layout (the end target's
+  Google wraps against the parent's single lines; the tail's `install_packages.sh` line is #768's, not the
+  old step's); revert check flags 2 hunks, explained below; no lone `)`; no façade, no statistics,
+  `no_new_spidermonkey_or_gnustep` and no new suppressions pass; clang-format 22.1.8: the 7 `src/` files the
+  step changes are formatted. Gates (C++ era, scoop MSYS2 UCRT64 login shell): clean build rc=0 with **0
+  warnings**; oofnd 40/40, core 176/176, headers 2/2, game-unit pass; smoke clean (no leaked JS objects);
+  component 13/13 files (20 tests) on the first attempt, s6 included (port 8634, private
+  `OO_ADDITIONALADDONSDIRS`); harness 23/23; deployment build rc=0 with 0 warnings and its smoke pass. GUI
+  tier, window-free checks only (`-m offline` in g2, g6, g8, g9): 48 pass, the same 2 fail as at 021 (g2's
+  `if (mouse_click)` match wants the end target's 2-space indent; g6's wants `if (...) fullScreen = true;`
+  on one line). #783 does not fix them; step 024's reformat should. Tests: ledger "## Step 023".
+  Defaults taken:
+  1. **#783 on #742's layout.** The parent already has upstream #742 (the decoders are
+     `OOSDLJoystickManager`'s), so #783's `decodeButtonEvent()` lines go there, as the end target has them
+     after `4f1896f10`. #783's decoding tests decode through the test's `DecodingStickManager` with SDL's
+     event types, as `4f1896f10` adapted them; no assertion changed. The first commit alone, like the end
+     target's `765619143`, fails `savesAndLoadsSettings`; `2042fac85`'s cherry-pick fixes it.
+  2. **Old 023's tail as its own commit** (the recorded default; macOS CI and code kept, T058 "not
+     verified"). Kept from upstream's macOS build (`3193dfe80`, in the range): `-DOOLITE_SDL_MAC=1` and `-g`
+     in `src/meson/darwin/meson.build` (old 023 dropped them); the SpiderMonkey-era `XP_UNIX`/`XP_MACOSX`
+     that old 023 still had are not brought back (#768 removed them). Old 023's layout-only hunks go to 024.
+  3. **Revert check, 2 flags.** [r] `post_build.sh` no longer deletes `Info-gnustep.plist` from the bundle,
+     a line upstream's macOS port added: the C++ tree reads that file at run time (`PlayerEntity`,
+     `OOCacheManager`, `OOLogOutputHandler`, `OODebugTCPConsoleClient`, `OOOXZManager`), where upstream read
+     `NSBundle`'s Info dictionary, so this converts upstream's packaging, not drops it. [B]
+     `install_packages.sh` adds `icu4c` to #768's package line (oofnd needs ICU).
+  4. **Audit of the end target's other ports**: their upstream code is already in 022, so no commit.
+     `21c8c1df0` (#748 maths) came at 019. `4f1896f10` (#742) is in 022's code (remaining differences
+     are definition order and wrapping). `3978a13b4` (#780): every event site is in #780's form already;
+     only the fork's parameter name `OOJSVal` against 022's `JSValue` in `GuiDisplayGen` differs (upstream
+     has `jsval` both before and after). `8fb30e6ee` (#748 `OOOpenGLOnly.h`): upstream's form is in 022;
+     the end target's fork addition `|| defined(LINUX)` is not. The end target's pinning tests for these
+     (`test_OOJoystickDecoding`, `test_OOOpenGLOnly`, `test_EntityScriptEvents`) are not added here; they
+     are in the remainder below. **For Jon**: add them at a later step or at T055's final-tree check.
+  5. Remainder `seriesb/023-… → 8a0a3c97a`: 657 files, +243,497/−256,867 (022: 667 files). C/C++ files:
+     315 differ only in layout or comments, 114 only in token order (includes); 193 differ in code that
+     this step does not touch (022's remainder); the 5 files the step touches differ only in include order,
+     split string literals and definition order (024). Other: the 3 end-target tests above,
+     `.vscode`/`.zed`, CI and meson wiring, `post_build.sh`'s Windows DLL closure (the old stack's, not in
+     the new one: for Jon at T055), and `src/meson/darwin/meson.build` (default 2).

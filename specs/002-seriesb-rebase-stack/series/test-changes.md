@@ -546,3 +546,16 @@ parent's (#768-based) test code. No assertion changed.
 | `tests/unit/core/meson.build` | The parent's entries (#768's `OOJSClasses.cpp`, no façade backend, no `openal` suite) with `legacy_random.cpp`, `OOTCPStreamDecoder.cpp`, `unzip.cpp`, `ioapi.cpp`; old 022's edit to the `openal` suite comment not carried. | The parent has no `openal` suite comment (step 016's file). | n/a |
 | `tests/unit/core/*` (the tests the parent rebuilt on #768's API) | Old 022's spelling and linkage rules applied to the parent's code: `BOOL`→`bool`, `nil`→`nullptr`, `YES`/`NO`→`true`/`false`, `extern "C"` removed where the parent had it; `test_OOJSTimeLimiter.cpp` (#768's, new since 016) only has its `Run:` line changed. | Old 022's rule; old 022 never saw these files' current code. | None. |
 | `tests/check_debug_monitor_guards.py` (new, T070), its `debug_monitor_guards` test in the `headers` suite (`meson.build`) | Added in its own commit after the replay, the end target's file unchanged (`8a0a3c97a`, `100755`) and registered as the end target registers it. It imports `tests/idiom_check.py`, which this step brings. | It pins #756's rule that debug-monitor code is guarded by `OO_DEBUG_MONITOR_ENABLED`, not `NDEBUG`. The tree passes it as it stands (no guard to fix). | New test. |
+
+## Step 023
+
+Step 023 (`seriesb/023-upstream-49a5eb9fc-ports`, T051a, T055) on the rebuilt 022: upstream #783 from the end
+target (`765619143`, `2042fac85`) and old 023's fork-only tail (`3ff386732`). #783's new tests come with
+their commits; old 023's layout-only test changes are left to 024. No assertion changed.
+
+| path | what changed | why | assertions changed? |
+|---|---|---|---|
+| `tests/unit/core/test_OOJoystickManager.cpp` | #783's tests (`guiFunctionsHaveATableOfTheirOwn`, `decodesGuiButtons`, `savesAndLoadsGuiButtons`) added, then `2042fac85`'s edits to them, in the end target's text. `decodesGuiButtons` and `savesAndLoadsGuiButtons` decode through the test's `DecodingStickManager` (`NewDecodingManager()`) with `SDL_JoyButtonEvent`/`SDL_JoyHatEvent` and `SDL_HAT_*`, where `765619143` used the base manager's `JoyButtonEvent`/`JoyHatEvent`/`JOYHAT_*`. The block equals the end target's (`8a0a3c97a`) byte for byte. | The parent already has upstream #742's layout (the decoders are `OOSDLJoystickManager`'s); the end target made the same change to these cases with #742 (`4f1896f10`). | New tests; none changed. |
+| `tests/unit/core/test_OOSDLJoystickManager.cpp` | #783's `decodesGuiButtonsFromSDL` added, the end target's text. | #783. | New test. |
+| `tests/component/console.py` | On macOS the component console runs the game in a real window (no `SDL_VIDEODRIVER=offscreen`) and finds the binary in an app bundle's `Contents/MacOS`. Old 023's file, unchanged. | Old 023's fork-only tail (macOS harness for the Foundation-free tree). Windows and Linux behave as before. | None. |
+| `tests/launch_snapshot.py` | Stages a macOS app bundle (`Contents`, a real `Contents/MacOS` with hard-linked files) and runs `MacOS/oolite` from it. Old 023's file, unchanged. | As above. | None. |
