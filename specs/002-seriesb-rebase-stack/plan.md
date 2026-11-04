@@ -522,6 +522,21 @@ sources outside the replayed trees.
   those files were rebuilt from #768's version with the old hunks re-applied, and
   `.agent-tmp/step6/mismerge.py` checks clean merges for unexpected removals — use it on every
   later replay.
+- **Steps 007–008 replayed (2026-11-03).** 007 = `405db782b` (79 conflicted files, 243 blocks), 008 =
+  `f381fd0c7` (75 files, 498 blocks; the 11 bridges #768's code still used deleted as the old step does),
+  both re-expressed on #768's code by parallel agents with the 006 brief. Both: clean build with only
+  QuickJS-ng's 4 `-Wpedantic` warnings, oofnd 39/39 then 44/44, game-unit 1/1 (007), smoke with no leaked
+  JS objects, all 8 component scenarios, no façade, tests equal to the old steps' except 007's expander
+  stubs (ledger). Defaults taken: (1) 007's QuickJS-ng `-O2` pin goes into the options of #768's
+  `dependency('quickjs-ng')` (measured: 10 TUs at `-O2` with NDEBUG), not into a wrap patch, since the
+  wrap is #768's; (2) 007 also sets the Windows `threads` override the old stack had, because the old
+  step's new `game_test_defaults_bridge` link added a fourth unused `-pthread` warning; with it the
+  parent's three go too, so from 007 the build prints 4 warnings, not 7; (3) #768 code the old steps
+  never saw is moved the same way (reset observers to `oo::NotificationCenter` in 007; `quitGame()` via
+  `OOScheduleDeferredCall`; the script cache, class registry and console syntax check off the deleted
+  bridges in 008); (4) the unregistered expander test's stub declares the NSString
+  `OOJSReportWarningWithArguments` while 008's expander calls the `cxx_` form, as in the old step 008
+  itself (tests unchanged from the old step; the test is not built).
 - **Open, default taken: the harness's `meson.build` in steps 005–009.** From 005 the engine header
   imports `oofnd/objc/OOObject.h`, but #767's `poc/meson.build` lacks `src/` on its include path and
   the oofnd dependencies, so it probably no longer builds on Linux. It cannot be built here (it needs
