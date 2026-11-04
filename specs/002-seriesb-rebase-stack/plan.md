@@ -726,3 +726,11 @@ sources outside the replayed trees.
      checks unchanged (ledger row).
   5. T060: no `+ObjCBridge` wrapper loses its last caller in this step beyond
      `OOJSGlobal+ObjCBridge.mm`, which the old step already deletes.
+- **T051c (2026-11-04): the end target restores #768's shutdown leak check.** `9d4ce2b1e` on
+  `feature/upstream-quickjs-poc-cxx` (on `655583067`) = `anchors.develop_target`.
+  `GameController::exitAppWithContext` calls `OOJavaScriptEngine::sharedEngine()->shutDown()` after
+  the defaults are synchronized, under #768's `#ifndef NDEBUG` (step 012 keeps the same guard).
+  `sharedEngine()` creates the engine if there is none, as #768's `+sharedEngine` does. The new
+  component test `test_exit_runs_js_leak_check.py` fails without the call and passes with it. Gates:
+  build 0 warnings, unit 220 Ok, smoke clean, harness 23/23, deployment build and its smoke pass
+  (NDEBUG, so the check is compiled out there, as upstream does).
