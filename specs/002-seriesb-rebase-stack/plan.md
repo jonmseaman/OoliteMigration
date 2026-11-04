@@ -974,3 +974,29 @@ sources outside the replayed trees.
      020's global form.
   6. **For Jon:** old 020 (and the end target) rewrapped MiniZip's vendored banner comments, leaving lone
      `)` lines in `ioapi.h` and `unzip.h`. Kept, as the old step and the end target have them.
+- **T054, T069: step 021 replayed on #768's binding (2026-11-04): `719f68750` on `seriesb/021-tests-and-tooling`**,
+  on 020 (`7b8ef45f0`), plus T069 as its own commit `ecbc3e19c`. The cherry-pick conflicted in 3 tests
+  (`test_OOJSConsole`, `test_OOJSMissionVariables`, `test_ShipEntity`: old 021's Google layout against the
+  parent's) and 2 façade files (modify/delete, kept deleted). Old 021's façade hunk made the backend run a
+  class's `delProperty` for a property the object does not have; #768's binding already does (QuickJS-ng
+  calls the exotic `delete_property` then), so nothing in `src/` is re-expressed. Its façade test case moves
+  to `test_OOJavaScriptEngine` `deleteReachesTheClassHookWithNoOwnProperty` on #768's API, an addition that
+  passes; `test_OOJSConsole`'s change was already the parent's (step 016). Outside the unit tests the step's
+  +/− lines equal old 021's (`.agent-tmp/step21/old.d`, `new.d`); no lone `)` line; no revert of upstream or
+  #768 code. Gates (C++ era, scoop MSYS2 UCRT64 login shell): clean build rc=0 with only QuickJS-ng's 4
+  `-Wpedantic`; oofnd 40/40, core 176/176, headers and game-unit pass; smoke clean (no leaked JS objects);
+  component 14/14 (port 8632, private `OO_ADDITIONALADDONSDIRS`), s6 on its second attempt (the known
+  flake), the tutorial scenario, its offline test and the T069 test on the first; harness 23/23;
+  deployment build rc=0 with 0 warnings and its smoke pass; `no_new_spidermonkey_or_gnustep` pass; no
+  façade, no statistics, no suppressions; clang-format 22.1.8: `ShipEntity.cpp`, the one `src/` file the
+  step changes, is formatted (the tree has 1 unformatted file, `OORegExpMatcher.cpp`, the parent's). Tests
+  equal old 021's except the rows under "## Step 021". Defaults taken:
+  1. The new unit tests are written in the parent's layout (step 024 reformats).
+  2. `tests/run.sh` is committed `100755`, as the repo rule and the end target have it (old 021: `100644`).
+  3. T069 lands here, not at 003 (an 18-branch sync chain for one test); it is the end target's file
+     unchanged and passes.
+  4. **For Jon:** the GUI tier was not run on the desktop. Its source-only checks in the four files old 021
+     changes were run (no window): 48 pass, 2 fail (`test_g2` `test_a_single_row_step_is_reachable_only_from_the_arrow_keys`,
+     `test_g6` `test_the_fullscreen_flag_is_only_assigned_by_the_toggle_at_runtime`). Both fail the same way
+     on old 021's tree and pass on the end target, so they are the old stack's state at this step, not the
+     replay's; a later step's sources satisfy them.

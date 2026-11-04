@@ -507,3 +507,20 @@ which already differed from old 019's (rows above). Two are not in the parent. O
 | 30 tests equal to old 020's in code (`test_AI.cpp`, `test_OOJSCall.cpp`, `test_OOCheckJSSyntaxVerifierStage.cpp` and others) | Comment wording or wrapping differs from old 020's where the parent had also edited the comment: the parent's description is kept where it was the true one, and history phrases both left are cut. | Comment merge. | None. |
 | `tests/unit/core/meson.build`, `tests/unit/oofnd/meson.build` | The parent's lists. The "retired with its only subject" comment lines are removed, as old 020 removed them; the façade backend old 020's lines named is not in the tree. | The parent's lists differ (rows above). | n/a |
 | `tests/unit/core/test_OOJSEngineTimeManagement.hpp`, `tests/unit/test_jsengine_quickjs.cpp` | Old 020's edits not carried. | Not in the parent (façade-only, rows above). | n/a |
+
+## Step 021
+
+Step 021 (`seriesb/021-tests-and-tooling`, T054) replayed on #768's binding. Its tests are old 021's: the
+tutorial component scenario (`t1_tutorial_walkthrough.feature`, `keyboard.py`, `steps/tutorial_steps.py`,
+`test_t1_tutorial_walkthrough.py`, `test_tutorial_steps_offline.py`), the component and GUI requirements,
+the GUI tests' C++ source patterns (`test_g2`, `test_g6`, `test_g8`, `test_g9`) and `tests/run.sh` come along
+byte for byte. Each unit test differs from old 021's only as below and as the parent's already differed
+from old 020's (rows above). No assertion changed.
+
+| path | what changed | why | assertions changed? |
+|---|---|---|---|
+| `tests/unit/test_jsengine_quickjs.cpp` | Old 021's `Vault` case (a class with only a get and a delete hook; `delete vault.a` with no own property reaches the hook) moves to `tests/unit/core/test_OOJavaScriptEngine.cpp` as `deleteReachesTheClassHookWithNoOwnProperty`, on #768's API: a class with `get_property` and `delete_property` exotic methods, registered with `OOJSRegisterClass`. The same checks: `[vault.a, delete vault.a, vault.a === undefined].join('\|')` is `11\|true\|true`, the hook ran once and cleared the value. It also deletes `vault` from the global afterwards. | The file is the façade backend's own test, absent since step 003 (FR-015). #768's binding already behaves this way (QuickJS-ng calls `delete_property` for a property the object does not have), so the case is an addition that passes; the old step's fix to the façade backend has nothing to fix on #768. | None (moved). |
+| `tests/unit/core/test_OOJSConsole.cpp` | Old 021's change (the delete of `also-gone` reaches the monitor: 4 configuration sets, not 3) is already the parent's (step 016's file); not changed here. | The parent took it with #768's `ConsoleSettingsDeleteProperty`. | None. |
+| `tests/unit/core/test_OOJSMissionVariables.cpp` (`deletingAVariableTheScriptNeverSet`), `tests/unit/core/test_ShipEntity.cpp` (`CountingFlasher`, `updateReachesNonShipSubentities`, the `OOFlasherEntity.h` include) | Added as old 021 adds them, in the parent's layout (tabs, braces on their own lines, one line per call; the include in the parent's include order). | The parent's layout; step 024 reformats. | None. |
+| `tests/component/test_exit_runs_js_leak_check.py` (new, T069) | Added in its own commit after the replay, the end target's file unchanged (`8a0a3c97a`). | It pins #768's exit `shutDown` leak check, which the stack keeps throughout; added at 021, the tests-and-tooling step. | New test. |
+| `tests/run.sh` | Committed `100755` (old 021 had `100644`). | It is run as a bare program and has a shebang (repo rule); the end target has it `100755`. | n/a |
