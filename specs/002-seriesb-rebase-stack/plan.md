@@ -481,3 +481,15 @@ sources outside the replayed trees.
   `ShipScriptEventNoCx` where #780 calls `doScriptEvent:OOJSID("playerWillSaveGame")`. Under Jon's
   rule the end target must take upstream's forms first (T051b), or the last step would have to
   revert them to match it.
+- **T051b audit and ports (2026-11-03)** (`.agent-tmp/t051b/audit.md`). Of the range's 19 PRs, 16
+  need nothing in the end target (present, ported in 018/023, net zero, or a deliberate fork form:
+  Google style for #749/#751; #766's macOS parts deferred to the macOS port; SpiderMonkey items
+  excluded by hard rule 6). Ported with new tests: #780 (`3978a13b4`: `playerWillSaveGame`,
+  `playerJumpFailed`, `alertConditionChanged`, `entityDestroyed` through `doScriptEvent`; pinned by
+  `test_EntityScriptEvents.cpp`, 8 cases) and #748's `OOOpenGLOnly.h` (`8fb30e6ee`, pinned by
+  `test_OOOpenGLOnly.cpp`). Gates at `8fb30e6ee`: clang build 0 warnings, 218 suites Ok, harness Ok.
+  Stopped (hard rule 1), for Jon: #742 (decoding in `OOSDLJoystickManager`; existing
+  `test_OOJoystickManager`/`test_OOSDLJoystickManager` call the base-class decoders and `Joy*Event`
+  types) and #748's maths headers (upstream's do not compile standalone, so the `headers` suite
+  fails). GCC: two core tests fail to link under LTO (`oo::EntityDescription`) already at
+  `2042fac85`; pre-existing, its own task.
