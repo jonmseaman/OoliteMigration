@@ -199,3 +199,32 @@ façade in the old step; it is not registered in meson (the old step's PR says s
 | path | what changed | why |
 |---|---|---|
 | `tests/unit/expander/OOJavaScriptEngine.h`, `tests/unit/expander/test_string_expander.mm` (the three engine stubs) | The stubs of `OOJSAcquireContext`, `OOJSRelinquishContext` and `OOJSReportWarningWithArguments` take and return `JSContext*` (an incomplete `typedef struct JSContext JSContext`), where they used a stand-in `ooscript::Context` struct; `OOJSAcquireContext` returns `nullptr`. The digests and every check are unchanged. | The façade is gone; `OOStringExpander.mm` calls these functions with #768's `JSContext*`. |
+
+## Step 009
+
+Step 009 (`seriesb/009-leaf-conversions`, T053) replayed on #768's binding. The old step adds the `core`
+suite; ten of its test files and `tests/unit/core/meson.build` used the façade, and one used the fork's
+pre-#742 joystick event types. Each is moved as the end target's (`21c8c1df0`) version of the same test
+was (groups t1–t5 above), back at this stage (Objective-C++, the classes' APIs as step 009 has them).
+Common to the binding tests (`test_OOJSVector`, `test_OOJSQuaternion`, `test_OOJSClock`,
+`test_OOJSFunction`, `test_OOJSTimer`, `test_OORegExpMatcher`): the test makes a QuickJS-ng runtime and
+context (`JS_NewRuntime`/`JS_NewContext`, `gOOJSMainThreadContext` set), evaluates with `JS_Eval`, frees
+the values it owns, and its engine stand-ins take #768's signatures (`JSContext*`, `JSValueConst`,
+`int argc`, `JSCFunctionListEntry*`, owned `JSValue` results); stand-ins the linked `OOJSClasses.mm`
+needs are added (`cxx_OOJSIDFromString`, `OOJSNativeFailure`, `OOJSReportPendingException`), and the
+`OOJSIsSubclass`/class-table stand-ins give way to the real registry.
+
+| path | what changed | why | assertions changed? |
+|---|---|---|---|
+| `tests/unit/core/meson.build` | `Core/Scripting/ooscript/JSEngine_quickjs.cpp` is removed from seven tests' source lists (QuickJS-ng comes in through `oolite_dependencies`); `Core/Scripting/OOJSClasses.mm` is added to `test_OOJSVector`, `test_OOJSQuaternion`, `test_OOJSClock` and `test_OOJSTimer`. | The façade backend is gone; class registration goes through the real registry. | n/a |
+| `tests/unit/core/test_OOJSVector.mm` | As above; the fake Entity class is registered with `OOJSRegisterClass` and found with `JSEntityClassID()`; `nativeInterface` uses `JSValue`/`int consumed` and `JS_NULL` for nullptr; `statistics` keeps each report PList in a local (a temporary left `getIf` a dangling pointer under ASan), as the end target does. | Façade removed. | `OO_CHECK(ooscript::isInRequest(sContext))` in `nativeExceptions` removed (QuickJS has no requests), as in the end target. None other. |
+| `tests/unit/core/test_OOJSQuaternion.mm` | As Vector; `makeEntity` is a `JS_NewCFunction` putting the Objective-C `FakeEntity` in the opaque slot; five `nativeInterface` checks are written with `JSValue` forms (`JS_NewInt32`, `JS_NULL`, `JS_IsObject(made)`), same meaning. | Façade removed. | `isInRequest` check removed, as in the end target. None other. |
+| `tests/unit/core/test_OOJSClock.mm` | As above; `OOJSUnconstructableConstruct` stand-in returns `JS_EXCEPTION`; FakePlayer/FakeUniverse kept (still Objective-C here). | Façade removed. | `isInRequest` check removed, as in the end target. None other. |
+| `tests/unit/core/test_OOJSFunction.mm` | As above; a NULL scope/`this` is `JS_UNDEFINED`, a NULL function `JS_NULL`; function identity compared by object pointer; the `predicate` and `cxxAndFacade` cases kept (the predicate API and the Objective-C facade still exist at this step). | Façade removed. | `isInRequest` check in `initWithName` removed, as in the end target. None other (60 checks, was 61). |
+| `tests/unit/core/test_OOJSTimer.mm` | As above; `OOJSRegisterObjectConverter`/`OOJSObjectGetterImplPRIVATE`/`OOJSObjectWrapperToString` stand-ins take #768's forms; `-oo_jsValueInContext:` returns `JSValue`; `cxx_OOStringFromJSString` stand-in removed (#768 has none). | Façade removed. | The strict-mode write to read-only `isRunning` expects `threw: no setter for property` (was `false`): #768 defines it with `OOJS_PROPERTY_RO`, exactly the end target's change (group t3/t4 row, plan.md "Read-only properties throw in strict code"). None other. |
+| `tests/unit/core/test_OORegExpMatcher.mm` | The engine stand-in builds its context on QuickJS-ng; the `OOJSFunction`/`OOJSValue` stand-ins have #768's selectors and hold owned values; the custom global class is gone. | Façade removed. | None (50 checks). |
+| `tests/unit/core/test_OOCharacter.mm` | The façade link stubs (`gOOJSMainThreadContext`, `beginRequest`/`endRequest`/`isInRequest`) become `JSContext *gOOJSMainThreadContext = nullptr;`. | Façade removed; as the end target. | None. |
+| `tests/unit/core/test_OOCommodities.mm` | The façade stubs become the aborting engine stubs `OOCommodities.mm` links at this step (`gOOJSMainThreadContext`, `OOJSInternAtomPRIVATE`, `OOJSValueFromNativeObject`, `OOJSValueFromPList`, `cxx_OOJSPListFromJSObject`). | Façade removed; as the end target plus `OOJSValueFromNativeObject`, still called here. | None. |
+| `tests/unit/core/test_OOWeakReference.mm`, `tests/unit/core/test_OOWeakSet.mm` | The `ooscript/JSEngine.hpp` include and the `ooscript::undefinedValue()` stand-in are removed. | The code under test returns QuickJS-ng's `JS_UNDEFINED`. | None. |
+| `tests/unit/core/test_OOSDLJoystickManager.mm` (`makesEvents`) | The event makers' results are held as `SDL_JoyAxisEvent`/`SDL_JoyButtonEvent`/`SDL_JoyHatEvent` (were the fork's `Joy*Event` types). | #742's layout is kept (Jon, 2026-11-03): `makeJoy*Event` answer SDL's types; the same change as the end target's row above. | None. |
+| `tests/unit/expander/OOJavaScriptEngine.h`, `tests/unit/expander/test_string_expander.mm` | The old step's new `cxx_OOJSReportWarningWithArguments` stub takes `JSContext*` (was `ooscript::Context`), as step 007 did for the other three stubs. Not registered in meson. | Façade removed. | None. |

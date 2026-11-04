@@ -551,3 +551,32 @@ sources outside the replayed trees.
   with "TypeError: not an object"). Gates: build 0 warnings, 220 suites Ok, harness 23/23, smoke with
   no warning. `anchors.develop_target` = `fce807b50`. Replays of old step 022 (QuickJS-ng upgrade)
   must keep the patch.
+- **Step 009 replayed (2026-11-03): `dbb0c371c` on `seriesb/009-leaf-conversions`**, on 008
+  (`f381fd0c7`). 60 conflicted files (~370 blocks), re-expressed on #768's code by nine parallel
+  agents (`.agent-tmp/step9/brief.md`); the worst (OOJSVector, OOJSQuaternion, OOJSFunction, OOJSTimer,
+  OOJSScript, OOJSConsole) rebuilt from 008 with the old hunks re-applied. Clean build (isolated
+  Objective-C MSYS2) rc=0 with only QuickJS-ng's 4 `-Wpedantic` warnings; oofnd 46/46, core 55/55;
+  smoke with no leaked JS objects; 8/8 component scenarios (s4 failed once on its ambient-population
+  precondition, passed on retry); no façade; tests equal to old 009's except the 13 ledgered under
+  "## Step 009" in `series/test-changes.md`. Defaults taken:
+  1. #768's native-wrapper macros stay in `OOJavaScriptEngine.h` (with #768's names) and get the old
+     step's C++ try/catch and scope-guard form there; `OOJSEngineNativeWrappers.h` stays #768's.
+  2. **For Jon:** the old step's Vector3D/Quaternion conversion statistics (`OO_DEBUG` only,
+     `PS.callObjC("reportJSVectorStatistics")`) are kept though #768 removed them, because the old
+     step's new `core` tests assert them (hard rule 1) and the end target has them. Under the
+     "keep #768" rule they would go; that needs the tests' `statistics` cases dropped, which only Jon
+     can sign off.
+  3. The new `test_OOProfilingStopwatch` asserts a reversed delta is negative; #768's Windows
+     `timeGetTime` path subtracted unsigned `DWORD`s. Fixed on #768's code (signed 32-bit difference)
+     rather than restoring the fork's steady-clock branch #768 removed. The end target still has that
+     branch; T055's final-tree check will show the difference.
+  4. #768 code using Foundation that the old step never saw moves off it as the end target does
+     (`NSCAssert` -> `OOCAssert`, `OOJSWrapScriptSource`/`OOJSClassNameOfValue` -> `std::string`,
+     SystemInfo's null-assigned set, Universe/Player jump-cause and alert-condition events, the
+     GuiDisplayGen String-object test by class id).
+  5. OOSDLJoystickManager converts to `cxx::` on #742's layout; the three SDL decoders stay
+     Objective-C in a category, since they use OOJoystickManager's ivars.
+  6. **Harness:** moved off GNUstep in this step (Foundation-free Objective-C++ on oofnd, the game's
+     QuickJS-ng; #767's `-Wincomplete-implementation` pragma removed, the unused engine methods are
+     no-ops instead). It builds and runs on Windows: 20 checks, 0 failures; the "Linux only" error is
+     gone. This closes the "harness's meson.build in steps 005–009" item above.
