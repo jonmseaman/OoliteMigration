@@ -679,3 +679,26 @@ sources outside the replayed trees.
 - **For Jon: `test_OOJoystickManager` `facadeContract` (step 010).** One check's receiver moves from
   the base manager to the decoding manager under #742; the expected value is unchanged. There is no
   end-target counterpart, so it waits for his sign-off.
+- **Step 011 replayed (2026-11-04): `c5e9fa535` on `seriesb/011-first-slices`**, on 010 (`0747c771a`).
+  44 conflicted files plus 57 façade users; eight parallel agents (`.agent-tmp/step11/brief.md`) rebuilt
+  OOJavaScriptEngine.mm, OOJSPlayerShip.mm and OOJSSystem.mm from 010 with the old hunks re-applied.
+  Gates (isolated Objective-C MSYS2): clean build rc=0 with only QuickJS-ng's 4 `-Wpedantic`; oofnd
+  47/47, core 165/165; smoke clean (no leaked JS objects); component 10/10 on the first attempt;
+  harness 23/23; deployment build rc=0 (plus the parent's `legacy_random.c` deployment-only warning)
+  and its smoke pass; no façade, no statistics; tests equal to old 011's except the rows under
+  "## Step 011". Defaults taken:
+  1. The engine is `cxx::OOJavaScriptEngine` with #768's members and selectors; its one facade is the
+     sender of the reset notifications, so `oo::ToObjC(engine)` always answers the same object.
+  2. `OOJSSpecialFunctions` keeps #768's `JSSpecialFunctionsObjectWrapper` (the end target's form),
+     so the old step's `+ObjCBridge` pair, left empty, is not added.
+  3. Old 018/023 folded: a52 (GameController's paused-console priority under
+     `OO_DEBUG_MONITOR_ENABLED`), a88-90 (OOMesh), a124-126 + a166 (#744: no dark-mode code; test
+     line ledgered), a169 (#747 `copyUrlKey` test), b585/b591 (#774), b587-589 (#766 front-buffer
+     snapshot, on `OOLITE_MAC_OS_X` until 016).
+  4. The old step's `test_OOMaterialConvenienceCreators` `typeid` form warns; it takes the end
+     target's warning-free form (ledgered, no assertion changed).
+  5. **For Jon:** `test_OOJavaScriptEngine`'s plain-OOObject check becomes `!JS_IsObject` with the
+     exception cleared (#768 boxes undefined, which throws); the end target has no counterpart.
+  Found: the component tier cannot move the game off port 8563 (`console.py` writes no
+  `debugConfig.plist`); this run put one in a private `OO_ADDITIONALADDONSDIRS` root, as
+  `launch_snapshot.py` does, with `OO_CONSOLE_PORT=8621`.
