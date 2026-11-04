@@ -504,3 +504,9 @@ sources outside the replayed trees.
   `git push --force-with-lease origin <branch>` for each rebuilt `seriesb/*` step, keeping the
   existing names. Jon noted that adding commits on top would also have been acceptable to him; the
   rebuild stays history-clean (no façade commit reachable from any step) as FR-017 asks.
+- **End target final (2026-11-03): `feature/upstream-quickjs-poc-cxx` at `21c8c1df0`**, now
+  `anchors.develop_target`. #742 (`4f1896f10`: SDL decoding in `OOSDLJoystickManager` on SDL event
+  types, #783's GUI decode with it; 8 test cases moved, ledgered under "## End target (T051b)",
+  `bca7f1b95`; new `test_OOJoystickDecoding.cpp`) and #748's maths headers (`21c8c1df0`: upstream's
+  form, shared part split into `OOMathsBase.h`; new `test_OOMathsHeaders.cpp`). Clang: 0 warnings,
+  220 suites Ok, harness Ok. Audit: no recent upstream PR left in older form.
