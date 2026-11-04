@@ -720,8 +720,9 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
   Cocoa-UI resource path, the #774 splash window, the #766 screenshot), and old 023/025 restored
   them. Under the no-revert rule the rebuilt steps keep them throughout; confirm at T059 with the
   placement plan.
-- [ ] T062 [US7] Retitle step 017 at its replay ("Fix code that GCC warns about": its code fixes
-  stay, GCC is not required, Jon 2026-11-04).
+- [x] T062 [US7] Retitle step 017 at its replay ("Fix code that GCC warns about": its code fixes
+  stay, GCC is not required, Jon 2026-11-04). Done at the replay: "Fix code that GCC warns about or
+  evaluates differently" (the old step also orders random draws as Clang did); no GCC job in CI.
 - [ ] T063 GCC LTO link failure on the end target (`oo::EntityDescription` undefined in two core
   tests): `develop`'s own problem, outside seriesb gating. A separate task for the fork.
 - [ ] T064 [US7] #767's harness `meson.build` in steps 005–008 probably no longer builds on Linux

@@ -892,3 +892,26 @@ sources outside the replayed trees.
   7. T070 not done here: the tree passes `check_debug_monitor_guards.py` (run from scratch, rc=0, no guard
      to fix), but the check imports `tests/idiom_check.py`, which arrives with step 022, and its meson hook
      sits in the `headers` suite, which arrives with step 019. Default: add it at 022's replay.
+- **T054, T062: step 017 replayed on #768's binding (2026-11-04): `c37c508dd` on `seriesb/017-gcc-build`**,
+  on 016 (`ff8664462`), retitled "Fix code that GCC warns about or evaluates differently" (the old step
+  also orders random draws as Clang did, so "warns about" alone undersells it); branch slug kept. 2
+  conflicted source files (`OO_PRINTF_FORMAT` on #768's `JSContext*` signatures) and 53 tests (`#import`
+  to `#include` on the parent's lines), resolved by one agent (`.agent-tmp/step17/`). Gates (C++ era,
+  scoop MSYS2): clean build rc=0 with only QuickJS-ng's 4 `-Wpedantic`; oofnd 40/40, core 175/175,
+  headers and game-unit pass; smoke clean (no leaked JS objects); component 10/10 on the first attempt
+  (port 8629, private `OO_ADDITIONALADDONSDIRS`); harness 23/23; deployment build rc=0 with 0 warnings
+  (the parent's `legacy_random.c` warning is fixed here) and its smoke pass;
+  `no_new_spidermonkey_or_gnustep`, no new suppressions, no façade, no statistics; clang-format 22.1.8:
+  the same 17 files as the parent, none new. Revert check: no hunk flagged. Tests equal old 017's except
+  the rows under "## Step 017". GCC was not built (not a gate). Defaults taken:
+  1. Old 018/023 folded: a10, 17, 27, 49, 55, 56, 64, 66, 72, 74, 76, 83, 87, 91, 93, 104, 115, 122, 127,
+     130 (include what you use); a81 was already satisfied; a75 (`gnu_inline`), a120/a121
+     (`legacy_random.c`), a128 and b595 (`chdir` results), b48 and b388 (`PRIu64`, in the current
+     layout, not old 023's). `OOCharacter.cpp` also includes `<cinttypes>`: the Clang build does not
+     reach it transitively there.
+  2. No CI hunk to skip: old 017 changes no workflow and `gcc.ini` was already in the tree.
+  3. `OOMathsBase.h` (#748, end target `21c8c1df0`) is not old 017's; it lands with the headers suite
+     (step 019), as the placement table says.
+  4. **For Jon:** clang-format 22.1.8 finds 17 unformatted files at 016 and 017 (5 at 014, 6 at 015; 0 in
+     the old stack), all in files the rebuilt steps resolved by hand; the old step's gate had the check.
+     Step 024 reformats everything; until then the rebuilt steps fail the per-step `clang_format` check.

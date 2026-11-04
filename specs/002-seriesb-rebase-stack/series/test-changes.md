@@ -460,3 +460,19 @@ were. Tests keep old 016's `#import` lines (step 017 converts them); the parent'
 | `tests/unit/expander/test_string_expander.cpp`, `tests/unit/expander/OOJavaScriptEngine.h` (the `.mm` and `.cpp` did not pair) | Old 016's `.cpp` with the parent's ledgered changes (stubs on `JSContext*`; the #747 digests). | The parent changed the `.mm` the old step deleted. | Only the #747 digests already ledgered. |
 | `tests/unit/core/test_PlayerEntity.cpp` case `lastsaveNameIsRememberedInTheDefaults` (#740, the parent's); `test_OOOXZManager.cpp` case `copyUrlKey` (#747, the parent's); `test_OORegExpMatcher.cpp` case `matches` (step 010's) | `@autoreleasepool` becomes `oo::AutoreleaseScope`. | No Objective-C left. | None. |
 | Comment-only: `test_AI.cpp`, `test_OODebugMonitor.cpp`, `test_OOShipGroup.cpp`, `test_OOJSEntity.cpp`, `test_OOJSGuiScreenKeyDefinition.cpp`, `test_OOJSInterfaceDefinition.cpp`, `test_OOJSPopulatorDefinition.cpp`, `test_OOCombinedEmissionMapGenerator.cpp`, `test_OOPlanetTextureGenerator.cpp`, `test_OOStandaloneAtmosphereGenerator.cpp` | Bead ids dropped from comments the old step changed. | As the parent did. | None. |
+
+## Step 017
+
+Step 017 (`seriesb/017-gcc-build`, T054, T062) replayed on #768's binding. Its tests are old 017's: every
+`#import` left in the tests becomes `#include`, and the GCC fixes (`test_Entity.cpp`'s typed accessor,
+`test_OOCombinedEmissionMapGenerator.cpp`'s split comparison, `test_objc_assert.cpp`'s GCC branches) come
+along unchanged. The conversion is made on the parent's lines, so each test differs from old 017's only as
+the parent's already differed from old 016's (rows above). No assertion changed.
+
+| path | what changed | why | assertions changed? |
+|---|---|---|---|
+| `test_OOExhaustPlumeEntity.cpp`, `test_OOFlasherEntity.cpp`, `test_OOPlanetEntity.cpp`, `test_OOSunEntity.cpp`, `test_OOVisualEffectEntity.cpp`, `test_OOWaypointEntity.cpp`, `test_WormholeEntity.cpp`, `test_StationEntity.cpp` (`OOJSEntity.h`, `OOJSShip.h`), `test_OOJoystickManager.cpp` (`OOSDLJoystickManager.h`), `test_OOJSEngineTimeManagement.cpp` (`OOJSEngineTimeManagement.h`), `test_OOJSDock.cpp` (`OOJSEngineCore.h`) | The parent's own `#import` lines, which old 016 did not have, become `#include` as well. | The old step's conversion, applied to every `#import` in the tests. | None. |
+| `test_OOJSConsole.cpp` | Old 017's GCC branches for the two `__PRETTY_FUNCTION__` checks are not added: the parent already has them, with #768's native signature (`JSValue ...(JSContext*, JSValue, int, JSValue*)`) in place of the façade's. | Façade removed (end target's form). | None. |
+| `test_OODebugMonitor.cpp` | The `OOJSEngineCore.h` include old 017 adds for GCC is the parent's line (no bead id), now `#include`. | As the parent. | None. |
+| `test_OOJSPrivateObject.cpp`, `test_OOJSTimer.cpp`, `test_OOJSCall.cpp` | Old 017's `#import "OOJSEngineNativeWrappers.h"` to `#include` has no counterpart: the parent's tests do not include it (#768's engine). | Façade removed. | None. |
+| Comment-only: the test files whose converted `#include` lines carry a comment (`test_AI.cpp`, `test_CollisionRegion.cpp`, `test_OOBreakPatternEntity.cpp`, `test_OODebugMonitor.cpp`, `test_OOECMBlastEntity.cpp`, `test_OOFlashEffectEntity.cpp`, `test_OOJSCall.cpp`, `test_OOLaserShotEntity.cpp`, `test_OOLightParticleEntity.cpp`, `test_OOOXZManager.cpp`, `test_OOParticleSystem.cpp`, `test_OOPlanetDrawable.cpp`, `test_OOPlasmaShotEntity.cpp`, `test_OOQuiriumCascadeEntity.cpp`, `test_OOSparkEntity.cpp`, `test_ShipEntityAI.cpp`, `test_StationEntity.cpp`) | The parent's comments (bead ids already dropped) kept. | As the parent did. | None. |

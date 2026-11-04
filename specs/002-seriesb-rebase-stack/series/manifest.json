@@ -1867,7 +1867,7 @@
    },
    "state": "verified",
    "target_tree": "9622719e0f3dcee0b7ae6a0a54a7d566866e6c09",
-   "title": "Build with GCC as well as Clang",
+   "title": "Fix code that GCC warns about or evaluates differently",
    "verification": {
     "after_sync": 0,
     "checks": {
