@@ -595,3 +595,9 @@ sources outside the replayed trees.
   them are removed, each listed in `series/test-changes.md` (end target under "## End target
   (T051b)", step 009 under "## Step 009"), an exception to hard rule 1 Jon signed off with this
   decision.
+- **Statistics removed (2026-11-04).** End target `655583067` (also drops `OOJSCall`'s
+  statistics-only `kPlayerMethods` table; build 0 warnings, 220 Ok, harness 23/23, smoke clean) =
+  `anchors.develop_target`. Step 009 gains `ee0a23aca` (statistics out; the two `+ObjCBridge`
+  files that held only their `PlayerEntity` categories deleted) and `1912db791` (the
+  primitive-property harness test, 23/23); oofnd 46 + core 55 Ok, smoke clean. Ledger `10e88e853`.
+  Tip of 009 = `1912db791`.
