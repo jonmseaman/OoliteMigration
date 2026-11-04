@@ -500,3 +500,7 @@ sources outside the replayed trees.
   (T051b)" (an exception to hard rule 1 like FR-015). (2) #748's maths headers: upstream's form, with
   `OOMaths.h`'s scalar/macro part split into its own header that each maths header includes, so every
   header compiles standalone and the `headers` suite passes unchanged.
+- **Jon, 2026-11-03: force-push the rebuilt branches.** The handover (T057) gives
+  `git push --force-with-lease origin <branch>` for each rebuilt `seriesb/*` step, keeping the
+  existing names. Jon noted that adding commits on top would also have been acceptable to him; the
+  rebuild stays history-clean (no façade commit reachable from any step) as FR-017 asks.
