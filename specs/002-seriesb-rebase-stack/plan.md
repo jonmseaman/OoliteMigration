@@ -613,6 +613,6 @@ sources outside the replayed trees.
 - **Jon, 2026-11-04: old 018's (and 023's) upstream ports move earlier.** No branch may revert an
   upstream fix, so each hunk of old 018 (#369–#765 ported into the C++ code) and old 023 (#766,
   #774, #781) belongs in the step that converts or writes the code it touches. A placement plan is
-  being drawn up (`.agent-tmp/s018/placement.md`); replays of 010–017 fold in their hunks, and any
+  being drawn up (`series/review/placement-018-023.md`); replays of 010–017 fold in their hunks, and any
   hunk owned by rebuilt 003–009 gets a follow-up commit there, merged up. 018 and 023 are then
   dropped; #783's port stays as its own late step.

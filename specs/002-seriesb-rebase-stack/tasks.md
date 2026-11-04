@@ -690,7 +690,7 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
     the fork's unconverted macOS platform code. That is recorded as "macOS not verified" (the
     series already says so), not fixed here. The Apple Silicon phase owns it.
 - [ ] T059 [US7] **Old 018/023's upstream ports move earlier** (Jon). Follow
-  `.agent-tmp/s018/placement.md`:
+  `series/review/placement-018-023.md`:
   - give the rebuilt steps 003–009 a follow-up commit for each port they own, then run
     `git town sync --stack --detached --no-push`;
   - replays of 010–017 fold in theirs;
