@@ -386,7 +386,7 @@ def unit_suites(repo, tree):
 
 
 def verify_step(repo, step, parent_tree, parent_record, clean=False, integrity=None, inherited=None,
-                listed_n=None, component_attempts=1, poc=False):
+                listed_n=None, component_attempts=1, poc=False, gcc=True):
     """Run the step's matrix; returns its verification record. With `inherited` (seriesb), warnings
     are counted against the parent's; `listed_n` is the step number test-warnings.md is keyed by
     (0: none of its warnings apply)."""
@@ -415,6 +415,8 @@ def verify_step(repo, step, parent_tree, parent_record, clean=False, integrity=N
     checks["build_clang"] = "pass" if rc == 0 else f"fail: exit {rc} (see {os.path.relpath(log('build_clang'), ROOT)})"
     checks["warnings_clang"] = verdict(_read(log("build_clang"))) if rc == 0 \
         else "n/a: the build failed"
+    if not gcc:  # seriesb (Jon, 2026-11-04): no GCC requirement; its code fixes stay
+        checks["build_gcc"] = "n/a: not required for this series (the code builds with Clang, as upstream's CI)"
     if checks["build_gcc"] == "run":
         gwt = ensure_worktree(repo, WORKTREES["gcc"], commit)
         grc, _ = run_build(step_era, gwt, "gcc", clean, log("build_gcc"))

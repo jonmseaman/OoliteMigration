@@ -108,3 +108,13 @@ class LedgerTest(RepoTest):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NoGccTest(unittest.TestCase):
+    """Jon, 2026-11-04: seriesb does not require a GCC build (verify_step(gcc=False))."""
+
+    def test_verify_step_takes_gcc_flag(self):
+        import inspect
+        params = inspect.signature(verify.verify_step).parameters
+        self.assertIn("gcc", params)
+        self.assertTrue(params["gcc"].default)

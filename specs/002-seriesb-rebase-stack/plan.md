@@ -605,3 +605,8 @@ sources outside the replayed trees.
   it no longer switches the engine). Git Town lineage, manifest (branch, description, title) and
   references updated; the description file is `series/pr/003-objcpp-switch.md`. `origin` still has
   the old name: the handover deletes it after pushing the new one.
+- **Jon, 2026-11-04: no GCC requirement in seriesb.** The series adds no GCC to CI (upstream already
+  ships `gcc.ini`; old step 017 changes only source and tests). Its code fixes stay (portable
+  correctness fixes GCC found); step 017 is retitled at its replay to say so (e.g. "Fix code that
+  GCC warns about"). Verification no longer builds with GCC for seriesb (`verify_step(gcc=False)`,
+  `build_gcc` = n/a), so the end target's pre-existing GCC LTO link failure no longer gates anything.
