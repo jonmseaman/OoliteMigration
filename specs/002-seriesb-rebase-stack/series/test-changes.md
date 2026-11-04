@@ -328,3 +328,20 @@ version (the step 010 rows above still apply to them).
 | `tests/unit/core/test_OOMaterialConvenienceCreators.mm` | `IsExactly` binds `*material.get()` to a reference before `typeid`, the end target's form. | The old step's form warns (`-Wpotentially-evaluated-expression`), a warning the parent's build does not have. | None. |
 | `tests/unit/core/test_OORegExpMatcher.mm` | The conflict kept step 010's `@autoreleasepool` and UTF-8 comment with the old step's C++ matcher call. | The matcher's facade is deleted, as in the old step. | None beyond the old step's own (`facadeContract` removed, `oneMatcherPerAutoreleasePool` renamed `matchersHeldAcrossMatches`). |
 | `tests/unit/core/test_OOJoystickManager.mm` | The conflict kept #742's `SDL_JoyButtonEvent` with the old step's `->value(0.0)`. | #742's layout. | None. |
+
+## Step 012
+
+Step 012 (`seriesb/012-shipentity-slices`, T054) replayed on #768's binding. Its tests that used the
+façade are moved as the end target's (`655583067`) versions of the same tests were, at this stage
+(Objective-C++, the classes' APIs as step 012 has them). Tests the old step changes that are not
+listed here have the old step's change, made on step 011's version (the rows above still apply).
+
+| path | what changed | why | assertions changed? |
+|---|---|---|---|
+| `tests/unit/core/meson.build` | The old step's list changes, applied per test: `OOMatrix.mm` becomes `OOMatrix.cpp`; `OOJSGlobal+ObjCBridge.mm` removed from `test_OOJSGlobal`; the five new tests are `['*']`. `Core/Scripting/ooscript/JSEngine_quickjs.cpp` is never added. | The façade backend is gone. | n/a |
+| `tests/unit/core/test_OOJSGlobal.mm` | The old step's change (the C++ engine's monitor member as the stand-in) on step 011's version; the stand-in's `sendMonitorLogMessage` takes `JSContext*`. | #768's signature; `ooscript::Context` is gone. | None. |
+| `tests/unit/core/test_OOJSSystem.mm` | The old step's `@autoreleasepool` around `Eval()` and the populator check, wrapped around step 011's #768 code (`JS_Eval`, the owned callback freed). The comment's "destroyed ooscript context table" reads "the scripting layer's state after it was destroyed". | Façade removed. | None. |
+| `tests/unit/core/test_GameController.mm` (new) | The stand-in player's `_events` and `-doScriptEvent:` take `OOJSPropID`; `SameId` compares the atoms (`a == b`, was `.bits`). | Façade removed; #768's property ids are `JSAtom`s. | None (as the end target's `test_GameController.cpp`). |
+| `tests/unit/core/test_GuiDisplayGen.mm` (new) | The JS-null texture descriptor check takes a `JSContext*` and `JS_NULL`. | Façade removed. | None (end target `test_GuiDisplayGen.cpp`). |
+| `tests/unit/core/test_ShipEntityAI.mm`, `test_StationEntity.mm` (new) | The context is `gOOJSMainThreadContext` from `JS_NewContext(JS_NewRuntime())`, as `test_ShipEntity.mm` at step 011. | Façade removed. | None (end target `test_ShipEntityAI.cpp`, `test_StationEntity.cpp`). |
+| `tests/unit/core/test_Universe.mm` (new), case `flags` | The 7 and 2 passed to `-setDisplayFPS:`, `-setAutoMessageLogBg:` and `-setWitchspaceBreakPattern:` are held in `int` locals (`seven`, `two`) instead of literals; the same values reach the same setters. | The literal form warns (`-Wobjc-bool-constant-conversion`), a warning the parent's build does not have; the end target passes the same values to its `bool` setters without one. The old series listed it in `001-split-migration-prs/series/test-warnings.md`. **For Jon.** | None. |

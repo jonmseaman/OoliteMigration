@@ -702,3 +702,27 @@ sources outside the replayed trees.
   Found: the component tier cannot move the game off port 8563 (`console.py` writes no
   `debugConfig.plist`); this run put one in a private `OO_ADDITIONALADDONSDIRS` root, as
   `launch_snapshot.py` does, with `OO_CONSOLE_PORT=8621`.
+- **T054: step 012 replayed on #768's binding (2026-11-04): `f8f3c21af` on
+  `seriesb/012-shipentity-slices`**, on 011 (`c5e9fa535`). 16 conflicted files (42 blocks) and one
+  modify/delete (`OOJSGlobal+ObjCBridge.mm`, deleted as in the old step), resolved by one agent
+  (`.agent-tmp/step12/`; no sub-agents). Gates (isolated Objective-C MSYS2): clean build rc=0 with
+  only QuickJS-ng's 4 `-Wpedantic`; oofnd 47/47, core 170/170, headers and game-unit pass; smoke
+  clean (no leaked JS objects); component 10/10 on the first attempt (port 8622, private
+  `OO_ADDITIONALADDONSDIRS`); harness 23/23; deployment build rc=0 and its smoke pass; no façade,
+  no statistics; tests equal to old 012's except the rows under "## Step 012". Defaults taken:
+  1. Old 018/023 folded: a44-47 (#756 guards on `cxx::ShipEntity`'s debug members), extended to
+     the same members in `ShipEntity+ObjCBridge.h/.mm` and Universe's `debugDumpEntities`/
+     `cxx_entityList` in `Universe+ObjCBridge.h` (the old step's `#ifndef NDEBUG` there broke the
+     deployment build); b199, 202-204, 212-215, 552, 553 (`OOLITE_MAC_COCOA_UI` for every
+     `OOLITE_MAC_OS_X` the old step wrote in GameController and Universe). The paused-console
+     priority (#756) is kept in the C++ `GameController::setEcoQoS`.
+  2. **Placement correction:** old 012, not 013, dropped #766's multisample colour renderbuffer
+     (`OO_MSAA_COLOR_RENDERBUFFER`) from Universe's framebuffer code; it is kept here, so
+     b554-557 are already satisfied when 013 is replayed.
+  3. #768's shut-down leak check stays in the C++ GameController (`[[::OOJavaScriptEngine
+     sharedEngine] shutDown]`); the end target `655583067` dropped it (T055's final-tree check).
+  4. **For Jon:** `test_Universe.mm` `flags` passes its 7 and 2 through `int` locals; the literal
+     form warns (`-Wobjc-bool-constant-conversion`), which the parent's build does not. Values and
+     checks unchanged (ledger row).
+  5. T060: no `+ObjCBridge` wrapper loses its last caller in this step beyond
+     `OOJSGlobal+ObjCBridge.mm`, which the old step already deletes.
