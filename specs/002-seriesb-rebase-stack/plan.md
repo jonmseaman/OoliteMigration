@@ -668,7 +668,7 @@ sources outside the replayed trees.
   (`OOAssert` compiled out under NDEBUG skipped `-deferredInit`'s ship set-up); it now compiles at
   006–009 and its smoke passes at 006, 008 and 009. New tests: `test_objc_assert_ndebug` (007, fails
   on the old header), `test_OoliteEquipmentControlScript` (009, #369). Step 010 merged the new 009
-  (`0747c771a`, four trivial conflicts) and is re-gated.
+  (`0747c771a`, four trivial conflicts); re-gated: build 0 warnings, unit 201/201, smoke, harness pass.
 - **Rule learned (2026-11-04): one game instance at a time, or private console ports.** Two agents
   launching the game on the default debug-console port 8563 broke each other's smoke and component
   runs. Agents running in parallel set `OO_CONSOLE_PORT` to a private port; GUI tests still run
