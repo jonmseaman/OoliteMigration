@@ -746,6 +746,11 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
 - [ ] T070 Carry T051d's `tests/check_debug_monitor_guards.py` (headers suite, end target
   `8a0a3c97a`) into the stack the same way, at the earliest step whose tree passes it (fixing the
   stack's own NDEBUG guards there, e.g. `PlayerEntity` `suppressClangStuff`).
+- [ ] T071 Per-step clang-format (upstream CI's check, clang-format 22, the step's own
+  `.clang-format`): the rebuilt stack has unformatted `src/` files (5 at 014, 6 at 015, 17 at
+  016–017; old stack 0), left by conflict resolution. Check 003–013 too. Default: one format
+  commit per affected branch, lowest first, `git town sync` upward, after the replay chain; replays
+  from 019 on format the files they resolve. Needed for T058 (CI green on every branch).
 
 ---
 
