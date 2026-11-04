@@ -813,3 +813,42 @@ sources outside the replayed trees.
      rebuilt 011-013 did what old 011-013 did and nothing of 014's (they deleted no extra bridge).
      Merging 014 with 015 ("Delete the root Entity facade", 492 files) would give one ~1,000-file step;
      default: keep them separate.
+- **T054: step 015 replayed on #768's binding (2026-11-04): `5309798dc` on
+  `seriesb/015-entity-facade`**, on 014 (`d461ca10a`). 161 conflicted files (579 blocks), 25 modify/delete
+  and one delete/modify (`ooscript/JSEngine.hpp`, kept deleted), resolved by fourteen parallel agents
+  (`.agent-tmp/step15/brief.md`; entity classes as old 015 plus the parent's delta, bindings and engine as
+  the parent plus the old step's change, the end target `8a0a3c97a` as the reference) and the orchestrator
+  (Universe and GameController as old 015 plus the parent's delta, meson, `UniverseVirtualMembers.h`, the
+  harness's `cxx::` names). Gates (isolated Objective-C MSYS2): clean build rc=0 with only QuickJS-ng's 4
+  `-Wpedantic`; oofnd 47/47, core 178/178, headers and game-unit pass; smoke clean (no leaked JS objects);
+  component 10/10 on the first attempt (port 8626, private `OO_ADDITIONALADDONSDIRS`); harness 23/23;
+  deployment build rc=0 (only the parent's `legacy_random.c` warning) and its smoke pass; no façade, no
+  statistics; tests equal to old 015's except the rows under "## Step 015". Revert check: no `+!` line;
+  117 removed upstream/#768 lines beyond the old step's own, all #768-form code this step converts
+  (finalizer and converter swaps to `OOJSCxxObjectWrapperFinalize`/`OOJSEntityObjectConverter`, Objective-C
+  sends to `UNIVERSE`/engine/entity becoming C++ calls, `DEFINE_JS_OBJECT_GETTER` and `weakRetain` slots
+  becoming the holder; no `JS_FreeValue`, guard or exception path lost). Defaults taken:
+  1. Old 018/023 folded: a12-16, a18, a19, a22, a23 (#756 on the entity counters, debug virtual members
+     and by-name rows); a20, a21, a106, a107 (the generated tables in the generator's layout with the
+     clang-format marker, #740's custom load/save rows removed, #756's `drawDebugStuff`; rows keep old
+     015's `@encode`, as `OOTypeEncodings.h` comes later); a54, a60 (#737 comments); b42, b558-560
+     (virtual-member macros one member per line inside clang-format markers, system includes first).
+     Also `PlayerEntity::suppressClangStuff` and the entity shader-binding table under #756's guard (T051d).
+  2. At this stage `OOJSObjectWrapperFinalize`/`OOJSBasicPrivateObjectConverter` keep #768's
+     Objective-C form; no game object puts an Objective-C object in a JS slot any more (entities hold an
+     `OOJSEntityHolder`), so the end target's generic C++ forms can replace them when the runtime goes.
+  3. #768 kept over the old step: deferred `quitGame()` (through the `std::function` deferred call), the
+     definitions' reset observers until destruction, `OOJSFunction` compiling in the global scope, no
+     watchdog (old 015's watchdog case in `test_OOJSEngineTimeManagement` is not carried).
+  4. Old-step bug fixed: `OOConstToJSString.cpp`'s `-Wextra` initializer named the façade's field
+     (`.jsString`); it is #768's `.atom = JS_ATOM_NULL`, as in the end target.
+  5. **For Jon:** old 015 deletes `test_OOJoystickManager`'s `facadeContract` case with the joystick
+     facade, so the step-010 sign-off on it lapses here. A stale waypoint's property read now fails
+     (`OOJSNativeFailure`) where it answered `undefined`, as old 015 and the end target do.
+  6. T060: per area, the pieces with no dependency on the root Entity facade (the joystick, cache,
+     texture, material, resource, registry and async managers' facades, the C++ engine and monitor,
+     OONull/OOJSValue as foreign objects, the #756/#740 table and guard ports, comment scrubs) could have
+     gone into 014 or a step between; the entity holder slot, `EntityHold`/`WeakSet` members, the by-name
+     tables and every `Entity*` signature needed it. Moving them would change 014 (already ~1,000 files
+     with its bridges) and save little review in 015 (most of its 492 files are the entity conversion);
+     default: keep 015 whole.
