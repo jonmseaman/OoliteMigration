@@ -731,6 +731,13 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
   at the step that introduced the lists; release-flavour gates are unaffected.
 - [ ] T065 [US7] Handover: push `seriesb/003-objcpp-switch` and delete `origin`'s
   `seriesb/003-quickjs-switch`; `--force-with-lease` for every rebuilt step (Jon).
+- [ ] T067 Component tier on a private port: `tests/component` `console.py` should write a per-run
+  `debugConfig.plist` (as `launch_snapshot.py` does) so `OO_CONSOLE_PORT` alone moves it off 8563.
+  Replays 011+ work around it with a private `OO_ADDITIONALADDONSDIRS` root (`plan.md` Notes).
+- [ ] T068 For Jon: step 011's `test_OOJavaScriptEngine` changes "plain OOObject gives no JS object"
+  from `== NULL` to `!JS_IsObject(...)` with the pending exception cleared (#768 boxes undefined
+  with `JS_ToObject`, which throws); the end target dropped that check, so there is no reference.
+  Ledgered under Step 011; default: keep the rewritten check.
 
 ---
 
