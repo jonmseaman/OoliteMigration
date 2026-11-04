@@ -761,3 +761,40 @@ sources outside the replayed trees.
   component test `test_exit_runs_js_leak_check.py` fails without the call and passes with it. Gates:
   build 0 warnings, unit 220 Ok, smoke clean, harness 23/23, deployment build and its smoke pass
   (NDEBUG, so the check is compiled out there, as upstream does).
+- **T054: step 014 replayed on #768's binding (2026-11-04): `d461ca10a` on
+  `seriesb/014-facade-deletions`**, on 013 (`9304fedba`). 124 conflicted files (707 blocks) and 48
+  modify/delete (the old step's bridge deletions, taken), resolved by ten parallel agents
+  (`.agent-tmp/step14/brief.md`; entity classes rebuilt as old 014 plus the parent's #768 delta, bindings
+  as the parent plus the old step's change; OOJSShip by a token-level three-way merge) and the
+  orchestrator (Universe, meson). Gates (isolated Objective-C MSYS2): clean build rc=0 with only
+  QuickJS-ng's 4 `-Wpedantic`; oofnd 47/47, core 175/175, headers and game-unit pass; smoke clean (no
+  leaked JS objects); component 10/10 on the first attempt (port 8625, private
+  `OO_ADDITIONALADDONSDIRS`); harness 23/23; deployment build rc=0 (only the parent's `legacy_random.c`
+  warning) and its smoke pass; no façade, no statistics; tests equal to old 014's except the rows under
+  "## Step 014". Revert check: 6 `+!` lines, all generic (`return YES;`, braces style of #749 in
+  `OOJSConsole`'s inspect); 271 removed upstream/#768 lines beyond the old step's own are #768-form
+  message sends and class glue that this step converts to C++ calls (no `JS_FreeValue`, guard or
+  exception handling lost). Defaults taken:
+  1. Old 018/023 folded: a29-32, a41, a42 (#740: a new game reads `last_savename`; no
+     `OO_USE_CUSTOM_LOAD_SAVE`/AppKit panel selectors, which the old step re-created) with the new test
+     `lastsaveNameIsRememberedInTheDefaults` (a171-172); a31, a43, a94 (#756); a33-40 (#749/#751:
+     `AnyKeyPressed()` where the conversion wrote `||`; it needs `<initializer_list>`, not `<cstring>`).
+  2. The C++ objects in the private slot (script, ship group, system info, equipment info, sound, sound
+     source) use `OOJSCxxObjectWrapperFinalize` and class-specific converters: at this stage the
+     engine's `OOJSObjectWrapperFinalize`/`OOJSBasicPrivateObjectConverter` still treat the slot as an
+     Objective-C object. The end target uses the generic ones once the engine is C++.
+  3. **For Jon:** the moved entity shader-binding table is guarded `OO_SHADERS ||
+     defined(OO_DEBUG_MONITOR_ENABLED)` (#756's guard of `OOShaderUniformMethodType.h`); the end
+     target still says `!defined(NDEBUG)` (T055's final-tree check will show it).
+  4. SystemInfo drops the old step's raw `_jsSelf` (no wrapper is remembered, as in the end target);
+     the reset observer key for the deleted `OOSystemInfo` class is `nullptr`.
+  5. The cherry-pick's conflict markers end in the commit subject, which carries a CR, so each left a
+     lone `)` line; every resolved file was checked for them.
+  6. Comment-only test edits (bead ids dropped) are ledgered in one row.
+  7. T060: 014 cannot shrink much. Of the bridges whose deletion conflicted (48 files, the ones the
+     rebuilt 011-013 had touched), only `OOJSConsole+ObjCBridge` had no caller outside its own class
+     at 013; every other one needed this step's conversions first (PlayerEntity slices 2-28, the ship
+     family, OOJSShip slices 2-6). The 74 cleanly deleted bridge files were not audited one by one. The
+     rebuilt 011-013 did what old 011-013 did and nothing of 014's (they deleted no extra bridge).
+     Merging 014 with 015 ("Delete the root Entity facade", 492 files) would give one ~1,000-file step;
+     default: keep them separate.
