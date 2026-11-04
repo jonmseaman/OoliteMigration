@@ -165,3 +165,28 @@ became `JS_NewContext(JS_NewRuntime())`; evaluation moved from `ooscript::evalua
 | tests/unit/core/test_OOJSEngineTimeManagement.hpp | removed | it declared the profile classes because the game header could not be included beside the test's engine stand-ins; the test now includes the game's header | n/a |
 | tests/unit/core/test_OOJSTimeLimiter.cpp (new) | `limiter`, `pauseAndResume` and `watchdog` from test_OOJSEngineTimeManagement, on the real engine (whole game, meson line added) | the limiter is the engine's now | the watchdog now runs a real `OOJSScript` named "test script" pushed as the running script (the stand-in answered that name), and counts `OOJSDumpStack()`'s log entry (the stack's `    at` frames) instead of a stand-in's calls; the stack-dump check is under `OO_DEBUG_MONITOR_ENABLED`, the condition the engine dumps under (was `!NDEBUG`) |
 | tests/unit/core/meson.build | `test_OOJSClock`, `test_OOJSMissionVariables`: + `Core/Scripting/OOJSClasses.cpp`; new `test_OOJSTimeLimiter: ['*']` | as above | n/a |
+
+## End target (T051b)
+
+Upstream #742 on `feature/upstream-quickjs-poc-cxx`, commit `4f1896f10` (Jon, 2026-11-03: the
+decode cases may move to OOSDLJoystickManager with SDL events; what each asserts is kept). The SDL
+event decoders moved from `OOJoystickManager` to `OOSDLJoystickManager`, which takes SDL's own
+`SDL_JoyAxisEvent`/`SDL_JoyButtonEvent`/`SDL_JoyHatEvent`; the core header lost `JoyAxisEvent`,
+`JoyButtonEvent`, `JoyHatEvent` and the `JOY*` constants. No `OO_CHECK` line changed in any row.
+Common to the `test_OOJoystickManager.cpp` rows: the file includes `OOSDLJoystickManager.h`; its
+`Axis`/`Button`/`Hat` helpers build SDL's event types with `SDL_EVENT_JOYSTICK_*` (the stick index
+in `which`, as `makeJoy*Event()` pass it on); a new `DecodingStickManager` (an
+`OOSDLJoystickManager` answering for the hardware as the base does: no sticks, "Dummy joystick",
+axes at 0) and `NewDecodingManager()` stand where the case decodes; `tests/unit/core/meson.build`
+links `SDL/OOSDLJoystickManager.cpp` into `test_OOJoystickManager`.
+
+| path | what changed | why |
+|---|---|---|
+| `tests/unit/core/test_OOJoystickManager.cpp` (`decodesAxes`) | The manager is a `DecodingStickManager`; events are `SDL_JoyAxisEvent`/`SDL_JoyButtonEvent`. | #742: the decoders are `OOSDLJoystickManager`'s and take SDL's events. |
+| `tests/unit/core/test_OOJoystickManager.cpp` (`decodesButtonsAndHats`) | As `decodesAxes`; the hat values are `SDL_HAT_DOWN \| SDL_HAT_RIGHT` and `SDL_HAT_RIGHT` (were `JOYHAT_*`, equal to them). | #742: the `JOYHAT_*` constants left the core header. |
+| `tests/unit/core/test_OOJoystickManager.cpp` (`callsBackForTheNextStickControl`) | As `decodesAxes`. | #742. |
+| `tests/unit/core/test_OOJoystickManager.cpp` (`savesAndLoadsSettings`) | The reloaded manager (`loaded`), the one that decodes a press, is a `DecodingStickManager`; the others stay base managers. | #742. |
+| `tests/unit/core/test_OOJoystickManager.cpp` (`subclassOverrides`, `sharedHandlerOfTheRegisteredClass`) | `TestStickManager` derives from `OOSDLJoystickManager` (was `OOJoystickManager`), so the press it decodes goes through the SDL manager's decoder; its overrides and the base's other members are unchanged. | #742: only the SDL manager decodes. |
+| `tests/unit/core/test_OOJoystickManager.cpp` (`decodesGuiButtons`) | As `decodesAxes`; hat values `SDL_HAT_UP`, `SDL_HAT_CENTERED`. | #742, with #783's GUI-button decoding now in `OOSDLJoystickManager::decodeButtonEvent`. |
+| `tests/unit/core/test_OOJoystickManager.cpp` (`savesAndLoadsGuiButtons`) | The reloaded manager that decodes a press is a `DecodingStickManager`. | #742. |
+| `tests/unit/core/test_OOSDLJoystickManager.cpp` (`makesEvents`) | The event makers' results are held as `SDL_JoyAxisEvent`/`SDL_JoyButtonEvent`/`SDL_JoyHatEvent` (were the core header's `Joy*Event` typedefs of the same types). | #742: `makeJoy*Event()` answer SDL's types and the typedefs are gone. |
