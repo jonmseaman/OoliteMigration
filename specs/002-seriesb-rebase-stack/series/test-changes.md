@@ -489,3 +489,21 @@ only as below and as the parent's already differed from old 018's (rows above). 
 |---|---|---|---|
 | `tests/unit/core/test_OOMathsHeaders.cpp` (new) and its `tests/unit/core/meson.build` line | Added, as the end target has them (`21c8c1df0`, unchanged since): `OOFastArithmetic.h`, `OOQuaternion.h` and `OOVector.h` included without `OOMaths.h`, no umbrella macros, `OOScalar` is `GLfloat`, their inline functions work. | Old 019 put the maths headers in the fork's umbrella form (`#error Do not include … directly`), which reverts upstream #748; the step takes #748's form plus the `OOMathsBase.h` split instead, and the placement plan lands this test with the headers suite. It fails to compile on old 019's headers. | New test. |
 | `tests/unit/core/test_OOJSEngineTimeManagement.hpp` | Old 019's edit (an `OOFoundation.h` include, rewrapped) is not carried: the file is not in the parent. | It redeclared the façade's profile API; removed since step 010 (rows above). | n/a |
+
+## Step 020
+
+Step 020 (`seriesb/020-source-hygiene`, T054) re-applied by rule on #768's binding (the cherry-pick of
+old 020 conflicted in 368 files). Of the 275 test files old 020 changed, 165 equal old 020's byte for
+byte, 30 equal it in code and differ only in comment wording or wrapping, and 78 keep the parent's code,
+which already differed from old 019's (rows above). Two are not in the parent. Old 020's test renames
+(`_ADR0027` to `_GnustepDiffers`, `missingArgumentsPrintAsNil_ADR0043`), `test_http.cpp`'s using-order and
+`test_OOMaterialConvenienceCreators.cpp`'s duplicate include come along unchanged. No assertion changed.
+
+| path | what changed | why | assertions changed? |
+|---|---|---|---|
+| The 78 tests whose code differs between old 019 and the parent (comments and whitespace ignored): most `test_OOJS*.cpp`, `test_OOJavaScriptEngine.cpp` and the entity, debug and joystick tests | The parent's file and layout, with old 020's comment edits carried in. Where both had edited a comment, the comment is reworded for the code it describes now, #768's binding included. Old 020's reformat of these files (80 columns, its own include order) is not carried. | Old 020's file is written for the façade's code. A line merge of its reformat into the parent's code duplicated functions (`test_AI.cpp`), so the comments are carried by rule onto the parent's file instead. | None. |
+| `tests/unit/core/test_OOSDLJoystickManager.cpp` | `kStickName` `"oo-o89 virtual stick"` to `"virtual stick"`, as old 020 changed it, on the parent's file. | Old 020's own change; a name the test gives its stand-in stick. | None. |
+| `test_PlayerEntity.cpp` | Old 020 sorted two blocks of `using` declarations; the parent's order is kept. | Formatting only; the file keeps the parent's layout (row above). | None. |
+| 30 tests equal to old 020's in code (`test_AI.cpp`, `test_OOJSCall.cpp`, `test_OOCheckJSSyntaxVerifierStage.cpp` and others) | Comment wording or wrapping differs from old 020's where the parent had also edited the comment: the parent's description is kept where it was the true one, and history phrases both left are cut. | Comment merge. | None. |
+| `tests/unit/core/meson.build`, `tests/unit/oofnd/meson.build` | The parent's lists. The "retired with its only subject" comment lines are removed, as old 020 removed them; the façade backend old 020's lines named is not in the tree. | The parent's lists differ (rows above). | n/a |
+| `tests/unit/core/test_OOJSEngineTimeManagement.hpp`, `tests/unit/test_jsengine_quickjs.cpp` | Old 020's edits not carried. | Not in the parent (façade-only, rows above). | n/a |

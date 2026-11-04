@@ -942,3 +942,35 @@ sources outside the replayed trees.
      target does (the old stack's façade header declared them).
   3. T070 (`check_debug_monitor_guards.py`) still waits for 022 (it imports `tests/idiom_check.py`); T069
      not done here.
+- **T054: step 020 replayed on #768's binding (2026-11-04): `7b8ef45f0` on `seriesb/020-source-hygiene`**,
+  on 019 (`84209ee26`). The cherry-pick conflicted in 368 files (2,907 blocks), and old 020 also
+  reformatted most files at 80 columns, so a line merge was unsafe: it merged cleanly into duplicated
+  functions in `test_AI.cpp` and 150 other files. The step is re-applied by rule
+  (`.agent-tmp/step20/build20.py`, `cmap.py`): a file whose code the parent has as old 019 had it (438)
+  takes old 020's file with the parent's own comment edits carried in; any other file (239) keeps the
+  parent's file and takes old 020's comment edits. Comments are carried on code-token alignment and
+  merged at word level. Four parallel agents then fixed the comments both sides had edited and the
+  references left (`.agent-tmp/step20/brief.md`, end target `8a0a3c97a` as the model). Code tokens
+  differ from the parent only where old 020 changed them (guards, duplicate includes and forward
+  declaration, `Http.hpp`'s message, the test renames and `kStickName`, its Windows test PATH setup),
+  plus the placed hunks. Gates (C++ era, scoop MSYS2): clean build rc=0 with only QuickJS-ng's 4
+  `-Wpedantic`; oofnd 40/40, core 176/176, headers and game-unit pass; smoke clean (no leaked JS
+  objects); component 10/10 on the first attempt (port 8631, private `OO_ADDITIONALADDONSDIRS`);
+  harness 23/23; deployment build rc=0 with 0 warnings and its smoke pass;
+  `no_new_spidermonkey_or_gnustep` pass; no façade, no statistics; clang-format 22.1.8: every `src/`
+  file the step changes is formatted (29 formatted here). Revert check: 9 hunks flagged, all old 020's
+  layout (`enum {` one-liners), includes moved by sorting or the placed `#import` removals. Tests equal
+  old 020's except the rows under "## Step 020". Defaults taken:
+  1. Old 023 folded: b18 (`meson.build`'s `project()` comment), b41, b418, b517 (`#import` twins
+     removed), b196, b197 (`ShipEntity.h` trailing comments above their declarations, the test-seam note
+     dropped), b527, b528 (`OOScript.h` standard includes first, comment rewrapped), b586
+     (`MyOpenGLView.cpp` comment); b216 and b580 were already satisfied.
+  2. The other files keep the parent's layout: old 020's 80-column reformat is not carried there (step
+     024 reformats everything).
+  3. Comments #768 or upstream wrote are kept (#768's "(QuickJS-ng)" title tags). Where old 020's words
+     described the façade and the parent's described #768's code, the parent's are kept.
+  4. `OOJSShipGroup.h` (#768's, no guard) gains `#pragma once`, as old 020's and the end target's have it.
+  5. `meson.build` keeps the parent's `add_project_arguments('-ffp-contract=off')` (upstream's), not old
+     020's global form.
+  6. **For Jon:** old 020 (and the end target) rewrapped MiniZip's vendored banner comments, leaving lone
+     `)` lines in `ioapi.h` and `unzip.h`. Kept, as the old step and the end target have them.
