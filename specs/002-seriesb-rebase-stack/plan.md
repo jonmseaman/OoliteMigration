@@ -493,3 +493,10 @@ sources outside the replayed trees.
   types) and #748's maths headers (upstream's do not compile standalone, so the `headers` suite
   fails). GCC: two core tests fail to link under LTO (`oo::EntityDescription`) already at
   `2042fac85`; pre-existing, its own task.
+- **Jon, 2026-11-03, on T051b's two stops.** (1) #742: take upstream's layout (decoding in
+  `OOSDLJoystickManager` on SDL event types, #783's GUI-button decode with it); the decode cases of
+  `test_OOJoystickManager.cpp`/`test_OOSDLJoystickManager.cpp` move to `OOSDLJoystickManager` and SDL
+  events, keeping what they assert, each listed in `series/test-changes.md` under "## End target
+  (T051b)" (an exception to hard rule 1 like FR-015). (2) #748's maths headers: upstream's form, with
+  `OOMaths.h`'s scalar/macro part split into its own header that each maths header includes, so every
+  header compiles standalone and the `headers` suite passes unchanged.
