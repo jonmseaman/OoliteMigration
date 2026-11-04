@@ -590,3 +590,8 @@ sources outside the replayed trees.
   difference so the step's new test (a reversed delta is negative) passes; the end target's
   steady-clock branch is the fork's own improvement, not an upstream revert, and is taken at the
   step that converts the stopwatch to C++ (T055's final-tree check confirms).
+- **Jon, 2026-11-03: remove the Vector3D/Quaternion conversion statistics, as #768 did.** They go
+  from the end target and from step 009 on (009 gets a follow-up commit). The test cases that assert
+  them are removed, each listed in `series/test-changes.md` (end target under "## End target
+  (T051b)", step 009 under "## Step 009"), an exception to hard rule 1 Jon signed off with this
+  decision.
