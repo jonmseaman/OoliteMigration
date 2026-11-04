@@ -580,3 +580,13 @@ sources outside the replayed trees.
      QuickJS-ng; #767's `-Wincomplete-implementation` pragma removed, the unused engine methods are
      no-ops instead). It builds and runs on Windows: 20 checks, 0 failures; the "Linux only" error is
      gone. This closes the "harness's meson.build in steps 005–009" item above.
+- **Step 009 replayed (2026-11-03): `dbb0c371c`** (outer `494fe6878`, 13 ledger rows). gnustep-base
+  out; first C++ conversions; `core` suite arrives (55/55); oofnd 46/46; component 8/8; smoke clean.
+  #767's harness is off GNUstep here and builds and passes (20/20) on Windows, so the `poc` verify
+  check runs from 009 on. *Default taken*: the new harness script `primitive_property.js` and its
+  two checks (end target `fce807b50`) join the stack at 009, the first step whose harness can run
+  them; until then the file is absent (adding a test is not a change to an existing one).
+  *Default taken*: `OOProfilingStopwatch` keeps #768's `timeGetTime` path in 009, fixed to a signed
+  difference so the step's new test (a reversed delta is negative) passes; the end target's
+  steady-clock branch is the fork's own improvement, not an upstream revert, and is taken at the
+  step that converts the stopwatch to C++ (T055's final-tree check confirms).
