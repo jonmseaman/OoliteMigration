@@ -766,6 +766,22 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
   where needed). Default: add each at the earliest rebuilt step whose tree compiles and passes it
   (at the latest 023), in the T071/T072 sync batch. Accept: each test is in that step's suite
   and passes there and at every later step.
+- [ ] T074 Step 024's open items (`.agent-tmp/step24/t055-remainder.md`), defaults taken:
+  - `OOProfilingStopwatch.h`: a comment line between `<windef.h>` and `<timeapi.h>` stops Google
+    include sorting from breaking the build. Kept (no `clang-format off`); Jon may prefer the pair.
+  - `ShipEntityAI.cpp`: a stale façade comment on a namespace's closing brace leaves a stray
+    `// OOJSVector.mm).` line after the reformat. Default: delete the comment at the step that
+    brought it in, in the T071 sync batch.
+  - The end target's Mozilla polyfills in `Resources/Scripts/oolite-global-prefix.js`
+    (`toSource`/`quote`/`uneval`) are in no rebuilt step. Default: they go in the shrunken 025
+    (T056), since they come from old 025's move of the scripting layer.
+  - 85 test files that old 024 left unformatted stay unformatted (3 are formatted at the end
+    target; those fall to 025's remainder).
+  - T056 finding: 024 vs the end target is 292 files; 115 are the scripting layer in old 025's
+    fork-style form against #768's binding as carried (`static` vs anonymous namespace,
+    `OOJSCxxObjectWrapperFinalize`, `OOJS_THIS`, `JSEntityClassID`, test stand-ins), plus 23
+    other code files traced to 017–023. So 025 is not covered; default: shrink it to the
+    remainder.
 
 ---
 
