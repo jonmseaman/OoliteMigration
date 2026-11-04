@@ -742,6 +742,9 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
   target `9d4ce2b1e` adds it; the stack keeps #768's exit `shutDown` call throughout). Default: add
   it as a commit on the earliest rebuilt step where the component tier and the call both exist,
   then `git town sync` it upward; T055's final-tree check otherwise flags it.
+- [ ] T070 Carry T051d's `tests/check_debug_monitor_guards.py` (headers suite, end target
+  `8a0a3c97a`) into the stack the same way, at the earliest step whose tree passes it (fixing the
+  stack's own NDEBUG guards there, e.g. `PlayerEntity` `suppressClangStuff`).
 
 ---
 
