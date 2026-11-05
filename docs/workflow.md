@@ -63,8 +63,8 @@ survives between agent iterations.
 ## Repo mechanics
 
 - All beads of an epic commit on one branch in `oolite-dev` (`epic/<slug>`, created by
-  `branch.sh` from `develop`). The worker never pushes; Jon merges the branch into `develop`
-  locally and pushes it.
+  `branch.sh` from `develop`). The worker may push that branch, never `develop`; Jon merges the
+  branch into `develop` locally and pushes it.
 - Scripts called as bare programs are committed `100755` with a shebang; check with
   `git ls-files -s`, never `test -x`.
 - Vendored code (`src/Core/MiniZip/`, `src/SDL/stb_image_write.h`) is not edited to satisfy the
