@@ -815,6 +815,17 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
   its profiler macros, its QPC clock in the time limiter, its scripting README, its `dependency()`
   wiring unless a fix needs otherwise); the fork-style restyle is dropped, and step 025 keeps only
   genuine fixes, each named in its description.
+- [x] T076a Old branch `seriesb/018-upstream-9ee8ff22f-port` deleted locally (Jon, 2026-11-04),
+  with its Git Town entries; `archive/seriesb-facade/018` keeps it. `origin` still has it; Jon
+  deletes it at the handover (T065).
+- [ ] T076 Renumber the branches (Jon, 2026-11-04: "fine to renumber the branches too and update
+  the docs"), after T075: 019–025 become 018–024 (the 023 slug becomes `022-upstream-28ceaaba0-ports`
+  per T051a), with `git branch -m`, the Git Town parent entries re-pointed, the manifest's branch
+  numbers equal to `n` again, `series/pr/*.md` renamed, and the docs (review issue, HANDOVER, plan
+  Notes cross-references) updated. Old names stay reachable through `archive/seriesb-facade/*`;
+  `origin`'s old names are deleted by Jon at the handover. Accept:
+  `series.py --series seriesb check --only manifest,lineage,branches,final-tree` exits 0, and
+  `git branch --list 'seriesb/02[45]*'` is empty.
 
 ---
 
