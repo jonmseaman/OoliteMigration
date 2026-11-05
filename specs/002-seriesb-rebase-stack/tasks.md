@@ -795,6 +795,20 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
     `OOJSCxxObjectWrapperFinalize`, `OOJS_THIS`, `JSEntityClassID`, test stand-ins), plus 23
     other code files traced to 017–023. So 025 is not covered; default: shrink it to the
     remainder.
+- [ ] T075 [US7] **For Jon: step 025's size.** The rebuilt 025 (`97bac002b`, "Bring upstream's
+  QuickJS-ng binding into the fork's C++ style") is 277 files, +33.6k/−29.9k, larger than old 025
+  (229 files, +18.5k/−28.0k). Almost all of it restyles #768's code (anonymous namespaces,
+  renamed hooks and class IDs, `goto fail` to early returns, profiler-macro names) and moves the
+  tests to that style. 17 files stay in the stack's form because the end target reverts upstream or
+  #768 there (stopwatch, `MOZ_TRACE_JSCALLS`, `XP_*` defines, pre-#742 joystick order, the deleted
+  scripting README, a deleted test and two changed assertions); they are manifest exclusions.
+  Option B, recommended for upstream review: rebase the end target onto 024's form of #768's
+  binding (keep only the 23 small code fixes, the `subproject()` wiring if wanted, and the
+  polyfills), so 025 becomes small and the end target stops reverting upstream. Default until Jon
+  decides: keep the 025 as built (the end target is unchanged and tested). Also for Jon: the profiler-macro
+  names, the time limiter on `timeGetTime()` (ms) on Windows where #768 used QPC, and the polyfill
+  comment citing a nonexistent `tools/oxp-compat-shim`. Accept: Jon's choice recorded; under B,
+  `git diff --shortstat` 024..025 under 2k lines and `check --only final-tree` exits 0.
 
 ---
 
