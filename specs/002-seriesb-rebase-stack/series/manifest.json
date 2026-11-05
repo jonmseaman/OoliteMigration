@@ -12,7 +12,7 @@
   }
  ],
  "anchors": {
-  "develop_target": "8a0a3c97a572ef71cc6b1b86b1315809889833c2",
+  "develop_target": "270c74ea7896a7dc8b6f06c905df3df1b19c5ef3",
   "format": {
    "clang_format_version": "22.1.8",
    "style_file_from": "49a5eb9fc"
@@ -46,75 +46,7 @@
   },
   {
    "path_glob": ".github/**",
-   "reason": "the stack's CI keeps upstream's macOS job and #768's oxp-upgrade job (T058: CI runs on every branch), which the end target drops"
-  },
-  {
-   "path_glob": ".eslintrc.json",
-   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target drops #768's tools/oxp-upgrade ignore pattern"
-  },
-  {
-   "path_glob": ".gitignore",
-   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target drops #768's ignores for meson subproject checkouts and node_modules"
-  },
-  {
-   "path_glob": "README.md",
-   "reason": "upstream's macOS section and ShellScripts line kept (upstream's macOS port, dc55e3e05..7437f22a5); the end target has the older 'current Macs are unsupported' text"
-  },
-  {
-   "path_glob": "src/Core/Scripting/README.md",
-   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target deletes #768's scripting README; kept, its Building paragraph naming src/meson.build's subproject() call"
-  },
-  {
-   "path_glob": "src/Core/OOProfilingStopwatch.h",
-   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target restores the pre-#768 OOSTOPWATCH_STANDALONE split (with std::chrono where JS_Now was)"
-  },
-  {
-   "path_glob": "src/Core/OOProfilingStopwatch.cpp",
-   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target restores the pre-#768 microsecond branch and drops the stack's signed timeGetTime() delta"
-  },
-  {
-   "path_glob": "src/Core/OOLogHeader.cpp",
-   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target brings back the SpiderMonkey-era MOZ_TRACE_JSCALLS feature string"
-  },
-  {
-   "path_glob": "src/meson/linux/meson.build",
-   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target brings back SpiderMonkey's XP_UNIX define"
-  },
-  {
-   "path_glob": "src/meson/windows/meson.build",
-   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target brings back SpiderMonkey's XP_WIN and STATIC_JS_API defines"
-  },
-  {
-   "path_glob": "src/meson/darwin/meson.build",
-   "reason": "upstream's macOS build kept (-DOOLITE_SDL_MAC=1, -g); the end target has SpiderMonkey's XP_UNIX/XP_MACOSX instead"
-  },
-  {
-   "path_glob": "src/Core/OOJoystickManager.h",
-   "reason": "upstream #742's joystick manager layout kept; the end target has the pre-#742 declaration order and header comment"
-  },
-  {
-   "path_glob": "src/Core/OOJoystickManager.cpp",
-   "reason": "upstream #742's joystick manager layout kept; the end target has the pre-#742 definition order"
-  },
-  {
-   "path_glob": "src/SDL/OOSDLJoystickManager.cpp",
-   "reason": "upstream #742's layout kept (overrides with the decoders); the end target has the pre-#742 order and its '// Overrides' section"
-  },
-  {
-   "path_glob": "src/SDL/OOSDLJoystickManager.h",
-   "reason": "goes with OOSDLJoystickManager.cpp: its comment describes #742's layout"
-  },
-  {
-   "path_glob": "tests/unit/core/test_OOJavaScriptEngine.cpp",
-   "reason": "the end target drops the test deleteReachesTheClassHookWithNoOwnProperty; kept (hard rule 1), in the end target's layout"
-  },
-  {
-   "path_glob": "tests/unit/core/test_EntityOOJavaScriptExtensions.cpp",
-   "reason": "the end target changes two OO_CHECK(!JS_IsObject(_jsSelf)) assertions to JS_IsUndefined; 024's kept (hard rule 1)"
-  },
-  {
-   "path_glob": "tests/unit/core/test_OOJSSystem.cpp",
-   "reason": "the end target's check drops the owned callback() value without freeing it; 024's three lines kept (hard rule 1)"
+   "reason": "the end target keeps the fork's CI layout: push builds only for master and develop (3aa8d65e8) and a separate 'Configure library path' step; the stack's steps run CI on every branch (T058). Upstream's macOS jobs and #768's oxp-upgrade job are in both"
   }
  ],
  "folded": [
@@ -2288,34 +2220,34 @@
   },
   {
    "branch": "seriesb/025-upstream-quickjs-binding",
-   "build_commit": "97bac002bd708c5fe3b488e39b5dd6319bb66175",
+   "build_commit": "fd837749e3fa5e859662d0e03cf4483fa8ec0a24",
    "chapter": null,
    "description": "series/pr/025-upstream-quickjs-binding.md",
    "differs_from_old": [],
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "050fcd72e2610078235c64356f09e036c3204f7f",
+   "merge_tree": "8ee28e041f9927bd9ddaa7a4fdf5b18ed156ba74",
    "n": 24,
    "parent": "seriesb/024-google-style-format",
    "reasons": {},
    "resolutions": [],
    "rules": [],
    "size": {
-    "deleted_files": 6553,
-    "other": 285,
-    "src": 28379,
-    "tests": 11273
+    "src": 44,
+    "tests": 42,
+    "other": 87,
+    "deleted_files": 0
    },
    "source": {
-    "commit": "8a0a3c97a572ef71cc6b1b86b1315809889833c2",
+    "commit": "270c74ea7896a7dc8b6f06c905df3df1b19c5ef3",
     "ref": "feature/upstream-quickjs-poc-cxx",
     "test_ledger": "specs/002-seriesb-rebase-stack/series/test-changes.md",
     "type": "target"
    },
    "state": "verified",
-   "target_tree": "050fcd72e2610078235c64356f09e036c3204f7f",
-   "title": "Bring upstream's QuickJS-ng binding into the fork's C++ style",
+   "target_tree": "8ee28e041f9927bd9ddaa7a4fdf5b18ed156ba74",
+   "title": "Small fixes after the conversion; Mozilla polyfills for expansions",
    "verification": {
     "after_sync": 0,
     "checks": {

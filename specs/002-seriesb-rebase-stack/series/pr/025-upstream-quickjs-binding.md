@@ -1,4 +1,4 @@
-# Move the scripting layer to upstream's QuickJS-ng binding
+# Small fixes after the conversion; Mozilla polyfills for expansions
 
 **Series:** step 25 of 25 · base `seriesb/024-google-style-format` · next `—` **(gen)**
 
@@ -8,59 +8,32 @@
 
 ## What this changes
 
-The scripting layer moves to upstream's QuickJS-ng binding (#767, #768), converted to C++. The
-fork's `ooscript` façade (`src/Core/Scripting/ooscript/`) is deleted. The 100 files under
-`src/Core/Scripting/` use #768's API directly: natives take `OOJS_NATIVE_ARGS`, property tables
-are `JSCFunctionListEntry` arrays, classes use `JSClassExoticMethods`, and ownership is explicit
-(`JS_FreeValue`), with `OOJSClasses.cpp` registering the class IDs. The 50 callers outside the
-scripting layer (the debug console and monitor, `Universe`, `GuiDisplayGen`, the entities,
-`OOEquipmentType`, `OOShipGroup`) are ported with it. `Resources/Scripts/oolite-quickjs-compat.js`
-and #768's two log classes (`script.javaScript.cache`, `script.javaScript.load.modern`) come
-from #768.
+Small fixes and one addition on top of step 024. The scripting layer stays upstream #768's
+QuickJS-ng binding as steps 003–024 carry it: its code, its profiler macros, its time-limiter
+clock, its `dependency('quickjs-ng')` build wiring and its `src/Core/Scripting/README.md`.
 
-The unit tests move from the façade to the same API. Every test this step changes or deletes is
-listed in `series/test-changes.md`; the façade's own backend test, `test_jsengine_quickjs.cpp`,
-goes with the façade.
+| File | What | Why |
+|---|---|---|
+| `src/Core/OOOpenGLOnly.h` | Also tests the build's `LINUX` define | A plain C++ unit (`OO_PLAIN_CPP_UNIT`) does not include `OOFoundation.h`, so on Linux it had no `GL_GLEXT_PROTOTYPES`; #748's condition is otherwise unchanged |
+| `src/Core/OOHPVector.h` | Drops an empty `#if __OBJC__` / `#endif` pair | Left behind when its Objective-C declaration moved out |
+| `Resources/Scripts/oolite-global-prefix.js` | Adds `String.prototype.quote()` and the Array/String generics (`Array.forEach(array, fn)`, `String.replace(string, …)`) | Mozilla extensions that SpiderMonkey-era expansions call; `oolite-quickjs-compat.js` (#768) already defines `toSource()` and `uneval()` and is not changed; each install is guarded |
+| `tests/unit/core/meson.build` | The 8 tests that open OpenAL are also in suite `openal` | A sanitized run can leave them out (`--no-suite openal`); every test stays in `core` |
+| `src/Core/Scripting/OOJavaScriptEngine.cpp`, `OOJSScript.cpp` | Clears the exception when a getter throws while the engine reads an error's `name`/`stack`, a value's `constructor`/`name`, a function's `name`, a described array element, the const rewriter or an unconstructable class's `name` | The exception was left pending for the next script; pinned by `test_OOJavaScriptEngine`'s `throwingAccessorsLeaveNoPendingException` (added) |
+| `src/Core/Scripting/OOJSScript.cpp` | Indents the `script.javaScript.willLoad` log unconditionally | It outdented without indenting after an early load failure; upstream's `OOJSScript.m` indents unconditionally |
 
 ## Why
 
-#768's binding is the one upstream is reviewing, and it is an improvement on the fork's façade
-(Jon, 2026-11-02). Ending the series on it means the C++ game and upstream's QuickJS-ng work share
-one scripting layer, so the rest of the series does not have to be ported again when #768 lands.
-It comes last because steps 4 to 24 were built and tested on the façade; switching here keeps each
-of them as it was verified, and keeps the binding change and its test changes in one reviewable
-step.
-
-## Behaviour changes
-
-These follow #768; each one that a test observes is in the test ledger.
-- **Assignments #768 rejects now throw**: an invalid manifest value or deleting a manifest entry,
-  and in strict code a write to a read-only property such as `wormhole.origin`.
-- **Class tags**: `Object.prototype.toString.call(<game object>)` gives `[object Object]`, not
-  e.g. `[object Vector3D]`.
-- **Natives**: `effect.scale(2)` returns `undefined`; a native called on the wrong `this` throws.
-- **SystemInfo**: `Object.keys()` and for..in list only the system data keys. The fork adds a
-  `has_property` hook so for..in works on QuickJS-ng 0.17 (it lists nothing on #768 itself);
-  with it `'economy' in info` is `true`, while `hasOwnProperty()` stays `false`.
-- **Exceptions from a `filteredEntities` predicate** are reported and stop the script.
-- **Smaller ones**: Timer caches its callback's name; `isExecutableJavaScript('1 +')` is `false`;
-  `quitGame()` is deferred until the script returns; `SoundFromJSValue` resumes the time limiter;
-  the debug monitor has only warning and exception messages, and stack dumps use #768's format.
-
-Not applied: #768's QuickJS-ng patch `0001-oolite-primitive-property-assignment.patch`, so a
-strict-mode `"s".foo = 1` is silently ignored, as on `develop`. The JavaScript parity probe
-(`tools/js-parity`) needs Linux and has not been run against this step.
+Jon (2026-11-04): the series uses upstream's QuickJS-ng binding as upstream wrote it, not the
+fork's restyle of it. This step therefore holds only the genuine fixes found between 024 and the
+end target. Left out: the restyle of #768's binding and its tests, the `subproject()` wiring (and
+the `llvm-ar` it needed), and small forms that are neutral or would revert upstream (the
+`OOLITE_SDL` guards, the `STRINGIFY` fallback, the `#endif`/`#ifdef` pair in `OOPlanetDrawable.cpp`,
+the include sets).
 
 ## How to review
 
-1. Compare `src/Core/Scripting/` with #768's branch file by file: most files are #768's with the
-   C++ conversion (`.m` → `.cpp`, the fork's Google style, `oo::` types in place of Foundation).
-   `OOJSSystemInfo.cpp`'s `has_property` hook is the one addition #768 does not have.
-2. Read the 50 callers outside `src/Core/Scripting/`; each ports a call from `ooscript` types to
-   #768's, and the two use-after-free fixes (the ship-killed event, the ECM blast) follow #768's.
-3. Read `series/test-changes.md` with the test diff: each row names a test and why it changes.
-
-`git grep -n ooscript -- src tests` is empty on this step.
+Read the four commits; each names its files. `git diff --shortstat` against 024 is under 200
+lines. No existing assertion changes; one test is added.
 
 ## Test changes **(gen)**
 

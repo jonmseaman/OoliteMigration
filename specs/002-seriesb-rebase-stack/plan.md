@@ -1253,3 +1253,63 @@ sources outside the replayed trees.
     smoke clean (no leaked JS objects); component 13/13 files (20 tests) on the first attempt, s6
     included (port 8636, private `OO_ADDITIONALADDONSDIRS`); harness 23 checks, 0 failures;
     deployment build rc=0 with 0 warnings and its smoke pass; `./mk.sh format-check` rc=0.
+- **T075, option B: 025 holds only fixes; the end target uses #768's binding as upstream wrote it
+  (2026-11-04).** Jon: "If we are reverting behavior from the 768 PR, that would be a mistake."
+  `seriesb/025-upstream-quickjs-binding` rebuilt on 024 (`9814ba313`); the restyle-era tip
+  `97bac002b` is local tag `optionb/025-restyle`. Title: "Small fixes after the conversion; Mozilla
+  polyfills for expansions". Commits: `380ce2b47` `OOOpenGLOnly.h` also tests `LINUX` (a plain C++
+  unit on Linux lacked `GL_GLEXT_PROTOTYPES`) and `OOHPVector.h` loses an empty `#if __OBJC__` pair;
+  `5a06057f6` the global prefix adds `String.prototype.quote()` and the Array/String generics (#768's
+  `oolite-quickjs-compat.js` already defines `toSource()`/`uneval()` and loads first, so the end
+  target's own copies of those never installed and are not taken; the comment citing the nonexistent
+  `tools/oxp-compat-shim` is gone); `a15832c49` the 8 OpenAL tests also in suite `openal`;
+  `fd837749e` engine reads of an error's `name`/`stack`, a value's `constructor`/`name`, a function's
+  `name`, a described array element, the const rewriter and an unconstructable class's `name` clear a
+  throwing getter's exception (it was left pending), plus `initWithPath`'s willLoad log indent made
+  unconditional as upstream's `OOJSScript.m` has it; pinned by the added test
+  `throwingAccessorsLeaveNoPendingException` (fails without the fix, `.agent-tmp/optionb/logs/t-before.log`).
+  024..025: 7 files, +165/−8. Scratch: `.agent-tmp/optionb/`.
+  - **Dropped from the old remainder** (restyle, neutral, or a revert of upstream/#768): the scripting
+    restyle and its tests; the `subproject()` wiring with `clang.ini`'s `llvm-ar` and the install
+    scripts' llvm lines (#768's `dependency()` with `force_fallback_for`, `libc=false`, `b_lto=false`
+    kept); the time limiter on the stopwatch (#768's QPC / `CLOCK_MONOTONIC` kept); the profiler macro
+    names, extra debug profiler frames and the removal of `OOJSProfileExit`'s stack-membership check;
+    the `OOLITE_SDL` guard removals; `OODebugStandards`/`OOCacheManager` anonymous namespaces;
+    `Entity`/`ShipEntity`/`GuiDisplayGen` binding-name follow-ups; `PlayerEntity` `amountVal2` inlined;
+    `PlayerEntityControls` `<cstring>` (the file uses `<initializer_list>`, not `<cstring>`);
+    `OOCharacter` `<cinttypes>` removal and `OOFoundation.h` `<inttypes.h>` (024's direct include is
+    right); `StationEntity` braced list; `OORegExpMatcher`, `OOStringParsing`, `Universe` rewrites;
+    `main.cpp`'s `STRINGIFY` fallback removal (that block is upstream's; the fork's duplicate above it
+    stays, **for Jon**: it could go instead); `OOPlanetDrawable` `#endif`/`#ifdef` merge (024 matches
+    upstream's layout); comment reflows (some with mojibake `fa�ade`); the README/scripting README
+    `subproject()` text. An independent read of 024 → the restyle (`9814ba313..93df84c3f`, `src`)
+    found no other runtime difference beyond these (about 160 of 170 files style-only).
+  - **End target** `270c74ea7` "Use upstream #768's binding as upstream wrote it" on `8a0a3c97a`: tree
+    equal to 025's outside `tools/js-parity`, `tools/oxp-upgrade`, `.zed`, `.vscode`, `.github`. `.github`
+    takes 025's (upstream's macOS jobs, #768's oxp-upgrade job) but keeps the fork's push filter
+    (`3aa8d65e8`) and its separate "Configure library path" step: fork CI layout, not a revert of
+    upstream. Behaviour it changes: the limiter clock back to #768's; the profiler's skip of frames it
+    never entered; QuickJS-ng via `dependency()`; upstream/#768 stopwatch, log header, platform defines,
+    #742 joystick order, `OOLITE_SDL` guards, scripting README; its `toSource()`/`uneval()` copies gone
+    (never installed); it gains 025's fixes. Each end-target commit since `6fe168427` is still
+    represented (`.agent-tmp/optionb/represented.py`, code-token runs): T051c, T051d, #768's
+    QuickJS-ng patch, the #748 maths headers, `OOOpenGLOnly.h` and #783's fix match exactly; #783,
+    #742, #780 and the statistics removal differ only by #742's layout (#783's decoding is in
+    `OOSDLJoystickManager.cpp`), naming (`JSValue` vs `OOJSVal`), braced lists and namespace forms.
+    Nothing lost. Tests: the end target regains `deleteReachesTheClassHookWithNoOwnProperty`, the two
+    `!JS_IsObject(_jsSelf)` checks and the freed `callback()` (ledger "## Step 025").
+  - Gates on 025 (C++ era, scoop UCRT64, port 8638, private `OO_ADDITIONALADDONSDIRS`,
+    `.agent-tmp/optionb/gates.sh`): clean build rc=0, **0 warnings**; oofnd 40/40, core 179/179, headers
+    2/2, openal 8/8, game-unit (no tests); smoke pass; harness 23 checks, 0 failures; component 13/13
+    files on the first attempt (s6 included); GUI window-free (`-m offline` g2, g6, g8, g9) 50/50;
+    `./mk.sh format-check` rc=0 (clang-format 22.1.8); façade and statistics greps empty; deployment
+    build rc=0, 0 warnings, smoke pass; `find_reverts25.py` 024..025: one flag, `OOOpenGLOnly.h`'s `#if`
+    line (all of #748's terms kept, `|| defined(LINUX)` added). Assertions: 024's unchanged (the test
+    diff is 26 added lines, none removed). End target: clean build 0 warnings, the same unit counts,
+    smoke, harness 23/0.
+  - Manifest: `anchors.develop_target` = `270c74ea7`; the 17 restyle-era exclusions dropped (kept:
+    `.zed`, `.vscode`, the `3aa8d65e8` revert, `.github` with its reason updated); 025's title, build
+    commit, source commit, trees and size (src 44, tests 42, other 87) updated. `check --only
+    manifest,lineage,branches,final-tree` exits 0 (the deleted local 018 branch needs no tool change);
+    `git log -S'ooscript::' seriesb/000b..seriesb/025` empty. 025's description's hand-written parts are
+    rewritten; its `(gen)` parts and `verification` block are stale until T057 regenerates them.

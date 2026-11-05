@@ -795,7 +795,7 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
     `OOJSCxxObjectWrapperFinalize`, `OOJS_THIS`, `JSEntityClassID`, test stand-ins), plus 23
     other code files traced to 017–023. So 025 is not covered; default: shrink it to the
     remainder.
-- [ ] T075 [US7] **For Jon: step 025's size.** The rebuilt 025 (`97bac002b`, "Bring upstream's
+- [X] T075 [US7] **For Jon: step 025's size.** The rebuilt 025 (`97bac002b`, "Bring upstream's
   QuickJS-ng binding into the fork's C++ style") is 277 files, +33.6k/−29.9k, larger than old 025
   (229 files, +18.5k/−28.0k). Almost all of it restyles #768's code (anonymous namespaces,
   renamed hooks and class IDs, `goto fail` to early returns, profiler-macro names) and moves the
@@ -815,6 +815,9 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
   its profiler macros, its QPC clock in the time limiter, its scripting README, its `dependency()`
   wiring unless a fix needs otherwise); the fork-style restyle is dropped, and step 025 keeps only
   genuine fixes, each named in its description.
+  *Done (2026-11-04, plan Notes "T075")*: 025 = `fd837749e` (four commits, 7 files, +165/−8 against 024);
+  end target `270c74ea7` (its tree is 025's outside `tools/js-parity`, `tools/oxp-upgrade`, `.zed`,
+  `.vscode`, and `.github`'s fork CI layout); 17 exclusions dropped; check exits 0, the `-S` log is empty.
 - [x] T076a Old branch `seriesb/018-upstream-9ee8ff22f-port` deleted locally (Jon, 2026-11-04),
   with its Git Town entries; `archive/seriesb-facade/018` keeps it. `origin` still has it; Jon
   deletes it at the handover (T065).
