@@ -6,6 +6,7 @@ To make review incremental, the work is split into 24 stacked branches on top of
 
 **How to review:** go top to bottom. Each **Diff** link shows only that step's **wip** change against its parent.
 When #767 and #768 are merged, and my changes are ready, I'll open pull requests to OoliteProject/oolite.
+Until then, each **PR** link is a draft pull request inside the fork, against the step's parent, with that step's description.
 
 | # | PR | Diff | Step | Files | + / − |
 |--:|---|---|---|--:|--:|
