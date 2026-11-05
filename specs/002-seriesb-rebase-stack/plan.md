@@ -155,8 +155,8 @@ sources outside the replayed trees.
   - `git grep ooscript -- src tests` is empty.
   - The test-change ledger (`specs/002-seriesb-rebase-stack/series/test-changes.md`) lists every
     changed test.
-- **G6, switch step**: seriesb step 025 (source: the target branch) takes the target's tree. The
-  final tree equals the target, and the step is verified.
+- **G6, last step**: the last seriesb step (024, `seriesb/024-post-conversion-fixes`; source: the
+  target branch) takes the target's tree. The final tree equals the target, and the step is verified.
 - **G4, finish**:
   - `check --verified` exits 0.
   - The handover is written.
@@ -1313,3 +1313,24 @@ sources outside the replayed trees.
     manifest,lineage,branches,final-tree` exits 0 (the deleted local 018 branch needs no tool change);
     `git log -S'ooscript::' seriesb/000b..seriesb/025` empty. 025's description's hand-written parts are
     rewritten; its `(gen)` parts and `verification` block are stale until T057 regenerates them.
+- **T076: branches renumbered (2026-11-04).** With old 018 dropped, the later branches take their
+  step numbers again (`series.py --series seriesb renumber`; Git Town entries moved with them):
+  `019-develop-fixes` → `018-develop-fixes`, `020-source-hygiene` → `019-source-hygiene`,
+  `021-tests-and-tooling` → `020-tests-and-tooling`, `022-c-as-cxx` → `021-c-as-cxx`,
+  `023-upstream-49a5eb9fc-ports` → `022-upstream-28ceaaba0-ports` (T051a's slug; title "Port upstream
+  #766, #774, #781 and #783"), `024-google-style-format` → `023-google-style-format`,
+  `025-upstream-quickjs-binding` → `024-post-conversion-fixes` (default slug). Notes above this line
+  keep the names and numbers they used. The manifest's dropped 018 keeps its old number as
+  `number_before_renumbering` (the tool's kept-number gap is no longer used by seriesb); its description
+  file is removed. Ledger headings "## Step 0NN" use the new numbers. `origin`'s old names are deleted at
+  the handover (T065).
+- **Jon, 2026-11-04: the steps are Git Town `feature` branches** (so `git town sync` pushes them; a
+  prototype is never pushed). `git-town-branch.<step>.branchtype` is `feature` for 001–024; the parents
+  000a/000b stay `observed`. The tool's lineage check expects `feature` (`seriesb.STEP_TOWN_TYPE`), and
+  `replay.build` sets it after `git town append --prototype` creates a step; agents still sync with
+  `--no-push`.
+- **Jon, 2026-11-04: PRs inside the fork target `upstream-master`.** A local branch `upstream-master`
+  (upstream `master` `09ef336e7`, no tracking) is a Git Town perennial branch and the Git Town parent of
+  `seriesb/000a-…`. The manifest records it as `anchors.root_parent` (and 000a's `parent`); the tool's
+  rule 1 and lineage checks take the first parent's parent from there (`seriesb.root_parent`, default
+  `develop`), and the handover pushes `upstream-master` to `origin` (leased on absence).

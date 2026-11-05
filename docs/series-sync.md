@@ -7,7 +7,7 @@ QuickJS-ng PRs (`specs/002-seriesb-rebase-stack`):
 develop
 └ seriesb/000a-upstream-767-quickjs-option   = upstream #767 (observed: follows the PR, never edited)
   └ seriesb/000b-upstream-768-quickjs-only   = upstream #768 (observed)
-    └ seriesb/001-random-seed-env … seriesb/024-google-style-format   (prototype: never pushed by sync)
+    └ seriesb/001-random-seed-env … seriesb/024-post-conversion-fixes   (feature: a bare `git town sync` pushes them)
 ```
 
 When #767 or #768 gains commits, the change reaches the stack through Git Town. Conflicts are
@@ -19,7 +19,7 @@ Run them in this order, from the OoliteMigration root (`S="python -I tools/serie
 
 ```bash
 $S parents --refresh                         # 1. fetch hobleyd; reset each parent to its PR head
-git -C oolite-dev checkout seriesb/024-google-style-format
+git -C oolite-dev checkout seriesb/024-post-conversion-fixes
 cd oolite-dev && git town sync --stack --detached --no-push && cd ..   # 2. merge down the stack
 $S sync-record --conflict 'N:PATH:why'       # 3. record the sync and every hand-resolved conflict
 $S verify --from 1 && $S check --verified    # 4. re-verify every step

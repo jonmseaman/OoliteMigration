@@ -1,8 +1,8 @@
-# Convert the large files in slices; delete the first Objective-C facades
+# Convert the large files in slices; delete the first Objective-C bridges
 
-**Series:** step 11 of 25 · base `seriesb/010-module-conversions` · next `seriesb/012-shipentity-slices` **(gen)**
+**Series:** step 11 of 24 · base `seriesb/010-module-conversions` · next `seriesb/012-shipentity-slices` **(gen)**
 
-**Replays:** `series/013-first-slices` (old 13 of the master-based series) · 26.2k src, 12.9k tests, 51 other changed lines; 5.1k lines in deleted files **(gen)**
+**Replays:** `series/013-first-slices` (old 13 of the master-based series) · 25.6k src, 13.1k tests, 2 other changed lines; 5.1k lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
@@ -10,47 +10,59 @@
 
 This step does two separate kinds of work.
 
-**Large files converted in slices.** Files too big to convert in one change are converted a group of
-methods at a time, each group (a "slice") small enough to check on its own. These files finish
-here, each as a C++ class with an `X+ObjCBridge` facade for its remaining Objective-C callers:
-- `HeadUpDisplay`, `OOMesh`, `OOOXZManager`, `ResourceManager`;
-- `MyOpenGLView`, `OOJavaScriptEngine`;
-- `OOOXPVerifier`, `OOJSScript`, `OOJSSystem`, `OOJSPlayerShip`, `OOJSSpecialFunctions` (now
-  `.cpp`).
+**Large files converted.** Files too big to convert in one change are converted a group of methods
+at a time, each group (a "slice") small enough to check on its own. Ten classes finish here, each
+as a C++ class `cxx::X` with an Objective-C bridge (`X+ObjCBridge.h/.mm`) for its remaining
+Objective-C callers:
+- `HeadUpDisplay`, `OOMesh`, `OOOXZManager`, `ResourceManager`, `MyOpenGLView`, `OOOXPVerifier`;
+- four of #768's binding files: `OOJavaScriptEngine`, `OOJSScript`, `OOJSSystem`, `OOJSPlayerShip`.
+
+The engine is `cxx::OOJavaScriptEngine`, with #768's members and runtime. Its bridge keeps #768's
+selectors and is the object that posts the engine's reset notifications, so `oo::ToObjC(engine)`
+always answers the same object. `OOJSSpecialFunctions.mm`, which has no Objective-C left, becomes
+`.cpp` with no bridge; it keeps #768's `JSSpecialFunctionsObjectWrapper`.
 
 `ShipEntity` only starts. Its state (every ivar) moves to `cxx::ShipEntity`, and its Objective-C
-interface moves, copied exactly, to `ShipEntity+ObjCBridge.h`. Most methods keep their Objective-C
-bodies for now and read the state through `_cxxShip->`. Later slices, in step 14, move them across
-one group at a time. `PlayerEntityStickProfile` is partly converted the same way.
+interface moves, copied exactly, to `ShipEntity+ObjCBridge.h`. Its methods keep their Objective-C
+bodies for now and read the state through `_cxxShip->`; step 12 moves them across one slice at a
+time. `StickProfileScreen` (in `PlayerEntityStickProfile.h`) becomes `cxx::StickProfileScreen` with
+no bridge, since the player is its only caller; the player's `StickProfile` category stays
+Objective-C.
 
-**Facade deletions.** 30 facades from steps 11–12 are deleted, because no Objective-C code messages
+Three plain-C++ headers are split out so that C++ files can use them without Objective-C:
+`OOCPUInfoEndian.h`, `OOOpenGLCheck.h` and `OOOpenGLExtensionPointers.h`.
+
+Upstream changes already in the parent are kept in the converted code: #747's copy-URL key in
+`OOOXZManager`, #774's replacement of the splash window by a new game window sharing its GL
+context, and #766's front-buffer snapshot on macOS, both in `MyOpenGLView`.
+
+**Bridge deletions.** 30 bridges from steps 9–10 are deleted, because no Objective-C code messages
 those classes any more. Each class leaves `namespace cxx`, and its callers use it directly:
-- Materials: `OOBasicMaterial`, `OOConcreteTexture`, `OODefaultShaderSynthesizer`,
+- materials: `OOBasicMaterial`, `OOConcreteTexture`, `OODefaultShaderSynthesizer`,
   `OOMaterialConvenienceCreators`, `OOMultiTextureMaterial`, `OONullTexture`, `OOShaderMaterial`,
   `OOShaderUniform`, `OOSingleTextureMaterial`;
 - audio: `OOALBufferedSound`, `OOALSoundChannel`, `OOALSoundMixer`, `OOALStreamedSound`;
-- OXP verifier: `OOOXPVerifierStage`, `OOPListSchemaVerifier` and four stages;
+- OXP verifier: `OOOXPVerifierStage`, `OOPListSchemaVerifier` and four stages (check ship data,
+  file scanner, model, texture);
 - others: `OOJoystickProfile`, `OORegExpMatcher`, `OOMeshToOctreeConverter`, `OOECMBlastEntity`,
-  `OOPListScript`, and six `OOJS*` binding categories.
+  `OOPListScript`, and the six `OOJS*+ObjCBridge.mm` categories of #768's binding (exhaust plume,
+  flasher, planet, sun, waypoint, wormhole).
 
 ## Why
 
-Steps 11 and 12 converted everything that the large files depend on, so the large files can now
-follow. They come before `PlayerEntity` and `Universe` (steps 14–15) because those two message
-them most. The facade deletions belong here because converting the large files removed the last
-Objective-C callers of those classes. Deleting each facade as soon as it has no caller keeps the
-two-headed state short-lived.
+Steps 9 and 10 converted everything that the large files depend on, so the large files can now
+follow. They come before `ShipEntity`, `Universe` and `PlayerEntity` (steps 12–13) because those
+message them most. The bridge deletions belong here because converting the large files removed the
+last Objective-C callers of those classes. Deleting each bridge as soon as it has no caller keeps
+the two-headed state short-lived.
 
 ## Behaviour changes
 
-- Windows debug builds: a paused game no longer drops into efficiency mode (`IDLE_PRIORITY_CLASS`)
-  while a debug console is connected. On a loaded machine that mode left a console-driven game
-  answering one command every 15–60 s. Pinned by `tests/component/test_paused_console_priority.py`.
-- Linux/X11, not built or verified here: upstream's fix for the blank window (#774), which replaces
-  the splash window with a new game window sharing its GL context, is not in this step. The C++
-  `MyOpenGLView` keeps the old splash window. Step 25 ports #774. No test pins this.
-- macOS only, not built or verified here: upstream's front-buffer screenshot path (#766) is not in
-  this step. Step 25 restores it.
+- Windows builds with the debug console (`OO_DEBUG_MONITOR_ENABLED`, which deployment builds also
+  set): a paused game no longer drops into efficiency mode (`IDLE_PRIORITY_CLASS`) while a debug
+  console is waiting on it. On a loaded machine that mode left a console-driven game answering one
+  command every 15–60 s. Pinned by `test_a_paused_game_with_a_console_keeps_normal_priority` in
+  `tests/component/test_paused_console_priority.py`.
 
 ## How to review
 
@@ -59,52 +71,43 @@ Review the two parts separately.
 For the slices, start with `src/Core/Entities/ShipEntity+ObjCBridge.h`. Its header comment
 describes the split state:
 - `cxx::ShipEntity` (in `ShipEntity.h`) holds the members by their old names;
-- the facade keeps the old interface and one borrowed pointer, `_cxxShip`;
+- the bridge keeps the old interface and one borrowed pointer, `_cxxShip`;
 - each slice gets its bodies back verbatim by deleting `_cxxShip->`.
 
 So most of the 4,000-line `ShipEntity.mm` hunk, and the `ShipEntityAI.mm` and `PlayerEntity.mm`
-hunks, are `_cxxShip->` / `->_cxxShip->` insertions. To spot-check, strip that prefix
-from a hunk and compare with the base. The fully converted files read like step 11's classes: check
-`HeadUpDisplay.mm` against its base `@implementation` method by method, and read
-`tests/unit/core/test_HeadUpDisplay.mm`. Each of the 11 converted files has a matching test in
-`tests/unit/core`.
+hunks, are `_cxxShip->` / `->_cxxShip->` insertions. In `ShipEntity.mm`, 26 of the 2,074 added lines
+are anything else:
+`git diff seriesb/010-module-conversions seriesb/011-first-slices -- src/Core/Entities/ShipEntity.mm | grep '^+[^+]' | grep -v '_cxxShip->'`.
 
-`OOOXZManager.mm` also has to carry upstream's copy-URL key (`n_key_oxzmanager_copyurl`,
-`-setOXPURL:`, `-processCopyUrlKey`). In the converted class those are the members
+The fully converted files read like step 9's classes: check `HeadUpDisplay.mm` against its base
+`@implementation` method by method, and read `tests/unit/core/test_HeadUpDisplay.mm`. Nine of the
+converted classes get a new test in `tests/unit/core` (`test_X.mm`, plus `test_ShipEntity.mm` and
+`test_PlayerEntityStickProfile.mm`); `OOJSScript` extends its existing `test_OOJSScript.mm`, and
+`OOJSSpecialFunctions`, a two-line change, has no test of its own.
+
+In `OOOXZManager.mm`, #747's `-setOXPURL:` and `-processCopyUrlKey` are the members
 `setOXPURL(const std::optional<std::string>&)` and `processCopyUrlKey()`, with
-`std::optional<std::string> _currentOXPURL`. Check them against the base's Objective-C.
+`std::optional<std::string> _currentOXPURL`; the new case `copyUrlKey` in
+`tests/unit/core/test_OOOXZManager.mm` covers them. Check them against the base's Objective-C.
 
-For the deletions, each one is mechanical (git's rename detection pairs
-`OOJSSpecialFunctions+ObjCBridge.mm` with the deleted `OOModelVerifierStage+ObjCBridge.mm`; they
-are unrelated):
+Two test checks are worth knowing about. In `test_OOJavaScriptEngine.mm`, converting a plain
+`OOObject` (no JS glue) gives a non-object and leaves an exception pending, because #768 boxes
+`undefined` with `JS_ToObject`; the test checks `!JS_IsObject(...)` and clears the exception.
+`test_OOMaterialConvenienceCreators.mm` binds `*material.get()` to a reference before `typeid`,
+because the direct form warns (`-Wpotentially-evaluated-expression`).
+
+For the deletions, each one is mechanical:
 - the two bridge files and their `meson.build` line go;
 - `namespace cxx { ... }` goes from the header;
 - callers lose their `oo::ToObjC` / `oo::ToCxx` crossings.
 
-`git grep` for the deleted facade's class name in a message send (`[X ` or `[x foo]` on that type)
+`git grep` for a deleted bridge's class name in a message send (`[X ` or `[x foo]` on that type)
 should find nothing.
 
-The `GameController.mm` hunk is the priority change, debug builds only (`#ifndef NDEBUG`).
-
-## Differences from the old step **(gen)**
-
-None: the same change as `series/013-first-slices`.
+The `GameController.mm` hunk is the priority change, under `OO_DEBUG_MONITOR_ENABLED`.
 
 ## Verified **(gen)**
 
-Windows x64, `4ca2448d62`, 2026-11-02.
-
-| Check | Result |
-|---|---|
-| build_clang | pass |
-| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
-| clang_format | pass |
-| component | n/a: no component scenario touched |
-| no_new_spidermonkey_or_gnustep | pass |
-| no_new_suppressions | pass |
-| smoke | pass |
-| tests_untouched | pass |
-| unit | pass: oofnd, core |
-| warnings_clang | pass: 0 new warnings (3 inherited from the parent, 4 listed in test-warnings.md) |
+Not verified at this branch's tip (`c80d55fde4`) yet: the last record is for `4ca2448d62` (2026-11-02), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

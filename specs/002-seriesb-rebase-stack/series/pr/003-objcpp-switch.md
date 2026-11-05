@@ -1,122 +1,84 @@
 # Compile the game as Objective-C++, keeping #768's QuickJS-ng binding
 
-**Series:** step 3 of 25 · base `seriesb/002-safety-net` · next `seriesb/004-oofnd-core` **(gen)**
+**Series:** step 3 of 24 · base `seriesb/002-safety-net` · next `seriesb/004-oofnd-core` **(gen)**
 
-**Replays:** `series/005-quickjs-switch` (old 3, 4, 5 of the master-based series) · 30.6k src, 920 tests, 7.0k other changed lines; 21.6k lines in deleted files **(gen)**
+**Replays:** `series/005-quickjs-switch` (old 3, 4, 5 of the master-based series) · 864 src, 0 tests, 2.1k other changed lines; 0 lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
 ## What this changes
 
-This step replaces the scripting layer that steps 1 and 2 inherit from upstream #768's branch
-with the fork's own: `src/Core/Scripting/ooscript/JSEngine.hpp`, a C++ interface to the JavaScript
-engine (namespace `ooscript`: `Value`, `Object`, `Context`, `ClassDef`, `PropertySpec`,
-`FunctionSpec`, `CallArgs`, rooting and exceptions), with one backend,
-`ooscript/JSEngine_quickjs.cpp`, on QuickJS-ng. The binding files under `src/Core/Scripting/` use
-the `ooscript` types instead of calling QuickJS-ng directly, and #768's proof-of-concept tree
-(`src/Core/Scripting/poc/`), `oolite-quickjs-compat.js` and its QuickJS-ng patch are removed.
+The game compiles as Objective-C++. Every Objective-C source file in `src/` is renamed from `.m`
+to `.mm` (247 renames, including #768's `poc/` harness), and the build declares the `objcpp`
+language (`meson.build`, `clang.ini`). `src/meson/meson.build` gives Objective-C++ the same
+exception flags as Objective-C and, for Clang off macOS, the same GNUstep-runtime flags. Every
+`meson.build` source list names the `.mm` files. 285 files change, +1695/−1306; no file is added
+or deleted.
 
-The step also renames every Objective-C source file in `src/` from `.m` to `.mm` (207 renames), so
-the whole game compiles as Objective-C++. It squashes three steps of the master-based series (the
-façade, Objective-C++, and the engine switch), because on #768's base the engine is already
-QuickJS-ng and the intermediate SpiderMonkey backend has nothing to run on. Upstream's two
-stand-alone tools, `tools/js-parity/` and `tools/oxp-upgrade/`, are kept as #768 has them.
+133 renames are byte-identical. The other 114, and 26 headers, get the edits that C++ requires:
+
+- identifiers that are C++ keywords are renamed: `this` → `thisObj` in #768's binding (the
+  `OOJS_GETTER_ARGS`/`OOJS_SETTER_ARGS` macros and every callback), `class` → `klass`, `new` →
+  `newValue`, `export`, `mutable`, `template`, `private` and `operator` likewise;
+- explicit casts where C converts implicitly: `void *` results (`malloc`, `-bytes`,
+  `JS_GetOpaque`, `pointerValue`) and integers assigned to enums;
+- variable-length arrays become `std::vector`;
+- `extern "C"` guards in the headers that declare C functions;
+- a few C-only constructs get C++ equivalents: `OO_CAST_PARAMETER` in `OOStringExpander.h` picks
+  its helper by overloading, where C uses `__builtin_choose_expr`; `OOOpenGLStateManager.mm`'s
+  state table moves above its first use and lists its entries and fields in declaration order;
+  declarations that a `goto` or `case` would jump over get their own block or lose their
+  initialiser to a separate assignment; `OOJSPropID.h`'s `OOJSID` macro puts a space between
+  `""` and its argument.
+
+#768's QuickJS-ng binding stays the scripting layer, here and in every later step; only the edits
+above touch it. `oolite-quickjs-compat.js`, the QuickJS-ng wrap and its patch, and upstream's
+`tools/js-parity/` and `tools/oxp-upgrade/` are unchanged.
+
+`ShellScripts/common/post_build.sh` now copies the Windows DLLs that the game's DLLs depend on as
+well as the game's own: it runs `ldd` over each newly copied DLL until no new one appears
+(`staged_dlls`). For example, `libtre-5.dll` needs `libsystre-0.dll`, which the game does not
+link directly.
 
 ## Why
 
-Steps 4 to 24 replay the fork's migration, which was written against this façade: the Foundation
-and Objective-C conversions call `ooscript` types, not an engine API. Putting the façade back here
-lets those steps replay as they were built and tested, with their own tests unchanged. Step 25
-then moves the finished C++ game onto #768's binding in one step, where the binding and its tests
-can be reviewed together.
-
-Objective-C++ comes in the same step because the façade is C++ and the later steps put C++ types
-inside Objective-C classes.
+Step 4 adds `oofnd`, a C++20 library that the game's Objective-C files include, and later steps
+put C++ types inside Objective-C classes before converting each class to C++. All of that needs
+Objective-C++. Renaming every file in one step keeps the later diffs to real changes. Each edit
+here is the smallest one the compiler requires, made on upstream's code, so upstream's recent
+changes (#742, #748, #749, #780 among them) stay as they are.
 
 ## Behaviour changes
 
-Measured against the master-based series' step 5, none intended: this step's tree is that step's
-tree, with #768's two tools kept. Against its parent, which runs #768's binding, the differences
-are the ones step 25 reverses; the plan's Notes ("Behaviour changes that follow #768") list them.
-The main ones: game classes keep their `[object Vector3D]`-style tags, and assignments that
-#768 rejects (an invalid manifest value, a strict-mode write to a read-only property) are reported
-and ignored instead of throwing. The step-2 component and GUI tiers run against this step
-unchanged.
+None. The edits are renames, casts and declarations. The arrays that became `std::vector` are
+now zero-initialised and on the heap rather than the stack. `OOOpenGLStateManager.mm`'s state
+table has the same five states with the same values. The step-2 component and GUI tiers run
+against this step unchanged.
 
 ## How to review
 
-1. Read `src/Core/Scripting/ooscript/JSEngine.hpp`, then `ooscript/README.md`, whose retarget map
-   lists the façade call for each engine function.
-2. Read `src/Core/Scripting/OOJSVector.mm` as the worked example; the other binding files repeat
-   its pattern.
-3. Review `ooscript/JSEngine_quickjs.cpp` as the mapping onto QuickJS-ng.
+1. See only the files whose content changed (114 edited renames, 38 modified files):
 
-The `.m` → `.mm` renames are mechanical. To see only the renamed files that changed, run
-`git diff -M --name-status seriesb/002-safety-net seriesb/003-quickjs-switch | grep -v '^R100'`.
-To check that nothing outside the façade calls the engine, run
-`git grep -nE '\bJS_[A-Z]' -- src ':!src/Core/Scripting/ooscript'`.
+       git diff -M --name-status seriesb/002-safety-net seriesb/003-objcpp-switch | grep -v '^R100'
 
-## Differences from the old step **(gen)**
+2. Read the edits without the re-indentation that the new blocks cause:
 
-Where this step's change differs from `series/005-quickjs-switch`'s, and why:
+       git diff -M -w seriesb/002-safety-net seriesb/003-objcpp-switch -- src ':!*meson.build'
 
-- `.eslintrc.json`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `.github/workflows/build-all.yaml`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `.github/workflows/test_builds.yaml`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `.gitignore`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `README.md`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `Resources/Config/logcontrol.plist`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `Resources/Scripts/oolite-quickjs-compat.js`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `ShellScripts/Linux/install_mozilla_js.sh`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `ShellScripts/Linux/install_package_fn.sh`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `ShellScripts/Linux/install_packages_root.sh`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `ShellScripts/Windows/install_deps.sh`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `ShellScripts/macOS/build_mozilla_js.sh`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `ShellScripts/macOS/install_packages.sh`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `ShellScripts/macOS/mozilla_js_arm64.patch`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `installers/flatpak/space.oolite.Oolite.yaml`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `meson.build`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `meson.options`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Debug/OODebugMonitor.h`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Debug/OODebugMonitor.m`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Debug/OOJSConsole.h`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Debug/OOJSConsole.m`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Debug/meson.build`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Entities/DockEntity.m`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Entities/Entity.h`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Entities/OOECMBlastEntity.m`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Entities/OOVisualEffectEntity.h`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Entities/OOVisualEffectEntity.m`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Entities/PlayerEntity.h`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Entities/PlayerEntity.m`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Entities/PlayerEntityLoadSave.m`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Entities/ShipEntity.h`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Entities/ShipEntity.m`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Entities/ShipEntityAI.m`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/Entities/StationEntity.m`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/GameController.m`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/GuiDisplayGen.h`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/GuiDisplayGen.m`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/OOCharacter.h`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/OOCharacter.m`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- `src/Core/OOCommodities.m`: the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)
-- ... and 125 more (the manifest lists them all)
+   Most hunks are one of the kinds listed above. The ones that need a real read are
+   `OOStringExpander.h` (the overloads must classify each type as the C branch does), the moved
+   state table in `OOOpenGLStateManager.mm`, and the new blocks in
+   `OOPlanetTextureGenerator.mm` and `OOStandaloneAtmosphereGenerator.mm`.
+3. Check the build files: `meson.build`, `clang.ini`, `src/meson/meson.build`, and
+   `ShellScripts/common/post_build.sh`.
+4. Check that upstream's code is kept: `git diff -M --diff-filter=AD --name-only
+   seriesb/002-safety-net seriesb/003-objcpp-switch` prints nothing; the joystick files
+   (#742, #749) are `R100`; `src/Core/OOOpenGLOnly.h` (#748) is unchanged; and
+   `git grep -n playerWillSaveGame seriesb/003-objcpp-switch -- src` still shows #780's
+   `doScriptEvent:` calls.
 
 ## Verified **(gen)**
 
-Windows x64, `a6e785314d`, 2026-11-02.
-
-| Check | Result |
-|---|---|
-| build_clang | pass |
-| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
-| clang_format | pass |
-| component | n/a: no component scenario touched |
-| no_new_spidermonkey_or_gnustep | pass |
-| no_new_suppressions | pass |
-| smoke | pass |
-| tests_untouched | pass |
-| unit | n/a: the tree has no unit suites |
-| warnings_clang | pass: 0 warnings |
+Not verified at this branch's tip (`768166d647`) yet: the last record is for `a6e785314d` (2026-11-02), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

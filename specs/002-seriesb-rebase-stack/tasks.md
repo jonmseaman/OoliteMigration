@@ -674,6 +674,12 @@ and `$S verify --steps N` exits 0, including the `no_facade` and `poc` checks fr
 
 Tasks recorded so they outlive the session. Each still needs its Accept command met.
 
+Step numbers: tasks written before T076 use the branch numbers of that time. Since T076, old 019–025
+are 018–024 (`018-develop-fixes`, `019-source-hygiene`, `020-tests-and-tooling`, `021-c-as-cxx`,
+`022-upstream-28ceaaba0-ports`, `023-google-style-format`, `024-post-conversion-fixes`); 001–017 are
+unchanged. "Old 0NN" in T059–T061b means the master-based `series/*` steps (or the façade-era seriesb
+step) and is not renumbered.
+
 - [ ] T058 [US7] **CI passes on every branch** (Jon). Each `seriesb/*` step carries upstream's
   workflows (`build-all.yaml`: clang-format-check (clang-format 22), build-linux, build-flatpak,
   build-windows, build-macos, release; `test_builds.yaml`: oxp-upgrade (Node 22), ubuntu, fedora,
@@ -735,8 +741,10 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
 - [ ] T066 Debug-config (`-Ddebug=true`) core tests fail to link from 009 (missing
   `OOOpenGLStateManager` in their meson source lists, so `OOGLNoteCurrentFunction` is undefined). Fix
   at the step that introduced the lists; release-flavour gates are unaffected.
-- [ ] T065 [US7] Handover: push `seriesb/003-objcpp-switch` and delete `origin`'s
-  `seriesb/003-quickjs-switch`; `--force-with-lease` for every rebuilt step (Jon).
+- [ ] T065 [US7] Handover: push every step with `--force-with-lease` (the renamed ones, 003 and
+  018–024, are new names on `origin`) and delete `origin`'s obsolete names: `seriesb/003-quickjs-switch`,
+  `seriesb/018-upstream-9ee8ff22f-port` and the pre-T076 `019-develop-fixes` … `025-upstream-quickjs-binding`
+  (Jon; the commands are in `series/HANDOVER.md`).
 - [ ] T067 Component tier on a private port: `tests/component` `console.py` should write a per-run
   `debugConfig.plist` (as `launch_snapshot.py` does) so `OO_CONSOLE_PORT` alone moves it off 8563.
   Replays 011+ work around it with a private `OO_ADDITIONALADDONSDIRS` root (`plan.md` Notes).
@@ -821,7 +829,7 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
 - [x] T076a Old branch `seriesb/018-upstream-9ee8ff22f-port` deleted locally (Jon, 2026-11-04),
   with its Git Town entries; `archive/seriesb-facade/018` keeps it. `origin` still has it; Jon
   deletes it at the handover (T065).
-- [ ] T076 Renumber the branches (Jon, 2026-11-04: "fine to renumber the branches too and update
+- [X] T076 Renumber the branches (Jon, 2026-11-04: "fine to renumber the branches too and update
   the docs"), after T075: 019–025 become 018–024 (the 023 slug becomes `022-upstream-28ceaaba0-ports`
   per T051a), with `git branch -m`, the Git Town parent entries re-pointed, the manifest's branch
   numbers equal to `n` again, `series/pr/*.md` renamed, and the docs (review issue, HANDOVER, plan
@@ -829,6 +837,16 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
   `origin`'s old names are deleted by Jon at the handover. Accept:
   `series.py --series seriesb check --only manifest,lineage,branches,final-tree` exits 0, and
   `git branch --list 'seriesb/02[45]*'` is empty.
+  *Done (2026-11-04, plan Notes "T076")*: `series.py --series seriesb renumber` after two slug renames
+  (023 → `023-upstream-28ceaaba0-ports`, title "Port upstream #783 …"; 025 → `025-post-conversion-fixes`,
+  default slug); Git Town entries moved with the branches (`git town branch` shows 001–024 in order); the
+  dropped 018 keeps its number as `number_before_renumbering`; `series/pr` renamed (old 018's removed); ledger
+  headings renumbered. The check exits 0. **Accept as written cannot hold:** the new `seriesb/024-post-conversion-fixes`
+  matches `seriesb/02[45]*`. Default taken: the intent (no pre-renumbering name left) is checked as
+  `git branch --list 'seriesb/025*' 'seriesb/019-develop*' 'seriesb/020-source*' 'seriesb/021-tests*' 'seriesb/022-c-as*' 'seriesb/023-upstream-49a5eb9fc*' 'seriesb/024-google*'`,
+  which is empty.
+  Also (Jon, 2026-11-04): the 24 step branches' Git Town type is `feature` (was `prototype`, which `git town
+  sync` never pushes); 000a/000b stay `observed`; the lineage check expects `feature` (tool test `test_town_type.py`).
 
 ---
 

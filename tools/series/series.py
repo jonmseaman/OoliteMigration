@@ -1085,11 +1085,16 @@ def parse_sections(text):
 
 def step_size(step, parent_tree):
     """{src, tests, other, deleted_files} changed lines between parent_tree and the step's target tree."""
-    from tools.series import history
     if not step.get("target_tree") or not parent_tree:
         return None
-    num = history.git(GAME, "diff", "--numstat", "-M", parent_tree, step["target_tree"])
-    status = history.git(GAME, "diff", "--name-status", "-M", parent_tree, step["target_tree"])
+    return tree_size(parent_tree, step["target_tree"])
+
+
+def tree_size(parent_tree, tree):
+    """{src, tests, other, deleted_files} changed lines between two trees."""
+    from tools.series import history
+    num = history.git(GAME, "diff", "--numstat", "-M", parent_tree, tree)
+    status = history.git(GAME, "diff", "--name-status", "-M", parent_tree, tree)
     deleted = {l.split("\t")[-1] for l in status.splitlines() if l.startswith("D")}
     size = {"src": 0, "tests": 0, "other": 0, "deleted_files": 0}
     for line in num.splitlines():
@@ -1201,7 +1206,10 @@ def _root_pr(m):
     return f"`{root}` (a fix on top of upstream's PRs)"
 
 
-def render_description_replay(m, step, kept):
+def render_description_replay(m, step, kept, tip=None, tests_changed=None):
+    """The step's description. `tip`: the branch's tip commit, when it exists (a verification record
+    made for another commit is then reported as not current). `tests_changed`: the existing test files
+    the step modifies or deletes, for the last step's Test changes section."""
     steps = m["steps"]
     nxt = steps[step["n"]]["branch"] if step["n"] < len(steps) else "—"
     size = step.get("size")
@@ -1211,7 +1219,7 @@ def render_description_replay(m, step, kept):
     switch = src.get("type") == "target"
     lines = [f"# {step['title']}", "",
              f"**Series:** step {step['n']} of {len(steps)} · base `{step['parent']}` · next `{nxt}` **(gen)**", "",
-             (f"**Switch:** the tree of `{src['ref']}` (`{src['commit'][:10]}`), with the series' exclusions and "
+             (f"**Source:** the tree of `{src['ref']}` (`{src['commit'][:10]}`), with the series' exclusions and "
               f"additions · {size_txt} **(gen)**") if switch else
              f"**Replays:** `{src['old_branch']}` ({_old_range(step)} of the master-based series) · {size_txt} **(gen)**",
              "",
@@ -1220,24 +1228,30 @@ def render_description_replay(m, step, kept):
     for h in HAND_SECTIONS:
         lines += [f"## {h}", "", kept.get(h) or TODO, ""]
     differs = step.get("differs_from_old") or []
+    ledger = os.path.basename(src.get("test_ledger") or "") or "the test ledger"
     if switch:
-        lines += ["## Test changes **(gen)**", "",
-                  f"The tests move to upstream's engine API with the code; each changed test is listed in "
-                  f"`{src.get('test_ledger')}` (spec FR-015)."]
-    else:
-        lines += ["## Differences from the old step **(gen)**", ""]
-        if differs:
-            lines.append(f"Where this step's change differs from `{src['old_branch']}`'s, and why:")
+        lines += ["## Test changes **(gen)**", ""]
+        if tests_changed:
+            lines.append(f"Existing test files this step changes, each listed in the series' test ledger (`{ledger}`):")
             lines.append("")
-            for d in differs[:40]:
-                lines.append(f"- `{d['path']}`: {d['reason']}")
-            if len(differs) > 40:
-                lines.append(f"- ... and {len(differs) - 40} more (the manifest lists them all)")
+            lines += [f"- `{p}`" for p in tests_changed]
         else:
-            lines.append(f"None: the same change as `{src['old_branch']}`.")
-    lines += ["", "## Verified **(gen)**", ""]
+            lines.append(f"No existing test file changes (the series' test ledger is `{ledger}`).")
+        lines.append("")
+    elif differs:
+        lines += ["## Differences from the old step **(gen)**", "",
+                  f"Where this step's change differs from `{src['old_branch']}`'s, and why:", ""]
+        for d in differs[:40]:
+            lines.append(f"- `{d['path']}`: {d['reason']}")
+        if len(differs) > 40:
+            lines.append(f"- ... and {len(differs) - 40} more (the manifest lists them all)")
+        lines.append("")
+    lines += ["## Verified **(gen)**", ""]
     v = step.get("verification")
-    if v:
+    if v and tip and v.get("commit") != tip:
+        lines += [f"Not verified at this branch's tip (`{tip[:10]}`) yet: the last record is for "
+                  f"`{str(v.get('commit'))[:10]}` ({v.get('date', '')}), an earlier build of this step.", ""]
+    elif v:
         lines += [f"Windows x64, `{v.get('commit', '')[:10]}`, {v.get('date', '')}.", "",
                   "| Check | Result |", "|---|---|"]
         for k, r in sorted(v.get("checks", {}).items()):
@@ -1262,17 +1276,35 @@ def _old_description(m, step):
         return {k: v for k, v in parse_sections(f.read()).items() if k in HAND_SECTIONS and v != TODO}
 
 
+def _branch_tip(branch):
+    from tools.series import stack
+    return stack.git(GAME, "rev-parse", f"refs/heads/{branch}") if stack.exists(GAME, branch) else None
+
+
+def history_lines(*args):
+    from tools.series import history
+    return [l for l in history.git(GAME, *args).splitlines() if l]
+
+
 def cmd_describe_replay(args):
     from tools.series import manifest, replay
     m = load_manifest()
     if args.handover:
         with open(HANDOVER, "w", encoding="utf-8", newline="\n") as f:
-            f.write(render_handover_replay(m))
+            f.write(render_handover_replay(m, origin_branches()))
         print(os.path.relpath(HANDOVER, ROOT))
         return 0
     targets = [_replay_step(m, args.n)] if args.n else m["steps"]
     for step in targets:
-        if step.get("target_tree"):
+        tip, tests_changed = _branch_tip(step["branch"]), None
+        parent_tip = _branch_tip(step["parent"])
+        if tip and parent_tip:
+            # the branches as they are: a step may hold commits after its build (follow-ups, sync merges)
+            step["size"] = tree_size(f"{parent_tip}^{{tree}}", f"{tip}^{{tree}}")
+            if replay.is_target(step):
+                tests_changed = [p for p in history_lines("diff", "--name-only", "--no-renames", "--diff-filter=MD",
+                                                          parent_tip, tip, "--", "tests/")]
+        elif step.get("target_tree"):
             step["size"] = step_size(step, replay.parent_tree(GAME, m, step)) or step.get("size")
         path = os.path.join(SERIES_DIR, "pr", os.path.basename(step["description"]))
         if os.path.exists(path):
@@ -1282,14 +1314,24 @@ def cmd_describe_replay(args):
             kept = _old_description(m, step) if not step["source"].get("old_steps") else {}
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8", newline="\n") as f:
-            f.write(render_description_replay(m, step, kept))
+            f.write(render_description_replay(m, step, kept, tip, tests_changed))
         print(os.path.relpath(path, ROOT))
     manifest.save(MANIFEST, m)
     return 0
 
 
-def render_handover_replay(m):
+def origin_branches():
+    """{branch: commit} for `origin`'s seriesb branches, as this repository last fetched them."""
+    from tools.series import stack
+    out = stack.git(GAME, "for-each-ref", "--format=%(refname:lstrip=3) %(objectname)", "refs/remotes/origin/seriesb/")
+    return dict(line.split(" ", 1) for line in out.splitlines() if line)
+
+
+def render_handover_replay(m, remote=None):
+    """The handover. `remote`: {branch: commit} on `origin` (origin_branches); each push is leased on
+    it, and its seriesb branches that are neither a step nor a parent are deleted."""
     from tools.series import seriesb
+    remote = remote or {}
     a, steps = m["anchors"], m["steps"]
     spec_dir = os.path.relpath(os.path.dirname(SERIES_DIR), ROOT).replace(os.sep, "/")
     body = lambda s: f"{spec_dir}/{s['description']}"
@@ -1314,7 +1356,8 @@ def render_handover_replay(m):
         olds = ", ".join(str(n) for n in f["old_steps"] + [f["into_old_step"]])
         out.append(f"- old {olds} are one step: {f['reason']}.")
     for d in m.get("dropped", []):
-        out.append(f"- `{d['old_branch']}` is dropped: covered by #{d['covered_by']}; {d['reason']}.")
+        covered = f"#{d['covered_by']}" if str(d["covered_by"]).isdigit() else d["covered_by"]
+        out.append(f"- `{d['old_branch']}` is dropped: covered by {covered}; {d['reason']}.")
     if not m.get("folded") and not m.get("dropped"):
         out.append("None.")
     out += ["", "## Exclusions and additions", "", "What `develop` has and the series does not carry:", ""]
@@ -1334,18 +1377,47 @@ def render_handover_replay(m):
                 else f"`{s['source']['old_branch']}` ({_old_range(s)})")
         out.append(f"| {s['n']} | `{s['branch']}` | {what} | `{s['parent']}` "
                    f"| {title} | {size} | {verification_summary(s)} |")
-    branches = " ".join(s["branch"] for s in steps)
+    git = f"GIT_TERMINAL_PROMPT=0 {PUSH_GIT} -C oolite-dev push"
+    lease = lambda b: f"--force-with-lease=refs/heads/{b}:{remote.get(b, '')}"
+    kept = {s["branch"] for s in steps} | {p["branch"] for p in m.get("parents", [])} | {seriesb.root_parent(m)}
+    obsolete = sorted(b for b in remote if b not in kept)
     out += ["", "## Keeping it current", "",
             "When upstream's PRs move: `parents --refresh`, then `git town sync --stack --detached --no-push`, then "
             "`sync-record` and `verify --from 1`. See `docs/series-sync.md`.", "",
             "## Push (Jon)", "",
-            "The steps, with Git for Windows' git (MSYS2's has no credentials and waits for a username forever). "
-            f"`{root}` goes to the fork too, as the base of step 1's dry-run PR; the explicit refspec is needed "
-            "because its tracking remote is the PR author's:", "", "```bash",
-            f"GIT_TERMINAL_PROMPT=0 {PUSH_GIT} -C oolite-dev push origin {branches}"]
+            "With Git for Windows' git (MSYS2's has no credentials and waits for a username forever). Each push "
+            "is leased: it goes through only if `origin`'s branch is still at the commit this handover was "
+            "generated against, or, for a name `origin` does not have, still absent. A step whose branch "
+            "`origin` already has at the same commit pushes nothing. `--set-upstream` points each branch's "
+            "tracking at its own name (a renamed branch still tracks its old one).", "", "```bash"]
+    for s in steps:
+        b = s["branch"]
+        out.append(f"{git} --set-upstream {lease(b)} origin {b}:refs/heads/{b}")
     if any(p["branch"] == root for p in live if p.get("kind") == "upstream"):
-        out.append(f"GIT_TERMINAL_PROMPT=0 {PUSH_GIT} -C oolite-dev push origin {root}:refs/heads/{root}")
-    out += ["```", "", "## Dry run on the fork (Jon)", "",
+        out += ["```", "", f"`{root}` goes to the fork too, as the base of step 1's dry-run PR; the explicit "
+                "refspec is needed because its tracking remote is the PR author's:", "", "```bash",
+                f"{git} {lease(root)} origin {root}:refs/heads/{root}"]
+    top = seriesb.root_parent(m)
+    if top != "develop":
+        out += ["```", "", f"`{top}` is upstream's `master` as a Git Town perennial branch, the parent of "
+                f"`{live[0]['branch'] if live else root}`: PRs inside the fork target it. It goes to the fork as it is:",
+                "", "```bash", f"{git} {lease(top)} origin {top}:refs/heads/{top}"]
+    out += ["```", "", "## Delete obsolete names on origin (Jon)", ""]
+    if obsolete:
+        out += ["After the pushes: `origin`'s seriesb branches that are no longer a step or a parent (renamed or "
+                "dropped steps), each leased on the commit it had when this handover was generated:", "", "```bash"]
+        out += [f"{git} {lease(b)} origin :refs/heads/{b}" for b in obsolete]
+        out += [f"GIT_TERMINAL_PROMPT=0 {PUSH_GIT} -C oolite-dev fetch --prune origin", "```", ""]
+    else:
+        out += ["None: every seriesb branch on `origin` is a step or a parent.", ""]
+    out += ["## Git Town", "",
+            "The stack's lineage is local configuration (`git config --get-regexp git-town-branch`: each "
+            "branch's `parent` and `branchtype`); "
+            "pushing does not carry it, and renaming a branch with the series tool moves it. The parents are "
+            "`observed` (they follow upstream's PRs and are never pushed by Git Town); the steps are `feature` "
+            "branches, so a bare `git town sync --stack` pushes them, without a lease. For the first push of "
+            "the rebuilt steps use the commands above. `git town branch` shows the stack.", "",
+            "## Dry run on the fork (Jon)", "",
             f"Each PR against the previous branch in `{FORK_REPO}`, so every diff is one step:", "", "```bash"]
     for s in steps:
         out.append(f"gh pr create -R {FORK_REPO} --draft --base {s['parent']} --head {s['branch']} "
@@ -1373,7 +1445,7 @@ def check_handover_replay(m):
         return [f"rule 8: no {os.path.relpath(HANDOVER, ROOT)}; run `describe --handover`"]
     with open(HANDOVER, encoding="utf-8") as f:
         text = f.read()
-    if text != render_handover_replay(m):
+    if text != render_handover_replay(m, origin_branches()):
         return ["rule 8: the handover is out of date; run `describe --handover`"]
     return []
 

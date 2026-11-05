@@ -18,16 +18,17 @@
    "style_file_from": "49a5eb9fc"
   },
   "old_manifest": "specs/001-split-migration-prs/series/manifest.json",
+  "root_parent": "upstream-master",
   "upstream_master": "7437f22a543c442830774dea0f2cad4e59c04cbb"
  },
  "dropped": [
   {
    "branch": "seriesb/018-upstream-9ee8ff22f-port",
    "covered_by": "steps 004-017",
-   "number": 18,
+   "number_before_renumbering": 18,
    "old_branch": "series/020-upstream-9ee8ff22f-port",
    "old_step": 20,
-   "reason": "its upstream ports (#369-#765 in the C++ code) moved into the steps that write or convert the code they touch (T059: follow-up commits on 004-009, folded into the 010-017 replays); 019's parent is 017, and the later steps keep their branch names (Jon, 2026-11-03)",
+   "reason": "its upstream ports (#369-#765 in the C++ code) moved into the steps that write or convert the code they touch (T059: follow-up commits on 004-009, folded into the 010-017 replays); the next step's parent is 017. number_before_renumbering is the seriesb number its branch had; the later steps were renumbered down by one (T076)",
    "title": "Port upstream changes #369 to #765 into the C++ code"
   }
  ],
@@ -67,7 +68,7 @@
    "git_town_type": "observed",
    "head": "3758f8a09ba6b00be61519bcaab543cc8450b631",
    "kind": "upstream",
-   "parent": "develop",
+   "parent": "upstream-master",
    "tracking": "hobleyd/seriesb/000a-upstream-767-quickjs-option",
    "upstream_pr": 767,
    "verification": {
@@ -293,668 +294,7 @@
     ]
    },
    "description": "series/pr/003-objcpp-switch.md",
-   "differs_from_old": [
-    {
-     "path": ".eslintrc.json",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": ".github/workflows/build-all.yaml",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": ".github/workflows/test_builds.yaml",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": ".gitignore",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "README.md",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "Resources/Config/logcontrol.plist",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "Resources/Scripts/oolite-quickjs-compat.js",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "ShellScripts/Linux/install_mozilla_js.sh",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "ShellScripts/Linux/install_package_fn.sh",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "ShellScripts/Linux/install_packages_root.sh",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "ShellScripts/Windows/install_deps.sh",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "ShellScripts/macOS/build_mozilla_js.sh",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "ShellScripts/macOS/install_packages.sh",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "ShellScripts/macOS/mozilla_js_arm64.patch",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "installers/flatpak/space.oolite.Oolite.yaml",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "meson.build",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "meson.options",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Debug/OODebugMonitor.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Debug/OODebugMonitor.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Debug/OOJSConsole.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Debug/OOJSConsole.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Debug/meson.build",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Entities/DockEntity.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Entities/Entity.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Entities/OOECMBlastEntity.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Entities/OOVisualEffectEntity.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Entities/OOVisualEffectEntity.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Entities/PlayerEntity.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Entities/PlayerEntity.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Entities/PlayerEntityLoadSave.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Entities/ShipEntity.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Entities/ShipEntity.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Entities/ShipEntityAI.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Entities/StationEntity.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/GameController.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/GuiDisplayGen.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/GuiDisplayGen.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OOCharacter.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OOCharacter.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OOCommodities.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OOConstToString.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OOConstToString.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OOEquipmentType.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OOEquipmentType.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OOLogHeader.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OOProfilingStopwatch.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OOProfilingStopwatch.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OORegExpMatcher.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OORegExpMatcher.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OOShipGroup.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OOShipGroup.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OOShipRegistry.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/OOStringParsing.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/EntityOOJavaScriptExtensions.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/EntityOOJavaScriptExtensions.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOConstToJSString.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOConstToJSString.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSCall.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSCall.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSClasses.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSClock.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSClock.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSDock.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSDock.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSEngineDebuggerHelpers.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSEngineNativeWrappers.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSEngineTimeManagement.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSEngineTimeManagement.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSEntity.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSEntity.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSEquipmentInfo.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSEquipmentInfo.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSExhaustPlume.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSExhaustPlume.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSFlasher.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSFlasher.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSFont.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSFont.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSFrameCallbacks.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSFrameCallbacks.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSFunction.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSFunction.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSGlobal.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSGlobal.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSGuiScreenKeyDefinition.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSGuiScreenKeyDefinition.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSInterfaceDefinition.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSInterfaceDefinition.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSManifest.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSManifest.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSMission.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSMission.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSMissionVariables.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSMissionVariables.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSOolite.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSOolite.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSPlanet.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSPlanet.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSPlayer.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSPlayer.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSPlayerShip.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSPlayerShip.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSPopulatorDefinition.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSPopulatorDefinition.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSPropID.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSQuaternion.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSQuaternion.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSScript.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSScript.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSShip.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSShip.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSShipGroup.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSShipGroup.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSSound.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSSound.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSSoundSource.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSSoundSource.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSSpecialFunctions.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSSpecialFunctions.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSStation.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSStation.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSSun.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSSun.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSSystem.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSSystem.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSSystemInfo.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSSystemInfo.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSTimer.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSTimer.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSVector.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSVector.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSVisualEffect.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSVisualEffect.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSWaypoint.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSWaypoint.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSWorldScripts.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSWorldScripts.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSWormhole.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJSWormhole.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJavaScriptEngine.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/OOJavaScriptEngine.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/README.md",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/meson.build",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/poc/OOJSScript.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/poc/OOJSScript.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/poc/OOJavaScriptEnginePoc.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/poc/OOLogStub.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/poc/main.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/poc/meson.build",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/poc/tests/quaternion.js",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/poc/tests/runaway.js",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/poc/tests/runtime_error.js",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/poc/tests/scope_a.js",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/poc/tests/scope_b.js",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/poc/tests/syntax_error.js",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Scripting/poc/tests/vector.js",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Universe.h",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/Core/Universe.m",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/meson.build",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/meson/darwin/meson.build",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/meson/linux/meson.build",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/meson/meson.build",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "src/meson/windows/meson.build",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "subprojects/packagefiles/quickjs-ng/0001-oolite-primitive-property-assignment.patch",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    },
-    {
-     "path": "subprojects/quickjs-ng.wrap",
-     "reason": "the step takes the old step's tree whole: the end tree is develop (spec D1): the fork's façade and QuickJS-ng replace #767/#768's binding and #780's engine-neutral layer, which develop dropped when it merged #780; upstream's two stand-alone tools are kept (research R5)"
-    }
-   ],
+   "differs_from_old": [],
    "era": "objc-quickjs",
    "kind": "hand-written",
    "mechanical_command": null,
@@ -965,10 +305,10 @@
    "resolutions": [],
    "rules": [],
    "size": {
-    "deleted_files": 21569,
-    "other": 6957,
-    "src": 30608,
-    "tests": 920
+    "deleted_files": 0,
+    "other": 2137,
+    "src": 864,
+    "tests": 0
    },
    "source": {
     "old_branch": "series/005-quickjs-switch",
@@ -1043,8 +383,8 @@
    "rules": [],
    "size": {
     "deleted_files": 460,
-    "other": 3,
-    "src": 10045,
+    "other": 11,
+    "src": 9768,
     "tests": 6371
    },
    "source": {
@@ -1103,9 +443,9 @@
    "rules": [],
    "size": {
     "deleted_files": 0,
-    "other": 43,
-    "src": 11063,
-    "tests": 2074
+    "other": 15,
+    "src": 11006,
+    "tests": 2016
    },
    "source": {
     "old_branch": "series/007-typed-accessors",
@@ -1164,7 +504,7 @@
    "size": {
     "deleted_files": 0,
     "other": 0,
-    "src": 35301,
+    "src": 34856,
     "tests": 1202
    },
    "source": {
@@ -1224,9 +564,9 @@
    "rules": [],
    "size": {
     "deleted_files": 1663,
-    "other": 40,
-    "src": 48303,
-    "tests": 2815
+    "other": 34,
+    "src": 48152,
+    "tests": 2919
    },
    "source": {
     "old_branch": "series/009-foundation-wave-2",
@@ -1284,9 +624,9 @@
    "resolutions": [],
    "rules": [],
    "size": {
-    "deleted_files": 10546,
-    "other": 12,
-    "src": 18612,
+    "deleted_files": 10362,
+    "other": 14,
+    "src": 18585,
     "tests": 1071
    },
    "source": {
@@ -1348,9 +688,9 @@
    "rules": [],
    "size": {
     "deleted_files": 1783,
-    "other": 20,
-    "src": 28512,
-    "tests": 17797
+    "other": 32,
+    "src": 29717,
+    "tests": 18067
    },
    "source": {
     "old_branch": "series/011-leaf-conversions",
@@ -1411,9 +751,9 @@
    "rules": [],
    "size": {
     "deleted_files": 2354,
-    "other": 112,
-    "src": 38987,
-    "tests": 40623
+    "other": 96,
+    "src": 38856,
+    "tests": 41845
    },
    "source": {
     "old_branch": "series/012-module-conversions",
@@ -1476,10 +816,10 @@
    "resolutions": [],
    "rules": [],
    "size": {
-    "deleted_files": 5058,
-    "other": 51,
-    "src": 26165,
-    "tests": 12894
+    "deleted_files": 5141,
+    "other": 2,
+    "src": 25632,
+    "tests": 13120
    },
    "source": {
     "old_branch": "series/013-first-slices",
@@ -1489,7 +829,7 @@
    },
    "state": "verified",
    "target_tree": "cf64c8202f8729b8c6af6bdfb8f31e46a73abfa2",
-   "title": "Convert the large files in slices; delete the first Objective-C facades",
+   "title": "Convert the large files in slices; delete the first Objective-C bridges",
    "verification": {
     "after_sync": 0,
     "checks": {
@@ -1543,8 +883,8 @@
    "size": {
     "deleted_files": 57,
     "other": 105,
-    "src": 29141,
-    "tests": 6861
+    "src": 29064,
+    "tests": 6868
    },
    "source": {
     "old_branch": "series/014-shipentity-slices",
@@ -1609,10 +949,10 @@
    "resolutions": [],
    "rules": [],
    "size": {
-    "deleted_files": 1154,
+    "deleted_files": 1157,
     "other": 0,
-    "src": 17641,
-    "tests": 3606
+    "src": 17669,
+    "tests": 3638
    },
    "source": {
     "old_branch": "series/015-universe-player-slices",
@@ -1676,10 +1016,10 @@
    "resolutions": [],
    "rules": [],
    "size": {
-    "deleted_files": 22068,
+    "deleted_files": 21985,
     "other": 0,
-    "src": 50330,
-    "tests": 25925
+    "src": 49766,
+    "tests": 25853
    },
    "source": {
     "old_branch": "series/016-facade-deletions",
@@ -1689,7 +1029,7 @@
    },
    "state": "verified",
    "target_tree": "3b21f892720e1f68522dea040dff231c548d91e4",
-   "title": "Delete the Objective-C facades",
+   "title": "Delete the Objective-C bridges",
    "verification": {
     "after_sync": 0,
     "checks": {
@@ -1743,10 +1083,10 @@
    "resolutions": [],
    "rules": [],
    "size": {
-    "deleted_files": 17792,
-    "other": 59,
-    "src": 29706,
-    "tests": 17111
+    "deleted_files": 17608,
+    "other": 58,
+    "src": 26806,
+    "tests": 17182
    },
    "source": {
     "old_branch": "series/017-entity-facade",
@@ -1756,7 +1096,7 @@
    },
    "state": "verified",
    "target_tree": "e7e612298cdfc161d6b33d710e1c84cdb5d3b561",
-   "title": "Delete the root Entity facade",
+   "title": "Delete the Entity bridge and the last Objective-C bridges",
    "verification": {
     "after_sync": 0,
     "checks": {
@@ -1806,10 +1146,10 @@
    "resolutions": [],
    "rules": [],
    "size": {
-    "deleted_files": 8523,
-    "other": 10260,
-    "src": 6552,
-    "tests": 1805
+    "deleted_files": 8619,
+    "other": 10894,
+    "src": 6637,
+    "tests": 2139
    },
    "source": {
     "old_branch": "series/018-objc-runtime-out",
@@ -1870,8 +1210,8 @@
    "size": {
     "deleted_files": 0,
     "other": 0,
-    "src": 218,
-    "tests": 1680
+    "src": 267,
+    "tests": 1678
    },
    "source": {
     "old_branch": "series/019-gcc-build",
@@ -1907,10 +1247,10 @@
    }
   },
   {
-   "branch": "seriesb/019-develop-fixes",
+   "branch": "seriesb/018-develop-fixes",
    "build_commit": "84209ee260f636f65dd8c2e700d7ead7a1e93628",
    "chapter": null,
-   "description": "series/pr/019-develop-fixes.md",
+   "description": "series/pr/018-develop-fixes.md",
    "differs_from_old": [],
    "era": "cxx",
    "kind": "hand-written",
@@ -1924,8 +1264,8 @@
    "size": {
     "deleted_files": 0,
     "other": 9,
-    "src": 833,
-    "tests": 386
+    "src": 276,
+    "tests": 355
    },
    "source": {
     "old_branch": "series/021-develop-fixes",
@@ -1959,25 +1299,25 @@
    }
   },
   {
-   "branch": "seriesb/020-source-hygiene",
+   "branch": "seriesb/019-source-hygiene",
    "build_commit": "f83d09a093a30b3df4d1f6b8c51c95bad098976c",
    "chapter": null,
-   "description": "series/pr/020-source-hygiene.md",
+   "description": "series/pr/019-source-hygiene.md",
    "differs_from_old": [],
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "b5b1a6f19e262cc679ba4b86d313ff7d2fe72ae2",
    "n": 19,
-   "parent": "seriesb/019-develop-fixes",
+   "parent": "seriesb/018-develop-fixes",
    "reasons": {},
    "resolutions": [],
    "rules": [],
    "size": {
     "deleted_files": 0,
-    "other": 48,
-    "src": 56796,
-    "tests": 153167
+    "other": 19,
+    "src": 18265,
+    "tests": 77066
    },
    "source": {
     "old_branch": "series/022-source-hygiene",
@@ -2011,25 +1351,25 @@
    }
   },
   {
-   "branch": "seriesb/021-tests-and-tooling",
+   "branch": "seriesb/020-tests-and-tooling",
    "build_commit": "ecbc3e19c2c34696066ad6f13aa3799d1b425e7c",
    "chapter": null,
-   "description": "series/pr/021-tests-and-tooling.md",
+   "description": "series/pr/020-tests-and-tooling.md",
    "differs_from_old": [],
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "775aa2855fef562cae3b83f0efecb70032f0f010",
    "n": 20,
-   "parent": "seriesb/020-source-hygiene",
+   "parent": "seriesb/019-source-hygiene",
    "reasons": {},
    "resolutions": [],
    "rules": [],
    "size": {
     "deleted_files": 0,
     "other": 13,
-    "src": 35,
-    "tests": 1094
+    "src": 19,
+    "tests": 1157
    },
    "source": {
     "old_branch": "series/023-tests-and-tooling",
@@ -2063,25 +1403,25 @@
    }
   },
   {
-   "branch": "seriesb/022-c-as-cxx",
+   "branch": "seriesb/021-c-as-cxx",
    "build_commit": "c3417fdfff0a4126f6a3a5c44963bbf015a54a4a",
    "chapter": null,
-   "description": "series/pr/022-c-as-cxx.md",
+   "description": "series/pr/021-c-as-cxx.md",
    "differs_from_old": [],
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "b2c927c62809c24997f46ae504ebdcb23cff7426",
    "n": 21,
-   "parent": "seriesb/021-tests-and-tooling",
+   "parent": "seriesb/020-tests-and-tooling",
    "reasons": {},
    "resolutions": [],
    "rules": [],
    "size": {
     "deleted_files": 0,
-    "other": 167,
-    "src": 14389,
-    "tests": 5350
+    "other": 239,
+    "src": 13575,
+    "tests": 5301
    },
    "source": {
     "old_branch": "series/024-c-as-cxx",
@@ -2091,7 +1431,7 @@
    },
    "state": "verified",
    "target_tree": "b2c927c62809c24997f46ae504ebdcb23cff7426",
-   "title": "Compile the remaining C sources as C++; upgrade QuickJS-ng",
+   "title": "Compile the remaining C sources as C++; build QuickJS-ng with the fork's patches",
    "verification": {
     "after_sync": 0,
     "checks": {
@@ -2115,25 +1455,25 @@
    }
   },
   {
-   "branch": "seriesb/023-upstream-49a5eb9fc-ports",
+   "branch": "seriesb/022-upstream-28ceaaba0-ports",
    "build_commit": "167118dff05edfb925b976545023313b582cac5b",
    "chapter": null,
-   "description": "series/pr/023-upstream-49a5eb9fc-ports.md",
+   "description": "series/pr/022-upstream-28ceaaba0-ports.md",
    "differs_from_old": [],
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "fd18dfe5afa5c3a10077c2ca945e786826957df0",
    "n": 22,
-   "parent": "seriesb/022-c-as-cxx",
+   "parent": "seriesb/021-c-as-cxx",
    "reasons": {},
    "resolutions": [],
    "rules": [],
    "size": {
-    "deleted_files": 223,
-    "other": 169,
-    "src": 5967,
-    "tests": 197
+    "deleted_files": 0,
+    "other": 42,
+    "src": 436,
+    "tests": 234
    },
    "source": {
     "old_branch": "series/025-upstream-49a5eb9fc-ports",
@@ -2143,7 +1483,7 @@
    },
    "state": "verified",
    "target_tree": "fd18dfe5afa5c3a10077c2ca945e786826957df0",
-   "title": "Port upstream #766, #774 and #781",
+   "title": "Port upstream #783 (joystick control of GUI screens); build the macOS bundle without Foundation",
    "verification": {
     "after_sync": 0,
     "checks": {
@@ -2167,25 +1507,25 @@
    }
   },
   {
-   "branch": "seriesb/024-google-style-format",
+   "branch": "seriesb/023-google-style-format",
    "build_commit": "9157d099347d321da7a82fbed6070783a25f89c0",
    "chapter": null,
-   "description": "series/pr/024-google-style-format.md",
+   "description": "series/pr/023-google-style-format.md",
    "differs_from_old": [],
    "era": "cxx",
    "kind": "mechanical",
    "mechanical_command": "take .clang-format from 3aa8d65e8 and add mk.sh format/format-check (4ef61a09d), then run clang-format 22 -i on every .h/.hpp/.c/.cpp under src/ and tests/",
    "merge_tree": "1480777d86b241cc9143e817c85a13635717b56f",
    "n": 23,
-   "parent": "seriesb/023-upstream-49a5eb9fc-ports",
+   "parent": "seriesb/022-upstream-28ceaaba0-ports",
    "reasons": {},
    "resolutions": [],
    "rules": [],
    "size": {
     "deleted_files": 0,
     "other": 55,
-    "src": 431864,
-    "tests": 5
+    "src": 418791,
+    "tests": 23210
    },
    "source": {
     "old_branch": "series/026-google-style-format",
@@ -2219,25 +1559,25 @@
    }
   },
   {
-   "branch": "seriesb/025-upstream-quickjs-binding",
+   "branch": "seriesb/024-post-conversion-fixes",
    "build_commit": "fd837749e3fa5e859662d0e03cf4483fa8ec0a24",
    "chapter": null,
-   "description": "series/pr/025-upstream-quickjs-binding.md",
+   "description": "series/pr/024-post-conversion-fixes.md",
    "differs_from_old": [],
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "8ee28e041f9927bd9ddaa7a4fdf5b18ed156ba74",
    "n": 24,
-   "parent": "seriesb/024-google-style-format",
+   "parent": "seriesb/023-google-style-format",
    "reasons": {},
    "resolutions": [],
    "rules": [],
    "size": {
-    "src": 44,
-    "tests": 42,
+    "deleted_files": 0,
     "other": 87,
-    "deleted_files": 0
+    "src": 44,
+    "tests": 42
    },
    "source": {
     "commit": "270c74ea7896a7dc8b6f06c905df3df1b19c5ef3",

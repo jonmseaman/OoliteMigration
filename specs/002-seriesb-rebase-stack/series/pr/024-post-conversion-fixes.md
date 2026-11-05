@@ -1,8 +1,8 @@
 # Small fixes after the conversion; Mozilla polyfills for expansions
 
-**Series:** step 25 of 25 · base `seriesb/024-google-style-format` · next `—` **(gen)**
+**Series:** step 24 of 24 · base `seriesb/023-google-style-format` · next `—` **(gen)**
 
-**Switch:** the tree of `feature/upstream-quickjs-binding` (`531ddd6592`), with the series' exclusions and additions · 28.4k src, 11.3k tests, 285 other changed lines; 6.6k lines in deleted files **(gen)**
+**Source:** the tree of `feature/upstream-quickjs-poc-cxx` (`270c74ea78`), with the series' exclusions and additions · 44 src, 42 tests, 87 other changed lines; 0 lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
@@ -30,6 +30,10 @@ the `llvm-ar` it needed), and small forms that are neutral or would revert upstr
 `OOLITE_SDL` guards, the `STRINGIFY` fallback, the `#endif`/`#ifdef` pair in `OOPlanetDrawable.cpp`,
 the include sets).
 
+## Behaviour changes
+
+_To write._
+
 ## How to review
 
 Read the four commits; each names its files. `git diff --shortstat` against 024 is under 200
@@ -37,23 +41,13 @@ lines. No existing assertion changes; one test is added.
 
 ## Test changes **(gen)**
 
-The tests move to upstream's engine API with the code; each changed test is listed in `specs/002-seriesb-rebase-stack/series/test-changes.md` (spec FR-015).
+Existing test files this step changes, each listed in the series' test ledger (`test-changes.md`):
+
+- `tests/unit/core/meson.build`
+- `tests/unit/core/test_OOJavaScriptEngine.cpp`
 
 ## Verified **(gen)**
 
-Windows x64, `57a0c89a9e`, 2026-11-03.
-
-| Check | Result |
-|---|---|
-| build_clang | pass |
-| build_gcc | n/a: does not build with GCC yet (exit 1); the parent does not either |
-| clang_format | pass |
-| component | n/a: no component scenario touched |
-| no_new_spidermonkey_or_gnustep | pass |
-| no_new_suppressions | pass |
-| smoke | pass |
-| tests_untouched | pass: every changed test is in the test ledger (FR-015) |
-| unit | pass: oofnd, core, headers |
-| warnings_clang | pass: 0 warnings |
+Not verified at this branch's tip (`fd837749e3`) yet: the last record is for `57a0c89a9e` (2026-11-03), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

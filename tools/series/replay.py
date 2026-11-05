@@ -519,6 +519,8 @@ def build(repo, m, step, series_dir, worktree, reset=False):
             return "unchanged"
     with active(m):
         step["build_commit"] = stack.make_step(repo, worktree, step["branch"], step["parent"], tree, msg)
+    # seriesb steps are Git Town feature branches, so `git town sync` pushes them (seriesb.STEP_TOWN_TYPE)
+    _git(repo, "config", f"git-town-branch.{step['branch']}.branchtype", seriesb.STEP_TOWN_TYPE)
     step["state"] = "built"
     step["verification"] = None
     return "built"

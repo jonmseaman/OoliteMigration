@@ -88,7 +88,8 @@ def setup(repo, m, remote=REMOTE, anchors=None):
     _configure_remote(repo, remote)
     _fetch(repo, remote)
     busy = _checked_out(repo)
-    prev = "develop"
+    from tools.series import seriesb
+    prev = seriesb.root_parent(m)
     for branch, pr_branch, pr in PARENTS:
         tracking = f"{remote['name']}/{branch}"
         head = _sha(repo, f"refs/remotes/{tracking}")

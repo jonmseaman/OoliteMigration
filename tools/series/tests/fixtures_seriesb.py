@@ -115,7 +115,7 @@ def make_seriesb_repo(tmp, seriesb=True):
         c = commit(repo, t, [parent], f"Step {i}\n\nReplayed from {OLD[i - 1]}.")
         git(repo, "branch", branch, c)
         git(repo, "config", f"git-town-branch.{branch}.parent", prev_branch)
-        git(repo, "config", f"git-town-branch.{branch}.branchtype", "prototype")
+        git(repo, "config", f"git-town-branch.{branch}.branchtype", "feature")
         steps.append({"n": i, "branch": branch, "parent": prev_branch, "title": f"Step {i}", "kind": "hand-written",
                       "description": f"series/pr/{i:03d}-{branch.split('-', 1)[1]}.md", "mechanical_command": None,
                       "source": {"type": "replay", "old_step": i, "old_branch": OLD[i - 1],

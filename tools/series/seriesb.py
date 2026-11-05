@@ -15,6 +15,8 @@ PARENT_RE = re.compile(r"^seriesb/000[a-z]-[a-z0-9]+(?:-[a-z0-9]+)*$")
 STEP_RE = profile.step_branch_re("seriesb/")
 PARENT_KINDS = ("upstream", "fix-parent", "upstream-master")
 GATE_OK = ("pass", "waived")
+# Jon, 2026-11-04: steps are feature branches so git town sync pushes them (a prototype is never pushed)
+STEP_TOWN_TYPE = "feature"
 GROUPS = ("manifest", "branches", "lineage", "baseline", "gates", "differs", "tests", "messages", "final-tree",
           "verified")
 # a bead id or an ADR number (spec FR-013)
@@ -70,13 +72,19 @@ def branch_number(step):
     return int(mt.group(1)) if mt else step["n"]
 
 
+def root_parent(m):
+    """The Git Town parent of the first live parent: `anchors.root_parent`, else develop.
+    Jon, 2026-11-04: PRs inside the fork target upstream-master (a perennial branch at upstream's master)."""
+    return (m.get("anchors") or {}).get("root_parent") or "develop"
+
+
 def expected_parent(m, i):
     """The Git Town parent the i-th live parent should have: develop, the previous parent, or none."""
     live = live_parents(m)
     p = live[i]
     if p.get("kind") == "upstream-master":
         return None  # a perennial branch has no parent
-    return "develop" if i == 0 else live[i - 1]["branch"]
+    return root_parent(m) if i == 0 else live[i - 1]["branch"]
 
 
 # --- the file alone --------------------------------------------------------------------------------
@@ -190,8 +198,8 @@ def check_lineage(repo, m, wanted):
             continue
         if _town(repo, b, "parent") != s["parent"]:
             out.append(f"rule 1: step {s['n']} Git Town parent is {_town(repo, b, 'parent')!r}, expected {s['parent']!r}")
-        if _town(repo, b, "branchtype") != "prototype":
-            out.append(f"rule 1: step {s['n']} Git Town type is {_town(repo, b, 'branchtype')!r}, expected prototype")
+        if _town(repo, b, "branchtype") != STEP_TOWN_TYPE:
+            out.append(f"rule 1: step {s['n']} Git Town type is {_town(repo, b, 'branchtype')!r}, expected {STEP_TOWN_TYPE}")
     return out
 
 

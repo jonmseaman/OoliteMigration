@@ -1,6 +1,6 @@
 # Let OO_RANDOM_SEED pin the random seed
 
-**Series:** step 1 of 25 · base `seriesb/000b-upstream-768-quickjs-only` · next `seriesb/002-safety-net` **(gen)**
+**Series:** step 1 of 24 · base `seriesb/000b-upstream-768-quickjs-only` · next `seriesb/002-safety-net` **(gen)**
 
 **Replays:** `series/001-random-seed-env` (old 1 of the master-based series) · 11 src, 0 tests, 0 other changed lines; 0 lines in deleted files **(gen)**
 
@@ -15,26 +15,23 @@ clock, as before.
 ## Why
 
 Nothing downstream of RANROT can be repeated without a fixed seed: a run that shows a bug cannot
-be run again, and tests that drive the game (the component scenarios later in this series) need
-the same universe every time. It is independent of the rest of the series and useful on its own.
+be run again, and tests that drive the game (the component scenarios that step 2 adds) need the
+same universe every time. It is independent of the rest of the series and useful on its own.
 
 ## Behaviour changes
 
 None unless `OO_RANDOM_SEED` is set. With it set, the same seed gives the same RANROT sequence
-from start-up, and the log has one `rand.seed` line.
+from start-up, and the log has one `rand.seed` line. Not pinned by a unit test; every component
+scenario from step 2 on launches the game with it (`tests/component/console.py`).
 
 ## How to review
 
 One hunk in `src/Core/GameController.m`. Run with `OO_RANDOM_SEED=42` twice and compare the
 `rand.seed` line and the first system generated; run without it and see no `rand.seed` line.
 
-## Differences from the old step **(gen)**
-
-None: the same change as `series/001-random-seed-env`.
-
 ## Verified **(gen)**
 
-Windows x64, `ebd84f7c40`, 2026-11-02.
+Windows x64, `ebd84f7c40`, 2026-11-03.
 
 | Check | Result |
 |---|---|
