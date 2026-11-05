@@ -36,36 +36,36 @@ To make review incremental, the work is split into 25 stacked branches. Each one
 
 **Whole stack:** [`#768` → `seriesb/025-upstream-quickjs-binding`](https://github.com/jonmseaman/oolite/compare/db49201034e5ab3857342fb4dca199d5f17b93fb...seriesb/025-upstream-quickjs-binding): 1149 files, +363997 / −250233.
 
-### Compare each branch with its parent (Sublime Merge search)
+### Compare each branch with its parent
 
-Paste a line into Sublime Merge's search to show only that step's commits. Step 18 is dropped, so step 19 compares with step 17.
+Each line opens your difftool on the step's whole tree against its parent's (`git difftool --dir-diff <parent> <branch>`). Step 18 is dropped, so step 19 compares with step 17.
 
 ```text
-branch:seriesb/000b-upstream-768-quickjs-only and not branch:seriesb/000a-upstream-767-quickjs-option
-branch:seriesb/001-random-seed-env and not branch:seriesb/000b-upstream-768-quickjs-only
-branch:seriesb/002-safety-net and not branch:seriesb/001-random-seed-env
-branch:seriesb/003-objcpp-switch and not branch:seriesb/002-safety-net
-branch:seriesb/004-oofnd-core and not branch:seriesb/003-objcpp-switch
-branch:seriesb/005-typed-accessors and not branch:seriesb/004-oofnd-core
-branch:seriesb/006-foundation-wave-1 and not branch:seriesb/005-typed-accessors
-branch:seriesb/007-foundation-wave-2 and not branch:seriesb/006-foundation-wave-1
-branch:seriesb/008-selector-families and not branch:seriesb/007-foundation-wave-2
-branch:seriesb/009-leaf-conversions and not branch:seriesb/008-selector-families
-branch:seriesb/010-module-conversions and not branch:seriesb/009-leaf-conversions
-branch:seriesb/011-first-slices and not branch:seriesb/010-module-conversions
-branch:seriesb/012-shipentity-slices and not branch:seriesb/011-first-slices
-branch:seriesb/013-universe-player-slices and not branch:seriesb/012-shipentity-slices
-branch:seriesb/014-facade-deletions and not branch:seriesb/013-universe-player-slices
-branch:seriesb/015-entity-facade and not branch:seriesb/014-facade-deletions
-branch:seriesb/016-objc-runtime-out and not branch:seriesb/015-entity-facade
-branch:seriesb/017-gcc-build and not branch:seriesb/016-objc-runtime-out
-branch:seriesb/019-develop-fixes and not branch:seriesb/017-gcc-build
-branch:seriesb/020-source-hygiene and not branch:seriesb/019-develop-fixes
-branch:seriesb/021-tests-and-tooling and not branch:seriesb/020-source-hygiene
-branch:seriesb/022-c-as-cxx and not branch:seriesb/021-tests-and-tooling
-branch:seriesb/023-upstream-49a5eb9fc-ports and not branch:seriesb/022-c-as-cxx
-branch:seriesb/024-google-style-format and not branch:seriesb/023-upstream-49a5eb9fc-ports
-branch:seriesb/025-upstream-quickjs-binding and not branch:seriesb/024-google-style-format
+git difftool --dir-diff seriesb/000a-upstream-767-quickjs-option seriesb/000b-upstream-768-quickjs-only
+git difftool --dir-diff seriesb/000b-upstream-768-quickjs-only seriesb/001-random-seed-env
+git difftool --dir-diff seriesb/001-random-seed-env seriesb/002-safety-net
+git difftool --dir-diff seriesb/002-safety-net seriesb/003-objcpp-switch
+git difftool --dir-diff seriesb/003-objcpp-switch seriesb/004-oofnd-core
+git difftool --dir-diff seriesb/004-oofnd-core seriesb/005-typed-accessors
+git difftool --dir-diff seriesb/005-typed-accessors seriesb/006-foundation-wave-1
+git difftool --dir-diff seriesb/006-foundation-wave-1 seriesb/007-foundation-wave-2
+git difftool --dir-diff seriesb/007-foundation-wave-2 seriesb/008-selector-families
+git difftool --dir-diff seriesb/008-selector-families seriesb/009-leaf-conversions
+git difftool --dir-diff seriesb/009-leaf-conversions seriesb/010-module-conversions
+git difftool --dir-diff seriesb/010-module-conversions seriesb/011-first-slices
+git difftool --dir-diff seriesb/011-first-slices seriesb/012-shipentity-slices
+git difftool --dir-diff seriesb/012-shipentity-slices seriesb/013-universe-player-slices
+git difftool --dir-diff seriesb/013-universe-player-slices seriesb/014-facade-deletions
+git difftool --dir-diff seriesb/014-facade-deletions seriesb/015-entity-facade
+git difftool --dir-diff seriesb/015-entity-facade seriesb/016-objc-runtime-out
+git difftool --dir-diff seriesb/016-objc-runtime-out seriesb/017-gcc-build
+git difftool --dir-diff seriesb/017-gcc-build seriesb/019-develop-fixes
+git difftool --dir-diff seriesb/019-develop-fixes seriesb/020-source-hygiene
+git difftool --dir-diff seriesb/020-source-hygiene seriesb/021-tests-and-tooling
+git difftool --dir-diff seriesb/021-tests-and-tooling seriesb/022-c-as-cxx
+git difftool --dir-diff seriesb/022-c-as-cxx seriesb/023-upstream-49a5eb9fc-ports
+git difftool --dir-diff seriesb/023-upstream-49a5eb9fc-ports seriesb/024-google-style-format
+git difftool --dir-diff seriesb/024-google-style-format seriesb/025-upstream-quickjs-binding
 ```
 
 ### Notes
