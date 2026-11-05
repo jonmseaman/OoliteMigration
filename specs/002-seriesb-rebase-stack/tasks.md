@@ -651,12 +651,17 @@ and `$S verify --steps N` exits 0, including the `no_facade` and `poc` checks fr
   gnustep-base goes. Accept: per-step, for each.
 - [ ] T054 [US7] Rebuild steps 010–016, which take the binding and `poc/` to C++ (010) and off the
   Objective-C runtime to `.cpp` (016). Accept: per-step, for each.
-- [ ] T055 [US7] Rebuild steps 017–024. Accept: per-step, for each, and
+- [X] T055 [US7] Rebuild steps 017–024. Accept: per-step, for each, and
   `git -C oolite-dev diff --quiet seriesb/024-google-style-format feature/upstream-quickjs-poc-cxx -- . ':!tools/js-parity' ':!tools/oxp-upgrade' ':!.zed' ':!.vscode' ':!.github'`.
-- [ ] T056 [US7] Step 025: `$S drop 25 --covered-by "steps 003-024"` if its tree equals 024's.
+- [X] T056 [US7] Step 025: `$S drop 25 --covered-by "steps 003-024"` if its tree equals 024's.
   Otherwise shrink it to the remainder and describe that. Accept:
   `$S check --only manifest,lineage,branches,final-tree` exits 0, and
   `git -C oolite-dev log -S'ooscript::' --oneline seriesb/000b-upstream-768-quickjs-only..<last step>` is empty.
+  *Done (2026-11-04, plan Notes "T055, T056")*: 025 is the remainder 024 → end target (five commits); 018
+  dropped from the manifest, keeping its number (later branches keep their names); the final tree equals
+  the end target's outside 17 recorded exclusions (stack forms kept where the end target reverts
+  upstream/#768 code or a test); check exits 0, the `-S` log is empty. T055's tree Accept is met at 025
+  in that form (024 itself is not the end target: the remainder is 025).
 - [ ] T057 [US7] Descriptions, ledger, handover: rewrite the hand-written parts of 003's
   description and of every step whose scripting part changed. Move the test ledger's rows to the
   steps that first need them. Regenerate `HANDOVER.md` (with force-push commands) and the review

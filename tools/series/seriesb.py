@@ -50,6 +50,26 @@ def root(m):
     return live[-1]["branch"] if live else profile.SERIESB_DEFAULT_ROOT
 
 
+def branch_numbers(m):
+    """The number each step's branch carries, in step order: its position, except that a dropped
+    step recorded with the `number` its branch had leaves that number unused, so the steps after it
+    keep their names (Jon, 2026-11-03: rebuilt branches keep their names)."""
+    gaps = {d["number"] for d in m.get("dropped", []) if isinstance(d.get("number"), int)}
+    out, k = [], 0
+    for _ in m.get("steps", []):
+        k += 1
+        while k in gaps:
+            k += 1
+        out.append(k)
+    return out
+
+
+def branch_number(step):
+    """The number a step's branch carries (its `n` if the branch has none)."""
+    mt = STEP_RE.match(step.get("branch") or "")
+    return int(mt.group(1)) if mt else step["n"]
+
+
 def expected_parent(m, i):
     """The Git Town parent the i-th live parent should have: develop, the previous parent, or none."""
     live = live_parents(m)
@@ -83,6 +103,7 @@ def validate(m):
             out.append(f"rule 1: parent {p['branch']} has parent {p.get('parent')!r}, expected {expected_parent(m, i)!r}")
     steps = m.get("steps", [])
     last_old = 0
+    numbers = branch_numbers(m)
     for i, s in enumerate(steps):
         n = s.get("n")
         if n != i + 1:
@@ -90,8 +111,8 @@ def validate(m):
         mt = STEP_RE.match(s.get("branch") or "")
         if not mt:
             out.append(f"rule 1: step {n} branch {s.get('branch')!r} is not seriesb/NNN-slug")
-        elif int(mt.group(1)) != n:
-            out.append(f"rule 1: step {n} branch {s['branch']} does not carry its number")
+        elif int(mt.group(1)) != numbers[i]:
+            out.append(f"rule 1: step {n} branch {s['branch']} does not carry its number {numbers[i]:03d}")
         want = root(m) if i == 0 else steps[i - 1].get("branch")
         if s.get("parent") != want:
             out.append(f"rule 1: step {n} parent {s.get('parent')!r}, expected {want!r}")
@@ -120,10 +141,13 @@ def validate(m):
         if not f.get("old_steps") or not f.get("into_old_step") or not str(f.get("reason") or "").strip():
             out.append(f"rule 1: folded entry {f.get('old_steps')!r} -> {f.get('into_old_step')!r} lacks old steps, "
                        "a target or a reason")
+    live_numbers = {int(mt.group(1)) for mt in (STEP_RE.match(s.get("branch") or "") for s in steps) if mt}
     for d in m.get("dropped", []):
         missing = [k for k in ("old_step", "old_branch", "reason", "covered_by") if not d.get(k)]
         if missing:
             out.append(f"rule 1: dropped entry {d.get('old_branch') or d.get('old_step')!r} lacks {', '.join(missing)}")
+        if "number" in d and (not isinstance(d["number"], int) or d["number"] in live_numbers):
+            out.append(f"rule 1: dropped entry {d.get('old_branch')!r} keeps number {d['number']!r}, which a step carries")
     return out
 
 

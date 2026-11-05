@@ -669,6 +669,62 @@ sources outside the replayed trees.
   006–009 and its smoke passes at 006, 008 and 009. New tests: `test_objc_assert_ndebug` (007, fails
   on the old header), `test_OoliteEquipmentControlScript` (009, #369). Step 010 merged the new 009
   (`0747c771a`, four trivial conflicts); re-gated: build 0 warnings, unit 201/201, smoke, harness pass.
+- **T055, T056: step 025 rebuilt as the remainder (2026-11-04): `97bac002b` on
+  `seriesb/025-upstream-quickjs-binding`**, on 024 (`9814ba313`); old 025 (`57a0c89a9`) is local tag
+  `step25/old-025`. Title: "Bring upstream's QuickJS-ng binding into the fork's C++ style". Commits:
+  `97c4fdb5c` Link QuickJS-ng as a meson subproject (12 files); `9e0553bf4` Bring the scripting layer into
+  the fork's C++ style (94); `93df84c3f` Follow the restyled binding in the game code; tidy the remaining
+  files (72, including the 23 other code files traced to 017–023, each landing here); `b0cfad07a` Move the
+  unit tests to the restyled binding (98); `97bac002b` Build Mozilla's toSource(), quote() and uneval()
+  into the global prefix (T074 default). Intermediate commits are not gated separately; the tip is.
+  Revert check (`.agent-tmp/step25/find_reverts25.py`: `.cpp`/`.h` looked up as upstream's `.m`/`.c`,
+  #768's removals and additions flagged separately): 372 hunks flagged; 119 comment-only; the rest read.
+  Taken from the end target as conversions: the scripting restyle (static → anonymous namespaces, typed
+  enums, `goto fail` → early returns, `OOJS_THIS`, property macros, `JSEntityClassID`), the profiler
+  macros (upstream's `OOJS_PROFILE_EXIT_VAL`/`_JSVAL` and `OOJSUnreachable` spellings on #768's
+  `OOJSProfileScope`, plus profiler brackets on the engine's converters: debug-only, **borderline, for
+  Jon**), the time limiter on the stopwatch instead of #768's own clock, `subproject()` wiring (drops
+  `force_fallback_for`, `libc=false`, `b_lto=false`; global `-ffp-contract=off`), the `OOLITE_SDL`
+  guard terms (always 1; not the older `OOLITE_GNUSTEP` form), `|| defined(LINUX)`, `GuiDisplayGen`
+  `OOJSVal`, `amountVal2` inlined, the `callObjC` property flags (`OOJS_METHOD_READONLY` is 0, as #768's).
+  **Kept as the stack has them (genuine reverts in the end target; recorded manifest exclusions):**
+  `OOProfilingStopwatch.h/.cpp` (the end target restores the pre-#768 `OOSTOPWATCH_STANDALONE` split and
+  drops the signed `timeGetTime()` delta; the include-order comment survives); `OOLogHeader.cpp`
+  (`MOZ_TRACE_JSCALLS`); `src/meson/{linux,windows,darwin}/meson.build` (SpiderMonkey's `XP_*`,
+  `STATIC_JS_API`; upstream's `-DOOLITE_SDL_MAC=1`, `-g`); README's macOS section; `.gitignore` and
+  `.eslintrc.json` (#768's lines); #768's `src/Core/Scripting/README.md` (deleted in the end target; kept,
+  its Building paragraph naming `subproject()`); `OOJoystickManager.h/.cpp`, `OOSDLJoystickManager.cpp/.h`
+  (pre-#742 order in the end target); `.github/**` (upstream's macOS job, #768's oxp-upgrade job).
+  Tests: every `OO_TEST`/`OO_CHECK` keeps its expression (`.agent-tmp/step25/asserts.py`), because three
+  end-target forms are not taken: `test_OOJavaScriptEngine` keeps `deleteReachesTheClassHookWithNoOwnProperty`
+  (the end target deletes it; it passes on the restyled engine), `test_EntityOOJavaScriptExtensions` keeps
+  `!JS_IsObject(_jsSelf)` (end target: `JS_IsUndefined`), `test_OOJSSystem` keeps its freed callback (the
+  end target's check leaks the owned value). Ledger "## Step 025". 18 tests formatted at 024 take the end
+  target's unformatted layout (format-check covers `src/` only). **End-target findings, for Jon** (the end
+  target needs these to match): the 17 exclusions above, notably the stopwatch, `MOZ_TRACE_JSCALLS`, the
+  `XP_*` defines, the pre-#742 joystick order, the deleted scripting README and test, the two changed
+  assertions; the global-prefix polyfill comment cites `tools/oxp-compat-shim`, which no tree has; with the
+  stack's stopwatch the limiter reads `timeGetTime()` (ms) on Windows, where #768 read
+  `QueryPerformanceCounter`. Gates (C++ era, scoop UCRT64, port 8637, private `OO_ADDITIONALADDONSDIRS`):
+  clean build rc=0, **0 warnings**; oofnd 40/40, core 179/179 (8 also in `openal`), headers 2/2, game-unit;
+  smoke clean; component 13/13 files on the first attempt (s6 included); harness 23 checks, 0 failures
+  (the `subproject()` wiring needed no setup change); deployment build rc=0, 0 warnings, smoke pass;
+  `./mk.sh format-check` rc=0 (clang-format 22.1.8); GUI window-free (`-m offline` g2, g6, g8, g9) 50/50;
+  no façade, no statistics. The three kept tests were edited after the first run and re-run (core suite
+  again 179/179). `git log -S'ooscript::' seriesb/000b..seriesb/025` is empty (the fix-up merges bring no
+  façade history in).
+  Manifest: old 018 moved to `dropped` with `number: 18` (`covered_by` "steps 004-017": T059's follow-ups
+  on 004–009 and the 010–017 replays), 019's parent 017; steps renumbered n=1..24 while branches keep
+  their names (Jon, 2026-11-03). **Tool change** (the tool could not express that): `seriesb.branch_numbers`
+  skips a dropped step's kept number in rule 1, `renumber.moves` honours it, and replay's resolutions
+  directory and ledger heading use the branch's number; tests in `test_seriesb_manifest.py` and
+  `test_renumber.py`. Also: every step's `build_commit` set to its last own non-merge commit (they still
+  named the façade-era builds), 025's source is `feature/upstream-quickjs-poc-cxx` at `8a0a3c97a`, and the
+  24 step branches' Git Town type set to `prototype` (they were `feature`; the check and the no-push rule
+  want prototype). `seriesb/018-upstream-9ee8ff22f-port` is left in place (`drop` refuses a built step,
+  so it was dropped by hand and deletes nothing); delete it at the handover. Step 003's slug is already
+  `003-objcpp-switch`. **Pending for T057:** 023's slug rename to `023-upstream-28ceaaba0-ports`; 025's
+  description; the handover's force-pushes (and deleting 018 on `origin`).
 - **Rule learned (2026-11-04): one game instance at a time, or private console ports.** Two agents
   launching the game on the default debug-console port 8563 broke each other's smoke and component
   runs. Agents running in parallel set `OO_CONSOLE_PORT` to a private port; GUI tests still run

@@ -45,6 +45,13 @@ class RenumberTest(unittest.TestCase):
         self.assertEqual([(old, new) for _, old, new in renumber.moves(self.m)],
                          [(1, "series/002-first"), (2, "series/003-second")])
 
+    def test_moves_skip_a_dropped_steps_kept_number(self):
+        # old 002 dropped, keeping its number: 003 stays 003, a misnumbered 002 moves past the gap
+        m = {"steps": [{"n": 1, "branch": "series/001-first"}, {"n": 2, "branch": "series/003-third"},
+                       {"n": 3, "branch": "series/003-fourth"}],
+             "dropped": [{"old_step": 2, "old_branch": "series/002-second", "number": 2}]}
+        self.assertEqual([(old, new) for _, old, new in renumber.moves(m)], [(3, "series/004-fourth")])
+
     def test_branches_files_and_lineage_follow_n(self):
         renumber.apply(self.repo, self.sd, self.m, ROOT)
         self.assertEqual([s["branch"] for s in self.m["steps"]],

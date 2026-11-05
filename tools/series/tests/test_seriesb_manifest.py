@@ -68,6 +68,26 @@ class FileRulesTest(SeriesbFixture):
         self.m["dropped"] = [{"old_step": 5, "old_branch": "series/005-x"}]
         self.assertTrue(any("dropped" in p for p in self.problems("manifest")))
 
+    def _drop_second(self, **kept):
+        """Step 2 dropped by hand: step 3's branch, seriesb/003-three, becomes step n=2."""
+        two = self.m["steps"].pop(1)
+        self.m["dropped"] = [dict({"old_step": 2, "old_branch": two["branch"], "covered_by": "step 1",
+                                   "reason": "its changes moved into step 1"}, **kept)]
+        self.m["steps"][1].update(n=2, parent=self.m["steps"][0]["branch"])
+
+    def test_a_dropped_step_that_keeps_its_number_leaves_a_gap(self):
+        self._drop_second(number=2)
+        self.assertEqual(seriesb.branch_numbers(self.m), [1, 3])
+        self.assertFalse([p for p in self.problems("manifest") if "carry its number" in p], self.problems("manifest"))
+
+    def test_without_the_kept_number_the_branch_must_carry_n(self):
+        self._drop_second()
+        self.assertTrue(any("does not carry its number 002" in p for p in self.problems("manifest")))
+
+    def test_a_kept_number_a_step_still_carries(self):
+        self._drop_second(number=3)
+        self.assertTrue(any("keeps number 3" in p for p in self.problems("manifest")))
+
     def test_bookkeeping_id_in_title(self):
         self.m["steps"][0]["title"] = "Fix oo-scnp"
         self.assertTrue(any("bead id" in p for p in self.problems("manifest")))

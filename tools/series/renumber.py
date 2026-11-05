@@ -17,14 +17,16 @@ def _git(repo, *args, ok=(0,)):
 
 
 def moves(m):
-    """[(step, old number, new branch)] for every step whose branch does not carry its `n`."""
+    """[(step, old number, new branch)] for every step whose branch does not carry its number: its `n`,
+    or past a dropped step that keeps its number, the next one (seriesb.branch_numbers)."""
+    from tools.series import seriesb
     out = []
-    for s in m.get("steps", []):
+    for s, num in zip(m.get("steps", []), seriesb.branch_numbers(m)):
         mt = BRANCH_RE.match(s["branch"])
         if not mt:
             raise ValueError(f"step {s['n']}: branch {s['branch']!r} is not {_prefix()}NNN-slug")
-        if int(mt.group(1)) != s["n"]:
-            out.append((s, int(mt.group(1)), f"{_prefix()}{s['n']:03d}-{mt.group(2)}"))
+        if int(mt.group(1)) != num:
+            out.append((s, int(mt.group(1)), f"{_prefix()}{num:03d}-{mt.group(2)}"))
     return out
 
 
@@ -70,11 +72,12 @@ def apply(repo, series_dir, m, root_branch):
         _move_path(res(old_num), tmp_res(old_num))
         staged.append((s, old_num, slug, tmp, new_branch))
     for s, old_num, slug, tmp, new_branch in staged:
+        num = int(BRANCH_RE.match(new_branch).group(1))
         _move_branch(repo, tmp, new_branch)
-        _move_path(pr(f"renumbering-{old_num:03d}-{slug}"), pr(f"{s['n']:03d}-{slug}"))
-        _move_path(tmp_res(old_num), res(s["n"]))
+        _move_path(pr(f"renumbering-{old_num:03d}-{slug}"), pr(f"{num:03d}-{slug}"))
+        _move_path(tmp_res(old_num), res(num))
         s["branch"] = new_branch
-        s["description"] = f"series/pr/{s['n']:03d}-{slug}.md"
+        s["description"] = f"series/pr/{num:03d}-{slug}.md"
     steps = m.get("steps", [])
     for i, s in enumerate(steps):
         s["parent"] = root_branch if i == 0 else steps[i - 1]["branch"]

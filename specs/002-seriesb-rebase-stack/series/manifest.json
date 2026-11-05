@@ -20,7 +20,17 @@
   "old_manifest": "specs/001-split-migration-prs/series/manifest.json",
   "upstream_master": "7437f22a543c442830774dea0f2cad4e59c04cbb"
  },
- "dropped": [],
+ "dropped": [
+  {
+   "branch": "seriesb/018-upstream-9ee8ff22f-port",
+   "covered_by": "steps 004-017",
+   "number": 18,
+   "old_branch": "series/020-upstream-9ee8ff22f-port",
+   "old_step": 20,
+   "reason": "its upstream ports (#369-#765 in the C++ code) moved into the steps that write or convert the code they touch (T059: follow-up commits on 004-009, folded into the 010-017 replays); 019's parent is 017, and the later steps keep their branch names (Jon, 2026-11-03)",
+   "title": "Port upstream changes #369 to #765 into the C++ code"
+  }
+ ],
  "exclusions": [
   {
    "path_glob": ".zed/**",
@@ -33,6 +43,78 @@
   {
    "reason": "the fork's CI filter (push builds only for master and develop)",
    "revert_commit": "3aa8d65e8"
+  },
+  {
+   "path_glob": ".github/**",
+   "reason": "the stack's CI keeps upstream's macOS job and #768's oxp-upgrade job (T058: CI runs on every branch), which the end target drops"
+  },
+  {
+   "path_glob": ".eslintrc.json",
+   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target drops #768's tools/oxp-upgrade ignore pattern"
+  },
+  {
+   "path_glob": ".gitignore",
+   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target drops #768's ignores for meson subproject checkouts and node_modules"
+  },
+  {
+   "path_glob": "README.md",
+   "reason": "upstream's macOS section and ShellScripts line kept (upstream's macOS port, dc55e3e05..7437f22a5); the end target has the older 'current Macs are unsupported' text"
+  },
+  {
+   "path_glob": "src/Core/Scripting/README.md",
+   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target deletes #768's scripting README; kept, its Building paragraph naming src/meson.build's subproject() call"
+  },
+  {
+   "path_glob": "src/Core/OOProfilingStopwatch.h",
+   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target restores the pre-#768 OOSTOPWATCH_STANDALONE split (with std::chrono where JS_Now was)"
+  },
+  {
+   "path_glob": "src/Core/OOProfilingStopwatch.cpp",
+   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target restores the pre-#768 microsecond branch and drops the stack's signed timeGetTime() delta"
+  },
+  {
+   "path_glob": "src/Core/OOLogHeader.cpp",
+   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target brings back the SpiderMonkey-era MOZ_TRACE_JSCALLS feature string"
+  },
+  {
+   "path_glob": "src/meson/linux/meson.build",
+   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target brings back SpiderMonkey's XP_UNIX define"
+  },
+  {
+   "path_glob": "src/meson/windows/meson.build",
+   "reason": "#768's form kept (Jon: no step reverts upstream or #768 code to an older form); the end target brings back SpiderMonkey's XP_WIN and STATIC_JS_API defines"
+  },
+  {
+   "path_glob": "src/meson/darwin/meson.build",
+   "reason": "upstream's macOS build kept (-DOOLITE_SDL_MAC=1, -g); the end target has SpiderMonkey's XP_UNIX/XP_MACOSX instead"
+  },
+  {
+   "path_glob": "src/Core/OOJoystickManager.h",
+   "reason": "upstream #742's joystick manager layout kept; the end target has the pre-#742 declaration order and header comment"
+  },
+  {
+   "path_glob": "src/Core/OOJoystickManager.cpp",
+   "reason": "upstream #742's joystick manager layout kept; the end target has the pre-#742 definition order"
+  },
+  {
+   "path_glob": "src/SDL/OOSDLJoystickManager.cpp",
+   "reason": "upstream #742's layout kept (overrides with the decoders); the end target has the pre-#742 order and its '// Overrides' section"
+  },
+  {
+   "path_glob": "src/SDL/OOSDLJoystickManager.h",
+   "reason": "goes with OOSDLJoystickManager.cpp: its comment describes #742's layout"
+  },
+  {
+   "path_glob": "tests/unit/core/test_OOJavaScriptEngine.cpp",
+   "reason": "the end target drops the test deleteReachesTheClassHookWithNoOwnProperty; kept (hard rule 1), in the end target's layout"
+  },
+  {
+   "path_glob": "tests/unit/core/test_EntityOOJavaScriptExtensions.cpp",
+   "reason": "the end target changes two OO_CHECK(!JS_IsObject(_jsSelf)) assertions to JS_IsUndefined; 024's kept (hard rule 1)"
+  },
+  {
+   "path_glob": "tests/unit/core/test_OOJSSystem.cpp",
+   "reason": "the end target's check drops the owned callback() value without freeing it; 024's three lines kept (hard rule 1)"
   }
  ],
  "folded": [
@@ -267,7 +349,7 @@
   },
   {
    "branch": "seriesb/003-objcpp-switch",
-   "build_commit": "a6e785314ddf6bb2b42d7e829ea63e222c81e6bb",
+   "build_commit": "768166d647f301d5c6e661b330631ce5a5e9f8b7",
    "chapter": {
     "first": "3b6aec8c6ffca4445a742d4f9cd23251c9a5d57d",
     "last": "a7e3ed1efcf202eb22d16951be73c23e3b2b264c",
@@ -1002,7 +1084,7 @@
   },
   {
    "branch": "seriesb/004-oofnd-core",
-   "build_commit": "6e3649712d6cab6ce058449fa1bfd40056a8f301",
+   "build_commit": "5b609646ae61608663d1d046ff0cbed7170ef83d",
    "chapter": {
     "first": "e31130fa0d6116abe5928624d276dfcf18eece16",
     "last": "916311e66db2e9d025c763b9d028a9ff26d33ff0",
@@ -1066,7 +1148,7 @@
   },
   {
    "branch": "seriesb/005-typed-accessors",
-   "build_commit": "39f37df90bb17280353548cf4569dc69827b5773",
+   "build_commit": "a4d0a10cbfd8a35310e1c6a1784c90b6c00b125f",
    "chapter": {
     "first": "b73f2cd400db84dd246061c8b9cd95cb478a9534",
     "last": "bc9a02ca7b948001da5824b9c073b42b3e24ca08",
@@ -1126,7 +1208,7 @@
   },
   {
    "branch": "seriesb/006-foundation-wave-1",
-   "build_commit": "02c82ec354db6617b9792f1713d9bb7ebc679145",
+   "build_commit": "1afa395c364fcc511bed53b704a18d051608c929",
    "chapter": {
     "first": "931bee60e9e766df7298710946f16fb5f43038fa",
     "last": "ecfafab47981c8224790752d96f2340d6b07c833",
@@ -1186,7 +1268,7 @@
   },
   {
    "branch": "seriesb/007-foundation-wave-2",
-   "build_commit": "7add964f145ec6abf83cb69640b989a4a5b45f58",
+   "build_commit": "0ffa5f13ed51646b89cc08e2b97e087d7ed0f87c",
    "chapter": {
     "first": "5faa477a34d862eb81b59a6fe3d2e74592e1cad2",
     "last": "fa9cbc6c24fec4d77881a47e47e7b2591ece94d4",
@@ -1247,7 +1329,7 @@
   },
   {
    "branch": "seriesb/008-selector-families",
-   "build_commit": "741729301ab7fd157d46bc0014b6ebe2778c135f",
+   "build_commit": "037cf9049b03de3678016cbb847ac1b7d74b9d3d",
    "chapter": {
     "first": "b75b5d1bc6f7957740adab23f8f09e65901302b3",
     "last": "e0b9e24b22ab4f7373ccf71dbf4d58ac5553c4be",
@@ -1308,7 +1390,7 @@
   },
   {
    "branch": "seriesb/009-leaf-conversions",
-   "build_commit": "81a1b9d7d3230de8e621e1299471b0df6ee50b65",
+   "build_commit": "c455bb32cb2a159ec1568365ecc31a2ad7599707",
    "chapter": {
     "first": "66914fbbede7e1b621fea3ffba830ac2130ccaf9",
     "last": "67027c84d11fe03fcf208697938023d05d13f63c",
@@ -1371,7 +1453,7 @@
   },
   {
    "branch": "seriesb/010-module-conversions",
-   "build_commit": "2e613e4a446d0a24af2e52caeaa3bc97ef3a8f4b",
+   "build_commit": "f74cfe074ad8ec1e2877b44773e855abc1d461c2",
    "chapter": {
     "first": "1964f76209e19f37b8f7311a6057e469cb919c7e",
     "last": "ab5dc6cd728a5b26951c588d3d6e0ef99049009c",
@@ -1438,7 +1520,7 @@
   },
   {
    "branch": "seriesb/011-first-slices",
-   "build_commit": "4ca2448d623a1446b8a88ef8f3eb496948191750",
+   "build_commit": "c80d55fde4085fd984078438898b804a12e26799",
    "chapter": {
     "first": "ad82bd1efe7e79a499cb62fc9ea52fc7f8123f08",
     "last": "0c01939de79a4ac04237390d93dc78437057c5e0",
@@ -1505,7 +1587,7 @@
   },
   {
    "branch": "seriesb/012-shipentity-slices",
-   "build_commit": "62b20bd82ead30c4c930edecfac0f8d785a7c395",
+   "build_commit": "f8f3c21af3e8b214cfdb2fe89c9d0352ba355231",
    "chapter": {
     "first": "477a4919bcb8c6160d4765ee9d225e920fbf241f",
     "last": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
@@ -1572,7 +1654,7 @@
   },
   {
    "branch": "seriesb/013-universe-player-slices",
-   "build_commit": "d9bf73afa46a9b072dca27aa4fecc5750c9a5efb",
+   "build_commit": "9304fedba8228649d5e7a3aeb3f4617e46bd89ed",
    "chapter": {
     "first": "4b272b165ececbc7e183a328c4962cfbc65e4d78",
     "last": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
@@ -1640,7 +1722,7 @@
   },
   {
    "branch": "seriesb/014-facade-deletions",
-   "build_commit": "ee94df4a1bd67fd9f4845094e67ca5c617bf5eda",
+   "build_commit": "aec817ac8276ab44c2642ce5cca469be806997f3",
    "chapter": {
     "first": "d01d45e47c50bda1ebbfd44c5f94596519ba840b",
     "last": "2c2aae1316b5a125038a797c213162ffba389279",
@@ -1707,7 +1789,7 @@
   },
   {
    "branch": "seriesb/015-entity-facade",
-   "build_commit": "850be031b55f8234828b924a4e1fc365e800c2ef",
+   "build_commit": "f8b845dfcca6f08a48497d4d0f4ab3ce64c5a37a",
    "chapter": {
     "first": "d012b77f217a361b096ab70d04aa848eb174b04f",
     "last": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
@@ -1769,7 +1851,7 @@
   },
   {
    "branch": "seriesb/016-objc-runtime-out",
-   "build_commit": "1cfe5a027e8a317725ae32801443d9bd673504d4",
+   "build_commit": "9dfcc4cb512c42161a15902f3d00b49e09e68cf0",
    "chapter": {
     "first": "1248d43e1bbf6f5de945fe89d898630122a8e641",
     "last": "af1f220542e4917a23833902e8efc313a8eb463b",
@@ -1832,7 +1914,7 @@
   },
   {
    "branch": "seriesb/017-gcc-build",
-   "build_commit": "db43363c083e70c144721db09f3fab3ef872fa51",
+   "build_commit": "c37c508ddef66ab7a1cd137828f65b618977a434",
    "chapter": {
     "first": "5fda5e404c04bbf37a5faadb2c685e3819a60662",
     "last": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
@@ -1893,68 +1975,8 @@
    }
   },
   {
-   "branch": "seriesb/018-upstream-9ee8ff22f-port",
-   "build_commit": "d8571adf65f8f848241639c1d9cd9d3821cf65fb",
-   "chapter": {
-    "first": "883d339f93708db1a74f9a7f6426ed77622c449c",
-    "last": "6504faa3b99fcc34157daad2c7ff006848d0f8b6",
-    "merges": 4,
-    "phase": "P4",
-    "work_items": [
-     "upstream 9ee8ff22f pulled and ported"
-    ]
-   },
-   "description": "series/pr/018-upstream-9ee8ff22f-port.md",
-   "differs_from_old": [],
-   "era": "cxx",
-   "kind": "hand-written",
-   "mechanical_command": null,
-   "merge_tree": "376ff6df2358c08142dc76726fc402b031beab21",
-   "n": 18,
-   "parent": "seriesb/017-gcc-build",
-   "reasons": {},
-   "resolutions": [],
-   "rules": [],
-   "size": {
-    "deleted_files": 0,
-    "other": 45,
-    "src": 12392,
-    "tests": 303
-   },
-   "source": {
-    "old_branch": "series/020-upstream-9ee8ff22f-port",
-    "old_commit": "0eb3d8d1827a545aeb026904b5c76d37772b3a83",
-    "old_step": 20,
-    "type": "replay"
-   },
-   "state": "verified",
-   "target_tree": "376ff6df2358c08142dc76726fc402b031beab21",
-   "title": "Port upstream changes #369 to #765 into the C++ code",
-   "verification": {
-    "after_sync": 0,
-    "checks": {
-     "build_clang": "pass",
-     "build_gcc": "n/a: does not build with GCC yet (exit 1); the parent does not either",
-     "clang_format": "pass",
-     "component": "n/a: no component scenario touched",
-     "no_new_spidermonkey_or_gnustep": "pass",
-     "no_new_suppressions": "pass",
-     "smoke": "pass",
-     "tests_untouched": "pass",
-     "unit": "pass: oofnd, core",
-     "warnings_clang": "pass: 0 warnings"
-    },
-    "clean": false,
-    "commit": "d8571adf65f8f848241639c1d9cd9d3821cf65fb",
-    "date": "2026-11-03",
-    "era": "cxx",
-    "tree": "376ff6df2358c08142dc76726fc402b031beab21",
-    "warning_keys": []
-   }
-  },
-  {
    "branch": "seriesb/019-develop-fixes",
-   "build_commit": "a83f7ad7204a073a1dfce8d51adfaa7689c89dbc",
+   "build_commit": "84209ee260f636f65dd8c2e700d7ead7a1e93628",
    "chapter": null,
    "description": "series/pr/019-develop-fixes.md",
    "differs_from_old": [],
@@ -1962,8 +1984,8 @@
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "3ec92d250331b3c54c0f6a8e1135c1bb2f59899e",
-   "n": 19,
-   "parent": "seriesb/018-upstream-9ee8ff22f-port",
+   "n": 18,
+   "parent": "seriesb/017-gcc-build",
    "reasons": {},
    "resolutions": [],
    "rules": [],
@@ -2006,7 +2028,7 @@
   },
   {
    "branch": "seriesb/020-source-hygiene",
-   "build_commit": "4d85d7996ecf9b6cd814892c63dfde0adc130d7b",
+   "build_commit": "f83d09a093a30b3df4d1f6b8c51c95bad098976c",
    "chapter": null,
    "description": "series/pr/020-source-hygiene.md",
    "differs_from_old": [],
@@ -2014,7 +2036,7 @@
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "b5b1a6f19e262cc679ba4b86d313ff7d2fe72ae2",
-   "n": 20,
+   "n": 19,
    "parent": "seriesb/019-develop-fixes",
    "reasons": {},
    "resolutions": [],
@@ -2058,7 +2080,7 @@
   },
   {
    "branch": "seriesb/021-tests-and-tooling",
-   "build_commit": "f00dd009d6f5bb16c50c1b98d54d3b3bab6ba13c",
+   "build_commit": "ecbc3e19c2c34696066ad6f13aa3799d1b425e7c",
    "chapter": null,
    "description": "series/pr/021-tests-and-tooling.md",
    "differs_from_old": [],
@@ -2066,7 +2088,7 @@
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "775aa2855fef562cae3b83f0efecb70032f0f010",
-   "n": 21,
+   "n": 20,
    "parent": "seriesb/020-source-hygiene",
    "reasons": {},
    "resolutions": [],
@@ -2110,7 +2132,7 @@
   },
   {
    "branch": "seriesb/022-c-as-cxx",
-   "build_commit": "f518b81af8252921a134867d0e3ebfd810098a19",
+   "build_commit": "c3417fdfff0a4126f6a3a5c44963bbf015a54a4a",
    "chapter": null,
    "description": "series/pr/022-c-as-cxx.md",
    "differs_from_old": [],
@@ -2118,7 +2140,7 @@
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "b2c927c62809c24997f46ae504ebdcb23cff7426",
-   "n": 22,
+   "n": 21,
    "parent": "seriesb/021-tests-and-tooling",
    "reasons": {},
    "resolutions": [],
@@ -2162,7 +2184,7 @@
   },
   {
    "branch": "seriesb/023-upstream-49a5eb9fc-ports",
-   "build_commit": "3ff38673202b24aa64ca645b497f74370961059f",
+   "build_commit": "167118dff05edfb925b976545023313b582cac5b",
    "chapter": null,
    "description": "series/pr/023-upstream-49a5eb9fc-ports.md",
    "differs_from_old": [],
@@ -2170,7 +2192,7 @@
    "kind": "hand-written",
    "mechanical_command": null,
    "merge_tree": "fd18dfe5afa5c3a10077c2ca945e786826957df0",
-   "n": 23,
+   "n": 22,
    "parent": "seriesb/022-c-as-cxx",
    "reasons": {},
    "resolutions": [],
@@ -2214,7 +2236,7 @@
   },
   {
    "branch": "seriesb/024-google-style-format",
-   "build_commit": "29f6d6dead62894c17e89259cf8e2bad412a9008",
+   "build_commit": "9157d099347d321da7a82fbed6070783a25f89c0",
    "chapter": null,
    "description": "series/pr/024-google-style-format.md",
    "differs_from_old": [],
@@ -2222,7 +2244,7 @@
    "kind": "mechanical",
    "mechanical_command": "take .clang-format from 3aa8d65e8 and add mk.sh format/format-check (4ef61a09d), then run clang-format 22 -i on every .h/.hpp/.c/.cpp under src/ and tests/",
    "merge_tree": "1480777d86b241cc9143e817c85a13635717b56f",
-   "n": 24,
+   "n": 23,
    "parent": "seriesb/023-upstream-49a5eb9fc-ports",
    "reasons": {},
    "resolutions": [],
@@ -2266,15 +2288,15 @@
   },
   {
    "branch": "seriesb/025-upstream-quickjs-binding",
-   "build_commit": "57a0c89a9e06f716eb95128cf1bb0e6421566725",
+   "build_commit": "97bac002bd708c5fe3b488e39b5dd6319bb66175",
    "chapter": null,
    "description": "series/pr/025-upstream-quickjs-binding.md",
    "differs_from_old": [],
    "era": "cxx",
    "kind": "hand-written",
    "mechanical_command": null,
-   "merge_tree": "337f41d61619a114206bc0e7c480fac7a467a854",
-   "n": 25,
+   "merge_tree": "050fcd72e2610078235c64356f09e036c3204f7f",
+   "n": 24,
    "parent": "seriesb/024-google-style-format",
    "reasons": {},
    "resolutions": [],
@@ -2286,14 +2308,14 @@
     "tests": 11273
    },
    "source": {
-    "commit": "531ddd6592c3723c84ab7698b4a5c4b430fe891a",
-    "ref": "feature/upstream-quickjs-binding",
+    "commit": "8a0a3c97a572ef71cc6b1b86b1315809889833c2",
+    "ref": "feature/upstream-quickjs-poc-cxx",
     "test_ledger": "specs/002-seriesb-rebase-stack/series/test-changes.md",
     "type": "target"
    },
    "state": "verified",
-   "target_tree": "337f41d61619a114206bc0e7c480fac7a467a854",
-   "title": "Move the scripting layer to upstream's QuickJS-ng binding",
+   "target_tree": "050fcd72e2610078235c64356f09e036c3204f7f",
+   "title": "Bring upstream's QuickJS-ng binding into the fork's C++ style",
    "verification": {
     "after_sync": 0,
     "checks": {

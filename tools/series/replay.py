@@ -64,7 +64,7 @@ def slug_of(branch):
 
 
 def res_dir(series_dir, step):
-    return os.path.join(series_dir, "resolutions", f"{step['n']:03d}")
+    return os.path.join(series_dir, "resolutions", f"{seriesb.branch_number(step):03d}")
 
 
 # --- planning ------------------------------------------------------------------------------------
@@ -339,7 +339,7 @@ def ledger_paths(step, section=None):
 
 def ledger_section(step):
     """The ledger heading a replayed step's rows sit under."""
-    return f"Step {step['n']:03d}"
+    return f"Step {seriesb.branch_number(step):03d}"
 
 
 def unlisted_tests(repo, step, parent, tree):
