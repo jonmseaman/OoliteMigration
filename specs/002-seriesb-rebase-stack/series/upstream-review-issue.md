@@ -36,6 +36,38 @@ To make review incremental, the work is split into 25 stacked branches. Each one
 
 **Whole stack:** [`#768` → `seriesb/025-upstream-quickjs-binding`](https://github.com/jonmseaman/oolite/compare/db49201034e5ab3857342fb4dca199d5f17b93fb...seriesb/025-upstream-quickjs-binding): 1149 files, +363997 / −250233.
 
+### Compare each branch with its parent (branch:parent)
+
+For Sublime Merge or `git diff parent...branch`. Step 18 is dropped, so step 19 compares with step 17.
+
+```text
+seriesb/000b-upstream-768-quickjs-only:seriesb/000a-upstream-767-quickjs-option
+seriesb/001-random-seed-env:seriesb/000b-upstream-768-quickjs-only
+seriesb/002-safety-net:seriesb/001-random-seed-env
+seriesb/003-objcpp-switch:seriesb/002-safety-net
+seriesb/004-oofnd-core:seriesb/003-objcpp-switch
+seriesb/005-typed-accessors:seriesb/004-oofnd-core
+seriesb/006-foundation-wave-1:seriesb/005-typed-accessors
+seriesb/007-foundation-wave-2:seriesb/006-foundation-wave-1
+seriesb/008-selector-families:seriesb/007-foundation-wave-2
+seriesb/009-leaf-conversions:seriesb/008-selector-families
+seriesb/010-module-conversions:seriesb/009-leaf-conversions
+seriesb/011-first-slices:seriesb/010-module-conversions
+seriesb/012-shipentity-slices:seriesb/011-first-slices
+seriesb/013-universe-player-slices:seriesb/012-shipentity-slices
+seriesb/014-facade-deletions:seriesb/013-universe-player-slices
+seriesb/015-entity-facade:seriesb/014-facade-deletions
+seriesb/016-objc-runtime-out:seriesb/015-entity-facade
+seriesb/017-gcc-build:seriesb/016-objc-runtime-out
+seriesb/019-develop-fixes:seriesb/017-gcc-build
+seriesb/020-source-hygiene:seriesb/019-develop-fixes
+seriesb/021-tests-and-tooling:seriesb/020-source-hygiene
+seriesb/022-c-as-cxx:seriesb/021-tests-and-tooling
+seriesb/023-upstream-49a5eb9fc-ports:seriesb/022-c-as-cxx
+seriesb/024-google-style-format:seriesb/023-upstream-49a5eb9fc-ports
+seriesb/025-upstream-quickjs-binding:seriesb/024-google-style-format
+```
+
 ### Notes
 
 - **Step 24** (Google-style clang-format) is formatting only, and it touches every source file. It's offered as optional. Step 25 is built on top of it, so dropping it means rebasing step 25.

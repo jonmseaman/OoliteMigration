@@ -809,6 +809,12 @@ Tasks recorded so they outlive the session. Each still needs its Accept command 
   names, the time limiter on `timeGetTime()` (ms) on Windows where #768 used QPC, and the polyfill
   comment citing a nonexistent `tools/oxp-compat-shim`. Accept: Jon's choice recorded; under B,
   `git diff --shortstat` 024..025 under 2k lines and `check --only final-tree` exits 0.
+  **Jon, 2026-11-04: option B.** "If we are reverting behavior from the 768 PR, that would be a
+  mistake. It is important that we use the upstream version of quickjs, not mine. Their version
+  has multiple improvements." So the end target takes #768's binding as carried by 024 (its code,
+  its profiler macros, its QPC clock in the time limiter, its scripting README, its `dependency()`
+  wiring unless a fix needs otherwise); the fork-style restyle is dropped, and step 025 keeps only
+  genuine fixes, each named in its description.
 
 ---
 
