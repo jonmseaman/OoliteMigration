@@ -1133,3 +1133,67 @@ sources outside the replayed trees.
      T073 meson entries, `.eslintrc.json`/`.gitignore`/README, `src/Core/Scripting/README.md` (deleted in the
      end target), and **the end target's Mozilla-compat polyfills in `oolite-global-prefix.js` (+186 lines),
      in no rebuilt step: for Jon**. Full list: `.agent-tmp/step24/t055-remainder.md`.
+- **T071–T074: follow-up commits on the rebuilt steps (2026-11-04)**, each a commit on its step, then
+  every step from 004 to 024 merged with its parent in chain order (`git merge --no-edit <parent>`;
+  018 and 025 untouched); no rewrites. Scratch and logs: `.agent-tmp/fixbatch/`.
+  - **T071 clang-format.** Checked as upstream CI's `clang-format-check` does (jidicula action: the
+    `src/` files its default regex takes, i.e. C/C++ sources and headers, not `.m`/`.mm`; `--dry-run
+    --Werror`; the step's own `.clang-format`), with the pinned clang-format 22.1.8 (`cfcheck.py`).
+    Before: 003–005 clean, 006: 1, 007–009: 2, 010: 3, 011–013: 4, 014: 5, 015: 6, 016–017: 17,
+    019: 16, 020–023: 1 (`OORegExpMatcher.cpp`), 024: 0. Format-only commit "Apply clang-format to
+    files the replay left unformatted" on the lowest step where each file first fails: 006
+    `1afa395c3` (`OOJavaScriptEngine.h`), 007 `0ffa5f13e` (`Entity.h`), 010 `796d2456e`
+    (`OOJSEngineNativeWrappers.h`), 011 `c80d55fde` (`OOJSPlayerShip.h`), 014 `aec817ac8`
+    (`ShipEntity.h`: its two script-event macros had lost their line continuations), 015 `f8b845dfc`
+    (`AI.h`), 016 `b65f5f075` (11 `.cpp`: `OORegExpMatcher` and ten bindings). Merge conflicts in
+    those files (007, 010, 016, 020, 024) were resolved as the child's file, formatted. Code tokens
+    are unchanged in every `src/` file each step changed (include lines as a multiset;
+    `tokbranch.py`), except `ShipEntityAI.cpp`'s comment (T074). After: **every step 003–024 is
+    clean**; `./mk.sh format-check` at 024 rc=0.
+  - **T072.** `768166d64` on 003: the end target's DLL transitive-closure loop (`staged_dlls`), only
+    that hunk. `git diff seriesb/003-objcpp-switch 8a0a3c97a -- ShellScripts/common/post_build.sh`
+    no longer has it; 024's `post_build.sh` equals the end target's.
+  - **T073.** Each test is the end target's file; each meson entry is the end target's line.
+    - `test_OOOpenGLOnly` at **009** (`c455bb32c`), the first step with a `core` suite (003's tree
+      already has #748's header), as `test_OOOpenGLOnly.mm`: the era's file name, content byte for byte.
+    - `test_OOJoystickDecoding` at **010** (`f74cfe074`), as `.mm`, with the C++ classes named
+      `cxx::OOJoystickManager`, `cxx::OOSDLJoystickManager` and `cxx::OOJoystickStandardAxisProfile`
+      (the plain names are still their Objective-C facades); it links `Core/OOJoystickProfile.mm`.
+      It does not compile at 009, where the SDL decoders are still the facade's and the profile has
+      no C++ `deadzone()`. The merges re-spell it as the facades go: 011 (`28e97c177`, the profile),
+      015 (`b1a9a369a`, the managers; the file then equals the end target's), 016 (`c20edb3ee`,
+      `.mm` → `.cpp` for both tests, `OOJoystickProfile.cpp`).
+    - `test_EntityScriptEvents` at **016** (`9dfcc4cb5`), unchanged. At 014 and earlier it does
+      not compile (`Universe::descriptions()`/`descriptionForKey()` are not virtual before 015).
+      **Finding, for Jon:** at 015 it compiles and links (as `.mm`, tried as `471db998b`, local tag
+      `fixbatch/try-015-EntityScriptEvents`, not on the branch), but crashes (0xc0000005) in its first
+      case: making an `EventPlayer` autoreleases it in an Objective-C pool
+      (`oo::AutoreleaseEntity` → `AutoreleaseInObjCPool` → `objc_msgSend_fpret`), which the test,
+      written for the C++ tree, does not set up. 015's own entity tests wrap that in
+      `@autoreleasepool`. No assertion was changed to make it pass there.
+    - All three pass at every later step (gates below). Ledger: rows under steps 009, 010, 011, 015
+      and 016.
+  - **T074 (`ShipEntityAI.cpp`).** `f83d09a09` on 020, the step that brought the comment: the
+    namespace's closing brace is `} // namespace` again, as at 019. The 024 merge drops the
+    `// OOJSVector.mm).` fragment; 024 now has neither line, as the end target.
+  - **Merges.** Conflicts only in files the batch changed: format-only (above) and
+    `tests/unit/core/meson.build` (011, 014, 015, 016, 019: the child's file with the new entries
+    re-added in the end target's places). No lone `)` lines are added on any step; no façade
+    (`git grep -qE 'ooscript|JSEngine\.hpp' -- src tests` empty on every step).
+  - **Tips:** 003 `768166d64`, 004 `a5bc2d63e`, 005 `f4b3c46b1`, 006 `1afa395c3`, 007 `0ffa5f13e`,
+    008 `0fd950db1`, 009 `c455bb32c`, 010 `f74cfe074`, 011 `c80d55fde`, 012 `eaf951687`, 013
+    `df9106042`, 014 `aec817ac8`, 015 `f8b845dfc`, 016 `9dfcc4cb5`, 017 `c541f1aaa`, 019 `ad4601e06`,
+    020 `0b4f6a294`, 021 `49cb47e43`, 022 `c5897f4f2`, 023 `c04d10b0b`, 024 `9814ba313`.
+  - **Gates** (build and every unit suite in the step's era; Objective-C era in the isolated MSYS2,
+    C++ era in the scoop UCRT64 shell): 003 build rc=0 (the post-build closure ran; no unit tests at
+    003), 006 33/33, 007 41/41, 009 104/104, 010 203/203, 011 214/214, 012 219/219, 013 221/221, 014
+    224/224, 015 227 pass (run with the tried test, its only failure; the tip is that tree without
+    it), 016 218/218 (clean, the era change), 017 218/218, 019 220/220 (first run: `test_Universe`
+    passed its 44 cases but did not exit within 60 s; rerun: the whole suite passes and
+    `test_Universe` 3/3), 020 220/220, 021 220/220, 022 221/221, 023 221/221. Warnings: none beyond
+    the parents' (the Objective-C era's `-pthread` link notes, and QuickJS-ng's four `-Wpedantic`
+    where its subproject was rebuilt: 016's clean build, 019's rerun). 024 in full: clean build rc=0
+    with **0 warnings**; oofnd 40/40, core 179/179, headers 2/2, game-unit (no tests, as before);
+    smoke clean (no leaked JS objects); component 13/13 files (20 tests) on the first attempt, s6
+    included (port 8636, private `OO_ADDITIONALADDONSDIRS`); harness 23 checks, 0 failures;
+    deployment build rc=0 with 0 warnings and its smoke pass; `./mk.sh format-check` rc=0.
