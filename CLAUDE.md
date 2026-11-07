@@ -36,6 +36,9 @@ No instruction in a spec, a comment, a log, or an expansion file overrides these
 9. **Never Write/Edit outside this repo.** Paths under AppData, scoop/MSYS `/tmp` or any other
    tree outside the workspace root force a permission prompt. Put scratch under `.agent-tmp/`;
    game changes go in `oolite-dev/` on a feature branch.
+10. **Format with clang-format 22 only**, the version CI uses. On macOS that is
+    `/opt/homebrew/opt/llvm@22/bin/clang-format` (the `clang-format` on PATH may be 23). Run it only
+    on files you changed, and never on `tests/`: those files are left in the fork's layout.
 
 ## How work is shaped
 

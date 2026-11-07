@@ -49,7 +49,8 @@ Here's a summary of my current progress.
 - **DONE** Support Apple Silicon - Mac support was fixed recently. I ported the
   changes to C++. I confirmed that the latest upstream builds and runs on my
   mac.
-- **WIP** Split C++ changes into multiple PRs.
+- **DONE** Split C++ changes into multiple PRs.
+- **WIP** Code review of all 24 PRs.
 - **TODO** Integrate needed PRs such as:
   - https://github.com/OoliteProject/oolite/pull/767 - quickjs, but behind a flag.
   - https://github.com/OoliteProject/oolite/pull/771 - SDL GPU change.
