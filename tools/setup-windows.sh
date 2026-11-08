@@ -38,8 +38,8 @@ UCRT_PKGS=(
 # Installed by upstream's install_deps.sh from the oolite_windeps_build releases, not from a
 # repository: the libobjc2 runtime built against clang, and gnustep-make (gnustep-config).
 #
-# libobjc2 kept even after migration because it is needed for GNUstep reference
-# tools and for generation golden references.
+# The game no longer needs either. They stay because tools/series builds and verifies the early
+# seriesb/* steps, which are still Objective-C.
 WINDEPS_PKGS=(libobjc2 gnustep-make)
 
 # GUI test drivers:
