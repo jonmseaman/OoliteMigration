@@ -1857,6 +1857,6 @@ this repository — `Resources/Config/equipment.plist`, `Resources/Config/shipda
 
 - [EVE Online — Feature Reference](<EVE Online — Feature Reference.md>) — the whole game, including
   the ship-class ladder, prices and the economy these modules are bought in
-- [Mining and Manufacturing — Design Sketch](<Mining and Manufacturing — Design Sketch.md>) — the
+- [Mining and Manufacturing — Design Sketch](<../../notes/Mining and Manufacturing — Design Sketch.md>) — the
   mining career these mining modules would serve
-- [Oolite Feature Ideas](<Oolite Feature Ideas.md>) — the running list this feeds
+- [Oolite Feature Ideas](<../../notes/Oolite Feature Ideas.md>) — the running list this feeds

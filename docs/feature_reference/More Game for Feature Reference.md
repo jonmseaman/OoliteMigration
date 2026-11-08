@@ -7,6 +7,6 @@
 - X4 Foundations — written: [X4: Foundations](<X4 Foundations — Feature Reference.md>)
 - Freelancer (2003) — written: [Freelancer](<Freelancer — Feature Reference.md>)
 - Escape Velocity Nova
-- Wing Commander: Privateer
+- Wing Commander: Privateer — written: [Wing Commander: Privateer](<Wing Commander Privateer — Feature Reference.md>)
 
 

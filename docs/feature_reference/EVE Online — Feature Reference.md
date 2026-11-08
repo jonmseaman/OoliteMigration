@@ -11,7 +11,7 @@ by a studio with an in-house economist.
 This is the longest of the four references because EVE is much the largest game. Mining and industry
 get the deepest treatment, because they prompted it, and the career they suggest for Oolite is
 worked out separately in
-[Mining and Manufacturing — Design Sketch](<Mining and Manufacturing — Design Sketch.md>). Modules
+[Mining and Manufacturing — Design Sketch](<../../notes/Mining and Manufacturing — Design Sketch.md>). Modules
 and fitting get a section here and a reference of their own in
 [EVE Online — Modules and Fitting Reference](<EVE Online — Modules and Fitting Reference.md>), which
 covers every module class, weapon type, subsystem, hold and bay in detail.
@@ -1974,14 +1974,14 @@ EVE's systems mostly assume thousands of players and an open market, so they tra
 than Frontier's or Elite Dangerous's. What does transfer is the *shape* of its careers: each one has
 inputs it must source, a decision about where to work, and an output somebody else needs. Several of
 these also answer things already written down in
-[Oolite Feature Ideas](<Oolite Feature Ideas.md>).
+[Oolite Feature Ideas](<../../notes/Oolite Feature Ideas.md>).
 
 ### Five that fit best
 
 1. **Ore types that refine into different material mixes.** The one idea that makes mining a career
    instead of a chore, and Oolite already has the pieces — a commodity class taxonomy, a tonne /
    kilogram / gram unit system, and `cargo_carried` on any entity. Worked out in
-   [Mining and Manufacturing](<Mining and Manufacturing — Design Sketch.md>).
+   [Mining and Manufacturing](<../../notes/Mining and Manufacturing — Design Sketch.md>).
 2. **Critical hits on a repetitive action.** A 1% chance of triple yield that does not consume the
    asteroid, with its own sound and flash, is the cheapest fix for tedium in either game, and it
    generalises past mining to scooping and sun-skimming.
@@ -2034,7 +2034,7 @@ these also answer things already written down in
 ### Mining, industry and the economy
 
 Mostly a pointer: the full working-out is in
-[Mining and Manufacturing](<Mining and Manufacturing — Design Sketch.md>). These are the rows that
+[Mining and Manufacturing](<../../notes/Mining and Manufacturing — Design Sketch.md>). These are the rows that
 belong in the ideas table.
 
 | Idea | What EVE does | Oolite today |
