@@ -309,8 +309,10 @@ def ensure_worktree(repo, path, commit):
     else:
         _git(path, "checkout", "-q", "--detach", "--force", commit)
         # untracked and ignored leftovers too (a subproject extracted under an older wrap or patch),
-        # but never the build directory or the downloaded subproject archives
-        _git(path, "clean", "-q", "-d", "-f", "-f", "-x", "-e", "build/", "-e", "subprojects/packagecache/")
+        # but never the build directory, the downloaded subproject archives or the Python venv
+        # that the documentation build needs (upstream's post_build.sh activates ./.venv)
+        _git(path, "clean", "-q", "-d", "-f", "-f", "-x", "-e", "build/", "-e", "subprojects/packagecache/",
+             "-e", ".venv/")
     return path
 
 

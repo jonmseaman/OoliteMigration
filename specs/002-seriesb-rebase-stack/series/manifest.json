@@ -66,34 +66,29 @@
    "branch": "seriesb/000a-upstream-767-quickjs-option",
    "gate": "pass",
    "git_town_type": "observed",
-   "head": "3758f8a09ba6b00be61519bcaab543cc8450b631",
+   "head": "4fc77cd99f0362f1d706d3d9188b903db108ecd3",
    "kind": "upstream",
    "parent": "upstream-master",
    "tracking": "hobleyd/seriesb/000a-upstream-767-quickjs-option",
    "upstream_pr": 767,
    "verification": {
     "checks": {
-     "build_quickjs": "pass",
-     "build_spidermonkey": "pass",
+     "build_default": "pass",
      "build_test": "pass",
-     "test_quickjs": "pass",
-     "test_spidermonkey": "pass"
+     "test_default": "pass"
     },
     "commands": [
-     "./mk.sh build deployment --setup-flags=\"-Djs_engine=spidermonkey\"",
-     "./mk.sh test deployment --setup-flags=\"-Djs_engine=spidermonkey\"",
-     "./mk.sh build deployment --setup-flags=\"-Djs_engine=quickjs\"",
-     "./mk.sh test deployment --setup-flags=\"-Djs_engine=quickjs\"",
+     "./mk.sh build deployment",
+     "./mk.sh test deployment",
      "./mk.sh build test"
     ],
-    "commit": "3758f8a09ba6b00be61519bcaab543cc8450b631",
-    "date": "2026-11-03",
+    "commit": "4fc77cd99f0362f1d706d3d9188b903db108ecd3",
+    "date": "2026-11-07",
     "era": "objc-spidermonkey",
-    "tree": "d109de5e402f9df04a3136bee75c82fcc15f77e0",
+    "tree": "6fe391fe6a7e36694fef70c2bdd9d6684e3a653d",
     "warning_keys": [],
     "warnings": {
-     "quickjs": 7,
-     "spidermonkey": 1,
+     "default": 1,
      "test": 0
     }
    }
@@ -102,7 +97,7 @@
    "branch": "seriesb/000b-upstream-768-quickjs-only",
    "gate": "pass",
    "git_town_type": "observed",
-   "head": "db49201034e5ab3857342fb4dca199d5f17b93fb",
+   "head": "8b841c1bab1f77585708a32132a3d3b403e61ed7",
    "kind": "upstream",
    "parent": "seriesb/000a-upstream-767-quickjs-option",
    "tracking": "hobleyd/seriesb/000b-upstream-768-quickjs-only",
@@ -118,10 +113,10 @@
      "./mk.sh test deployment",
      "./mk.sh build test"
     ],
-    "commit": "db49201034e5ab3857342fb4dca199d5f17b93fb",
-    "date": "2026-11-03",
+    "commit": "8b841c1bab1f77585708a32132a3d3b403e61ed7",
+    "date": "2026-11-07",
     "era": "objc-quickjs",
-    "tree": "55462f20a827804de7fe1d18c9ce1b3e455c3e5b",
+    "tree": "e0577260c2cf6215b74b8502081bc6d3d8956ad8",
     "warning_keys": [
      "clang++: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
      "clang: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
@@ -165,7 +160,7 @@
     "old_step": 1,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "def24e11d46974272d6f7b9ee2e84046f14df100",
    "title": "Let OO_RANDOM_SEED pin the random seed",
    "verification": {
@@ -248,7 +243,7 @@
     "old_step": 2,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "015850d16f1e44ae27079be0d8ecb1541a2e3843",
    "title": "Add a test safety net: deterministic runs, GUI and component tests",
    "verification": {
@@ -322,7 +317,7 @@
     ],
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "take_old": {
     "keep": [
      "tools/js-parity/**",
@@ -393,7 +388,7 @@
     "old_step": 6,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "1e8ea118622e0f1ee288549073a119c7c4cf5c24",
    "title": "Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation",
    "verification": {
@@ -453,7 +448,7 @@
     "old_step": 7,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "a0aaae98011de1b740cae5e13817c6955f004706",
    "title": "Move most oo_*ForKey dictionary accessors to typed PListView::get",
    "verification": {
@@ -513,7 +508,7 @@
     "old_step": 8,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "6d0c48efffd66b15bcc2dfe2f605aa510b14bf3e",
    "title": "Move Foundation usage to oofnd, part 1",
    "verification": {
@@ -574,7 +569,7 @@
     "old_step": 9,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "e7f333f7f2291999562e6335a5a0dbdfafa2e6b3",
    "title": "Move Foundation usage to oofnd, part 2",
    "verification": {
@@ -635,7 +630,7 @@
     "old_step": 10,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "b13bd9d1bc75bff1c2a67fe339e10904c66464ae",
    "title": "Retire the remaining Foundation selectors and their bridge callers",
    "verification": {
@@ -698,7 +693,7 @@
     "old_step": 11,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "135b5a71064a2d77f899f5dce18be78ad80a188d",
    "title": "Drop gnustep-base, then convert the first classes to C++: maths, leaf utilities, OXP verifier",
    "verification": {
@@ -761,7 +756,7 @@
     "old_step": 12,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "390352140e33486390f548e99ba0c66aef31500b",
    "title": "Convert scripting, entities, audio and materials classes to C++",
    "verification": {
@@ -827,7 +822,7 @@
     "old_step": 13,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "cf64c8202f8729b8c6af6bdfb8f31e46a73abfa2",
    "title": "Convert the large files in slices; delete the first Objective-C bridges",
    "verification": {
@@ -892,7 +887,7 @@
     "old_step": 14,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "8fffc3aad54154a554a7951e0b47aa3c9b61c512",
    "title": "Convert ShipEntity to C++",
    "verification": {
@@ -960,7 +955,7 @@
     "old_step": 15,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "21ae64518b4b2ed9017edac25801e0ab16eef080",
    "title": "Convert Universe and PlayerEntity to C++",
    "verification": {
@@ -1027,7 +1022,7 @@
     "old_step": 16,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "3b21f892720e1f68522dea040dff231c548d91e4",
    "title": "Delete the Objective-C bridges",
    "verification": {
@@ -1094,7 +1089,7 @@
     "old_step": 17,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "e7e612298cdfc161d6b33d710e1c84cdb5d3b561",
    "title": "Delete the Entity bridge and the last Objective-C bridges",
    "verification": {
@@ -1157,7 +1152,7 @@
     "old_step": 18,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "33aa757bb2fee834e38ef1e5c93b9a020b28773a",
    "title": "Remove the Objective-C runtime and rename the sources to .cpp",
    "verification": {
@@ -1219,7 +1214,7 @@
     "old_step": 19,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "9622719e0f3dcee0b7ae6a0a54a7d566866e6c09",
    "title": "Fix code that GCC warns about or evaluates differently",
    "verification": {
@@ -1273,7 +1268,7 @@
     "old_step": 21,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "3ec92d250331b3c54c0f6a8e1135c1bb2f59899e",
    "title": "Small fixes after the migration",
    "verification": {
@@ -1325,7 +1320,7 @@
     "old_step": 22,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "b5b1a6f19e262cc679ba4b86d313ff7d2fe72ae2",
    "title": "Make comments describe the code; use #pragma once",
    "verification": {
@@ -1377,7 +1372,7 @@
     "old_step": 23,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "775aa2855fef562cae3b83f0efecb70032f0f010",
    "title": "Tests and developer tooling",
    "verification": {
@@ -1429,7 +1424,7 @@
     "old_step": 24,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "b2c927c62809c24997f46ae504ebdcb23cff7426",
    "title": "Compile the remaining C sources as C++; build QuickJS-ng with the fork's patches",
    "verification": {
@@ -1481,7 +1476,7 @@
     "old_step": 25,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "fd18dfe5afa5c3a10077c2ca945e786826957df0",
    "title": "Port upstream #783 (joystick control of GUI screens); build the macOS bundle without Foundation",
    "verification": {
@@ -1533,7 +1528,7 @@
     "old_step": 26,
     "type": "replay"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "1480777d86b241cc9143e817c85a13635717b56f",
    "title": "Reformat with Google-style clang-format (optional)",
    "verification": {
@@ -1585,7 +1580,7 @@
     "test_ledger": "specs/002-seriesb-rebase-stack/series/test-changes.md",
     "type": "target"
    },
-   "state": "verified",
+   "state": "stale",
    "target_tree": "8ee28e041f9927bd9ddaa7a4fdf5b18ed156ba74",
    "title": "Small fixes after the conversion; Mozilla polyfills for expansions",
    "verification": {
@@ -1611,5 +1606,375 @@
    }
   }
  ],
- "syncs": []
+ "syncs": [
+  {
+   "command": "git town sync --stack --detached --no-push, run as per-step merges re-resolved against each parent's pre-sync tip",
+   "conflicts": [
+    {
+     "path": "tests/launch_snapshot.py",
+     "reason": "took 002's version whole; its wait_until_answering/rendering supersedes upstream's wait_until_ready",
+     "step": 2
+    },
+    {
+     "path": "src/Core/{Entities/PlayerEntity{Controls,KeyMapper,LoadSave,StickMapper},HeadUpDisplay,OOJoystickManager}.mm,src/SDL/OOSDLJoystickManager.mm",
+     "reason": "upstream's joystick GUI changes to the .m files ported into 003's Objective-C++ renames",
+     "step": 3
+    },
+    {
+     "path": "src/Core/Entities/PlayerEntityControls.mm",
+     "reason": "kept 003's split declarations and enum cast, added upstream's joyButtonState checks",
+     "step": 3
+    },
+    {
+     "path": "src/Core/Entities/PlayerEntityStickMapper.mm",
+     "reason": "kept 003's split declaration, took upstream's DESC() string",
+     "step": 3
+    },
+    {
+     "path": "src/Core/Entities/PlayerEntity{Key,Stick}Mapper.mm",
+     "reason": "upstream's DESC() strings with 005's oo::PListView accessors; both includes kept",
+     "step": 5
+    },
+    {
+     "path": "src/Core/OOJoystickManager.{h,mm}",
+     "reason": "upstream's guiButtonFunctions and GUI-button settings converted to oo::PList like 006's axis/button ones",
+     "step": 6
+    },
+    {
+     "path": "src/Core/Entities/PlayerEntityStickMapper.mm",
+     "reason": "upstream's DESC() strings and GUI-button assignments ported into 006's std::string/oo::PList code; Enter test now selectKeyPress as upstream",
+     "step": 6
+    },
+    {
+     "path": "src/Core/Entities/PlayerEntity{Controls,LoadSave}.mm",
+     "reason": "kept 006's accessors, added upstream's joyButtonState checks",
+     "step": 6
+    },
+    {
+     "path": "ShellScripts/Windows/install_deps.sh",
+     "reason": "upstream's package lines plus 007's icu",
+     "step": 7
+    },
+    {
+     "path": "src/Core/Entities/PlayerEntity{Controls,LoadSave,KeyMapper,StickMapper}.mm",
+     "reason": "007's std::string/oo::PList code with upstream's joyButtonState checks and DESC() strings",
+     "step": 7
+    },
+    {
+     "path": "src/Core/HeadUpDisplay.mm",
+     "reason": "upstream's localised distance unit, held as std::string",
+     "step": 7
+    },
+    {
+     "path": "src/Core/OOJoystickManager.mm",
+     "reason": "GUI-button settings saved/loaded through 007's oo::Defaults",
+     "step": 7
+    },
+    {
+     "path": "src/Core/Entities/PlayerEntity{Controls,LoadSave,KeyMapper,StickMapper}.mm,src/Core/OOJoystickManager.{h,mm},src/Core/HeadUpDisplay.mm",
+     "reason": "upstream's joystick/localisation code rewritten in 008's idioms (OO_DESC, cxx_setTitle, std::string_view keys, cxx_keyForRow); GUI_BUTTON_SETTINGS as std::string_view",
+     "step": 8
+    },
+    {
+     "path": "src/Core/Entities/PlayerEntity{Key,Stick}Mapper.mm",
+     "reason": "upstream's localised strings and GUI-button lookups in 009's helpers (BoolValueForKey, longLongValue); kept upstream's OOJoystickManager.h import",
+     "step": 9
+    },
+    {
+     "path": "src/Core/OOJoystickManager{.h,.mm,+ObjCBridge.h,+ObjCBridge.mm},src/SDL/OOSDLJoystickManager.mm",
+     "reason": "upstream's GUI-button map (guibuttonmap, guiButtonFunctions, setGuiFunctionForButton, unsetGuiButtonFunction, GUI_BUTTON_SETTINGS) ported into 010's cxx::OOJoystickManager with bridge forwarders; guibuttonmap zero-initialised as upstream's ivar was",
+     "step": 10
+    },
+    {
+     "path": "src/Core/Scripting/OOJSEngineNativeWrappers.h",
+     "reason": "kept 010's header (upstream changed only its comment)",
+     "step": 10
+    },
+    {
+     "path": "src/Core/Entities/PlayerEntityControls.mm",
+     "reason": "kept 010's removal of the !NEW_PLANETS block, added upstream's joystick terms",
+     "step": 10
+    },
+    {
+     "path": "src/Core/HeadUpDisplay.mm",
+     "reason": "upstream's distance-unit lookup kept in 011's C++ initialiser",
+     "step": 11
+    },
+    {
+     "path": "src/Core/Entities/PlayerEntity{Controls,KeyMapper,LoadSave,StickMapper}.mm",
+     "reason": "word-level merge of upstream's joystick terms into 013's _cxxPlayer-> accesses",
+     "step": 13
+    },
+    {
+     "path": "src/Core/Entities/PlayerEntity{Controls,KeyMapper,LoadSave,StickMapper}.mm",
+     "reason": "upstream's changes translated into 014's C++ member-function dialect, then word-merged; joystick terms added to AnyKeyPressed({...}) as joyButtonState[...] != NO",
+     "step": 14
+    },
+    {
+     "path": "src/Core/OOJoystickManager+ObjCBridge.{h,mm}",
+     "reason": "kept 015's deletion (the GUI-button forwarders added at 010 go with it)",
+     "step": 15
+    },
+    {
+     "path": "src/Core/Entities/PlayerEntity{Controls,KeyMapper,LoadSave,StickMapper}.mm",
+     "reason": "upstream's joystick terms in 015's null-checked C++ calls; joystick handler reached as OOJoystickManager::sharedStickHandler()",
+     "step": 15
+    },
+    {
+     "path": "src/Core/{Entities/PlayerEntity{Controls,KeyMapper,LoadSave,StickMapper},HeadUpDisplay,OOJoystickManager}.cpp,src/SDL/OOSDLJoystickManager.cpp",
+     "reason": "upstream's changes ported into 016's .mm->.cpp renames; OOJoystickManager.h include kept as #include",
+     "step": 16
+    },
+    {
+     "path": "src/Core/{Entities/PlayerEntityControls,OOJoystickManager}.cpp",
+     "reason": "word-level merge",
+     "step": 19
+    },
+    {
+     "path": "src/Core/Entities/PlayerEntity*.cpp,src/Core/HeadUpDisplay.cpp",
+     "reason": "word-level merge; upstream's BOOL locals as bool, as 021 does",
+     "step": 21
+    },
+    {
+     "path": "src/Core/{Entities/PlayerEntity{Controls,StickMapper},OOJoystickManager}.cpp",
+     "reason": "took 022's own port of upstream #783 (now also in the base); dropped a duplicate joyButtonState in overwriteCommanderInputHandler; the remaining difference from the old 022 is upstream #786's localisation",
+     "step": 22
+    },
+    {
+     "path": "src/Core/{Entities/PlayerEntity{KeyMapper,StickMapper}.cpp,HeadUpDisplay.cpp,OOFoundation.h}",
+     "reason": "merged with base and new parent formatted in 023's style (clang-format 22), keeping 023's hand tweaks; every changed source file passes clang-format --dry-run",
+     "step": 23
+    },
+    {
+     "path": "ShellScripts/Linux/install_gitversion_fn.sh",
+     "reason": "026's chmod 0755 applied to upstream's installdir/tmpdir version",
+     "step": 26
+    }
+   ],
+   "date": "2026-11-07",
+   "parent_heads_after": {
+    "seriesb/000a-upstream-767-quickjs-option": "4fc77cd99f0362f1d706d3d9188b903db108ecd3",
+    "seriesb/000b-upstream-768-quickjs-only": "8b841c1bab1f77585708a32132a3d3b403e61ed7"
+   },
+   "parent_heads_before": {
+    "seriesb/000a-upstream-767-quickjs-option": "3758f8a09ba6b00be61519bcaab543cc8450b631",
+    "seriesb/000b-upstream-768-quickjs-only": "db49201034e5ab3857342fb4dca199d5f17b93fb"
+   },
+   "upstream_paths": [
+    ".github/workflows/build-all.yaml",
+    ".github/workflows/test_builds.yaml",
+    "Doc/OoliteRS.odt",
+    "Documentation/.markdownlint.yaml",
+    "Documentation/.readthedocs.yaml",
+    "Documentation/Doxyfile",
+    "Documentation/build_documentation.sh",
+    "Documentation/build_documentation_fn.sh",
+    "Documentation/build_doxygen.sh",
+    "Documentation/build_doxygen_fn.sh",
+    "Documentation/build_mds_fn.sh",
+    "Documentation/build_mkdocs.sh",
+    "Documentation/build_readthedocs.sh",
+    "Documentation/build_referencesheet.sh",
+    "Documentation/build_referencesheet_fn.sh",
+    "Documentation/docs/advice.md",
+    "Documentation/docs/assets/cobra3.png",
+    "Documentation/docs/assets/dockmaster.png",
+    "Documentation/docs/assets/illegal.png",
+    "Documentation/docs/assets/jameson.png",
+    "Documentation/docs/assets/lave.png",
+    "Documentation/docs/assets/leesti.png",
+    "Documentation/docs/assets/oolite-logo.png",
+    "Documentation/docs/assets/parcel.png",
+    "Documentation/docs/assets/witchdrive.png",
+    "Documentation/docs/assets/zaonce.png",
+    "Documentation/docs/css/extra.css",
+    "Documentation/docs/index.md",
+    "Documentation/docs/md/.markdownlint.yaml",
+    "Documentation/docs/md/advice.md",
+    "Documentation/docs/md/assets/images/PDF_file_icon.svg",
+    "Documentation/docs/md/assets/images/cobra3.png",
+    "Documentation/docs/md/assets/images/dockmaster.png",
+    "Documentation/docs/md/assets/images/illegal.png",
+    "Documentation/docs/md/assets/images/jameson.png",
+    "Documentation/docs/md/assets/images/lave.png",
+    "Documentation/docs/md/assets/images/leesti.png",
+    "Documentation/docs/md/assets/images/oolite-logo.png",
+    "Documentation/docs/md/assets/images/parcel.png",
+    "Documentation/docs/md/assets/images/witchdrive.png",
+    "Documentation/docs/md/assets/images/zaonce.png",
+    "Documentation/docs/md/index.md",
+    "Documentation/docs/md/privacy.md",
+    "Documentation/docs/md/reference.md",
+    "Documentation/docs/privacy.md",
+    "Documentation/docs/reference.md",
+    "Documentation/docs/typst/assets/Pictures/100000000000001200000021B10E8A7A.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000150000001C05BD88D4.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000150000001C18B01FE9.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000150000001C4FDF0A1D.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000150000001C51CE1B0C.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000150000001C53E46C30.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000150000001CC4692DC0.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000150000001CE7AD75FC.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000150000001CF1E62719.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000150000001CF51053F8.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000150000001CF558530D.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000160000001DFAF65A99.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000001A0000001B2F958552.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000001A0000001B58669CF2.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000001A0000001BCA6AC27F.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000001A0000001BD7300663.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000001A0000001BDAF5F305.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000001A0000001BE62838D0.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000001B0000001BE51ACE22.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000001B0000001BE57F8F9A.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000200000002E7CBB0BAA.png",
+    "Documentation/docs/typst/assets/Pictures/1000000000000022000000281FCBE9BB.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000002200000028D4D07A4C.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000250000001BF44F930B.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000250000001BF70A17D2.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000006400000060E96C64EB.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000ED000000EADE86F00A.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000FF000000563F8646EA.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000000FF0000005AFB8D923A.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000010100000056BE214D26.png",
+    "Documentation/docs/typst/assets/Pictures/1000000000000101000000579099A9EE.png",
+    "Documentation/docs/typst/assets/Pictures/1000000000000163000000398104FD70.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001690000002AF07E3454.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001880000018733605447.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001AD000001B2ABDD0914.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001AF000001AFC99D1065.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001B1000001B17B569ADA.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001BF000001BFC7AE7144.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001C9000001C9B36345D5.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001CE000001CE9AA2BC17.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001D4000001D4A7A4711C.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001DA000001DA544F3181.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001DA000001DAE98C5EA8.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001DC000001DCF65B6051.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001DD000001DD5F3CFDBB.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001EA000001EAF9566E8E.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001EC000001EC11F34CC1.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001EC000001ECC595B883.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001ED000001EE6077E5C0.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001F0000001F1D4B783D7.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001F5000001F53D288C22.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001F5000001F56C366291.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001F5000001F57CEA1A18.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000001FA000001FA5D6E4AD9.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000002010000020158BBFC18.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000020400000204B5CE487B.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000020600000205F1255681.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000020D0000020DF901DFA4.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000021300000213D03D3F2A.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000021F0000021F6251BA5B.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000023600000235FD1968EA.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000002510000025171CDF272.png",
+    "Documentation/docs/typst/assets/Pictures/1000000000000252000002529E9BFB84.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000002530000025325D15D12.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000002560000025678643601.png",
+    "Documentation/docs/typst/assets/Pictures/100000000000025C0000013812D8115F.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000002D000000138672A921C.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000004E000000438D03D351A.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000004EC00000438F01BADF5.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000004F400000436D4E346DC.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000004FD000000F6FBD54C2B.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000005080000043891731C27.png",
+    "Documentation/docs/typst/assets/Pictures/10000000000005190000043835D9093B.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000200000001B11B3C7FC.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000200000001B4A583528.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000200000001B5CCDDEA4.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000200000001B816C18E0.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000003D0000007E1A3EDAB9.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000003D0000007ED4693E48.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000480000007847BAA8D0.png",
+    "Documentation/docs/typst/assets/Pictures/1000000100000048000000788DA803FC.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000480000007D135973DF.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000480000007DA945B054.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000004D00000083607D4C06.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000004D00000083D6D7BB7C.png",
+    "Documentation/docs/typst/assets/Pictures/1000000100000051000000759760F827.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000005100000075C2D6A594.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000510000007A0324632A.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000510000007AFDBB9150.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000580000008C72725D30.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000580000008CA29FCABF.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000005F00000087BC711C4F.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000005F00000087EAEB72C4.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000620000007407B6C1A1.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000006200000074571336E2.png",
+    "Documentation/docs/typst/assets/Pictures/1000000100000062000000748EE0B43D.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000620000007491CB753A.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000710000007122FFE589.png",
+    "Documentation/docs/typst/assets/Pictures/1000000100000071000000716E98A87C.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000007100000078A293DDDD.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000007100000078FA85F0DF.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000007400000074792CD40E.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000007400000074EB96B126.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000740000007B0E70303C.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000740000007BD09C1539.png",
+    "Documentation/docs/typst/assets/Pictures/1000000100000074000000834E6C2DBD.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000007400000083C7C5AE78.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000830000007790D41699.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000008300000077963A92E0.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000C8000000C3D6F3A82B.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000000C8000000C3F906FB25.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000001E1000001E1C71A26B2.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000001E1000001E1E1E65C8F.png",
+    "Documentation/docs/typst/assets/Pictures/100000010000024300000243411D4F1F.png",
+    "Documentation/docs/typst/assets/Pictures/10000001000002430000024372CCD807.png",
+    "Documentation/docs/typst/common.typ",
+    "Documentation/docs/typst/reference.typ",
+    "Documentation/docs/typst/reference_page1.typ",
+    "Documentation/docs/typst/reference_page2.typ",
+    "Documentation/docs/typst/reference_page3.typ",
+    "Documentation/docs/typst/reference_page4.typ",
+    "Documentation/docs/typst/reference_page5.typ",
+    "Documentation/docs/typst/reference_page6.typ",
+    "Documentation/docs/typst/reference_page7.typ",
+    "Documentation/docs/typst/reference_page8.typ",
+    "Documentation/docs/typst/reference_page9.typ",
+    "Documentation/mkdocs.yaml",
+    "Documentation/overrides/main.html",
+    "Documentation/requirements.txt",
+    "README.md",
+    "Resources/Config/descriptions.plist",
+    "ShellScripts/Linux/build_gnustep.sh",
+    "ShellScripts/Linux/create_venv_fn.sh",
+    "ShellScripts/Linux/install_gitversion_fn.sh",
+    "ShellScripts/Linux/install_mkdocs_fn.sh",
+    "ShellScripts/Linux/install_package_fn.sh",
+    "ShellScripts/Linux/install_packages_root.sh",
+    "ShellScripts/Linux/install_pandoc_fn.sh",
+    "ShellScripts/Linux/install_typst_fn.sh",
+    "ShellScripts/Linux/install_weasyprint.sh",
+    "ShellScripts/Linux/install_weasyprint_fn.sh",
+    "ShellScripts/Windows/create_venv_fn.sh",
+    "ShellScripts/Windows/install_deps.sh",
+    "ShellScripts/Windows/install_gitversion_fn.sh",
+    "ShellScripts/Windows/install_mkdocs_fn.sh",
+    "ShellScripts/Windows/install_pandoc_fn.sh",
+    "ShellScripts/Windows/install_typst_fn.sh",
+    "ShellScripts/Windows/install_weasyprint_fn.sh",
+    "ShellScripts/common/install.sh",
+    "ShellScripts/common/post_build.sh",
+    "ShellScripts/macOS/install_packages.sh",
+    "installers/flatpak/create_flatpak_fn.sh",
+    "installers/flatpak/python-weasyprint.json",
+    "installers/flatpak/space.oolite.Oolite.yaml",
+    "installers/macos/create_dmg_fn.sh",
+    "installers/win32/OOlite.nsi",
+    "installers/win32/create_nsis_fn.sh",
+    "src/Core/Entities/PlayerEntityControls.m",
+    "src/Core/Entities/PlayerEntityKeyMapper.m",
+    "src/Core/Entities/PlayerEntityLoadSave.m",
+    "src/Core/Entities/PlayerEntityStickMapper.m",
+    "src/Core/HeadUpDisplay.m",
+    "src/Core/OOJoystickManager.h",
+    "src/Core/OOJoystickManager.m",
+    "src/Core/Scripting/OOJSEngineNativeWrappers.h",
+    "src/SDL/OOSDLJoystickManager.m",
+    "tests/launch_snapshot.py"
+   ]
+  }
+ ]
 }

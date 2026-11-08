@@ -76,7 +76,7 @@ def parser():
     pa.add_argument("--retire", action="store_true", help="once the PRs are in upstream master: step 1 onto it")
     sr = sub.add_parser("sync-record", help="seriesb: record a git town sync and its hand-resolved conflicts")
     sr.add_argument("--conflict", action="append", default=[], metavar="STEP:PATH:REASON")
-    sr.add_argument("--command", default="git town sync --stack --detached --no-push")
+    sr.add_argument("--command", dest="sync_command", default="git town sync --stack --detached --no-push")
     g = sub.add_parser("gate", help="seriesb: build and test a parent with its own CI commands (gate G1)")
     g.add_argument("parent", help="the parent branch, or its 000x stem")
     return p
@@ -1695,7 +1695,7 @@ def cmd_fold(args):
 def cmd_sync_record(args):
     from tools.series import manifest, sync
     m = load_manifest()
-    entry = sync.record(GAME, m, args.command, [sync.parse_conflict(c) for c in args.conflict])
+    entry = sync.record(GAME, m, args.sync_command, [sync.parse_conflict(c) for c in args.conflict])
     manifest.save(MANIFEST, m)
     print(f"sync-record: sync {len(m['syncs'])} on {entry['date']}, {len(entry['conflicts'])} conflict(s); "
           "every step is stale until `verify --from 1`")

@@ -52,6 +52,28 @@ that step:
 
 `git town undo` puts every branch back as it was before the sync.
 
+## When upstream rebases #767 or #768
+
+A force-pushed (rebased) PR leaves the merge base of each step and its parent at the old upstream
+fork point, so `git merge` sees the whole PR as changed on both sides. It conflicts where nothing
+changed, and where it merges cleanly it can bring back code the rebase dropped. In that case merge
+each step by hand, bottom up, instead of letting the sync commit its merges:
+
+1. Before anything moves, save every tip (`git update-ref refs/seriesb-presync/<branch> <branch>`).
+2. Per step: `git merge --no-commit <parent>`, then resolve every path as a three-way merge of
+   base = the parent's saved tip, ours = the step, theirs = the parent now. That is the step's
+   own change re-applied to the new parent.
+3. Build the step before moving on. Code that merges cleanly can still be in an idiom the step
+   removed (an Objective-C call in a step that converted the file to C++); fix it in that step.
+4. A fix to an earlier step reaches the later ones by ordinary `git merge`: their merge base is
+   correct again.
+
+The `git town sync --stack --detached` that follows finds nothing left to merge and pushes.
+
+The documentation build in `post_build.sh` needs pandoc, typst, cairo/pango and a `.venv` with
+weasyprint at the checkout's root, as upstream's `ShellScripts/Windows/install_deps.sh` installs
+them. `verify.py` keeps `.venv/` when it cleans its worktrees.
+
 ## After the sync
 
 - Every step is `stale` until it is verified again. `check --verified` fails until then.

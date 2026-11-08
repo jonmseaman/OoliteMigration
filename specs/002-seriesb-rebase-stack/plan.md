@@ -1334,3 +1334,32 @@ sources outside the replayed trees.
   `seriesb/000a-…`. The manifest records it as `anchors.root_parent` (and 000a's `parent`); the tool's
   rule 1 and lineage checks take the first parent's parent from there (`seriesb.root_parent`, default
   `develop`), and the handover pushes `upstream-master` to `origin` (leased on absence).
+- **Sync 1 (2026-11-07/08): #767/#768 rebased onto upstream `master` `148575aab`.** New PR heads
+  `000a` `4fc77cd99`, `000b` `8b841c1ba` (were `3758f8a09`, `db4920103`); local `upstream-master`
+  fast-forwarded to `148575aab`. Both gates pass once the documentation toolchain is installed
+  (below). Because the PRs were force-pushed, every step was merged by hand with rebase semantics
+  (`docs/series-sync.md`, "When upstream rebases"); pre-sync tips are kept as
+  `refs/seriesb-presync/*` in `oolite-dev`. `syncs[0]` in the manifest lists the 28 hand-resolved
+  conflicts. Decisions taken:
+  - Local builds need pandoc, typst, cairo/pango and a `.venv` with weasyprint (upstream's
+    `post_build.sh` builds the PDFs). Installed in both MSYS2s as upstream's `install_deps.sh` does;
+    `verify.py` now keeps `.venv/`.
+  - Upstream #783 (joystick GUI control) and #786 (text moved to descriptions) now arrive through
+    the base, so they are ported into each step from 003 on in that step's idiom. 022 keeps its own
+    #783 port, which now largely repeats what earlier steps carry. Default: leave 022 as it is (T059 is where the ports move earlier).
+  - Fixes made in the step that first needed them: 003 `OOSortFunction` casts only for Apple's
+    Foundation (GNUstep's signature takes `NSComparisonResult`; this broke every Objective-C++ step
+    on Windows before the sync); 006 upstream's GUI stick entries as `std::vector` entries; 009
+    `OOParameterAssert`; 010 `guibuttonmap` reset in `clearMappings` (as 022's `d94938de9`); 015 SDL
+    decoder reads `guibuttonmap` as a member; 023 `windef.h` before `timeapi.h`; 025 restores the
+    Windows `file:///C:/` path mapping its libcurl rewrite dropped (test_http failed in 025 as left).
+  - Jon, 2026-11-07: keep upstream behaviour and update a test that pins the old one.
+    `stickMapperHardwareAndGuiDicts` (014 on) gives its Universe the three `stickmapper-*`
+    descriptions that upstream #786's `hwToString()` reads.
+  - Verified per step 001–027 on Windows: `./mk.sh build test`, `./mk.sh test test`,
+    `tests/run.sh unit` (meson suites before 017's runner), `tests/run.sh smoke`. Component, GUI and
+    GCC builds not run, so `check --verified` stays failing. Unit timeouts seen under load
+    (test_OOMesh, test_OOSoundChannel, test_OOMaterialConvenienceCreators) passed on rerun.
+  - `seriesb/026-migration-completion` (another session's branch, child of 025) was left untouched;
+    it is based on an older 025 and needs its own sync. Pushing used `git town sync` per step, not
+    `--stack`, so that branch was not merged into or pushed.
