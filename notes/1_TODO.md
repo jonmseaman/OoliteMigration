@@ -1,6 +1,6 @@
 More branches:
 - Cleanup pass (plan on WinPC)
-- TBL drop, switch to enums...
+- TBL drop, switch to enums... — planned: [[2026-11-07 Enum Tables from tbl X-Macros]]
 - oofnd cleanup, stop using that, use C++ types instead.
 - SDL_Net? What was the platform specific http test that was broken?
 - Google test instead of custom?
@@ -14,6 +14,9 @@ More branches:
         - { key: readability-identifier-naming.ConstantPrefix,      value: k }
         - { key: readability-identifier-naming.EnumConstantCase,    value: CamelCase }
         - { key: readability-identifier-naming.EnumConstantPrefix,  value: k }
+    NB EnumConstant* covers scoped AND unscoped constants, so it puts all 175 unscoped enums in
+    scope at once. ScopedEnumConstant* confines it to enum class, which is what lets the enum
+    work land incrementally: [[2026-11-07 Enum Tables from tbl X-Macros]]
 
 - Convet tools directory to C++.
 - Import javascript tests from the upstream.
