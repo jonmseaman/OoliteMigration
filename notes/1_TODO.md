@@ -1,7 +1,12 @@
-- [ ] Remove true/false macros
+- [ ] Investigate lag in the ship browser. There is an animation, but there is also general slowness when pressing up and down. I expect that to be instant generally. Maybe it could be profiled...
 - [ ] Do a write up of this project to send to upstream.
 	- Include why I did this.
 	- How I did this.
 	- How I designed tests, what tests were created, results.
 	- Phase plan with a summary of each one.
 	- Future improvement ideas. Upgrade to arm, replace plist maybe, fine tune the menus, other modernization ideas.
+- [ ] Idea: Visual studio support?
+- [ ] Try a rust version with Bevy one day?
+- [ ] Typescript tests?
+- [ ] Get rid of Gherkin tests, apply what was in the upstream testing pull request.
+- [ ] 
