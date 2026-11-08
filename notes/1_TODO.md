@@ -1,7 +1,39 @@
-- [ ] Remove true/false macros
+More branches:
+- Cleanup pass (plan on WinPC)
+- TBL drop, switch to enums... — planned: [[2026-11-07 Enum Tables from tbl X-Macros]]
+- oofnd cleanup, stop using that, use C++ types instead.
+- SDL_Net? What was the platform specific http test that was broken?
+- Google test instead of custom?
+- Google style guide with cpplint:
+    CheckOptions:
+        - { key: readability-identifier-naming.ClassCase,           value: CamelCase }
+        - { key: readability-identifier-naming.FunctionCase,        value: CamelCase }
+        - { key: readability-identifier-naming.VariableCase,        value: lower_case }
+        - { key: readability-identifier-naming.PrivateMemberSuffix, value: _ }
+        - { key: readability-identifier-naming.ConstantCase,        value: CamelCase }
+        - { key: readability-identifier-naming.ConstantPrefix,      value: k }
+        - { key: readability-identifier-naming.EnumConstantCase,    value: CamelCase }
+        - { key: readability-identifier-naming.EnumConstantPrefix,  value: k }
+    NB EnumConstant* covers scoped AND unscoped constants, so it puts all 175 unscoped enums in
+    scope at once. ScopedEnumConstant* confines it to enum class, which is what lets the enum
+    work land incrementally: [[2026-11-07 Enum Tables from tbl X-Macros]]
+
+- Convet tools directory to C++.
+- Import javascript tests from the upstream.
+
+
+----------------------------------------
+
+
+
 - [ ] Do a write up of this project to send to upstream.
 	- Include why I did this.
 	- How I did this.
 	- How I designed tests, what tests were created, results.
 	- Phase plan with a summary of each one.
 	- Future improvement ideas. Upgrade to arm, replace plist maybe, fine tune the menus, other modernization ideas.
+- [ ] Idea: Visual studio support?
+- [ ] Try a rust version with Bevy one day?
+- [ ] Typescript tests?
+- [ ] Get rid of Gherkin tests, apply what was in the upstream testing pull request.
+- [ ] 

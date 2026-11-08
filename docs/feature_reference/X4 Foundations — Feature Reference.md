@@ -16,7 +16,7 @@ ten thousand NPC ships. For Oolite — one player, one galaxy, a script-driven p
 the relevant trick.
 
 X4 is also the clearest worked example of **the map as the command interface**, which is the thing
-the [Oolite Feature Ideas](<Oolite Feature Ideas.md>) doc keeps circling: a system map that is not
+the [Oolite Feature Ideas](<../../notes/Oolite Feature Ideas.md>) doc keeps circling: a system map that is not
 a picture but the screen you give orders from.
 
 **On sources.** Egosoft's own manual is the best writing on X4's mechanics and the worst guide to
@@ -1027,8 +1027,8 @@ four major versions behind; patch-note figures are current.
 X4 is the most transferable of the five references, because it reaches EVE's systems — industry,
 property, fleets, a live market — with **one player and no server**. Everything below works in a
 single-player game by construction. Several of these also answer rows already written in
-[Oolite Feature Ideas](<Oolite Feature Ideas.md>), and the industry ones connect directly to
-[Mining and Manufacturing — Design Sketch](<Mining and Manufacturing — Design Sketch.md>).
+[Oolite Feature Ideas](<../../notes/Oolite Feature Ideas.md>), and the industry ones connect directly to
+[Mining and Manufacturing — Design Sketch](<../../notes/Mining and Manufacturing — Design Sketch.md>).
 
 ### Five that fit best
 
@@ -1271,8 +1271,8 @@ posts and are marked community-reported in the text.
 
 ### Oolite
 
-- [Oolite Feature Ideas](<Oolite Feature Ideas.md>) — the rows this reference answers
-- [Mining and Manufacturing — Design Sketch](<Mining and Manufacturing — Design Sketch.md>) — where
+- [Oolite Feature Ideas](<../../notes/Oolite Feature Ideas.md>) — the rows this reference answers
+- [Mining and Manufacturing — Design Sketch](<../../notes/Mining and Manufacturing — Design Sketch.md>) — where
   the industry ideas are worked out
 - [EVE Online — Feature Reference](<EVE Online — Feature Reference.md>),
   [Elite Dangerous](<Elite Dangerous — Feature Reference.md>),

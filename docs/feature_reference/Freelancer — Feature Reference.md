@@ -754,7 +754,7 @@ Community data sites, used for equipment numbers. Figures are theirs, not Egosof
 
 ### Oolite
 
-- [Oolite Feature Ideas](<Oolite Feature Ideas.md>) — the Modern UI, system map and tutorial rows
+- [Oolite Feature Ideas](<../../notes/Oolite Feature Ideas.md>) — the Modern UI, system map and tutorial rows
   this reference answers
 - [X4: Foundations](<X4 Foundations — Feature Reference.md>) — the counterweight: deep systems,
   harder interface

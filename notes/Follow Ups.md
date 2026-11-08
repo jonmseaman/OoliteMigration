@@ -50,6 +50,8 @@ It would also make the UI touch compatible if desired. It could be great. Not
 sure how the maintainers would feel about a more modern library. 
 The current game is meant to be Elite from 1984, which didn't have a nice UI.
 
+There is also XenonUI in the OXP list, which has a nice UI.
+
 ## Feature Ideas
 
 AI teams mates, big ship with ai turret gunners, eve online features in market etc, better UI
@@ -59,3 +61,8 @@ There is also feature reference for various of the elite games.
 ## Mouse aiming?
 
 This could make it easier to fly.
+
+## Quality of life improvements
+
+- Fix weird save location for "Load Commander" menu. This seems to be the same in the base game.
+- Controls are not clear from the menu. 1 to undock not clear.
