@@ -6,11 +6,13 @@ What Oolite is **now**, after Phases 0–4. For how it got here, see
 
 ## In one paragraph
 
-Oolite builds and runs as a plain C++20 program on Windows x64. There is no Objective-C (no `.m`,
-no libobjc, no `-fobjc-*`), no GNUstep (`libgnustep-base` is replaced by `oofnd`), and no
-SpiderMonkey (replaced by QuickJS-ng behind a small façade). It builds with Clang and with GCC;
-both pass the unit suites. macOS and Linux do not build yet
-(Phase 5).
+Oolite builds and runs as a plain C++20 program on Windows x64 and on macOS (Apple Silicon), and
+builds on Linux x64 in CI. There is no Objective-C (no `.m`, no libobjc, no `-fobjc-*`), no GNUstep
+(`libgnustep-base` is replaced by `oofnd`), and no SpiderMonkey (replaced by QuickJS-ng behind a
+small façade). On Windows it builds with Clang and with GCC, and both pass the unit suites. On
+macOS and Linux only the platform-independent `tools` suite runs so far: the other suites still
+assume Windows (LLP64); see
+[notes/2026-11-07 Cross-Platform Correctness](../notes/2026-11-07%20Cross-Platform%20Correctness.md).
 
 ## Repositories
 
@@ -36,7 +38,7 @@ pull request on the fork.
 | `SDL/` | Platform layer: window, input, Windows resources. |
 | `meson/` | Per-platform meson fragments. |
 
-QuickJS-ng is a meson subproject pinned in `oolite-dev/subprojects/quickjs-ng.wrap` (v0.16.2).
+QuickJS-ng is a meson subproject pinned in `oolite-dev/subprojects/quickjs-ng.wrap` (v0.17.0).
 
 ## Style of the converted code
 
@@ -86,13 +88,20 @@ The warning gate skips exactly two vendored paths, `src/Core/MiniZip/` and
   (the ⚠️ rows of the parity audit's [foundation.md](parity/foundation.md); e.g. the data cache is
   written as XML, not GNUstep binary).
 - **Behaviour parity.** A method-by-method audit against `upstream/oolite/src` is in
-  [parity/](parity/README.md): 170 suspected differences, 2 high and ~12 medium. Fixing these is
-  part of the current phase.
+  [parity/](parity/README.md): 170 suspected differences, 2 high (both fixed) and ~12 medium. The
+  open ones are listed in [notes/2026-11-07 Parity Fixes](../notes/2026-11-07%20Parity%20Fixes.md).
+- **Platform features.** HDR output, `wglGetProcAddress` extension loading, display-mode changes
+  (`ChangeDisplaySettingsEx`), EcoQoS and OXZ file unlocking are Windows-only, as upstream's were.
+  The iTunes integration (upstream's Cocoa build) does nothing.
 
 ## Leftovers, owned by later phases
 
-- Mac-only Objective-C under `#if OOLITE_MAC_OS_X` and `GameController+FullScreen.mm` → Phase 5.
-- `tools/cross/aarch64-apple-darwin.ini` still names `objc` compilers → Phase 5.
+- Names kept from the Objective-C era, because changing them touches tests or installed files:
+  `src/oofnd/objc/` (49 test files include from it), `Resources/Info-gnustep.plist` (read by the
+  game, written by about 20 tests), the `OO_GNUSTEPDEFAULTSDIR` launcher variable, and the
+  `GNUstep/Defaults` and `GNUstep/Library` folders the game keeps its data in, so existing installs
+  keep their preferences, caches and managed OXZs.
+- The by-name tables (`OOEntityCalledByNameTable.h`, `OOEntityObjectNamesTable.h`,
+  `OOJSCallEntityMethods.h`, `OOTypeEncodings.h`) carry the Objective-C type encodings measured on
+  the last Objective-C++ build and are maintained by hand; a typed registry is Phase 6.
 - Legacy OpenGL (not 3.3 Core) and C++20 (not C++23) → Phase 6.
-- Dead GNUstep-era macros, bead/ADR references in source comments, WebKit-style `.clang-format`
-  → the current phase ([4p-upstream-polish](phases/4p-upstream-polish.md)).

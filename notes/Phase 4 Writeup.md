@@ -10,7 +10,7 @@ Oolite now builds and runs as a plain C++ program. As of 2026-10-21, the fork
 - **No Objective-C.** There are no `.m` or `.mm` files left, and no libobjc or `-fobjc-*` flags.
 - **No GNUstep.** `libgnustep-base` is gone. It was replaced by a small C++20 library, `oofnd`.
 - **No SpiderMonkey.** The 2011 SpiderMonkey 1.8.5 engine was replaced by
-  [QuickJS-ng](https://github.com/quickjs-ng/quickjs) v0.16.2, behind a thin C++ façade.
+  [QuickJS-ng](https://github.com/quickjs-ng/quickjs) v0.17.0, behind a thin C++ façade.
 - **Two compilers.** It builds with both Clang and GCC on Windows x64. Both pass the unit suites and
   replay the recorded game-state goldens identically.
 
@@ -214,7 +214,7 @@ plus playtesting, not from goldens.
 | 2 | `oofnd`: replace GNUstep Foundation | Done 2026-09-30 |
 | 3 | Convert Objective-C classes to C++20 | Done 2026-10-20 |
 | 4 | Remove the Objective-C runtime | Done 2026-10-21 |
-| 5 | Apple Silicon and Linux x64 | Not started |
+| 5 | Apple Silicon and Linux x64 | Started: macOS builds and runs; Linux builds |
 | 5b | JSON5 beside plists | Proposed |
 | 6 | Modernise (C++23, GL 3.3 Core) | Not started |
 
@@ -294,9 +294,8 @@ plus playtesting, not from goldens.
 - **Cons and leftovers:**
   - `oo::AutoreleaseScope` survives as a C++ deferred-release pool, in 25 files. Removing it changes
     object lifetimes, so it is a deliberate later decision.
-  - The Mac-only `#if OOLITE_MAC_OS_X` Objective-C arms and `GameController+FullScreen.mm` remain,
-    for Phase 5.
-  - Dead GNUstep-era macros and scripts still need cleanup.
+  - The Mac-only `#if OOLITE_MAC_OS_X` Objective-C arms and the GNUstep-era macros and scripts
+    were left for later; they are removed on `feature/migration-complete`.
 
 ### Phase 5 (planned): Apple Silicon and Linux x64
 

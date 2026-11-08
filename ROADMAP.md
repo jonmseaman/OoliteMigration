@@ -14,7 +14,7 @@ source hygiene, and the write-up for the Oolite maintainers. `bd ready` lists wh
 |---:|---|---|---|
 | 0–4 | Safety net · JS engine (QuickJS-ng) · `oofnd` (Foundation replacement) · ObjC → C++ · remove ObjC runtime | `notes/Phase 4 Writeup.md`; old docs under the git tag `archive/phase-0-4-docs` | done 2026-10-21 |
 | 4p | Polish for upstream | [4p-upstream-polish.md](docs/phases/4p-upstream-polish.md) | **in progress** |
-| 5 | Apple Silicon 🎯 and Linux x64 | [5-apple-silicon.md](docs/phases/5-apple-silicon.md) | not started; needs the Mac and a Linux build environment |
+| 5 | Apple Silicon 🎯 and Linux x64 | [5-apple-silicon.md](docs/phases/5-apple-silicon.md) | started: macOS builds and runs, Linux builds in CI |
 | 5b | JSON5 beside plists | [5b-data-formats.md](docs/phases/5b-data-formats.md) | proposed |
 | 6 | Modernise (C++23, GL 3.3 Core, idiomatic C++) | [6-modernise.md](docs/phases/6-modernise.md) | not started |
 
