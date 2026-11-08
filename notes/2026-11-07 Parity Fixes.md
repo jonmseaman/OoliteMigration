@@ -26,4 +26,14 @@ Each one gets a test that fails before the fix and passes after, per the parity 
 11. **Unify the two `doubleValue` ports** (`Defaults.hpp:171` and `PListGet.hpp:277`), plus the wrappers `String.hpp:1075`, `OOStringExpander.cpp:563` and `PlayerEntityLegacyScriptEngine.cpp:258`. Pick the GNUstep-faithful one, with a unit test on long mantissas and huge exponents.
 12. Low-severity items: the log-text drift list in the parity README's cross-cutting item 4. Batch them in one pass.
 
+13. **New, found 2026-11-08 (upstream has it too): `OOMatrixForRotation(axis, angle)` is not a
+    rotation for a general axis.** Its third row starts `t * x * y + s * y`; the axis-angle matrix
+    has `t * x * z + s * y` (`OOMatrix.cpp:54-58`, upstream `OOMatrix.m:49-53`). The error is
+    `t·x·(y−z)`, so an axis with x ≠ 0 and y ≠ z gives a matrix that neither keeps lengths nor is
+    undone by the opposite angle. Callers: `OOOpenGLMatrixManager` `rotateModelView` /
+    `rotateProjection` (the `glRotate` replacement), so a fix can change rendering wherever such an
+    axis is used. The failing check: in `tests/unit/core/test_OOMatrix.cpp`
+    `aRotationAndItsOppositeCancel`, use the axis `(1, 1, 0)` instead of `(0, 1, 1)`. Default:
+    fix it (`y` → `z`) with that test, and tell upstream.
+
 Suggested order: 4, 5, 2 first (real user-facing bugs), then the rest.

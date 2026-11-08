@@ -76,6 +76,11 @@ upstream has seen the faithful version, so reviewers can still compare it line f
   replaced (icosmesh in C++, with a test) or removed; the dead `OOLITE_MAC_OS_X`, salvage, preload
   and CoreFoundation branches removed; GNUstep dropped from CI, the launchers and the flatpak; a
   Windows unit-test job in CI. Parity and cross-platform fixes are in two notes for review.
+  Unit suites (Windows, Clang, test flavour): oofnd 39/40, core all but `test_OOOXZManager` (185 tests), headers 2/2,
+  tools 1/1. The failures are the same on the base `2bc38c154`: `test_http` (6 checks, `file:`
+  URLs) and `test_OOOXZManager` (35 checks, manifest download and GUI input); `test_PlayerEntity`
+  failed once under the parallel meson run and passes on its own on both. Component, smoke and GUI
+  tiers were not run on the branch.
 - 2026-11-02 — The migration is a 26-step PR series on upstream `49a5eb9fc` (spec
   `specs/001-split-migration-prs`), each step built and verified; `series/HANDOVER.md` has the push
   and PR commands.
