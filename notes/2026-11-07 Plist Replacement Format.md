@@ -77,9 +77,54 @@ In priority order. The first three can rule a format out on their own.
 | 7 Speed | ✓ | ~ depends on library | ✓ | ✓ | ✓ | ✓ | ✓ | ~ |
 | 8 Scripting fit | ✓ reads like a JS object literal | ~ | ~ | ✓ | ~ | ✗ | ✗ | ✗ |
 
-Dropped without a column: **Jsonnet, CUE, Pkl, Dhall** and other programmable configuration
-languages. Executing an expansion's configuration is the wrong trust model (criterion 2), and the
-game already has a scripting language. **RON** is tied to Rust's type system. **INI** can't nest.
+Dropped without a column: **CUE, Pkl, Dhall** and other programmable configuration languages
+for the same reason as Jsonnet (below). **RON** is tied to Rust's type system. **INI** can't nest.
+
+### Jsonnet: fine for authors, not for the game
+
+Jsonnet is a pure functional language whose programs evaluate to JSON: no network, no clock, no
+randomness, no output except the resulting document. Its value for Oolite would be templating:
+twenty ship variants from one function instead of twenty copied entries, or derived numbers
+computed rather than typed.
+
+Running it **inside the game** on downloaded expansions is a real risk. Jsonnet's own docs say so:
+
+- The README: the C++ implementation "is not hardened" for untrusted Jsonnet code, and is meant
+  for code "you / your organisation has written and trusts". A memory-safety bug in the interpreter
+  could then be triggered by any OXZ that someone downloads through the Expansions Manager.
+- The bindings reference: Jsonnet can express programs that take "unreasonable amounts of CPU time
+  and RAM". `libjsonnet.h` has no timeout, memory cap or step budget, only `jsonnet_max_stack`.
+  The suggested fix is to run the command-line tool as a child process under `ulimit`.
+- By default `import`, `importstr` and `importbin` read any path the process can see. A host can
+  refuse imports with `jsonnet_import_callback`; the README calls the search path "not an isolation
+  mechanism".
+
+Compare what an expansion's JavaScript gets today (`src/Core/Scripting/OOJavaScriptEngine.cpp`):
+`JS_SetMemoryLimit`, `JS_SetMaxStackSize`, an interrupt handler that stops long runs
+(`kOOJSLongTimeLimit`, 5 s), and no `std`/`os` modules, so no file access. Embedding Jsonnet would
+add a second interpreter with none of those limits. It would also run at startup, while data files
+load and before any script runs. A hostile or merely buggy file would hang the game before the
+player could reach the Expansions Manager to remove it.
+
+The ways to make it safe in the game all cost more than it gives:
+
+| Option | Problem |
+|---|---|
+| C++ libjsonnet in-process, imports refused | still no CPU or memory cap; not hardened (its own README) |
+| go-jsonnet (the implementation the README points to for untrusted input) | links a Go runtime into the game, or ships a separate binary |
+| jrsonnet (Rust, MIT) | adds a Rust toolchain to three platform builds; still needs limits added |
+| any of them in a child process with a timeout and memory limit | per-platform process sandboxing (Job Objects, `setrlimit`, macOS sandboxing) and a process per file at startup |
+| libjsonnet or go-jsonnet | Apache-2.0 is compatible only with GPLv3, so binaries that include it can be distributed under GPLv3 only (Oolite is GPL-2.0-or-later); that's for Jon and upstream to decide |
+
+**Authors can already use it, though.** Because Jsonnet's output is JSON, and JSON is a subset of
+JSON5, an author can write `shipdata.jsonnet`, run `jsonnet` when packaging, and ship the generated
+`shipdata.json5`. The game needs no Jsonnet support and players run no Jsonnet. What's lost is
+computing over other expansions' data at load time. That can't be done at packaging time, and it's
+what the game's JavaScript and `like_ship` are for.
+
+**Default:** no Jsonnet in the game. 5b.5's docs section gets a short "generating JSON5 with a
+template tool" note that mentions Jsonnet as one option, with the advice not to ship the `.jsonnet`
+source as if the game read it.
 
 ### JSON5: recommended
 
@@ -197,6 +242,7 @@ This refines 5b's work items rather than replacing them.
 | Also accept JSON / JSONC | yes, for free | they are subsets |
 | YAML | no | untrusted-input surface, indentation, implicit typing, dependency |
 | TOML | no for data files; possible later for user preferences | no root arrays |
+| Jsonnet (or another programmable config) in the game | no; authors may generate JSON5 with it when packaging | untrusted code with no CPU or memory limits, at startup; output is plain JSON anyway |
 | Typed scalars reach JS | yes, for JSON5 files authors write | opt-in; nothing existing changes |
 | Converter default mode | `--strings` for core or third-party files, `--typed` on request | keeps what scripts see unless an author chooses otherwise |
 | Saved games | stay XML plist (as 5b) | they must load in older builds |
