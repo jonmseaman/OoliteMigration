@@ -72,7 +72,7 @@ upstream has seen the faithful version, so reviewers can still compare it line f
 
 - 2026-10-28 — Phase doc created during the docs cleanup; phases 0–4 docs and ADRs moved to the
   `archive/phase-0-4-docs` tag.
-- 2026-11-08 — `seriesb/028-migration-complete` (on `seriesb/025-libcurl-http`): the Objective-C tools
+- 2026-11-08 — `seriesb/026-migration-completion` (on `seriesb/025-libcurl-http`): the Objective-C tools
   replaced (icosmesh in C++, with a test) or removed; the dead `OOLITE_MAC_OS_X`, salvage, preload
   and CoreFoundation branches removed; GNUstep dropped from CI, the launchers and the flatpak; a
   Windows unit-test job in CI. Parity and cross-platform fixes are in two notes for review.

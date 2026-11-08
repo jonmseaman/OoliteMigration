@@ -295,7 +295,7 @@ plus playtesting, not from goldens.
   - `oo::AutoreleaseScope` survives as a C++ deferred-release pool, in 25 files. Removing it changes
     object lifetimes, so it is a deliberate later decision.
   - The Mac-only `#if OOLITE_MAC_OS_X` Objective-C arms and the GNUstep-era macros and scripts
-    were left for later; they are removed on `seriesb/028-migration-complete`.
+    were left for later; they are removed on `seriesb/026-migration-completion`.
 
 ### Phase 5 (planned): Apple Silicon and Linux x64
 

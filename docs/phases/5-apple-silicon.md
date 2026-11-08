@@ -74,6 +74,6 @@ Everything here is a seam; there are no sweeps.
   SpiderMonkey and Apple Foundation, so it was not taken) and defining `OOLITE_MAC_OS_X` there.
 - 2026-11-08 — The macOS build runs from a `darwin` branch in `src/meson/`, with an app bundle and a
   DMG; Linux builds in CI (AppImage, Ubuntu, Fedora, flatpak). The dead `OOLITE_MAC_OS_X`
-  Objective-C arms are removed (`seriesb/028-migration-complete`); the macOS-specific gaps found on the
+  Objective-C arms are removed (`seriesb/026-migration-completion`); the macOS-specific gaps found on the
   way (key mappings file, relative log folder, x86-only `cpuid`) are in
   `notes/2026-11-07 Cross-Platform Correctness.md`.
