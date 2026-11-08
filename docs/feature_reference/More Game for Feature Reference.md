@@ -1,5 +1,5 @@
 - Star Sector
-- Kerbal Space Program — planned, last of the series
+- Kerbal Space Program — written: [Kerbal Space Program](<Kerbal Space Program — Feature Reference.md>)
 - Space Engineers
 - Stellaris — written: [Stellaris](<Stellaris — Feature Reference.md>)
 - No Man's Sky
@@ -8,4 +8,4 @@
 - Freelancer (2003) — written: [Freelancer](<Freelancer — Feature Reference.md>)
 - Escape Velocity Nova
 - Wing Commander: Privateer — written: [Wing Commander: Privateer](<Wing Commander Privateer — Feature Reference.md>)
-- Space Reign — planned next
+- Space Reign — written: [Space Reign](<Space Reign — Feature Reference.md>)

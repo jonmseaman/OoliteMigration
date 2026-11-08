@@ -1,4 +1,28 @@
-- [ ] Investigate lag in the ship browser. There is an animation, but there is also general slowness when pressing up and down. I expect that to be instant generally. Maybe it could be profiled...
+More branches:
+- Cleanup pass (plan on WinPC)
+- TBL drop, switch to enums...
+- oofnd cleanup, stop using that, use C++ types instead.
+- SDL_Net? What was the platform specific http test that was broken?
+- Google test instead of custom?
+- Google style guide with cpplint:
+    CheckOptions:
+        - { key: readability-identifier-naming.ClassCase,           value: CamelCase }
+        - { key: readability-identifier-naming.FunctionCase,        value: CamelCase }
+        - { key: readability-identifier-naming.VariableCase,        value: lower_case }
+        - { key: readability-identifier-naming.PrivateMemberSuffix, value: _ }
+        - { key: readability-identifier-naming.ConstantCase,        value: CamelCase }
+        - { key: readability-identifier-naming.ConstantPrefix,      value: k }
+        - { key: readability-identifier-naming.EnumConstantCase,    value: CamelCase }
+        - { key: readability-identifier-naming.EnumConstantPrefix,  value: k }
+
+- Convet tools directory to C++.
+- Import javascript tests from the upstream.
+
+
+----------------------------------------
+
+
+
 - [ ] Do a write up of this project to send to upstream.
 	- Include why I did this.
 	- How I did this.
