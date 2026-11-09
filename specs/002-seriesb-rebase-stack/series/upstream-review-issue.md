@@ -41,7 +41,7 @@ Until then, each **PR** link is a draft pull request inside the fork, against th
 
 Each line opens your difftool on the step's whole tree against its parent's (`git difftool --dir-diff <parent> <branch>`).
 
-```text
+```sh
 git difftool --dir-diff seriesb/000a-upstream-767-quickjs-option seriesb/000b-upstream-768-quickjs-only
 git difftool --dir-diff seriesb/000b-upstream-768-quickjs-only seriesb/001-random-seed-env
 git difftool --dir-diff seriesb/001-random-seed-env seriesb/002-safety-net
@@ -67,6 +67,7 @@ git difftool --dir-diff seriesb/020-tests-and-tooling seriesb/021-c-as-cxx
 git difftool --dir-diff seriesb/021-c-as-cxx seriesb/022-upstream-28ceaaba0-ports
 git difftool --dir-diff seriesb/022-upstream-28ceaaba0-ports seriesb/023-google-style-format
 git difftool --dir-diff seriesb/023-google-style-format seriesb/024-post-conversion-fixes
+git difftool --dir-diff seriesb/024-post-conversion-fixes seriesb/025-libcurl-http
 ```
 
 ### Notes

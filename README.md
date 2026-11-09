@@ -18,7 +18,6 @@ pinned toolchain, `gh` and `git-town`, and a keep-awake tool.
 | `tools/` | Windows setup, expansion corpus runners, upstream-delta tracker, cross files |
 | `oxp-contract/` | The 1.93 JS API snapshot expansions are written against |
 | `tools/guard/` | PATH shims: no agent closes a bead or pushes to an integration branch |
-| `.claude/skills/beads-worker/` | The skill that works the queue, one bead per `/loop` iteration |
 | `oolite-dev` | **Submodule**: `jonmseaman/oolite`, branch `develop`. **The migration target**; all game work happens here |
 | `oolite-main` | Submodule: `jonmseaman/oolite`, branch `master` (what has been merged; reference only) |
 | `upstream/oolite` | Submodule: `OoliteProject/oolite`, unmodified (reference: the Objective-C original) |
