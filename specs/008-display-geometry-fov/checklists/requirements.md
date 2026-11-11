@@ -37,4 +37,8 @@
   choices were settled in the spec's Assumptions (single panel only, horizontal curvature only,
   eye on the centre line, curvature always entered by hand, even angular spacing for a chosen
   field of view, HUD/GUI not re-projected). `/speckit-clarify` can revisit them.
+- 2026-11-10 revision: FR-006a–d name the drawing method (flat render plus a final warp) and
+  FR-017 mentions shaders. That is implementation detail, kept on purpose because Jon chose the
+  method; the "no implementation details" items stay ticked with this exception recorded. Added
+  FR-016–018, SC-006 (straight lines) and SC-007 (16:9 HUD and menus); all are testable.
 - FR-014 / SC-005 name "the reference machine"; the plan must say which machine that is.

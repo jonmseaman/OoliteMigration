@@ -151,13 +151,25 @@ detected.
   chosen horizontal field of view limited to what the projection can draw without the view folding
   back on itself (at most 170°); out-of-range input is clamped and the clamped value shown.
 - **Vertical curvature**: monitors curved vertically are out of scope; vertical is treated as flat.
-- **GUI screens and HUD**: menus, the status screens and the HUD are not re-projected; they keep
-  their current layout. Only the 3D space view (all four views, and external views) changes.
+- **GUI screens and HUD**: menus, the status screens and the HUD are not curved or warped. On a
+  screen wider than 16:9 they sit in a centred 16:9 area at full height (FR-016); on a screen 16:9
+  or narrower they fill the window as today. The space view always fills the whole window (all
+  four views, and external views).
+- **Shaders off**: curved drawing needs the shader detail levels. With shaders off, the curved
+  setting falls back to a flat view of the same field of view, and the settings screen says so.
+- **Very wide chosen field of view**: above about 120° horizontal, a single flat render loses
+  detail at the centre of the screen; the view may be drawn in several slices that are joined by
+  the same final step, with no seams (FR-018).
 - **Other camera features**: in-flight field-of-view control, mouse-look (spec 004), snapshots and
   the sun glare / break-pattern effects must use the same field of view as the space view, so
   nothing appears in the wrong place relative to the scene.
 - **Targeting and aim**: the crosshair, scanner target reticle and any HUD marker placed over a
   ship must sit over that ship on the drawn view, including near the edges of a curved projection.
+  Anything that turns a screen position into a direction in space (mouse picking, mouse-look) must
+  give the direction the warped view actually shows at that position.
+- **HUD markers outside the 16:9 area**: a marker for an object shown outside the centred HUD area
+  (for example a target near the edge of a 32:9 screen) is still drawn over the object, not
+  clamped into the 16:9 area.
 
 ## Requirements *(mandatory)*
 
@@ -166,7 +178,8 @@ detected.
 - **FR-001**: Players MUST be able to turn screen-matching on or off in the game's settings; it is
   off by default.
 - **FR-002**: With screen-matching off, the space view and the existing Field Of View option MUST
-  behave exactly as they do now.
+  behave exactly as they do now. (The 16:9 HUD and menu area of FR-016 is separate and changes
+  only windows wider than 16:9.)
 - **FR-003**: Players MUST be able to enter the screen's diagonal size (inches or centimetres),
   its aspect ratio (common presets 16:9, 16:10, 21:9, 32:9 and a custom value), and whether it is
   flat or curved with a curvature radius in the "R" notation monitors are sold with (e.g. 1800R =
@@ -177,6 +190,19 @@ detected.
 - **FR-006**: The system MUST draw the space view so that each point on the physical screen shows
   the scene in the direction of that point from the stated eye position (flat: a flat perspective;
   curved: a view matched to the curve).
+- **FR-006a**: For a curved screen, the scene MUST be drawn flat into an off-screen image and then
+  warped in one final full-screen step: for each pixel of the physical screen the step works out
+  the direction from the eye to that pixel (from the screen description and viewing distance) and
+  takes the colour the flat image shows in that direction. [Approach chosen by Jon, 2026-11-10; see
+  Assumptions.]
+- **FR-006b**: The warped view MUST have no seams: a straight edge in space (a station's edge, a
+  laser beam) drawn across the screen at the physical field of view MUST look straight from the
+  stated eye position, with no kinks.
+- **FR-006c**: The off-screen image MUST be large enough that the centre of the screen shows at
+  least as much detail as the flat view does with screen-matching off.
+- **FR-006d**: Effects that work on the finished image (bloom, sun glare, other post-effects) MUST
+  line up with the warped scene; they are applied either before the warp or to the warped image,
+  never split across both.
 - **FR-007**: Players MUST be able to replace the physical horizontal field of view with a chosen
   one; the vertical field of view MUST then follow from the screen's shape, and object proportions
   MUST stay correct from centre to edge (User Story 3).
@@ -188,12 +214,21 @@ detected.
 - **FR-011**: Out-of-range values MUST be clamped to the limits in Edge Cases, and the clamped value
   shown.
 - **FR-012**: HUD markers tied to objects in space (crosshair alignment, target reticle, sighting
-  markers) MUST appear over the object they mark on the drawn view.
+  markers) MUST appear over the object they mark on the drawn view, and every conversion between a
+  screen position and a direction in space (mouse picking, mouse-look) MUST use the same mapping as
+  the warp in FR-006a.
 - **FR-013**: The field of view reported to scripts MUST be the horizontal field of view actually in
   use. [Default chosen: same meaning as today's value, so existing scripts keep working.]
 - **FR-014**: The space view MUST keep the current frame rate within 5% on the reference machine
   with screen-matching on, for both flat and curved settings.
 - **FR-015**: Changing any screen-matching setting MUST take effect without restarting the game.
+- **FR-016**: On a window wider than 16:9, the HUD, menus and status screens MUST be laid out in a
+  centred 16:9 area at full window height, while the space view fills the whole window. This
+  applies whether or not screen-matching is on.
+- **FR-017**: With shaders off, a curved screen description MUST fall back to a flat view at the
+  same horizontal field of view, and the settings MUST say that curved drawing needs shaders.
+- **FR-018**: For a horizontal field of view above 120°, the system MAY draw the flat image as
+  several slices before the warp; the result MUST still meet FR-006b and FR-006c.
 
 ### Key Entities
 
@@ -221,6 +256,11 @@ detected.
   if curved, curvature).
 - **SC-005**: Frame rate with screen-matching on is within 5% of frame rate with it off on the
   reference machine.
+- **SC-006**: On the Odyssey G9 setup at 80 cm, a straight edge crossing the full width of the
+  screen deviates from a straight line, as seen from the stated eye position, by no more than 0.2°
+  anywhere along it.
+- **SC-007**: On a 32:9 window, every menu and status screen and the HUD fit inside the centred
+  16:9 area, with nothing cut off or stretched.
 
 ## Assumptions
 
@@ -246,6 +286,18 @@ detected.
   is the same 119.8 × 33.7 cm panel at 1000R: its edges are at ±42.0° from 80 cm, and ±34.3° from
   100 cm, where the eye is at the centre of curvature. The G9 is the most curved common panel, so
   it is the hardest of the reference setups.
+- **Drawing method for curved screens (Jon, 2026-11-10): one flat render plus a final warp.**
+  Rejected: several flat slices shown without a warp. For the G9's 84°, 3 slices still stretch
+  about 6% at each slice's edges and 5 slices about 2%; straight lines kink at every seam;
+  whole-image effects don't line up across slices; and every slice redraws the scene. With the
+  warp, the slice count only affects detail, so slices are kept only as the very-wide-angle
+  extension (FR-018). A single flat render at 84° has about 19% fewer pixels per degree at the
+  centre than the screen needs, hence FR-006c (draw the off-screen image about 25% larger).
+- The game already draws into off-screen images and runs a final pass when shaders are on, so the
+  warp is one more step there; with shaders off there is no such pass, hence the flat fallback
+  (FR-017).
+- The 16:9 HUD and menu area (FR-016) is Jon's request; whether its aspect should be adjustable
+  is left for `/speckit-clarify` (default: fixed 16:9).
 - The settings live with the existing Game Options; whether they sit there or in the new GUI
   (spec 007) is a planning decision.
 - Default values when nothing is saved or detected: 24" 16:9 flat at 60 cm.
