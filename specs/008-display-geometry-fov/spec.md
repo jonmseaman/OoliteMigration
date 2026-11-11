@@ -71,10 +71,13 @@ most wrong. It depends on the screen description from Story 1.
 1. **Given** a 49" 32:9 1800R screen at 80 cm, **When** screen-matching is on, **Then** the reported
    field of view is 80.0° horizontal and 23.8° vertical, each within 0.5° (a flat screen of the
    same size at the same distance reports 73.7° horizontal).
-2. **Given** the curved settings, **When** an object of fixed angular size moves from the centre to
+2. **Given** a Samsung Odyssey G9 (49" 32:9, 1000R) at 80 cm, **When** screen-matching is on,
+   **Then** the reported field of view is 84.0° horizontal and 23.8° vertical, each within 0.5°;
+   at 100 cm (the eye at the centre of curvature) it is 68.6° horizontal and 19.1° vertical.
+3. **Given** the curved settings, **When** an object of fixed angular size moves from the centre to
    the horizontal edge, **Then** its width-to-height ratio and its angular size, as seen from the
    stated eye position, each stay within 2% of their values at the centre.
-3. **Given** the curved settings with the eye placed at the screen's centre of curvature
+4. **Given** the curved settings with the eye placed at the screen's centre of curvature
    (distance = radius), **When** the view is drawn, **Then** equal horizontal distances along the
    screen surface correspond to equal angles (uniform angular spacing) within 1%.
 
@@ -205,11 +208,12 @@ detected.
 
 ### Measurable Outcomes
 
-- **SC-001**: For the two reference setups (27" 16:9 flat at 60 cm; 49" 32:9 1800R at 80 cm) the
-  reported horizontal and vertical field of view match the values in Stories 1 and 2 within 0.5°.
+- **SC-001**: For the three reference setups (27" 16:9 flat at 60 cm; 49" 32:9 1800R at 80 cm;
+  Samsung Odyssey G9, 49" 32:9 1000R, at 80 cm and at 100 cm) the reported horizontal and vertical
+  field of view match the values in Stories 1 and 2 within 0.5°.
 - **SC-002**: With screen-matching on, an object of fixed angular size keeps its width-to-height
-  ratio within 2% of its centre value anywhere across the horizontal extent of the screen, for both
-  reference setups and for a chosen 120° horizontal field of view.
+  ratio within 2% of its centre value anywhere across the horizontal extent of the screen, for every
+  reference setup and for a chosen 120° horizontal field of view.
 - **SC-003**: With screen-matching off, every existing test and snapshot comparison of the space
   view passes unchanged.
 - **SC-004**: A player with a supported display that reports its size can go from turning on
@@ -238,7 +242,10 @@ detected.
   When the chosen field of view equals the physical one, the view is exactly the physical one and
   straight lines are straight.
 - Reference values were computed from the screen geometry: 27" 16:9 is 59.8 × 33.6 cm; 49" 32:9 is
-  119.8 × 33.7 cm, and with 1800R the edges are at ±40.0° from a seat 80 cm away.
+  119.8 × 33.7 cm, and with 1800R the edges are at ±40.0° from a seat 80 cm away. The Odyssey G9
+  is the same 119.8 × 33.7 cm panel at 1000R: its edges are at ±42.0° from 80 cm, and ±34.3° from
+  100 cm, where the eye is at the centre of curvature. The G9 is the most curved common panel, so
+  it is the hardest of the reference setups.
 - The settings live with the existing Game Options; whether they sit there or in the new GUI
   (spec 007) is a planning decision.
 - Default values when nothing is saved or detected: 24" 16:9 flat at 60 cm.
