@@ -19,10 +19,6 @@ clang tidy, more complete autoformat, etc.
 
 Instruction to setup the clion build, .run files, etc.
 
-## `oolite.exe.manifest`
-`src/SDL/OOResourcesWin/oolite.exe.manifest`
-Should this file include windows 11?
-
 ## Controls 
 - Control this ship with an Xbox controller.
 - Show controls in menus and such to make it easier to learn.
