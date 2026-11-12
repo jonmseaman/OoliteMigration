@@ -68,8 +68,9 @@ they carry the three fictional value columns, and one of those columns is save-g
 are what the request calls "gross enums".
 
 **Independent Test**: Before: ten enum `.tbl` files exist. After: none do; the unit, component
-and smoke suites pass; the script API snapshot is unchanged; a game saved on `develop` loads on the
-branch with every setting intact, the long-range chart colour mode included.
+and smoke suites pass; every name and number the conversion functions and scripts give is
+unchanged; a game saved on `develop` loads on the branch with every setting intact, the long-range
+chart colour mode included.
 
 **Acceptance Scenarios**:
 
@@ -94,20 +95,23 @@ branch with every setting intact, the long-range chart colour mode included.
 
 A developer converting one enum does not have to touch the roughly 1,900 places that name its
 members. The old spellings (`STATUS_IN_FLIGHT`, `GUI_SCREEN_MAIN`, …) keep compiling, marked in each
-header as temporary, so each conversion is a reviewable change to one header and its few consumers,
-and the later rename to `kPascalCase` is its own mechanical step.
+header as temporary, so each conversion is a reviewable change to one header, its few consumers
+and the handful of lines that relied on the old enums turning silently into numbers, and the later
+rename to `kPascalCase` is its own mechanical step.
 
 **Why this priority**: Without it, Story 1 is one change of several thousand lines across about
 200 files, which nobody can review against upstream.
 
 **Independent Test**: For one converted enum, the change touches only its header, the files that
-used to include its `.tbl`, and the files that defined that enum; a search of the rest of `src`
-finds no other edited line.
+used to include its `.tbl`, the files that defined that enum, and the lines the compiler rejected
+because they used the enum as a plain number (research R2 lists them: 61 lines in 8 files for all
+ten enums); a search of the rest of `src` finds no other edited line.
 
 **Acceptance Scenarios**:
 
-1. **Given** one enum converted, **When** the diff is listed, **Then** no call site outside the
-   table's former consumers is edited.
+1. **Given** one enum converted, **When** the diff is listed, **Then** no line outside the
+   table's former consumers is edited except the lines on research R2's list for that enum (and any
+   a non-Windows build adds), each keeping its meaning.
 2. **Given** the converted tree, **When** a header's compatibility block is read, **Then** it says
    that the old names are temporary and which later step removes them.
 
@@ -201,7 +205,8 @@ deliberately mismatched state names the same items as on `develop`.
   and `OOShipDamageType` included.
 - **FR-005**: Each enum's value-to-name mapping MUST be a single exhaustive mapping that the
   compiler checks against the enum, and its name table MUST be derived from that mapping, so that a
-  member without a name fails the build and there is no second list to drift.
+  member without a name is reported by the build (a warning in the game build, an error in the
+  header check of FR-010) and there is no second list to drift.
 - **FR-006**: The fifteen conversion functions in `OOConstToString.cpp` (nine value-to-name, six
   name-to-value) MUST keep their signatures, their fallbacks and their behaviour, including
   `** BEHAVIOUR UNKNOWN **` for behaviours and the `BEHAVIOR_` spelling accepted for galactic
@@ -213,18 +218,22 @@ deliberately mismatched state names the same items as on `develop`.
   `OOTypes.h`, `OOEntityEnums.h` and `ShipEntity.h` MUST be replaced by includes of the new headers;
   `OOEntityEnums.h` MAY survive as a short umbrella for the files that include it.
 - **FR-009**: Each new header MUST keep today's member names usable as temporary aliases, in a block
-  marked as temporary that names the later step that removes them, so that no call site outside the
-  table's former consumers is edited. Renaming the call sites to `kPascalCase` is out of scope
-  (spec 009, naming milestone).
+  marked as temporary that names the later step that removes them, so that call sites keep their
+  spelling. The only other lines a conversion MAY edit are those where the compiler rejects an
+  implicit conversion of that enum to or from a number; each such edit MUST keep the meaning
+  (preferably by giving the variable or key the enum's type, otherwise by one explicit conversion).
+  Renaming the call sites to `kPascalCase` is out of scope (spec 009, naming milestone).
 - **FR-010**: Each new header MUST be clean under the project's naming check for scoped
-  enumerators (`kPascalCase`), enforced for `src/Core/Tables` from the first converted header.
+  enumerators (`kPascalCase`) and MUST compile on its own with an unhandled `switch` case as an
+  error, both checked by one command over `src/Core/Tables` from the first converted header.
 
 **The OpenGL state list (Story 3)**
 
 - **FR-011**: `OOOpenGLStates.tbl` MUST be replaced by ordinary C++ in or beside
-  `OOOpenGLStateManager.cpp` that names each tracked state item once, with its kind and how it is
-  read and set, and from which the state record, the read, the comparison, the log output and the
-  write all follow; the `.tbl` file MUST be deleted. The items, their kinds, their order, the
+  `OOOpenGLStateManager.cpp` that lists each tracked state item in one table, one entry per item,
+  with its kind and how it is read and set, from which the read, the comparison, the log output and
+  the write all follow, and which the build checks against the state record field for field; the
+  `.tbl` file MUST be deleted. The items, their kinds, their order, the
   standard states' values, the "maybe" rule and the separate blend-function handling MUST be as on
   `develop`.
 
@@ -264,8 +273,9 @@ deliberately mismatched state names the same items as on `develop`.
 - **SC-002**: For each of the ten enums, a reader answers "what members, numbers and names does this
   type have, and what does an unknown name become" from one file; today that takes the `.tbl` file
   plus two to four including files.
-- **SC-003**: Every external name and number is unchanged: the script API snapshot is identical to
-  `develop`'s; every row of spec 009's external-values list for these ten types is pinned; a game
+- **SC-003**: Every external name and number is unchanged: every name and number scripts and the
+  conversion functions give is identical to `develop`'s (a test written and passing before the first
+  conversion, and the component suite); every row of spec 009's external-values list for these ten types is pinned; a game
   saved on `develop` loads with every setting identical, the chart colour mode included.
 - **SC-004**: A member added to any of the ten enums without a name, or an OpenGL state item added
   without a way to read or set it, is reported by the build in every case tried (at least one trial
@@ -274,8 +284,9 @@ deliberately mismatched state names the same items as on `develop`.
   state manager's characterisation test among them without edits, and the expansion corpus result
   does not regress.
 - **SC-006**: Exactly one test file is edited, and the ledger lists it.
-- **SC-007**: Each conversion change touches only its table's header, its former consumers and its
-  former enum definitions (Story 2), so that no single change exceeds about 400 changed lines.
+- **SC-007**: Each conversion change touches only its table's header, its former consumers, its
+  former enum definitions and its listed implicit-conversion lines (Story 2), so that no single
+  change exceeds about 400 changed lines.
 
 ## Assumptions
 
@@ -316,3 +327,11 @@ Decisions taken without Jon, each with its default and reason (hard rule 8):
    `kPascalCase` sweep stays in spec 009, which owns the naming rule and its test-ledger questions.
 4. **Ledger.** This feature keeps its own `test-ledger.md` (one row expected) rather than writing
    into spec 009's.
+5. **Amended after planning (research R2, R3, R6, R9), 2026-11-12.** Scoping the enums breaks 61
+   lines in 8 files that used them as plain numbers (measured on `develop`); Story 2, FR-009 and
+   SC-007 now allow exactly those edits. `develop` builds without `-Werror`, so a missing name is a
+   warning in the game build and an error in the header check (FR-005, FR-010). A `.clang-tidy` in
+   `src/Core/Tables` does not reach headers compiled from elsewhere, so the naming check runs on each
+   header as its own file (FR-010). `develop` has no script-API snapshot tool, so SC-003 is met by a
+   new before-and-after test plus the component suite. FR-011 says "one table, checked against the
+   record" rather than "named once", since the record's designated initialisers keep the field names.
