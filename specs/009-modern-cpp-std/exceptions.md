@@ -106,3 +106,37 @@ is a conflict to record here, never a suppression.
 | cstring-types | `src/Core/Debug/OOJSConsole.cpp` | `const char* nameString` | a method name or "(null)" for the reporter | as above | — | T080 |
 | cstring-types | `src/Core/Debug/OOJSConsole.cpp` | `const char* name;` | the console's callObjC table's names | kept with the encodings below | — | T080 |
 | cstring-types | `src/Core/Debug/OOJSConsole.cpp` | `const char* encoding;` | the console's callObjC table's encodings, null for a row that is not Scalar | they go to `OOShaderUniformTypeFromEncoding(const char*)`, which takes null (T079's row) | — | T080 |
+| cstring | `src/Core/Universe.cpp` | `strtol(cond` | the descriptions.plist plural-condition parser's numbers | the conditions are data (descriptions.plist, OXPs): strtol's answers (leading space, a sign, where the number stops) are that format's; kept so every condition parses as it did | — | T081 |
+| cstring-types | `src/Core/Universe.cpp` | `const char* cond` | the pointer that parser walks | as above | — | T081 |
+| cstring-types | `src/Core/ResourceManager.cpp` | `const char* userNamePathEnvVar` | the home directory from the environment | `SDL_getenv` returns the environment's C string or null | — | T081 |
+| cstring-types | `src/Core/OOLogOutputHandler.cpp` | `= SDL_getenv(` | the log directory from the environment | as above | — | T081 |
+| cstring-types | `src/Core/GameController.cpp` | `= getenv(` | the random seed from the environment | `getenv` returns the environment's C string or null | — | T081 |
+| cstring-types | `src/Core/OOEncodingConverter.cpp` | `const char* StringFromEncoding(` | an encoding's name | the test reads it as a C string (`std::string(StringFromEncoding(12))` in `test_OOEncodingConverter.cpp`); it is `oo::str::encodingName`'s answer | — | T081 |
+| cstring-types | `src/Core/OOEncodingConverter.h` | `const char* StringFromEncoding(` | its declaration | as above | — | T081 |
+| cstring-types | `src/Core/OOLogHeader.cpp` | `const char* name)` | a `sysctl` name | `sysctlbyname` takes a NUL-terminated name; every caller passes a literal | — | T081 |
+| cstring-types | `src/Core/OODemangle.h` | `const char* mangled` | a mangled type name | `abi::__cxa_demangle` takes and returns C strings | — | T081 |
+| cstring-types | `src/Core/OOStringExpander.h` | `cxx_OOCastParam(const char* value)` | the expansion macros' overload for a literal argument | a `std::string_view` overload beside the `std::string` one would make a literal argument ambiguous | — | T081 |
+| cstring-types | `src/Core/OOOXZManager.cpp` | `/*const char *const kOOOXZDataURL` | upstream's old index URL, commented out | a comment kept from upstream, not code | — | T081 |
+| cstring-types | `src/Core/OXPVerifier/OOModelVerifierStage.h` | `static const char* const kName;` | the stage's name | tests look the stage up by it (`stageWithName(OOModelVerifierStage::kName)` in `test_OOModelVerifierStage.cpp`) | — | T081 |
+| cstring-types | `src/Core/OXPVerifier/OOModelVerifierStage.cpp` | `::kName = kStageName` | its definition | as above | — | T081 |
+| cstring-types | `src/Core/OXPVerifier/OOFileScannerVerifierStage.h` | `static const char* const kName;` | the stage's name | as above (`test_OOCheckDemoShipsPListVerifierStage.cpp:84`) | — | T081 |
+| cstring-types | `src/Core/OXPVerifier/OOFileScannerVerifierStage.cpp` | `::kName = kFileScannerStageName` | its definition | as above | — | T081 |
+| cstring-types | `src/Core/OOPListParsing.cpp` | `reinterpret_cast<const char*>(data->bytes())` | a file's bytes viewed for the parser | bytes, not text: the parser takes a `std::string_view` over them | — | T081 |
+| cstring-types | `src/Core/OOCacheManager.cpp` | `reinterpret_cast<const char*>(data->bytes())` | the cache file's bytes viewed for the parser | as above | — | T081 |
+| cstring-types | `src/Core/OOPolygonSprite.cpp` | `reinterpret_cast<const char*>(gluErrorString(error))` | GLU's error text | the GLU C interface | — | T081 |
+| cstring-types | `src/Core/OORegExpMatcher.cpp` | `const char* argumentNames[2]` | the matcher function's argument names | `OOJSFunction`'s `const char** argNames` (T078's row) | — | T081 |
+| cstring-types | `src/Core/OOLogging.cpp` | `ForFunction(const char* inFunction)` | the generic log helpers' function name (`__PRETTY_FUNCTION__`) | tests define stand-ins with these signatures (`test_OOJSEntity.cpp:306`, `test_OOSoundMixer.cpp:36`) | — | T081 |
+| cstring-types | `src/Core/OOLogging.h` | `ForFunction(const char* inFunction)` | their declarations | as above | — | T081 |
+| cstring-types | `src/Core/OOLogging.cpp` | `const char* const cxx_kOOLog` | the shared log message classes | eight tests define these names as `const char* const` stand-ins of the header's declarations (`test_AI.cpp:116` and others) | — | T081 |
+| cstring-types | `src/Core/OOLogging.h` | `extern const char* const` | their declarations | as above | — | T081 |
+| cstring-types | `src/Core/OXPVerifier/OOPListSchemaVerifier.h` | `extern const char* const` | the schema verifier's error domain and user-info keys | a test defines `kPListKeyPathErrorKey` as a `const char* const` stand-in (`test_OOCheckShipDataPListVerifierStage.cpp:94`); the set is kept together | — | T081 |
+| cstring-types | `src/Core/OXPVerifier/OOPListSchemaVerifier.cpp` | `const char* const k` | their definitions | as above | — | T081 |
+| cstring-types | `src/Core/OXPVerifier/OOPListSchemaVerifier.cpp` | `const char* format` | the verifier's printf-style error builders | their formats are printf syntax (FR-026), through oofnd's printf engine | — | T081 |
+| cstring-types | `src/Core/OXPVerifier/OOPListSchemaVerifier.cpp` | `const char* testDescription` | text the error builders print with `%s` | the `%s` argument of those builders | — | T081 |
+| cstring-types | `src/Core/OXPVerifier/OOPListSchemaVerifier.cpp` | `const char* expectedClassName` | as above | as above | — | T081 |
+| cstring-types | `src/Core/OXPVerifier/OOPListSchemaVerifier.cpp` | `const char* complaint` | as above | as above | — | T081 |
+| cstring-types | `src/Core/OXPVerifier/OOPListSchemaVerifier.cpp` | `const char* arrayPrefix` | an error report's array prefix, null for none | null is "no prefix" | — | T081 |
+| cstring-types | `src/Core/OOStringExpander.cpp` | `const char* format` | the expander's printf-style syntax reports | their formats are printf syntax (FR-026) | — | T081 |
+| cstring-types | `src/Core/OOStringExpander.cpp` | `const char* function` | the report's `__FUNCTION__`, file and message class | the arguments of that printf-style report | — | T081 |
+| cstring-types | `src/Core/OOStringExpander.cpp` | `const char* fileName` | as above | as above | — | T081 |
+| cstring-types | `src/Core/OOStringExpander.cpp` | `const char* logMessageClass` | as above | as above | — | T081 |
