@@ -91,6 +91,11 @@ CGTrader blocks page fetches, so prices and triangle counts are still to be read
 - Bundles: [Civilian Freighter Spaceship Collection (CGTrader)](https://www.cgtrader.com/3d-model-collections/civilian-freighter-spaceship-collection) / [Unity Asset Store](https://marketplace.unity.com/packages/3d/vehicles/space/civilian-freighter-spaceship-collection-235634); a [pack](https://www.cgtrader.com/gallery/project/spaceship-spacecraft) listing CFS15, CFS24, CFS56, CFS113, CH12, 20 modular cargo containers and a loader drone. All FBX/OBJ, PBR, royalty-free
 - msGameDevelopment now has a mining ship (TTB01), a freighter line, a cockpit and a modular hangar. One artist with a consistent style is the natural person to ask for a GPLv2+/CC BY-NC-SA 3.0 license on a set, or to commission new mining hulls from
 
+**Whole kits**
+
+- [POLYGON Sci-Fi Space (Synty)](https://www.cgtrader.com/3d-models/space/other/polygon-sci-fi-space), also on the [Synty Store](https://syntystore.com/products/polygon-sci-fi-space-pack) and [Unity Asset Store](https://marketplace.unity.com/packages/3d/environments/sci-fi/polygon-sci-fi-space-low-poly-3d-art-by-synty-138857) ($149.99): about 660 assets. A modular ship kit with dozens of ready-made ships (fighters, bombers, cruisers, carriers, transports, escape pods), stations and interiors, asteroids, drones, warp gates, a first-person cockpit and 24 colour variants. Flat-shaded low poly, which suits Oolite's look and polygon budget
+- Licence: Synty's [one-time purchase licence](https://syntystore.com/pages/one-time-purchase-licence) forbids sharing the source files outside your team, so it can't go in the repo or in a public OXP. Synty says distribution needs a custom licence ([licence overview](https://syntystore.com/pages/licences-overview)). Usable for private prototyping and as a style reference. Sites offering it as a "free download" are pirated copies
+
 **Stations and other pieces**
 
 - [Space Factory and Cargo Spaceship (RenderHub)](https://www.renderhub.com/max/space-factory-and-cargo-spaceship): mining plant and freighter, ~9.2k polygons
