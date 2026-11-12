@@ -379,7 +379,7 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   whole tree builds without that warning; if not, record the remaining sites in research.md R7 and
   leave it off.
   **Accept:** `cd oolite-dev && ./mk.sh build test 2>&1 | { ! grep -q 'Wformat-signedness'; }`
-- [ ] T044 [US4] Rewrite `src/oofnd/README.md`'s rules (C++23; exceptions are used) and add a
+- [X] T044 [US4] Rewrite `src/oofnd/README.md`'s rules (C++23; exceptions are used) and add a
   *Surviving components* table (component | reason | pinned by) covering every row of data-model.md
   *Surviving `oofnd` component*. Where a component's reason names a difference from the standard
   library and no existing test pins it, add the case to a new
