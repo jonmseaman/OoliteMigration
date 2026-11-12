@@ -133,3 +133,20 @@ events: no Windows machine
 The component-scenario event log (kill, dock, jump) was not recorded: `tests/run.sh component`
 runs on Windows, and none was available to this session. T076 and T098 skip their comparison
 until a base log exists.
+
+## Tests that fail on macOS only
+
+Run on macOS with `.agent-tmp/link_run.py` (the unit suites build only on Windows). Each fails
+the same way at the C++20 base, so none is a spec 009 regression; they are reported, not edited.
+
+| test | what fails | why |
+|---|---|---|
+| `tests/unit/oofnd/test_thread.cpp` | `setCurrentNameIsReadBack` | macOS names only the calling thread, differently from Windows |
+| `tests/unit/oofnd/test_defaults.cpp` | `defaultsDirectoryIsHomeGNUstepDefaults` | the defaults directory is the Windows layout |
+| `tests/unit/oofnd/test_plist_get.cpp` | 149 checks | `long` is 64-bit on macOS, 32-bit on Windows |
+| `tests/unit/oofnd/test_string.cpp` | 4 checks | as above |
+| `tests/unit/oofnd/test_foundation_types.cpp` | the `long long` assertion | as above |
+| `tests/unit/core/test_OOJSOolite.cpp` | `toneMappers` (lines 581-591) | HDR output and the HDR tone mapper exist only under `OOLITE_WINDOWS` |
+
+Tests that include `process.h` or `winsock2.h` (`test_OOMesh`, `test_OOSoundMixer`,
+`test_HeadUpDisplay`, `test_OODebugTCPConsoleClient` and others) do not build on macOS at all.

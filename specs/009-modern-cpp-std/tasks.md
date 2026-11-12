@@ -416,9 +416,9 @@ production enum changes in the same commit as it.
 - [X] T048 [P] [US5] P3: anonymous enums that hold one constant → `inline constexpr` of the
   constant's natural type, areas `entities` and `core`.
   **Accept:** `cd oolite-dev && ! rg -U -n -P '\benum\s*(:\s*[\w:]+\s*)?\{\s*\w+\s*=\s*[^,{}]+,?\s*\}' src/Core --glob '!src/Core/{Scripting,Materials,Debug}/**'`
-- [ ] T049 [P] [US5] As T048, areas `scripting` and `sdl-debug`.
+- [X] T049 [P] [US5] As T048, areas `scripting` and `sdl-debug`.
   **Accept:** `cd oolite-dev && ! rg -U -n -P '\benum\s*(:\s*[\w:]+\s*)?\{\s*\w+\s*=\s*[^,{}]+,?\s*\}' src/Core/Scripting src/Core/Debug src/SDL --glob '!src/SDL/EXRSnapshotSupport/**'`
-- [ ] T050 [P] [US5] As T048, area `materials`.
+- [X] T050 [P] [US5] As T048, area `materials`.
   **Accept:** `cd oolite-dev && ! rg -U -n -P '\benum\s*(:\s*[\w:]+\s*)?\{\s*\w+\s*=\s*[^,{}]+,?\s*\}' src/Core/Materials src/Core/OOOpenGL* src/Core/OOTexture*`
 - [ ] T051 [US5] P4: named header enums in `src/Core/Entities` (and `src/Core/OOTypes.h`,
   `src/Core/OOEntityEnums.h`) that are neither in `external-values.md` nor flags nor P9 groups
