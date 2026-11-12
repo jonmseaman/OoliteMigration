@@ -34,13 +34,19 @@ each flavour twice with different versions and walking the build graph. The meth
 
 - **No source uses the compiler's date or time.** Nothing in `src/`, `tests/`, `tools/` or
   `subprojects/` uses `__DATE__`, `__TIME__` or `__TIMESTAMP__`.
-- **The version and the commit date are on every compile line.** On `develop`, `meson.build`
-  passes `OO_VERSION_FULL`, `OO_BUILD_DATE` and `OO_BUILDER` to every compile with
-  `add_project_arguments`. `OO_BUILD_DATE` is the last commit's date, not the wall clock, so a new
-  day changes nothing, but every new commit changes the version and, on most days, the date. A
-  changed command line reruns the compile and misses any compiler cache. So **every commit
-  recompiles 230 of the deployment build's 240 objects, and 796 of 806 in test and dev, where it
-  also relinks all 214 test executables.**
+- **The version and the commit date are passed in on the compile line.** On `develop`, `meson.build`
+  passes `OO_VERSION_FULL`, `OO_BUILD_DATE` and `OO_BUILDER` to every game compile with
+  `add_project_arguments`. That is 230 of the deployment build's 240 compile lines; QuickJS-ng's
+  own compiles don't get them. Every date and time involved is the HEAD commit's committer time,
+  not the wall clock. In all three of Jon's build directories the recorded `buildtime` equals its
+  commit's time to the minute. So a new day changes nothing. But the version string is
+  `gitversion`'s SemVer, which carries the branch name and a commit count
+  (`1.93.1-double-wide-support.1`, `1.93.1-seriesb-026-migration-completion.4`). So **a new commit
+  or a branch switch** changes it, and usually the date too. A changed command line reruns the
+  compile and misses any compiler cache. So **every commit or branch switch recompiles 230 of the
+  deployment build's 240 objects, and 796 of 806 in test and dev, where it also relinks all 214
+  test executables.** Upstream (OoliteProject `4bb1f53de`) and the fork's `master` do the same;
+  `develop` inherited it.
 - **A fix exists, off `develop`.** `oolite-dev` commit fa5e7e7e6 moves the three values into a
   generated header, `OOVersion.h`, included by five files. With it, a commit reruns 5 compiles in
   every flavour, but still relinks 66 core test executables in test and dev. Two of the five are
@@ -55,6 +61,26 @@ each flavour twice with different versions and walking the build graph. The meth
   plain `meson compile` after a commit keeps the old version. `mk.sh build` hides this by
   reconfiguring on every run (17–20 s in Jon's logs). Each configure starts a PowerShell
   process to find its own parent (0.35–0.65 s), and `gitversion` after a new commit (2.7 s).
+
+### The values passed in
+
+`get_version.sh` runs at configure time, caches its results in the build directory's
+`.meson_version`, and hands them on as follows. The examples are from Jon's `build/meson_test`
+(commit a3d651a, clean).
+
+| Value | Example | Comes from | Goes to |
+|---|---|---|---|
+| `ver_full` | `1.93.1-double-wide-support.1` | an exact tag, else `gitversion` SemVer (branch label and commit count); `+dirty.N` with uncommitted changes | `-DOO_VERSION_FULL` on every game compile; the meson project version; manifest `version`; macOS `Info.plist` |
+| `app_date` | `2026-11-12` | HEAD's committer date, UTC | `-DOO_BUILD_DATE` on every game compile (shown in the window title) |
+| `builder` | `unknown` | `OoliteProject` when `GITHUB_REPOSITORY` is `OoliteProject/oolite` | `-DOO_BUILDER` on every game compile |
+| `buildtime` | `2026.11.12 04:26` | HEAD's committer time, UTC, or `mk.sh --buildtime` | manifest `build_time`; the Linux metainfo date is read back from it |
+| `ver_quad` | `1.93.1.68` | the version plus the commits since the closest tag; with uncommitted changes, the number of changed files | manifest `version_quad`; macOS `Info.plist` |
+| `ver_githash` | `a3d651a` | `git rev-parse --short=7 HEAD`, plus `-dirty` | manifest `git_commit_hash`; the cache key |
+| `cpp_date` | `Nov12 2026` | HEAD's committer date in `__DATE__`'s format | nothing: computed, never used |
+
+The manifest also records `git_remote_url`, the clone's `origin`. No value reaches the Windows
+resource file (`OOResourcesWin.rc` has no version block). The last four values go only to the
+bundle step, so they cost no compile, but they change the bundle per commit, as they should.
 
 ### The Stack Overflow case: one source, many targets
 
@@ -83,8 +109,8 @@ objects through `extract_objects`, so the rest of the game is compiled once.
 
 | Change | deployment | dev | test |
 |---|---|---|---|
-| New commit (`develop`) | 230 compiles, LTO game link, bundle | 796 compiles, 214 test links, game link, bundle | as dev, every link LTO |
-| New commit (fa5e7e7e6) | 5 compiles, LTO game link, bundle | 5 compiles, 66 test links, game link, bundle | as dev, every link LTO |
+| New commit or branch switch (`develop`) | 230 compiles, LTO game link, bundle | 796 compiles, 214 test links, game link, bundle | as dev, every link LTO |
+| New commit or branch switch (fa5e7e7e6) | 5 compiles, LTO game link, bundle | 5 compiles, 66 test links, game link, bundle | as dev, every link LTO |
 | Edit `OOColor.cpp` | 1 compile, LTO game link, bundle | 1 compile, 84 test links, game link, bundle | as dev, every link LTO |
 | Edit `Universe.cpp` | 1 compile, LTO game link, bundle | 1 compile, 66 test links, game link, bundle | as dev, every link LTO |
 
@@ -283,6 +309,12 @@ precompiled header, compile by compile with `baseline/o0_vs_o2.py`'s method.
   reports it and stops (hard rule 1).
 - **The compiler cache across checkouts.** Worktrees in different directories should share cache
   entries. Debug builds hash the working directory unless the cache is told the base directory.
+- **One build directory, many branches.** Jon's build directories are reused across branches.
+  `build/meson_dev` was last configured on `seriesb/027`, which passes the values on the compile
+  line, and still holds an `OOVersion.h` from a Nov 10 configure of a branch with fa5e7e7e6. A
+  version file left by another branch must never be compiled in.
+- **Clones with different remotes.** The manifest records `origin`'s URL, so two clones with
+  different remotes give different manifests. That is an input, not a reproducibility failure.
 
 ## Requirements *(mandatory)*
 
@@ -312,7 +344,8 @@ precompiled header, compile by compile with `baseline/o0_vs_o2.py`'s method.
 - **FR-008**: Every documentation PDF MUST carry the fixed creation and modification time of
   FR-004.
 - **FR-009**: Two builds of one clean commit, on one machine with one toolchain, at different
-  times and in different checkout directories, MUST give byte-identical bundles. This holds for
+  times and in different checkout directories (worktrees, or clones with the same `origin`), MUST
+  give byte-identical bundles. This holds for
   deployment, test and dev with Clang, and for deployment with GCC. The debug flavour is held to
   the edge case above.
 - **FR-010**: A check MUST build a flavour twice in two directories and compare the bundles file

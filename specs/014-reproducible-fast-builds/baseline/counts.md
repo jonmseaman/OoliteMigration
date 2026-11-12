@@ -73,7 +73,14 @@ From the `.ninja_log` files of Jon's own `build/meson_*` directories:
 
 - No source in `src/`, `tests/`, `tools/` or `subprojects/` uses `__DATE__`, `__TIME__` or
   `__TIMESTAMP__`.
-- The build date the game shows (`OO_BUILD_DATE`) is the last commit's time, not the wall clock.
+- On `develop`, 230 of the deployment build's 240 compile lines carry
+  `-DOO_VERSION_FULL="…" -DOO_BUILD_DATE="YYYY-MM-DD" -DOO_BUILDER="unknown"`. With fa5e7e7e6,
+  none do. Upstream OoliteProject (`4bb1f53de`) and the fork's `master` pass the same three.
+- Every date and time `get_version.sh` produces is HEAD's committer time, not the wall clock. In
+  Jon's build directories, the recorded `buildtime` equals the commit's UTC committer time: a3d651a
+  `2026.11.12 04:26`, 518520d `2026.11.11 01:36`, 96bc042 `2026.11.12 12:01`.
+- The version string carries the branch name (`gitversion` SemVer), so switching branches changes
+  it as a new commit does.
 - Every `oolite.exe` carries its link time in the PE header (`TimeDateStamp`), and `strip`
   stamps the copy it strips again: deployment `src/oolite.exe` 02:00:25 and the stripped
   `oolite.app/oolite.exe` 02:06:51 on 2026-11-11.
