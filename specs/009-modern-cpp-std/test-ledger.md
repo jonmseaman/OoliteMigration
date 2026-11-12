@@ -58,3 +58,4 @@ that needs them; `reported` rows record a test this feature cannot edit, for Jon
 | `tests/unit/core/test_OOConstToString.cpp` | 2 lines (one a comment) | `UNITS_TONS`/`UNITS_UNKNOWN` → `OOMassUnit::kTons`/`kUnknown` (T051) | unchanged | covered | `db3e9dbbc` | |
 | `tests/unit/core/test_OOJSPlanet.cpp`, `test_OOPlanetEntity.cpp`, `test_OOSunEntity.cpp` | 4, 4 and 1 lines | `STELLAR_TYPE_*` → `OOStellarBodyType::k*` (T051) | unchanged | covered | `db3e9dbbc` | |
 | `tests/unit/core/test_ShipEntity.cpp`, `test_ShipEntityAI.cpp` | 5 and 3 lines | `AEGIS_*` → `OOAegisStatus::k*`, `CARGO_FLAG_FULL_PASSENGERS` → `OOCargoFlag::kFullPassengers` (T051) | unchanged | covered | `db3e9dbbc` | |
+| `tests/unit/core/test_PlayerEntity.cpp` | 718, 824-827 | `ALERT_FLAG_MASS_LOCK` → `OOAlertFlags::kMassLock`, and `oo::ToUnderlying(OOAlertFlags::kMassLock)` where the test meets the flags as a number (T052) | unchanged | covered | `aa246cd7a` | |

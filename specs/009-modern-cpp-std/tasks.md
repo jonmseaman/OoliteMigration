@@ -425,12 +425,15 @@ production enum changes in the same commit as it.
   (for example `OOPrimedEquipmentMode`, `OOAegisStatus`, `OOMassUnit`, `OOCargoFlag`), converted to
   the contract's shape.
   **Accept:** `cd oolite-dev && ! rg -n -P '(\}\s*|\benum\s+)(OOPrimedEquipmentMode|OOStellarBodyType|OOComparisonType|OOOperationType|OOEntityObjectNameKind|OOAegisStatus|OOMassUnit|OOCargoFlag)\b(?!\s*class)' src` (all eight match today)
-- [ ] T052 [US5] P5: `ALERT_FLAG_*` (`src/Core/Entities/PlayerEntity.h:216`) → `enum class
+- [X] T052 [US5] P5: `ALERT_FLAG_*` (`src/Core/Entities/PlayerEntity.h:216`) → `enum class
   OOAlertFlags : std::uint16_t` with flag operators; mixed comparisons such as
   `alertFlags > ALERT_FLAG_YELLOW_LIMIT` (`PlayerEntity.cpp:5870`) keep their meaning through
   `oo::ToUnderlying`; the JS alert-flag properties (`OOJSPlayer.cpp:273-293`) keep their numbers
   (`static_assert`s).
   **Accept:** `cd oolite-dev && ! rg -n '\bALERT_FLAG_' src`
+  Done as the `OODebugFlags` exemplar: the player keeps the flags as a `std::uint16_t` number
+  (the by-name `alertFlags` answers it) and `OOAlertFlagIsOn` reads a bit. `test_OOJSPlayer`'s
+  stand-in keeps its own `ALERT_FLAG_*` numbers; the `static_assert`s match them.
 - [ ] T053 [US5] P5: `OOWeaponFacing` and `VALID_WEAPON_FACINGS` (`src/Core/OOTypes.h:204-215`) →
   `enum class OOWeaponFacing : std::uint8_t` flags; `weapon_facings` plist bits and
   `weaponFacings` JS numbers pinned.
