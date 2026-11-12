@@ -398,7 +398,7 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
 and `test_EnumNameFallbacks` pass; corpus unchanged. Every test stand-in that redeclares a
 production enum changes in the same commit as it.
 
-- [ ] T045 [US5] Create `specs/009-modern-cpp-std/external-values.md` (columns of data-model.md
+- [X] T045 [US5] Create `specs/009-modern-cpp-std/external-values.md` (columns of data-model.md
   *External names and values*) with a row for every name and number in research.md R8's
   visibility table, the value read from the code (not a `.tbl` column), and `pin` set to the
   `static_assert` or test that will pin it.
