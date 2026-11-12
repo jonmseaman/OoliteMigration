@@ -342,7 +342,7 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   untouched. Port the tests that name them, and `tests/unit/oofnd/test_foundation_types.cpp`
   where each assertion has a counterpart; report the rest (ledger).
   **Accept:** `cd oolite-dev && $C oofnd`
-- [ ] T034 [P] [US4] `src/oofnd/Date.hpp`: replace the hand-written civil-date arithmetic
+- [X] T034 [P] [US4] `src/oofnd/Date.hpp`: replace the hand-written civil-date arithmetic
   (`:80-106`) with `std::chrono::year_month_day` and `std::format("{:%F %T}",
   std::chrono::floor<std::chrono::seconds>(…))`; keep the 2001 reference-date constant,
   `localUTCOffsetMinutes` and the double-seconds helpers; `tests/unit/oofnd/test_date.cpp`
