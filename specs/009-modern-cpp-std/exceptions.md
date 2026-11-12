@@ -92,3 +92,17 @@ is a conflict to record here, never a suppression.
 | cstring-types | `src/Core/Materials/OOShaderUniformMethodType.h` | `OOShaderUniformTypeFromEncoding(const char* typeCode)` | a type encoding, null allowed (answers invalid) | tests pass table encodings that may be null (`test_OOJSCallEntityMethods.cpp:121,178`) | — | T079 |
 | cstring-types | `src/Core/Materials/OOShaderUniformMethodType.cpp` | `OOShaderUniformTypeFromEncoding(const char* typeCode)` | its definition | as above | — | T079 |
 | cstring-types | `src/Core/Materials/OOShaderUniformMethodType.cpp` | `sTemplates[` | the encodings it compares with, null for an unused slot | as above | — | T079 |
+| cstring-types | `src/SDL/main.cpp` | `= SDL_getenv(` | an environment variable, which may be absent | `SDL_getenv` returns the environment's C string or null | — | T080 |
+| cstring-types | `src/SDL/MyOpenGLView.cpp` | `SaveEXRSnapshot(const char* outfilename` | the declaration of the EXR snapshot writer | defined beside tinyexr (`OOSaveEXRSnapshot.cpp`, vendored directory), whose `SaveEXR` takes the file name as a C string | — | T080 |
+| cstring-types | `src/SDL/MyOpenGLView.cpp` | `= SDL_GetError()` | SDL's error text | the SDL C interface | — | T080 |
+| cstring-types | `src/SDL/OOSDLJoystickManager.cpp` | `= SDL_GetJoystickName(` | a joystick's name, null when SDL has none | the SDL C interface | — | T080 |
+| cstring-types | `src/Core/Debug/OODebugTCPConsoleClient.cpp` | `static_cast<const char*>(bytes)` | the bytes `send` writes | the sockets C interface (Winsock's `send` takes `const char*`) | — | T080 |
+| cstring-types | `src/Core/Debug/OOTCPStreamDecoderAbstractionLayer.cpp` | `const char* string` | the decoder's constant strings, keyed by the literal's address | the abstraction layer interns literals by pointer (its header says literals only) | — | T080 |
+| cstring-types | `src/Core/Debug/OOTCPStreamDecoderAbstractionLayer.cpp` | `std::map<const char*,` | the interned strings' table, keyed by address | as above | — | T080 |
+| cstring-types | `src/Core/Debug/OOTCPStreamDecoderAbstractionLayer.h` | `const char* string);` | its declaration | as above | — | T080 |
+| cstring-types | `src/Core/Debug/OOTCPStreamDecoderAbstractionLayer.cpp` | `reinterpret_cast<const char*>(bytes.bytes())` | a packet's bytes viewed for the property-list parser | bytes, not text: the parser takes a `std::string_view` over them | — | T080 |
+| cstring-types | `src/Core/Debug/OOJSConsole.cpp` | `const char* nominalFunction` | the console method name the profiler reports | it is the `%s` argument of the printf-style JS reporters (T078's row) | — | T080 |
+| cstring-types | `src/Core/Debug/OOJSConsole.cpp` | `const char* function)` | the console method name in the not-the-monitor report | as above | — | T080 |
+| cstring-types | `src/Core/Debug/OOJSConsole.cpp` | `const char* nameString` | a method name or "(null)" for the reporter | as above | — | T080 |
+| cstring-types | `src/Core/Debug/OOJSConsole.cpp` | `const char* name;` | the console's callObjC table's names | kept with the encodings below | — | T080 |
+| cstring-types | `src/Core/Debug/OOJSConsole.cpp` | `const char* encoding;` | the console's callObjC table's encodings, null for a row that is not Scalar | they go to `OOShaderUniformTypeFromEncoding(const char*)`, which takes null (T079's row) | — | T080 |

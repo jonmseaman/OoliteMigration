@@ -601,7 +601,7 @@ kept or returned, `std::optional` where null meant "no text"), literal tables to
   **Accept:** `cd oolite-dev && $C cstring --area scripting && test -z "$($C cstring-types --unclassified --area scripting)"`
 - [X] T079 [US7] Area `materials` (GL shader sources and uniform names).
   **Accept:** `cd oolite-dev && $C cstring --area materials && test -z "$($C cstring-types --unclassified --area materials)"`
-- [ ] T080 [US7] Area `sdl-debug` (`src/SDL/main.cpp` argv, SDL calls, the debug console).
+- [X] T080 [US7] Area `sdl-debug` (`src/SDL/main.cpp` argv, SDL calls, the debug console).
   **Accept:** `cd oolite-dev && $C cstring --area sdl-debug && test -z "$($C cstring-types --unclassified --area sdl-debug)"`
 - [ ] T081 [US7] Area `core`, including the exception-name `strcmp`s in
   `src/Core/Universe.cpp:4496,4562,4602,10451` → `std::string_view` `==`, and the fixed buffers C
