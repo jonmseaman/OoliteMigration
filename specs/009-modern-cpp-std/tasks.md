@@ -226,7 +226,7 @@ baselines and the FR-016 tests exist and pass on the base.
   `src/Core/OOALStreamedSound.cpp:35,62` and `src/Core/OOALBufferedSound.cpp:35`; this fixes the
   per-read leak in `OOReadOXZVorbis` (`OOALSoundDecoder.cpp:442`, research R4).
   **Accept:** `cd oolite-dev && ! rg -n -P '(?<![\w:.>])(::|std::)?(malloc|calloc|realloc|free)\s*\(' src/Core/OOALSoundDecoder.cpp src/Core/OOALStreamedSound.cpp src/Core/OOALBufferedSound.cpp`
-- [ ] T016 [P] [US1] Zip read buffers to `std::vector<char>` in `src/Core/OODataFromOXZFile.cpp:124,138`.
+- [X] T016 [P] [US1] Zip read buffers to `std::vector<char>` in `src/Core/OODataFromOXZFile.cpp:124,138`.
   **Accept:** `cd oolite-dev && $C alloc --area core | { ! grep -q OODataFromOXZFile; }`
 - [ ] T017 [US1] The pixel-buffer chain as one unit: an owning buffer (`std::vector<std::uint8_t>`)
   in `src/Core/Materials/OOPixMap.cpp`/`.h` (`:76,85,110`), and its users
