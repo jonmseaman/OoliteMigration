@@ -74,6 +74,13 @@ Usable in core only if the artist grants the licenses above in writing, which ma
 - [Spaceship Mining Ships ($30)](https://cgtrader.com/3d-models/space/spaceship/scifi-mining-ships): mining ship (~8k tris) and harvester (~3k), FBX/OBJ, 4096 px textures
 - [Spaceship Mining Ship TTB01 ($27.50)](https://cgtrader.com/3d-models/space/spaceship/scifi-mining-ship-ttb01): mining ship and mining drone, ~10.8k polygons. Appears to be by msGameDevelopment ([mirror](https://art.cleberg.net/post/msgamedevelopment/Scifi-Mining-Ship-TTB01-766794127)), the same creator as the cockpit below
 
+**A different kind of miner: one that eats asteroids**
+
+- [Spaceship Loader with Asteroid, rigged for Cinema 4D](https://www.cgtrader.com/3d-models/space/spaceship/spaceship-loader-with-asteroid-rigged-for-cinema-4d) ($149): hydraulic arms, conveyors and grippers that take a whole asteroid in. Also as a [Maya version](https://www.cgtrader.com/3d-models/space/spaceship/spaceship-loader-with-asteroid-rigged-for-maya) ([TurboSquid](https://www.turbosquid.com/it/3d-models/3d-spaceship-loader-with-asteroid-rigged-for-maya-2391468)). The same artist has a [Sci-Fi Space Loader](https://www.cgtrader.com/3d-models/space/spaceship/sci-fi-space-loader-rigged-for-cinema-4d) without the asteroid and a [Sci-Fi Repair Spaceship](https://www.cgtrader.com/3d-models/space/spaceship/sci-fi-repair-spaceship-rigged-for-cinema-4d)
+- It's a render asset, not a game asset: **~391k polygons**, about 100× Oolite's budget, so it would need a low-poly rebuild with the detail baked into a normal map. Oolite has no skeletal animation, so the rig wouldn't carry over. Arms and grippers could become rotating subentities, the way turrets and radar dishes work
+- Best use: a design reference for a commission, or ask the artist for a game-resolution version
+- Gameplay angle: today mining means lasering a rock into splinters and scooping them (the breakup chain in the [design sketch](Mining%20and%20Manufacturing%20—%20Design%20Sketch.md)). An eater would take a whole small asteroid into the hold and process it over time, which would make it a distinct ship class rather than a reskin
+
 **Freighters (msGameDevelopment)**
 
 CGTrader blocks page fetches, so prices and triangle counts are still to be read off the listings.
