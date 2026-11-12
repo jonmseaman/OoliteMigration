@@ -1,7 +1,7 @@
 # Implementation Plan: Adopt Google Test
 
-**Branch**: `feature/adopt-google-test` (in `oolite-dev`, from `develop`) | **Date**: 2026-11-12 |
-**Spec**: [spec.md](spec.md)
+**Branch**: `feature/adopt-google-test` (in `oolite-dev`; phase 2, see *Branch phases*) |
+**Date**: 2026-11-12 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `specs/005-adopt-google-test/spec.md`
 
@@ -60,7 +60,7 @@ rules and `docs/workflow.md`'s definition of done, as in specs 008 and 009.
 |---|---|---|
 | 1. No test changed to make it pass | US1 and US2 add tests only. US3 edits every test file: no existing exception covers that, so US3 waits for Jon's signed line in `CLAUDE.md` and keeps `test-ledger.md` (R11). No expectation changes; a regression stops the batch (FR-013). | **pass for US1–US2; US3 gated** |
 | 2. No warning silenced | Google Test must build clean at `-Wall` on Clang and GCC; a warning in a converted test is fixed in the test (ledger) or stops the batch (FR-002, R6). | pass |
-| 3. Never touch `develop`/`master`/`main`; no force-push | Game work on `feature/adopt-google-test`; spec docs on the planning repo's current branch; Jon merges. | pass |
+| 3. Never touch `develop`/`master`/`main`; no force-push | Game work on `feature/adopt-google-test`, stacked on phase 1's `feature/third-party-wraps` and updated by merging `develop`, never rebased (*Branch phases*); spec docs on the planning repo's current branch; Jon merges. | pass |
 | 4. Never read expansion content | Nothing here reads expansion files. | pass |
 | 5. Tools judge correctness | `parity.py` decides each batch; the suites, sanitizers and both compilers decide the rest. | pass |
 | 6. No `libgnustep-base` or SpiderMonkey | Nothing added. | pass |
@@ -120,6 +120,25 @@ like QuickJS-ng. The shared harness files sit at `tests/unit/`, above the suites
 because both `oofnd` and `core` link them (today's `oo_test.hpp` sits in `oofnd/` and `core`
 reaches it with an extra include path).
 
+## Branch phases
+
+Jon's order (2026-11-12): two branches, each one PR into `develop`.
+
+| Phase | Branch (in `oolite-dev`) | Spec | Contents |
+|---|---|---|---|
+| 1 | `feature/third-party-wraps`, from `develop` | its own spec (the R2 follow-up) | MiniZip, miniz, tinyexr and stb_image_write leave `src/` and come in by wrap |
+| 2 | `feature/adopt-google-test` | this one | M0–M6 below: Google Test's wrap, the shared `main`, the conversion, the old harness's removal |
+
+Phase 2 is cut from phase 1's branch tip, so it can start before Jon merges phase 1 (hard rule
+8). Both touch `subprojects/` and the `force_fallback_for` list in the top-level `meson.build`, so
+stacking avoids a conflict there. When phase 1 lands in `develop`, phase 2 merges `develop` in
+(never a rebase or force-push, hard rule 3) and its PR then shows only its own commits. If phase 1
+is abandoned, phase 2 is cut again from `develop`; nothing in it depends on phase 1's content.
+
+This replaces the spec's assumption that the work goes upstream as a series of small PRs (Story 1,
+then each batch, then retirement): phase 2 is one PR. Its milestones stay separate commit series
+inside it, so it can still be reviewed and bisected batch by batch.
+
 ## Milestones
 
 Each milestone builds, passes `tests/run.sh unit` on Clang and GCC, and has its command in
@@ -160,7 +179,7 @@ M3 and M5 also wait on the US3 gate (Constitution Check, gate 1).
 - **Precompiled header only if needed** (R8): added before `core` only if `oofnd` shows the
   build-time budget will be exceeded.
 - `oolite-dev` currently has another session's uncommitted files on `feature/double-wide-support`.
-  The first task branches `feature/adopt-google-test` from `develop` only once that tree is clean,
+  The first task branches `feature/adopt-google-test` from phase 1's tip only once that tree is clean,
   and never stashes or discards someone else's work.
 
 ## Complexity Tracking

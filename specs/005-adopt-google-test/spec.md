@@ -274,7 +274,8 @@ the unit suite passes; the exemplar table and testing docs point at a Google Tes
   `develop` on its own feature branch and is not part of the faithful-port upstream series
   (`series/*`, `seriesb/*`). It is offered upstream as its own small series after the faithful
   port, in this order: Story 1 (dependency and one example), then each migration batch, then
-  retirement.
+  retirement. *Superseded (Jon, 2026-11-12): the work is one branch and one PR, the second of two
+  phases after the third-party wraps spec; see the plan's Branch phases.*
 - **Ordering with spec 003.** Neither blocks the other. If spec 003's scenario suite lands first,
   it is migrated as the last batch. If this feature's Story 1 lands first, new scenario tests are
   written on Google Test, and spec 003's note (FR-019) says so.
