@@ -85,13 +85,13 @@ test-ledger rows; if he signs before Phase 3 ends, Phase 9 may run directly afte
 
 **Purpose**: the records and the search tool every later task uses.
 
-- [ ] T001 Create `specs/009-modern-cpp-std/exceptions.md` with one table whose columns are
+- [X] T001 Create `specs/009-modern-cpp-std/exceptions.md` with one table whose columns are
   `category | file | match | construct | required by | owner / release | commit`, where `match` is
   a fixed substring of the permitted line (the search tool drops a hit whose file equals `file` and
   whose line contains `match`); add a sentence above the table saying so, and update the
   *Exceptions list* section of `specs/009-modern-cpp-std/data-model.md` to list the `match` field.
   **Accept:** `grep -q '| category | file | match |' specs/009-modern-cpp-std/exceptions.md`
-- [ ] T002 Create `specs/009-modern-cpp-std/test-ledger.md` with the columns of data-model.md
+- [X] T002 Create `specs/009-modern-cpp-std/test-ledger.md` with the columns of data-model.md
   *Test-change ledger* (`test file | lines | forced by | assertions | coverage | commit | signed`),
   and add now, before any change, the rows Jon must sign: `tests/unit/oofnd/test_ref.cpp:514`
   (`willDisposeRunsOnceWithTheObjectWhole`: weak references become empty from the start of
@@ -101,7 +101,7 @@ test-ledger rows; if he signs before Phase 3 ends, Phase 9 may run directly afte
   20 existing `enum class` enumerators (*needs sign-off*); `tests/unit/oofnd/test_stdlib.cpp`
   (*reported*: its header leaves the game; Jon decides whether it is retired).
   **Accept:** `grep -c 'needs sign-off\|borderline\|reported' specs/009-modern-cpp-std/test-ledger.md` prints at least 4
-- [ ] T003 Create `specs/009-modern-cpp-std/check.sh` (bash, `#!/usr/bin/env bash`, committed
+- [X] T003 Create `specs/009-modern-cpp-std/check.sh` (bash, `#!/usr/bin/env bash`, committed
   `100755`, check with `git ls-files -s`) implementing the categories `alloc`, `ownership`,
   `thread`, `oofnd`, `enum`, `tbl`, `cast`, `naming`, `cstring`, `cstring-types` with exactly the
   searches in data-model.md *Converted category* (run from `oolite-dev`; `cast` and `naming` run
