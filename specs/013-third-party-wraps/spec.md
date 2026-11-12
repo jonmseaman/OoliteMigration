@@ -55,6 +55,10 @@ Other facts the spec relies on:
 - **Where WrapDB stands** (checked 2026-11-12): `miniz` has 3.0.2-1, 3.1.0-1 and 3.1.2-1; MiniZip
   is there only as `minizip-ng`, a different API; `stb` and `tinyexr` are absent; `zlib` has
   1.3.2-1. zlib's own release tarballs still carry `contrib/minizip` (checked at tag v1.4).
+- **Latest upstream versions** (checked 2026-11-12), which this feature takes (Jon, 2026-11-12):
+  miniz 3.1.2 (`MZ_VERSION "11.3.2"`, WrapDB 3.1.2-1); zlib 1.4 (released 2026-11-04) for
+  MiniZip; tinyexr v3.4.0 (2026-11-07); stb at commit `48fb1c9` (2026-11-09), which carries
+  stb_image_write v1.17.
 
 ### The local edits, and what becomes of each
 
@@ -67,24 +71,34 @@ warns (FR-006).
 |---|---|---|---|
 | MiniZip | `unzGetCurrentFileInfo`: `tmu_date` assignment ended with `,` (5de272321, 2017) | fix | already fixed in zlib's MiniZip: dropped |
 | MiniZip | `ioapi.c`: map `fopen64`/`ftello64`/`fseeko64` on Apple (2ac832246, 2013) | fix | zlib's `ioapi.c` handles `__APPLE__` itself: dropped |
-| MiniZip | `unzOpenCurrentFile3`: on an unsupported compression method, free the read state and return `UNZ_BADZIPFILE` instead of carrying on (96f39f346, 2013) | fix (behaviour) | zlib's code still sets the error and returns `UNZ_OK`: **kept as a patch** |
+| MiniZip | `unzOpenCurrentFile3`: on an unsupported compression method, free the read state and return `UNZ_BADZIPFILE` instead of carrying on (96f39f346, 2013) | fix (behaviour) | zlib 1.4's code still sets the error, keeps the read state and returns `UNZ_OK`: **kept as a patch** |
 | MiniZip | dead `lSeek` stores commented out (96f39f346); redundant parentheses (2ac832246); `unz_copyright` made `static` with `__attribute__((used))` (fcd1d21f5); K&R `fill_fopen_filefunc` given a prototype (upstream 78578063b) | warning fix | dropped; a patch only if the pristine source warns. zlib's `fill_fopen_filefunc` already has a prototype |
 | MiniZip | `.c`→`.cpp`, `extern "C"` removed, clang-format, `nullptr`, `#pragma once`, comment edits (2026-09 to 2026-11) | C++ / format | dropped: built as C from the pristine source, whose headers carry their own `extern "C"` guards |
-| miniz | `#define MINGW_HAS_SECURE_API 1` before `#include "miniz.h"` (upstream's) | build fix | kept if WrapDB miniz needs it on MinGW (FR-005); the plan checks |
+| miniz | `#define MINGW_HAS_SECURE_API 1` before `#include "miniz.h"` (upstream's) | build fix | kept only if miniz 3.1.2 needs it on MinGW (FR-005). Its header no longer mentions it; the plan checks `miniz.c` |
 | miniz | tentative definition of `s_tdefl_num_probes` replaced by its definition (41dfc42ea) | C++ only | dropped: built as C |
 | tinyexr | clang-format (upstream #749, fork cbf5cb96b) | format | dropped |
-| stb_image_write | `stbiw__write_hdr_scanline`: clamp negative linear components to 0 before encoding, so HDR snapshots are right when gamut expansion is on (upstream 7e65cc156, ee8bc5ce2, 2024) | fix (behaviour) | **kept as a patch** |
+| stb_image_write | `stbiw__write_hdr_scanline`: clamp negative linear components to 0 before encoding, so HDR snapshots are right when gamut expansion is on (upstream 7e65cc156, ee8bc5ce2, 2024) | fix (behaviour) | stb v1.17 (`02a8d35`, 2026-11-08) writes a negative component as 0 and an all-negative pixel as zero itself: dropped, and the new snapshot test asserts the behaviour (FR-011) |
 | stb_image_write | `#pragma once` (07c5762ec), clang-format | C++ / format | dropped: stb has its own include guard |
 
 ### Open points from spec 005's research R2, now checked
 
-- **tinyexr against miniz 3.x.** It already builds against it: the copied miniz is 3.0.2, and
-  tinyexr includes it as `<miniz.h>` and calls only `mz_compress` and `mz_uncompress`.
+- **tinyexr against miniz 3.x.** Today's copy already builds against miniz 3.0.2. tinyexr v3.4.0's
+  `tinyexr.h` still defaults to miniz (`TINYEXR_USE_MINIZ 1`, `#include <miniz.h>`) and calls only
+  `mz_compress` and `mz_uncompress`, whose signatures are unchanged in miniz 3.1.2.
+- **tinyexr v3 keeps the API the game uses.** tinyexr 3.x adds a new C11 library (`include/exr.h`,
+  `src/`, CMake, vendored libdeflate and zstd), but its top-level `tinyexr.h` is still the
+  single-header library with `TINYEXR_IMPLEMENTATION`. It still declares everything
+  `OOSaveEXRSnapshot.cpp` calls: `InitEXRHeader`, `InitEXRImage`, `SaveEXRImageToFile`,
+  `FreeEXRErrorMessage`, `EXRHeader`'s `custom_attributes`, `EXRAttribute`,
+  `TINYEXR_COMPRESSIONTYPE_ZIP` and the pixel types. It now also includes `exr_reader.hh` from the
+  same directory. The feature uses only this header, not the new library. The plan confirms the
+  header builds under C++20 on both compilers, and finds out whether its implementation needs any
+  file it would have to compile.
 - **zlib's MiniZip keeps the `unz*` API.** Every name the game uses (`unzOpen64`, `unzLocateFile`
   with an `int` case-sensitivity flag, `unzGetCurrentFileInfo64` with `unz_file_info64`,
   `unzGoToFirstFile`, `unzGoToNextFile`, `unzOpenCurrentFile`, `unzReadCurrentFile`,
-  `unzCloseCurrentFile`, `unzClose`, `unzFile`) has the same signature in zlib's current
-  `contrib/minizip/unzip.c`. The plan confirms this against the pinned tarball.
+  `unzCloseCurrentFile`, `unzClose`, `unzFile`) has the same declaration in zlib 1.4's
+  `contrib/minizip/unzip.h`, which keeps its `extern "C"` guard.
 - **Expansion content.** None was read. The OXZ code paths are exercised by the existing unit
   tests and by test-made archives (hard rule 4).
 
@@ -112,9 +126,9 @@ in `subprojects/packagefiles/` with a header saying what it changes.
    stb_image_write sources or licence files, **Then** nothing is found.
 2. **Given** any of the four libraries, **When** the reviewer opens its `.wrap`, **Then** it names
    where the source comes from, the exact version or commit, and the hash the build checks.
-3. **Given** a real fix from the edit table (the MiniZip compression-method fix, the stb clamp),
-   **When** the reviewer looks for it, **Then** it is a patch file under `packagefiles/` whose
-   header gives its origin commit and reason.
+3. **Given** a real fix from the edit table that the pinned version lacks (the MiniZip
+   compression-method fix), **When** the reviewer looks for it, **Then** it is a patch file under
+   `packagefiles/` whose header gives its origin commit and reason.
 
 ---
 
@@ -122,7 +136,7 @@ in `subprojects/packagefiles/` with a header saying what it changes.
 
 A developer runs the usual build and tests. The libraries are fetched at their pinned versions with
 no manual step, or taken from the local cache with no network, and the game does what it did:
-OXZ archives open, sounds load from archives, `.hdr` and `.exr` snapshots come out the same.
+OXZ archives open, sounds load from archives, `.hdr` and `.exr` snapshots hold the same image.
 
 **Why this priority**: The move must not change the shipped game. Without this story the first
 is not worth having.
@@ -143,7 +157,9 @@ no new warnings. A second clean setup with network access off and the sources in
 4. **Given** the unit, component and smoke suites, **When** they run on the feature branch, **Then**
    every one that passes on `develop` passes.
 5. **Given** a fixed image written through the `.hdr` and `.exr` snapshot paths, **When** it is
-   written by the `develop` build and by the feature branch, **Then** the files are byte-identical.
+   written by the `develop` build and by the feature branch, **Then** the decoded images match
+   (FR-011), the `.exr` still carries its `signature` attribute, and a negative colour component
+   is written as 0. The files' bytes may differ, because the libraries are newer.
 6. **Given** the Windows installer built from the branch, **When** its file list is compared with
    one built from `develop`, **Then** no new library file (DLL) is installed.
 
@@ -195,9 +211,9 @@ this branch, is a pure addition in the diff.
 - **A pristine source warns.** zlib's MiniZip, built as C, may warn where the edited copy did not.
   The warning is fixed by a patch in `packagefiles/`, or the work stops and reports it. The warning
   level is never lowered and no flag, pragma or attribute is added to quiet it (FR-006).
-- **A library's own suppressions.** tinyexr's header already contains its author's
-  `#pragma clang diagnostic` lines, and QuickJS-ng's own `meson.build` passes `-Wno-*` flags. These
-  are the library's, unchanged from today; the feature adds none of its own.
+- **A library's own suppressions.** tinyexr's header contains its author's
+  `#pragma clang diagnostic` lines (today's copy does too), and QuickJS-ng's own `meson.build`
+  passes `-Wno-*` flags. These are the library's own, as shipped; the feature adds none of its own.
 - **A system copy is found first.** A developer's machine may have a system miniz, MiniZip or stb
   (Homebrew and Debian package them). The build still uses the pinned, patched copy unless the
   developer opts out on the command line (FR-008).
@@ -205,6 +221,12 @@ this branch, is a pure addition in the diff.
   not fall back to anything unpinned.
 - **The fixed-image comparison on a host without EXR.** EXR snapshots exist only on Windows, as
   today; on other hosts only the `.hdr` path is compared.
+- **Infinite or NaN components.** stb v1.17 clamps an infinite component to `FLT_MAX`, where v1.16
+  did not, so `develop` gives no meaningful reference for them. The game never writes one in a
+  snapshot, and the fixed image leaves them out.
+- **A brand-new release misbehaves.** zlib 1.4, tinyexr v3.4.0 and stb `48fb1c9` are days old.
+  If one fails a check in this spec, the work stops and reports which one and how; it does not fall
+  back to an older version on its own.
 - **A future zlib wrap.** If a zlib wrap is ever added, its directory must not collide with the
   directory the MiniZip wrap extracts to. The plan picks names that cannot clash.
 - **A library that can't come in by wrap.** It goes in a tracked `subprojects/<name>/` with its own
@@ -224,14 +246,19 @@ this branch, is a pure addition in the diff.
   the callers) stays where it is.
 - **FR-002**: Each library MUST come in as one `.wrap` in `subprojects/` that pins an exact
   version or commit and checks the source's hash, following `quickjs-ng.wrap`:
-  - miniz: WrapDB `miniz` 3.0.2-1, the version shipped today.
-  - MiniZip: a custom wrap of a zlib release tarball (default 1.3.2) with a `packagefiles/`
-    overlay that builds `contrib/minizip/ioapi.c` and `unzip.c` against the zlib dependency the game
-    already uses, and declares the `minizip` dependency.
-  - tinyexr: a custom wrap of the GitHub release tarball whose header matches today's copy, with an
-    include-only overlay.
-  - stb_image_write: a custom wrap of a GitHub archive of a pinned stb commit carrying v1.16, with an
-    include-only overlay.
+  - miniz: WrapDB `miniz` 3.1.2-1.
+  - MiniZip: a custom wrap of the zlib 1.4 release tarball with a `packagefiles/` overlay that
+    builds `contrib/minizip/ioapi.c` and `unzip.c` against the zlib dependency the game already
+    uses, and declares the `minizip` dependency. WrapDB has no zlib 1.4 yet, so the fallback URL is
+    a second official zlib download location rather than WrapDB's mirror.
+  - tinyexr: a custom wrap of the v3.4.0 release tarball, with an overlay that exposes `tinyexr.h`
+    and the headers it includes. Its new C11 library, CMake build and vendored libdeflate and zstd
+    are not built.
+  - stb_image_write: a custom wrap of a GitHub archive of stb commit `48fb1c9` (stb_image_write
+    v1.17), with an include-only overlay.
+
+  If a newer release of one of them comes out before the branch is cut, the plan may take it, as
+  long as everything this spec checks still holds.
 - **FR-003**: Every edit in the table above marked *kept as a patch* MUST be applied by the wrap as
   a tracked patch file in `subprojects/packagefiles/`, whose header names the origin commit and why
   the change is needed. No other local change MAY be carried, except the warning patches FR-006
@@ -259,15 +286,26 @@ this branch, is a pure addition in the diff.
   with its own `meson.build`, licence file and a `README` naming its origin, version and local
   changes, with a matching `.gitignore` exception. The plan records why the wrap was not possible.
 - **FR-011**: The game's behaviour MUST be unchanged: the unit, component and smoke suites that
-  pass on `develop` pass, on Clang and GCC; and a new test writes a fixed image through the `.hdr`
-  path (and on Windows the `.exr` path) and the output is byte-identical between `develop` and the
-  branch. The OXZ paths are covered by the existing tests and test-made archives only.
+  pass on `develop` pass, on Clang and GCC. A new test writes a fixed image, including negative,
+  zero and very large finite components, through the `.hdr` path (and on Windows the `.exr`
+  path), using output captured from `develop` before the libraries move as its reference:
+  - `.exr`: decoded, the half-float pixels are identical to the reference (ZIP is lossless), and
+    the `signature` attribute is present with the same value.
+  - `.hdr`: decoded, each component is within the RGBE format's precision of the reference (1/256
+    of the pixel's largest component), and a negative component decodes as 0.
+  - Byte-identical files are not required: newer miniz may compress differently, and stb v1.17
+    changed how it rounds the RGBE scale.
+
+  A difference beyond these bounds stops the work and is reported, not absorbed by widening them.
+  The OXZ paths are covered by the existing tests and test-made archives only.
 - **FR-012**: With every library source present in `subprojects/packagecache/`, a clean setup with
   downloads forbidden (`--wrap-mode=nodownload`) MUST succeed. The quickstart gives the command
   that fills the cache.
-- **FR-013**: `LICENSE.md` MUST carry a notice for each of the four libraries (adding miniz and
-  stb_image_write, which are missing), and its closing paragraph MUST name each library's wrap and
-  its patches the way it names QuickJS-ng's. `License.pdf` in the installer follows from it.
+- **FR-013**: `LICENSE.md` MUST carry a notice for each of the four libraries, taken from the
+  pinned version's own licence file (adding miniz and stb_image_write, which are missing, and
+  updating TinyEXR's to v3.4.0's). Its closing paragraph MUST name each library's wrap and its
+  patches the way it names QuickJS-ng's. tinyexr's vendored libdeflate and zstd are not built, so
+  their notices are not added. `License.pdf` in the installer follows from it.
 - **FR-014**: The build wiring under `tests/` that compiles MiniZip's sources by path
   (`tests/unit/core/meson.build`, three programs) MUST link the `minizip` dependency instead. No
   test source, assertion or test program list changes. Each edit to a file under `tests/` is listed
@@ -307,15 +345,16 @@ this branch, is a pure addition in the diff.
 - **SC-001**: Zero third-party source, header or licence files remain under `oolite-dev/src/`
   (today: 11 files in three places).
 - **SC-002**: Four new `.wrap` files, each with a pinned version or commit and a hash; every local
-  change they apply is one of the two real fixes in the edit table, a MinGW build fix (FR-005) or a
-  warning patch (FR-006), each with a header.
+  change they apply is the MiniZip compression-method fix, a MinGW build fix (FR-005) or a warning
+  patch (FR-006), each with a header.
 - **SC-003**: The Clang and GCC builds, including the four libraries' own compiles, report no
   warning that `develop` does not, with zero suppressions added: a search of the feature's added
   lines for `-Wno-`, `diagnostic`, `is_system`, `maybe_unused` and `__attribute__((unused))` finds
   none, and any `warning_level` it sets is no lower than the game's.
 - **SC-004**: Every unit, component and smoke test that passes on `develop` passes on the branch,
   on both compilers.
-- **SC-005**: The fixed-image snapshot outputs are byte-identical between `develop` and the branch.
+- **SC-005**: The fixed-image snapshots decode to the `develop` reference: `.exr` pixels identical,
+  `.hdr` components within RGBE precision, negative components 0, and the `.exr` signature present.
 - **SC-006**: A clean setup and build with downloads forbidden and a filled package cache succeeds.
 - **SC-007**: The Windows installer's file list gains no library file, and `License.pdf` names all
   four libraries.
@@ -349,21 +388,22 @@ Hard rule 8 applies: nothing was left open. Jon can override any of these.
 
 - **One wrap per library** (research R2's default), not one combined "third-party" subproject: each
   has its own origin, version and licence.
-- **miniz 3.0.2-1, not 3.1.2-1.** R2 named 3.1.2 as the newest in WrapDB. The shipped copy is 3.0.2
-  and WrapDB carries it, so the move changes where miniz comes from without changing its version,
-  and FR-011's byte-identical check stays meaningful. Moving to 3.1.2 is a one-line follow-up.
-- **zlib 1.3.2 for MiniZip, not 1.4.** zlib 1.4 was released on 2026-11-04, eight days before this
-  spec; 1.3.2 is the release WrapDB packages. Neither changes the `unz*` API. Moving to 1.4 is a
-  later one-line change.
-- **Same versions for tinyexr and stb.** The tinyexr tag and the stb commit are the ones whose
-  files match today's copies apart from formatting and the edits in the table. The plan identifies
-  them; if no tinyexr tag matches, the wrap pins the matching commit. No upgrade in this feature.
-- **Keep the MiniZip compression-method fix as a patch.** zlib's code rejects such entries earlier
-  in its header check, so the fix may be redundant, but it is a behaviour change made on purpose,
-  and keeping it is the conservative choice.
-- **Wrap always, not system first.** Two libraries carry behavioural patches that a system copy
-  lacks; tinyexr and stb have no reliable system packages; and pinned versions on all three
-  platforms keep builds reproducible. This matches QuickJS-ng.
+- **The latest version of each library** (Jon, 2026-11-12: "it seems low risk to upgrade"):
+  miniz 3.1.2, zlib 1.4's MiniZip, tinyexr v3.4.0, stb `48fb1c9`. The first draft pinned the
+  versions shipped today. The upgrade costs the byte-identical snapshot check, which FR-011
+  replaces with decoded comparisons.
+- **tinyexr: the single header only.** v3.4.0 also ships a new C11 library with a different API.
+  Moving `OOSaveEXRSnapshot.cpp` to it would be a rewrite of Oolite code, not a library move, so
+  the feature keeps the header the game already calls.
+- **Drop the stb clamp patch.** v1.17 handles negative components itself. The new snapshot test
+  asserts the behaviour, so a regression in stb is caught rather than assumed away.
+- **Keep the MiniZip compression-method fix as a patch.** zlib 1.4 still ignores the error it sets
+  there. Its header check may reject such entries first, so the fix may be redundant, but it is a
+  behaviour change made on purpose, and keeping it is the conservative choice.
+- **Wrap always, not system first.** MiniZip carries a behavioural patch that a system copy lacks;
+  tinyexr and stb have no reliable system packages; system packages of the brand-new versions are
+  not yet out; and pinned versions on all three platforms keep builds reproducible. This matches
+  QuickJS-ng.
 - **Keep `subprojects/`.** Renaming it to `third_party/` through `subproject_dir` costs nothing
   against upstream, which has neither, but it moves QuickJS-ng's wrap and patches, breaks the
   `.gitignore` rules and spec 005's plan, and departs from the name meson's tooling and its users
