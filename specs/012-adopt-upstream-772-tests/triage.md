@@ -61,7 +61,7 @@ Probe after the fix: 33 lines differ from `baseline-quickjs.txt`, all from rows 
 the shipyard, `system.info`); none of row 4's. Unit tier 221/221 (oofnd 40, core 179, headers 2);
 component tier 24/24, including the new tests.
 
-Commit `58d415268` on `seriesb/028-upstream-772-tests`, after the import (decision D4).
+Commit `bc70a6e90` on `seriesb/028-upstream-772-tests`, after the import `705ad262d` (decision D4). Both were verified on `025-libcurl-http`; the branch now sits on `027-modern-cpp`.
 
 ### JS tests: an intermittent player death (not the fix)
 

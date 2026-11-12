@@ -223,10 +223,11 @@ Defaults taken under Hard rule 8; Jon may overturn any of them.
 - **D3 — Smoke test.** Keep the fork's `launch_snapshot.py`; carry #772's two new checks over as
   component scenarios. *Why:* the two files diverge by ~700 lines; component scenarios are the
   fork's exemplar for game-driving checks.
-- **D4 — Branch.** `seriesb/028-upstream-772-tests`, from `seriesb/025-libcurl-http`: the import,
-  then one commit per fix. *Why:* Jon (2026-11-12) made it a series step because it produced a fix;
-  027 is already taken (`027-modern-cpp`, `027-ship-library-keys`), and nothing in it needs 026 or
-  027.
+- **D4 — Branch.** `seriesb/028-upstream-772-tests`, Git Town parent `seriesb/027-modern-cpp`: the
+  import (authored by David Hobley, who wrote #772), then one commit per fix. *Why:* Jon
+  (2026-11-12) made it a series step because it produced a fix, after 027 (`027-modern-cpp`;
+  `027-ship-library-keys` is on the separate `026-dev-container` line). Nothing in it needs 026 or
+  027, so it can move back onto 025 if 027 is not ready first.
 
 ## Pilot
 
