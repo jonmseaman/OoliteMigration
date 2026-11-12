@@ -503,7 +503,7 @@ production enum changes in the same commit as it.
   (`src/Core/Scripting/OOJSEngineCore.h`), `using enum` in each getter's `switch (magic)`;
   `OOJS_PROP_*` flags stay (exceptions row).
   **Accept:** `cd oolite-dev && $C enum --area scripting`
-- [ ] T066 [US5] P9: GUI rows: `GUI_ROW()` (`src/Core/Entities/PlayerEntity.h:68-72`) and the row
+- [X] T066 [US5] P9: GUI rows: `GUI_ROW()` (`src/Core/Entities/PlayerEntity.h:68-72`) and the row
   macro sets in `PlayerEntityKeyMapper.h:42-65`, `PlayerEntityContracts.h:59`,
   `PlayerEntityStickMapper.h:40-51`, `PlayerEntityStickProfile.cpp:38`, `PlayerEntityLoadSave.h:42-52`
   → per T064; replace `#if GUI_FIRST_ROW() < 0` (`PlayerEntity.h:165,199`) with a `static_assert`.
