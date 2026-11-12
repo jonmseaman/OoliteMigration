@@ -209,6 +209,8 @@ same names") as a waypoint, not the end state.
   identity pointer next to the `weak_ptr` in that field. Not yet checked: whether any script event
   is sent from `willDispose()`; if one is, a script reading `this` would see an invalid entity.
   D2 answers it. **Spec change** to FR-007 (R15).
+
+D2 answer: yes, one: `ShipEntity::shipWillDealloc` sends the ship's `entityDestroyed` event from `willDispose()` (`ShipEntity.cpp:354`), and through `PlayerEntity::doScriptEvent` the world scripts' too for the player. It runs after the ship's weak references are dropped (`Entity.cpp:114`), deliberately (Ahruman's note at `ShipEntity.cpp:344`: the JS ship is invalid before the event, so no script can strong-reference it), so a script already sees an invalid `this`; with `std::weak_ptr` the references are expired at the same point, and nothing changes. No other script call is reachable from the disposal path. The weak-reference readers are in data-model.md *Disposal reader* (T084).
 - **Stack and static instances.** `shared_from_this` on an object that no `shared_ptr` owns throws
   `std::bad_weak_ptr`, and `weak_from_this` is empty. None exist in `src`. Tests have them:
   `test_OOShaderMaterial.cpp:309,501,588` (a stack `TestTarget : Entity` bound to a weak

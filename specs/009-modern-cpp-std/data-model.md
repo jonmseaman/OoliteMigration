@@ -148,3 +148,22 @@ Known before D2: `ensureEntityReallyRemoved` → `clearBeacon` (`firstBeacon() =
 Player, Station and Dock `willDealloc` paths (`Entity.cpp:96-137`, including the two
 `dropWeakReferences()` calls at `:111,136`). Open: whether any script event is sent from
 `willDispose()`.
+
+The inventory (T084, 2026-11-12) is from clang's call graph over the compile database
+(`debug.DumpCallGraph` for every game translation unit; the scripts are `.agent-tmp/d2/callgraph.py`
+and `reach.py`), with a virtual call widened to every entity class's method of that name. A
+ship's weak references are dropped at `Entity.cpp:114`, after the Player, Station and Dock
+`willDealloc` parts and before `shipWillDealloc` and `ensureEntityReallyRemoved`, so the paths on
+which a weak reference to the dying entity is still live are those `willDealloc` parts (42
+functions reachable) and, for an entity that is not a ship, everything up to the last
+`dropWeakReferences()` (304 functions). A reader is a reachable function that reads a weak
+reference (`get`, `expired`, a comparison, `oo::LiveEntity`), not one that only assigns or resets
+it. `DockEntity::clearIdLocks` is reached (from `DockEntity::willDealloc`) but is called with
+`nullptr`, which short-circuits its read, so it is not a reader. The Player and Station `willDealloc` parts only assign or clear
+weak references (`WeakRef::operator=`, `WeakSet::removeAll`), so they are not readers either.
+
+| function | reached from | reads | test | fix |
+|---|---|---|---|---|
+| `Universe::clearBeacon`, the head | `Entity::willDispose` → `Universe::ensureEntityReallyRemoved` → `doRemoveEntity` → `clearBeacon`, for a beacon that is not a ship (`OOWaypointEntity`, `OOVisualEffectEntity`) disposed while still in the universe | `firstBeacon() == beacon`: the Universe's weak reference to the first beacon, compared with the dying beacon; when it matches, the head moves to the next beacon | T085 | T087 |
+| `Universe::clearBeacon`, the tail | as above | `lastBeacon() == beacon`, the same for the last beacon. With both comparisons false the `else` arm relinks the neighbours but leaves the head or tail on the dead beacon, which then reads null and loses the list | T085 | T087 |
+

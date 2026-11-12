@@ -638,7 +638,7 @@ the FR-016 tests pass; ASan and leaks clean; frame rate within the baseline. **T
 after it wait for Jon's signature on the T002 rows for `test_ref.cpp:514` and the construction-form
 edits.**
 
-- [ ] T084 [US2] (design D2) Inventory every function reachable from `Entity::willDispose()` and
+- [X] T084 [US2] (design D2) Inventory every function reachable from `Entity::willDispose()` and
   the `willDealloc` overrides (`src/Core/Entities/Entity.cpp:96-137`) that reads a weak reference
   to the dying entity, using the compile database (clangd call hierarchy or `clang-query`), not
   grep; fill data-model.md *Disposal reader*; answer whether any script event is sent from
