@@ -140,3 +140,45 @@ is a conflict to record here, never a suppression.
 | cstring-types | `src/Core/OOStringExpander.cpp` | `const char* function` | the report's `__FUNCTION__`, file and message class | the arguments of that printf-style report | — | T081 |
 | cstring-types | `src/Core/OOStringExpander.cpp` | `const char* fileName` | as above | as above | — | T081 |
 | cstring-types | `src/Core/OOStringExpander.cpp` | `const char* logMessageClass` | as above | as above | — | T081 |
+| cstring | `src/oofnd/String.hpp` | `std::vsnprintf(` | oofnd's printf engine (`oo::str::vformat`) | printf-syntax data formats (DESC strings, OXP-supplied formats) and the printf-style reporters need it (FR-026) | — | T082 |
+| cstring | `src/oofnd/Exception.cpp` | `std::vsnprintf(` | `OORaiseException`'s reason formatting | its formats are printf syntax at its call sites (FR-026) | — | T082 |
+| cstring | `src/oofnd/objc/OOAssert.cpp` | `std::vsnprintf(` | the assertion message formatting | as above | — | T082 |
+| cstring | `src/oofnd/PListXML.hpp` | `std::strtod(value_.c_str()` | an XML property list's `<real>` | strtod's answer (leading space, a sign, hex, the inf and nan spellings) is the reader's; `std::from_chars` differs (R17) | — | T082 |
+| cstring | `src/oofnd/PListOldStyle.hpp` | `std::strtod(buf.c_str()` | an OpenStep property list's number | as above | — | T082 |
+| cstring | `src/oofnd/PrintfFormat.h` | `format(printf, ...)` | a comment about the printf format attribute | not a call | — | T082 |
+| cstring-types | `src/oofnd/String.hpp` | `const char* fmt` | the printf engine's format | as above (FR-026) | — | T082 |
+| cstring-types | `src/oofnd/String.hpp` | `char small[256]` | the engine's first-try buffer, which `vsnprintf` fills | a buffer C fills; kept with the engine | — | T082 |
+| cstring-types | `src/oofnd/String.hpp` | `const char* locale` | an ICU locale name | ICU's collator takes a NUL-terminated locale | — | T082 |
+| cstring-types | `src/oofnd/String.hpp` | `FormatArg(const char* text)` | the runtime-format argument for a literal | beside the `std::string` overload a `std::string_view` one would be ambiguous for literals | — | T082 |
+| cstring-types | `src/oofnd/Exception.hpp` | `const char *` | the header's banner, which names the C-string accessors | a comment | — | T082 |
+| cstring-types | `src/oofnd/Exception.hpp` | `extern const char* const OO` | the exception names | the names are the exception's C-string name and are compared as such by callers and tests | — | T082 |
+| cstring-types | `src/oofnd/Exception.cpp` | `const char* const OO` | their definitions | as above | — | T082 |
+| cstring-types | `src/oofnd/Exception.hpp` | `const char* name` | the exception's name: its constructor, `OORaiseException` and the accessors | the C-string API callers and tests use (`strcmp(exception->name(), …)`, `std::exception::what`) | — | T082 |
+| cstring-types | `src/oofnd/Exception.hpp` | `const char* reason` | the exception's reason | as above | — | T082 |
+| cstring-types | `src/oofnd/Exception.hpp` | `const char* what()` | `std::exception::what` | the standard library's signature | — | T082 |
+| cstring-types | `src/oofnd/Exception.cpp` | `const char* format` | `OORaiseException`'s format and its formatter | printf syntax (FR-026) | — | T082 |
+| cstring-types | `src/oofnd/Exception.cpp` | `OORaiseException(const char* name` | its definition | as above | — | T082 |
+| cstring-types | `src/oofnd/objc/OOAssert.cpp` | `const char* format` | the assertion message's format | printf syntax (FR-026) | — | T082 |
+| cstring-types | `src/oofnd/objc/OOAssert.cpp` | `const char* function` | the failing assertion's `__FUNCTION__` and `__FILE__` | the assertion macros pass them, and the message prints them through the printf engine | — | T082 |
+| cstring-types | `src/oofnd/objc/OOAssert.h` | `const char* function` | its declaration | as above | — | T082 |
+| cstring-types | `src/oofnd/objc/OOAssert.h` | `const char* format` | as above | as above | — | T082 |
+| cstring-types | `src/oofnd/Process.hpp` | `const char* lp` | the Win32 conversion functions' declarations | the Windows C interface | — | T082 |
+| cstring-types | `src/oofnd/Thread.hpp` | `const char* lpMultiByteStr` | as above | as above | — | T082 |
+| cstring-types | `src/oofnd/Process.hpp` | `const char* const* argv` | `main`'s arguments | `main`'s argv | — | T082 |
+| cstring-types | `src/oofnd/Process.hpp` | `env(const char* name)` | an environment lookup | `getenv` takes a NUL-terminated name | — | T082 |
+| cstring-types | `src/oofnd/Process.hpp` | `= std::getenv(` | its answer, null when unset | the C library's getenv | — | T082 |
+| cstring-types | `src/oofnd/ResourcePaths.hpp` | `= std::getenv(` | an environment variable, null when unset | as above | — | T082 |
+| cstring-types | `src/oofnd/Log.hpp` | `const char* file` | the log line's `__FILE__` | the logging macros pass `__FILE__` and `__FUNCTION__`, literals with static storage; the log line prints them as they are | — | T082 |
+| cstring-types | `src/oofnd/Log.hpp` | `const char* function` | the log line's `__FUNCTION__` | as above | — | T082 |
+| cstring-types | `src/oofnd/Log.hpp` | `std::pair<const char*, std::string>` | the start-up diagnostics, keyed by their switch's literal name | as above: the logger's switches are literals | — | T082 |
+| cstring-types | `src/oofnd/Log.hpp` | `takeSwitch(const char* key` | a log switch's literal name and message | as above | — | T082 |
+| cstring-types | `src/oofnd/Data.hpp` | `reinterpret_cast<const char*>(bytes())` | the data's bytes as a `std::string_view` | bytes, not text | — | T082 |
+| cstring-types | `src/oofnd/PListXML.hpp` | `reinterpret_cast<const char*>(bytes_)` | views over the XML reader's input bytes | bytes, not text: each is a `std::string_view` or `std::string` over them | — | T082 |
+| cstring-types | `src/oofnd/PListOldStyle.hpp` | `reinterpret_cast<const char*>(` | views over the OpenStep reader's input bytes | as above | — | T082 |
+| cstring-types | `src/oofnd/FileSystem.hpp` | `reinterpret_cast<const char*>(u8.data())` | a path's UTF-8 (`char8_t`) bytes as `char` | the standard library's `u8string` gives `char8_t` | — | T082 |
+| cstring-types | `src/oofnd/PListXML.hpp` | `unsigned char` | the base64 decoder's byte groups | bytes, not text | — | T082 |
+| cstring-types | `src/oofnd/PListOldStyle.hpp` | `unsigned char` | the base64 decoder's byte groups | bytes, not text | — | T082 |
+| cstring-types | `src/oofnd/Http.hpp` | `curlErrorText(CURLcode code, const char* detail)` | libcurl's error buffer, which may be empty | the libcurl C interface | — | T082 |
+| cstring-types | `src/oofnd/PList.hpp` | `PList(const char* s)` | the constructor for a literal | without it a literal would convert to `bool` | — | T082 |
+| cstring-types | `src/oofnd/PListOldStyle.hpp` | `const char* error()` | the OpenStep reader's error message, null for none | null is "no error"; the messages are literals | — | T082 |
+| cstring-types | `src/oofnd/PListOldStyle.hpp` | `const char* err_` | its member | as above | — | T082 |

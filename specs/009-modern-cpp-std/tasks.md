@@ -607,7 +607,7 @@ kept or returned, `std::optional` where null meant "no text"), literal tables to
   `src/Core/Universe.cpp:4496,4562,4602,10451` → `std::string_view` `==`, and the fixed buffers C
   fills (`src/Core/OOCPUInfo.cpp`, OS paths) as `std::array<char, N>` at the call.
   **Accept:** `cd oolite-dev && $C cstring --area core && test -z "$($C cstring-types --unclassified --area core)"`
-- [ ] T082 [US7] Area `oofnd`: the `std::snprintf` calls in `src/oofnd/Defaults.hpp:259-318` and
+- [X] T082 [US7] Area `oofnd`: the `std::snprintf` calls in `src/oofnd/Defaults.hpp:259-318` and
   `src/oofnd/Date.hpp:114` → `std::format` with byte-identical output (pinned by
   `tests/unit/oofnd/test_defaults.cpp` and `test_date.cpp`, unchanged); parses whose
   `std::from_chars` answer differs stay in `src/oofnd/String.hpp` helpers (research R17); the
