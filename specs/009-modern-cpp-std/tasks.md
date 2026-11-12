@@ -445,14 +445,14 @@ production enum changes in the same commit as it.
 - [X] T055 [US5] P5: `kOOByName*` (`src/Core/Entities/OOEntityCalledByName.h:46`, about 1,006
   references in `OOEntityCalledByNameTable.h`) → `enum class OOByName : unsigned` flags.
   **Accept:** `cd oolite-dev && ! rg -n -P '(?<!::)\bkOOByName\w+' src`
-- [ ] T056 [US5] P5, last: `OOTexture` flags (`src/Core/Materials/OOTexture.h:47`, 29 values,
+- [X] T056 [US5] P5, last: `OOTexture` flags (`src/Core/Materials/OOTexture.h:47`, 29 values,
   multi-bit filter and channel fields; 275 src and 95 test references) → flag `enum class
   OOTextureFlags : std::uint32_t`; the `%X` cache key (`OODefaultShaderSynthesizer.cpp:353`)
   keeps its text; tests that name the flags change with it (ledger, *covered*).
   **Accept:** `cd oolite-dev && $C enum --area materials | { ! grep -q 'Materials/OOTexture.h'; }` and `rg -q 'enum class OOTextureFlags' src/Core/Materials/OOTextureFlags.h`
-  Done on `seriesb/027-t056-texture-flags` (`ec49dc3f1`, one commit on the T055 tip), held off
-  `seriesb/027-modern-cpp`: its test edits include literal option numbers and `uint32_t` stand-ins
-  (ledger, *borderline*). Once Jon signs those rows, cherry-pick it onto 027 and mark this task.
+  Done in `9ef8f2e7c`: made on its own branch while its *borderline* ledger rows (literal option
+  numbers and `uint32_t` stand-ins in the tests) waited; Jon signed them on 2026-11-12 and it was
+  cherry-picked onto `seriesb/027-modern-cpp` after T059.
   The enum is in `OOTextureFlags.h`, not `OOTexture.h` (the accept's second half was changed to
   match): the loaders do not include `OOTexture.h`, so tests can stand in for `OOTexture`.
 - [X] T057 [US5] P6: number-visible enums (`OOAlertCondition` in `src/Core/Entities/ShipEntity.h:191-198`;
