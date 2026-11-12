@@ -223,13 +223,15 @@ Defaults taken under Hard rule 8; Jon may overturn any of them.
 - **D3 — Smoke test.** Keep the fork's `launch_snapshot.py`; carry #772's two new checks over as
   component scenarios. *Why:* the two files diverge by ~700 lines; component scenarios are the
   fork's exemplar for game-driving checks.
-- **D4 — Branch.** A new feature branch, not a new `seriesb/*` step, until the triage is done.
-  *Why:* where it slots into the series depends on what the fixes touch.
+- **D4 — Branch.** `seriesb/028-upstream-772-tests`, from `seriesb/025-libcurl-http`: the import,
+  then one commit per fix. *Why:* Jon (2026-11-12) made it a series step because it produced a fix;
+  027 is already taken (`027-modern-cpp`, `027-ship-library-keys`), and nothing in it needs 026 or
+  027.
 
 ## Pilot
 
 Run 2026-11-12 in a worktree of `oolite-dev` at `.agent-tmp/wt-772` (branch
-`012-adopt-upstream-772-tests`, from `seriesb/025-libcurl-http` at `ab6ac68b3`), `test` build,
+`012-adopt-upstream-772-tests`, since renamed `seriesb/028-upstream-772-tests`, from `seriesb/025-libcurl-http` at `ab6ac68b3`), `test` build,
 Clang, Windows 11, with the #772 files imported unchanged.
 
 Answer to the original question: **yes, the framework runs on the C++ build without changing a
@@ -245,7 +247,8 @@ single imported file**, and it has already found one class of migration differen
   - 1 is `"government" in system.info`, a documented fork difference;
   - **4 are a migration difference**: `setMaterials`, `setShaders`, `markSystem` and `unmarkSystem`
     accept an array where upstream threw. Upstream sends a dictionary method to an Objective-C
-    array, which raises an exception; `oo::PList::get` returns the default instead.
+    array, which raises an exception; `oo::PList::get` returns the default instead. Jon chose to
+    match upstream; fixed with a component test (triage run 2).
 
 Details, evidence and proposed outcomes are in [triage.md](triage.md); fork-side changes needed to
 run the files are in [adaptations.md](adaptations.md). Implication for scope: the parity tier
