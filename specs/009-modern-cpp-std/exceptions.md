@@ -10,3 +10,4 @@ is a conflict to record here, never a suppression.
 
 | category | file | match | construct | required by | owner / release | commit |
 |---|---|---|---|---|---|---|
+| alloc | `src/Core/OODemangle.h` | `&std::free` | `std::free` as the `std::unique_ptr` deleter of the demangled name | `abi::__cxa_demangle` returns `malloc` memory the caller must `free` | the `unique_ptr` in `OODemangle`, released at scope exit | T014 |

@@ -212,7 +212,7 @@ baselines and the FR-016 tests exist and pass on the base.
 (FR-004, FR-005, SC-001). **Independent test**: `$C alloc` exits 0; a planted `malloc` fails
 `./mk.sh tidy`; ASan smoke clean.
 
-- [ ] T014 [US1] Add `oolite-dev/src/Core/OODemangle.h` with `std::string OODemangle(const char*
+- [X] T014 [US1] Add `oolite-dev/src/Core/OODemangle.h` with `std::string OODemangle(const char*
   mangled)` (calls `abi::__cxa_demangle`, frees through `std::unique_ptr<char,
   decltype(&std::free)>`, returns the input on failure), use it at the 8 sites
   (`src/Core/OOALSound.cpp:169`, `src/Core/OODrawable.cpp:67`, `src/Core/Materials/OOMaterial.cpp:70`,
