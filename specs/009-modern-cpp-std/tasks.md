@@ -228,13 +228,13 @@ baselines and the FR-016 tests exist and pass on the base.
   **Accept:** `cd oolite-dev && ! rg -n -P '(?<![\w:.>])(::|std::)?(malloc|calloc|realloc|free)\s*\(' src/Core/OOALSoundDecoder.cpp src/Core/OOALStreamedSound.cpp src/Core/OOALBufferedSound.cpp`
 - [X] T016 [P] [US1] Zip read buffers to `std::vector<char>` in `src/Core/OODataFromOXZFile.cpp:124,138`.
   **Accept:** `cd oolite-dev && $C alloc --area core | { ! grep -q OODataFromOXZFile; }`
-- [ ] T017 [US1] The pixel-buffer chain as one unit: an owning buffer (`std::vector<std::uint8_t>`)
+- [ ] T017 [US1] (waits for the pixel-chain borderline ledger row) The pixel-buffer chain as one unit: an owning buffer (`std::vector<std::uint8_t>`)
   in `src/Core/Materials/OOPixMap.cpp`/`.h` (`:76,85,110`), and its users
   `src/Core/OOTextureScaling.cpp:283,355-360,1684`, `src/Core/Materials/OOPixMapChannelOperations.cpp:122,125`,
   `src/Core/Materials/OOTextureLoader.cpp:201,349,364,381,398`, `src/Core/Materials/OOConcreteTexture.cpp:137,478,568`,
   `src/Core/Materials/OOPNGTextureLoader.cpp:88,136-160` (libpng fills our rows; GL copies).
   **Accept:** `cd oolite-dev && ! rg -n -P '(?<![\w:.>])(::|std::)?(malloc|calloc|realloc|free)\s*\(' src/Core/Materials/OOPixMap.cpp src/Core/OOTextureScaling.cpp src/Core/Materials/OOPixMapChannelOperations.cpp src/Core/Materials/OOTextureLoader.cpp src/Core/Materials/OOConcreteTexture.cpp src/Core/Materials/OOPNGTextureLoader.cpp`
-- [ ] T018 [US1] The planet and atmosphere generators: remove the `FREE` macro (`:63/:65`) and its
+- [ ] T018 [US1] (waits for the pixel-chain borderline ledger row) The planet and atmosphere generators: remove the `FREE` macro (`:63/:65`) and its
   about 12 `malloc`s in `src/Core/Materials/OOPlanetTextureGenerator.cpp` and
   `src/Core/Materials/OOStandaloneAtmosphereGenerator.cpp`, using T017's buffer where the result
   becomes a pixmap and `std::vector` elsewhere.
