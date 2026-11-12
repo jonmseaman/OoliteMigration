@@ -434,8 +434,10 @@ tier pass with the same results.
   the Foundation integer aliases (to standard types) and `NSNotFound` (to a named constant with the
   same value), the `StdLib.hpp` umbrella (to direct standard includes), printf-style formatting of
   literal formats (to `std::format`, converted call by call so the text stays identical), and the
-  file helpers whose standard counterparts agree. `oo::Data` and `NSRange` stay: the standard
-  types differ in behaviour the game uses, or have no equivalent.
+  file helpers whose standard counterparts agree, unless the helper is a thin wrapper that reads
+  better than the standard call (decision 11; `oo::fs`'s six stay for that reason, T035).
+  `oo::Data` and `NSRange` stay: the standard types differ in behaviour the game uses, or have no
+  equivalent.
 - **FR-014**: An `oofnd` component or helper that stays MUST be listed in `oofnd`'s README with the
   reason (no standard equivalent, or a named difference in answers), and a test MUST pin each named
   difference. The game's own exception type MUST derive from the standard exception hierarchy.

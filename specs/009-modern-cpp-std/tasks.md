@@ -348,7 +348,7 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   `localUTCOffsetMinutes` and the double-seconds helpers; `tests/unit/oofnd/test_date.cpp`
   unchanged.
   **Accept:** CI `test_date` passes and `cd oolite-dev && ! rg -n -P '\b(146097|719468|365\s*\*\s*4\s*\+\s*1)\b' src/oofnd/Date.hpp`
-- [ ] T035 [P] [US4] `src/oofnd/FileSystem.hpp`: callers of `fileExists`, `isDirectory`,
+- [X] T035 [P] [US4] (decided 2026-11-12, no code change: the six wrappers are one- or two-line helpers over `std::filesystem` that turn its `std::error_code` into `std::expected`; calling `std::filesystem` directly would add `std::error_code ec;` at 23 game and 27 test call sites, so they stay under decision 11) `src/oofnd/FileSystem.hpp`: callers of `fileExists`, `isDirectory`,
   `fileSize`, `freeSpace`, `currentDirectory` and `setCurrentDirectory` use `std::filesystem`'s
   `std::error_code` overloads directly; delete those six wrappers; port their cases in
   `tests/unit/oofnd/test_filesystem.cpp` (ledger, *covered*). The other functions keep GNUstep
