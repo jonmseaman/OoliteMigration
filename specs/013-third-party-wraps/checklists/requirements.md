@@ -51,6 +51,8 @@
 - `.specify/feature.json` was not repointed at this spec because it points at spec 012, which
   another session is writing (recorded in the spec's decisions). `/speckit-plan` for this feature
   must be given `specs/013-third-party-wraps` explicitly.
-- SC-005 needs a new fixed-image snapshot test with output captured from `develop`; the plan must
-  schedule capturing it before the libraries move.
+- SC-005 needs a new fixed-image snapshot test that passes on the unmoved code first (plan M0). The
+  plan changed FR-011's wording: expected values come from the input and the formats' rules, the
+  `.exr` signature is checked by prefix (it carries a timestamp), and the `.hdr` bound is 1/128,
+  one RGBE step.
 - Validation iterations: 2 (the second after the version change), all items pass.
