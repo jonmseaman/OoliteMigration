@@ -80,7 +80,9 @@ From the `.ninja_log` files of Jon's own `build/meson_*` directories:
   Jon's build directories, the recorded `buildtime` equals the commit's UTC committer time: a3d651a
   `2026.11.12 04:26`, 518520d `2026.11.11 01:36`, 96bc042 `2026.11.12 12:01`.
 - The version string carries the branch name (`gitversion` SemVer), so switching branches changes
-  it as a new commit does.
+  it as a new commit does. Its cache key is the commit hash plus `-dirty` when `git diff --quiet`
+  fails, and a dirty version gains `+dirty.N`. So the first build after editing a clean tree
+  changes it too.
 - Every `oolite.exe` carries its link time in the PE header (`TimeDateStamp`), and `strip`
   stamps the copy it strips again: deployment `src/oolite.exe` 02:00:25 and the stripped
   `oolite.app/oolite.exe` 02:06:51 on 2026-11-11.

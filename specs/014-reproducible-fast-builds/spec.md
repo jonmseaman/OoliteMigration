@@ -45,8 +45,12 @@ each flavour twice with different versions and walking the build graph. The meth
   or a branch switch** changes it, and usually the date too. A changed command line reruns the
   compile and misses any compiler cache. So **every commit or branch switch recompiles 230 of the
   deployment build's 240 objects, and 796 of 806 in test and dev, where it also relinks all 214
-  test executables.** Upstream (OoliteProject `4bb1f53de`) and the fork's `master` do the same;
-  `develop` inherited it.
+  test executables.** The first build after an edit does the same. The script keys its cache on
+  the commit hash plus a `-dirty` flag (`git diff --quiet`), and a dirty tree's version gains
+  `+dirty.N`. So on `develop` an edit-build-commit-build cycle recompiles everything twice. Which
+  day it is never matters; the commit, the branch and the clean or dirty state do. Upstream
+  (OoliteProject `4bb1f53de`) and the fork's `master` do the same; `develop` inherited it.
+  `develop`'s `mk.sh` has no compiler cache either (56fa88a55 adds it), so nothing softens it.
 - **A fix exists, off `develop`.** `oolite-dev` commit fa5e7e7e6 moves the three values into a
   generated header, `OOVersion.h`, included by five files. With it, a commit reruns 5 compiles in
   every flavour, but still relinks 66 core test executables in test and dev. Two of the five are
@@ -109,8 +113,8 @@ objects through `extract_objects`, so the rest of the game is compiled once.
 
 | Change | deployment | dev | test |
 |---|---|---|---|
-| New commit or branch switch (`develop`) | 230 compiles, LTO game link, bundle | 796 compiles, 214 test links, game link, bundle | as dev, every link LTO |
-| New commit or branch switch (fa5e7e7e6) | 5 compiles, LTO game link, bundle | 5 compiles, 66 test links, game link, bundle | as dev, every link LTO |
+| New commit, branch switch, or first edit after a commit (`develop`) | 230 compiles, LTO game link, bundle | 796 compiles, 214 test links, game link, bundle | as dev, every link LTO |
+| The same (fa5e7e7e6) | 5 compiles, LTO game link, bundle | 5 compiles, 66 test links, game link, bundle | as dev, every link LTO |
 | Edit `OOColor.cpp` | 1 compile, LTO game link, bundle | 1 compile, 84 test links, game link, bundle | as dev, every link LTO |
 | Edit `Universe.cpp` | 1 compile, LTO game link, bundle | 1 compile, 66 test links, game link, bundle | as dev, every link LTO |
 
@@ -288,7 +292,8 @@ precompiled header, compile by compile with `baseline/o0_vs_o2.py`'s method.
 ### Edge Cases
 
 - **Uncommitted changes.** The version shows the dirty suffix as now, and the build date stays the
-  last commit's. Reproducibility is claimed only for a clean tree.
+  last commit's. Going from clean to dirty, or back, changes the version, so it costs FR-001's one
+  compile and no more. Reproducibility is claimed only for a clean tree.
 - **No git, or a shallow clone.** CI checks out shallow, and a source tarball has no `.git`. The
   version falls back the way it does today, and the build still succeeds.
 - **No `gitversion`.** It is required today when the commit has no exact tag. That does not change,
@@ -449,6 +454,14 @@ precompiled header, compile by compile with `baseline/o0_vs_o2.py`'s method.
   1 compile, a non-LTO game link and the bundle step, plus its unit-test links. That should
   undercut deployment's LTO link (17–29 s). Jon can override: `-O0` for dev is a one-line change,
   at the cost of float results that no longer match deployment's.
+- **The version is compiled in, not read at run time.** Jon asked (2026-11-12) whether the values
+  should live in a config file. A generated file is the right idea, and FR-001 takes it to one
+  unit, so a version change costs one small compile and the game link. Reading the values at run
+  time from the bundle's `manifest.plist`, which already holds the version, hash and build time,
+  would also save that compile and link. It is not done: `main()` prints `--version` and
+  `OOLoggingInit` prints the log header before resources are found, an executable copied out of
+  its bundle would lose its version, and upstream compiles it in. The plan may revisit this if the
+  game's LTO link is still the cost of a version change once FR-001 is in.
 - **No game-only dev option.** Dev keeps building the unit tests. A switch to skip them is easy
   to add later, if the counts after FR-011 and FR-012 still show the test links dominating.
 - **One executable per core test.** Merging the 174 core tests into one runner would remove most
