@@ -1,3 +1,5 @@
+TODO Mac icon used to have a grey background, then it was gone... Sometimes it is there and sometimes not.
+
 More branches:
 - Cleanup pass (plan on WinPC)
 - TBL drop, switch to enums... — planned: [[2026-11-07 Enum Tables from tbl X-Macros]]
