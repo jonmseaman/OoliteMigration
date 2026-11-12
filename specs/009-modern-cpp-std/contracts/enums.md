@@ -114,7 +114,10 @@ Rules:
 - Sentinels (`_COUNT`, `_END`, `_MAX`) become `constexpr std::size_t kFooCount` beside the enum, not
   enumerators, and arrays indexed by the enum are `std::array<T, kFooCount>` indexed through
   `oo::ToUnderlying`.
-- A lone constant in an anonymous enum becomes `inline constexpr` of its natural type (FR-017).
+- A lone constant in an anonymous enum becomes `inline constexpr` of its natural type (FR-017):
+  `inline constexpr` in a header, `constexpr` in a `.cpp` or a block, `static constexpr` in a class.
+  The natural type is the one its uses need: `int` where it meets ints, the stored type where it is
+  stored, the enum type for a default. A constant used only under a guard is declared under it.
 - Test stand-ins that redeclare a production enum change in the same commit as it.
 
 ## External values

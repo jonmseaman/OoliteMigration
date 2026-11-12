@@ -410,10 +410,10 @@ production enum changes in the same commit as it.
   in `src/Core/Scripting/OOJSConsole.cpp:222-223` with `OOEnumName`; check whether the global
   operators are found inside `namespace oo` and record the answer in the contract.
   **Accept:** `cd oolite-dev && rg -q 'enum class OODebugFlags' src/Core/Debug/OODebugFlags.h && ! rg -n '#define DEBUG_ALL' src`
-- [ ] T047 [P] [US5] P2: named enums local to a `.cpp` file (about 12) to `enum class` with
+- [X] T047 [P] [US5] P2: named enums local to a `.cpp` file (about 12) to `enum class` with
   `kPascalCase` enumerators.
   **Accept:** `cd oolite-dev && ! rg -n -P '^\s*(typedef\s+)?enum\s+(?!class\b)\w+' src --glob '*.cpp' --glob '!src/Core/MiniZip/**' --glob '!src/SDL/EXRSnapshotSupport/**'`
-- [ ] T048 [P] [US5] P3: anonymous enums that hold one constant → `inline constexpr` of the
+- [X] T048 [P] [US5] P3: anonymous enums that hold one constant → `inline constexpr` of the
   constant's natural type, areas `entities` and `core`.
   **Accept:** `cd oolite-dev && ! rg -U -n -P '\benum\s*(:\s*[\w:]+\s*)?\{\s*\w+\s*=\s*[^,{}]+,?\s*\}' src/Core --glob '!src/Core/{Scripting,Materials,Debug}/**'`
 - [ ] T049 [P] [US5] As T048, areas `scripting` and `sdl-debug`.
