@@ -493,7 +493,7 @@ production enum changes in the same commit as it.
   and `OOGUIScreenID` (ordinals 0…28); update the `.tbl` include in
   `tests/unit/core/test_OOJSSound.cpp` (ledger, *covered*).
   **Accept:** `cd oolite-dev && ls src/Core/Tables/*.tbl | grep -c tbl` prints 1 and `$C tbl`
-- [ ] T064 [US5] (design D5) Decide, per int-natured group, `enum class` or typed constants
+- [X] T064 [US5] (design D5) Decide, per int-natured group, `enum class` or typed constants
   (JS property IDs, GUI rows, `AXIS_*`/`BUTTON_*`, `STICKPROFILE_TYPE_*`, `GameViewKeys`,
   `OOPixMapFormat`, the debug TCP protocol numbers), defaulting as research R8 says; record each
   decision in research.md R8 and each typed-constant group in `exceptions.md`.

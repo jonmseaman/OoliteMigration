@@ -401,6 +401,44 @@ explicit strings before its rename.
 say "maintained by hand"; `switch (v_dir)` is now `HeadUpDisplay.cpp:4658` and `mode + 1` is now
 `PlayerEntityControls.cpp:2237`.
 
+**Design step D5 (T064, 2026-11-12), the int-natured groups.** One decision per group, taking R8's
+default where it gives one; T065–T068 carry them out. A group decided as typed constants has an
+`exceptions.md` row (category `enum`).
+
+- **D5: JS property IDs** (the 27 `kShip_*`-style enums) → `enum class … : std::int16_t`, the type
+  of QuickJS's `magic`; the `OOJS_PROPERTY_*` macros cast with `oo::ToUnderlying`, and each getter's
+  `switch` reads the enumerators through `using enum` inside the function. The numbers never leave
+  the program (QuickJS hands `magic` back unchanged), so nothing is pinned beyond `kShip_*` starting
+  at -128 (the comment there says why).
+- **D5: GUI rows** (`GUI_ROW_*OPTIONS_*`, `PlayerEntity.h`) → typed constants: they are row numbers
+  added to and compared with GUI row positions, not a set of choices. Each group's rows become
+  `inline constexpr int` constants, `GUI_FIRST_ROW()`/`GUI_ROW()` become `constexpr` functions, and
+  the two `#if GUI_FIRST_ROW() < 0` checks (always false, R14) become `static_assert`s that hold.
+- **D5: `AXIS_*`/`BUTTON_*`** (`OOJoystickManager.h`) → `enum class OOJoystickAxis` and
+  `OOJoystickButton`, each `: int`, with `kOOJoystickAxisCount`/`kOOJoystickButtonCount` as
+  `std::size_t` in place of `AXIS_end`/`BUTTON_end`, and the arrays they index `std::array`s
+  indexed through `oo::ToUnderlying`. Their numbers are the keys of the stick mappings saved in the
+  defaults (`ENUMKEY`, `OOJoystickManager.cpp:280-300`), so each is `static_assert`ed, with the
+  `OO_FOV_INFLIGHT_CONTROL_ENABLED` axis last as it is now.
+- **D5: `STICKPROFILE_TYPE_*`** (`OOJoystickProfile.h:61-62`, two `#define`s nothing reads) →
+  typed constants (`inline constexpr int`, values 1 and 2 kept): upstream's numbers for a stick
+  profile's type, with no code to give an enum a job, and not deleted (rule 7: no rewrite for its
+  own sake).
+- **D5: `GameViewKeys`** (`MyOpenGLView.h:93`) → typed constants (R8's default): the key codes
+  share one code space with characters and `OOKeyCode` and are compared and stored as those, so an
+  `enum class` would need a cast at every comparison. They become `inline constexpr int` constants
+  with today's names and values.
+- **D5: `OOPixMapFormat`** (`OOPixMap.h:57-62`) → typed constants (R8's default): a format's value
+  is its component count, multiplied into row and buffer sizes. `OOPixMapFormat` becomes an alias
+  of `int` and the four formats `inline constexpr OOPixMapFormat` constants keeping their `kOOPixMap`
+  names (the prefix is their namespace); `OOTextureDataFormat` and the `kOOTextureData*` constants
+  (T056) follow unchanged.
+- **D5: the debug TCP protocol numbers** (`OODebugTCPConsoleProtocol.h:311-321`) → typed constants:
+  they are bit masks and a packed version number on the wire, not choices, and the Python console
+  (`tests/component/console.py`) reads only the wire. They become `inline constexpr std::uint32_t`
+  constants, the `OOTCP_*VERSION*` macros `constexpr` functions, and `kOOTCPProtocolVersion_1_1_0`
+  is `static_assert`ed as `0x00010100`.
+
 ## R9. Tests and the ledger (FR-015)
 
 **Decision:** two files in this spec's directory, `exceptions.md` and `test-ledger.md`
