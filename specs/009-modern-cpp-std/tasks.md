@@ -420,7 +420,7 @@ production enum changes in the same commit as it.
   **Accept:** `cd oolite-dev && ! rg -U -n -P '\benum\s*(:\s*[\w:]+\s*)?\{\s*\w+\s*=\s*[^,{}]+,?\s*\}' src/Core/Scripting src/Core/Debug src/SDL --glob '!src/SDL/EXRSnapshotSupport/**'`
 - [X] T050 [P] [US5] As T048, area `materials`.
   **Accept:** `cd oolite-dev && ! rg -U -n -P '\benum\s*(:\s*[\w:]+\s*)?\{\s*\w+\s*=\s*[^,{}]+,?\s*\}' src/Core/Materials src/Core/OOOpenGL* src/Core/OOTexture*`
-- [ ] T051 [US5] P4: named header enums in `src/Core/Entities` (and `src/Core/OOTypes.h`,
+- [X] T051 [US5] P4: named header enums in `src/Core/Entities` (and `src/Core/OOTypes.h`,
   `src/Core/OOEntityEnums.h`) that are neither in `external-values.md` nor flags nor P9 groups
   (for example `OOPrimedEquipmentMode`, `OOAegisStatus`, `OOMassUnit`, `OOCargoFlag`), converted to
   the contract's shape.

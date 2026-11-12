@@ -53,3 +53,8 @@ that needs them; `reported` rows record a test this feature cannot edit, for Jon
 | `tests/unit/oofnd/test_plist_hdr_brightness_index.cpp` | the alias names | `NSInteger`/`NSUInteger`/`NSNotFound`/`NSTimeInterval`/`CGFloat` (and the `Max`/`Min` macros) → `std::ptrdiff_t`/`std::size_t`/`oo::kNotFound`/`double` (T033) | unchanged | covered | `00f9bb726` | |
 | `tests/unit/core/test_OOJSConsole.cpp` | 611, 612 | `DEBUG_LINKED_LISTS`/`DEBUG_SHADER_VALIDATION` → `oo::ToUnderlying(OODebugFlags::kLinkedLists)`/`oo::ToUnderlying(OODebugFlags::kShaderValidation)` (T046) | unchanged | covered | `310cd4480` | |
 | `tests/unit/core/test_Entity.cpp` | 514 | `DEBUG_LINKED_LISTS` → `oo::ToUnderlying(OODebugFlags::kLinkedLists)` (T046) | unchanged | covered | `310cd4480` | |
+| `tests/unit/core/test_OOCommodities.cpp` | 275, 276, 375 | `UNITS_TONS`/`UNITS_KILOGRAMS`/`UNITS_GRAMS` → `OOMassUnit::kTons`/`kKilograms`/`kGrams` (T051) | unchanged | covered | `db3e9dbbc` | |
+| `tests/unit/core/test_OOCommodityMarket.cpp` | 116-120 and a comment | `UNITS_*` → `OOMassUnit::k*` (T051) | unchanged | covered | `db3e9dbbc` | |
+| `tests/unit/core/test_OOConstToString.cpp` | 2 lines (one a comment) | `UNITS_TONS`/`UNITS_UNKNOWN` → `OOMassUnit::kTons`/`kUnknown` (T051) | unchanged | covered | `db3e9dbbc` | |
+| `tests/unit/core/test_OOJSPlanet.cpp`, `test_OOPlanetEntity.cpp`, `test_OOSunEntity.cpp` | 4, 4 and 1 lines | `STELLAR_TYPE_*` → `OOStellarBodyType::k*` (T051) | unchanged | covered | `db3e9dbbc` | |
+| `tests/unit/core/test_ShipEntity.cpp`, `test_ShipEntityAI.cpp` | 5 and 3 lines | `AEGIS_*` → `OOAegisStatus::k*`, `CARGO_FLAG_FULL_PASSENGERS` → `OOCargoFlag::kFullPassengers` (T051) | unchanged | covered | `db3e9dbbc` | |
