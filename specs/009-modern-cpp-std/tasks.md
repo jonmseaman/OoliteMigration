@@ -565,9 +565,13 @@ review every fix, convert the rest by hand per the contract's table.
   T105's Windows build is the first to compile them.
 - [X] T074 [US6] Area `scripting`.
   **Accept:** `cd oolite-dev && $C cast --area scripting`
-- [ ] T075 [US6] Areas `sdl-debug` and `oofnd`; casts from third-party macro expansions, if any are
+- [X] T075 [US6] Areas `sdl-debug` and `oofnd`; casts from third-party macro expansions, if any are
   reported, become `exceptions.md` rows.
   **Accept:** `cd oolite-dev && $C cast`
+  *Done (223ccc6fa).* No third-party macro expansion was reported, so no exceptions rows. The
+  oofnd test sweep found a T037 regression (`pointerDescription` printed `0x0` for a zero low word,
+  where printf's `%#x` printed `0`), fixed in cc94abb6d; `test_resourcepaths`' two Windows-home cases
+  fail at the C++20 base too and went to `baselines.md`.
 - [ ] T076 [US6] Make `google-readability-casting` fatal and add `-Wold-style-cast` to the game's
   warning flags in `src/meson.build` in the same commit. If T009 saved a base event log, repeat it
   on a Windows machine into `.agent-tmp/events/m5.log` (US6 AS-4).
