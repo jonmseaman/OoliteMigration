@@ -368,7 +368,7 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   **Accept:** `cd oolite-dev && ! rg -U -n -P 'oo::str::format\s*\(\s*"' src/Core/Scripting`
 - [X] T039 [US4] As T037, area `materials`.
   **Accept:** `cd oolite-dev && ! rg -U -n -P 'oo::str::format\s*\(\s*"' src/Core/Materials src/Core/OOOpenGL* src/Core/OOTexture*`
-- [ ] T040 [US4] As T037, area `sdl-debug`.
+- [X] T040 [US4] As T037, area `sdl-debug`.
   **Accept:** `cd oolite-dev && ! rg -U -n -P 'oo::str::format\s*\(\s*"' src/SDL src/Core/Debug`
 - [ ] T041 [US4] As T037, area `core` (leave `OOShipLibraryDescriptions.cpp:154,161,171`'s data
   formats).
