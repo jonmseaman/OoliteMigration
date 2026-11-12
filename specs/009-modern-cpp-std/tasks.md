@@ -729,6 +729,9 @@ edits.**
   with its `MissingIncludes: false` option so new unused includes are reported, and make it fatal
   once the count is zero. Test files' removed includes go in the ledger (*covered*: no assertion
   changes). Run it last of the code changes, after T107: every task before it moves includes.
+  (On macOS add `-extra-arg=-isysroot$(xcrun --show-sdk-path)` to the accept's `run-clang-tidy`, as
+  `mk.sh tidy` does. Checked 2026-11-12: `GuiDisplayGen.cpp` alone reports five, `cstdint` and
+  `OODescription.h` among them.)
   **Accept:** `cd oolite-dev && test "$(/opt/homebrew/opt/llvm@22/bin/run-clang-tidy -p . -quiet -checks='-*,misc-include-cleaner' -config='{CheckOptions: {misc-include-cleaner.MissingIncludes: false}}' '^(?!.*/(MiniZip|EXRSnapshotSupport)/).*/(src|tests/unit)/.*\.cpp$' 2>/dev/null | grep -c 'warning:.*misc-include-cleaner')" -eq 0`
 - [ ] T105 On a Windows machine: `tests/run.sh all` on Clang and on GCC
   (`--native-file=gcc.ini`); the unit suites under ASan (`meson setup <dir> -Db_sanitize=address`)
