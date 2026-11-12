@@ -48,9 +48,20 @@ history).
 
 ## R2. Third-party code layout: should there be a `vendor/` directory?
 
-The question (Jon, 2026-11-12): other repos keep externally owned code in `vendor/`, so it is
-clear what is not theirs. Here MiniZip sits in `src/Core/MiniZip/`, and `subprojects/` holds
-QuickJS-ng, which replaced SpiderMonkey (formerly an OoliteProject repository).
+The question (Jon, 2026-11-12): other repos keep externally owned code in `vendor/` or
+`third_party/`, so it is clear what is not theirs. Here MiniZip sits in `src/Core/MiniZip/`, and
+`subprojects/` holds QuickJS-ng.
+
+**How upstream got here.** Until April 2026 upstream kept its dependencies in `deps/`, as git
+submodules of OoliteProject repositories: SpiderMonkey at `deps/mozilla` (`spidermonkey-ff4`),
+prebuilt libraries in `deps/Windows-deps`, `Linux-deps` and `Cross-platform-deps`, and
+`deps/libogg`, `deps/libvorbis`. Those submodules were removed between 2026-04-03 and 2026-04-24
+(#597, #604), and the copied SDL3 headers on 2026-04-28. Upstream switched to meson in June
+(#665) without wraps. It has no `deps/` and no `subprojects/`: libraries come from the system,
+and SpiderMonkey is still its engine, installed as a prebuilt package by
+`ShellScripts/Windows/install_deps.sh` (its source repository still exists; only the submodule
+went). `subprojects/` exists only in the fork, since 2026-10-20 ("Add QuickJS-ng proof of
+concept for replacing SpiderMonkey", #580).
 
 **What the tree has now:**
 
@@ -82,8 +93,11 @@ are not).
 copy into `subprojects/<name>/` as a tracked local subproject with its own `meson.build`, its
 licence file, and a `README` naming its origin, version and local changes. That makes one
 directory hold everything not ours (meson's convention, so `force_fallback_for` and
-`meson subprojects` keep working). The alternative is a top-level `vendor/` or `third_party/`,
-which other repos use; it is one more convention beside `subprojects/` that meson does not know.
+`meson subprojects` keep working). Alternatives to weigh there: rename the directory to
+`third_party/` with `project(..., subproject_dir: 'third_party')`, which keeps meson's mechanism
+under the name most C++ codebases use (Chromium, TensorFlow, gRPC) and costs nothing against
+upstream, which has neither directory; or a separate top-level `vendor/` or `third_party/`
+beside `subprojects/`, which splits external code across two directories.
 Proposed as a separate session, not part of this plan.
 
 ## R3. Coexistence of the two harnesses
