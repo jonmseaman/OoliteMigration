@@ -11,8 +11,10 @@
 ## Context
 
 Today the space view has a single "Field Of View" option in Game Options. The game draws one flat
-perspective view sized from that value: on screens up to 4:3 the value sets the horizontal angle,
-and on wider screens the vertical angle stays fixed and the horizontal angle grows with the width.
+perspective view sized from that value (default 57.2°, range 30–80°): on screens 4:3 or wider the
+value is the horizontal angle and the vertical angle shrinks as the window gets wider; on
+narrower screens the vertical angle is fixed at what a 4:3 screen would have. The 80° limit is
+below the G9's physical 84° at 80 cm.
 Nothing about the physical screen is known, so on a 32:9 "double wide" monitor the outer thirds of
 the view are stretched sideways, and on a curved monitor the flat image is bent around the curve,
 which stretches the edges further. Ships, planets and the station look the right shape only near
