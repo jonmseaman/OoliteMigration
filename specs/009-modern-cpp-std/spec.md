@@ -302,7 +302,7 @@ reuses the method US4 settles for `oo::str::format`, so it comes after US4 and U
 formatting calls and 28 C string-function and parse calls. After: the C string functions and
 `printf`-family formatting are gone from first-party C++ and the static checks fail on a new one;
 every remaining `const char*` and `char` buffer is a string literal's type or on the exceptions
-list with the C interface it serves; the save round trip, the log-capturing tests and every test
+list with the C interface it serves; the save round trip, `test_FormatEquivalence` and every test
 tier pass with the same results.
 
 **Acceptance Scenarios**:
@@ -478,8 +478,10 @@ tier pass with the same results.
 
 - **FR-026**: First-party C++ MUST NOT call the C string functions or the `printf` family listed
   in Story 7's first acceptance scenario, except where a C interface's contract requires one
-  (each on the exceptions list). Formatting MUST keep its output byte for byte, converted call by
-  call by the method US4 uses.
+  (each on the exceptions list). The one standing exception is `oofnd`'s printf engine
+  (`std::vsnprintf` inside `oo::str::vformat`, `OORaiseException` and `OOCAssert`), which data
+  formats in printf syntax still need. Formatting MUST keep its output byte for byte, converted
+  call by call by the method US4 uses.
 - **FR-027**: Text MUST be `std::string` when owned and `std::string_view` when borrowed;
   `std::optional` of either where the code distinguishes "no text" from "empty". A `const char*` or
   `char` buffer MAY remain only as a string literal's type or at a C interface that needs it, and a
@@ -490,9 +492,13 @@ tier pass with the same results.
 
 **Guards and records**
 
-- **FR-021**: Each converted category (C allocation, the removed `oofnd` types, unscoped enums,
-  enumerator naming, C-style casts, the C string functions and `printf`-family formatting) MUST be guarded by a check that fails when the category comes back, run with
-  the project's existing static checks, without suppressions.
+- **FR-021**: Each of these converted categories MUST be guarded by a check that fails when it
+  comes back, run by the project's static checks (clang-tidy through `./mk.sh tidy`, locally and in
+  CI) or by the compiler, without suppressions: C allocation, the removed `oofnd` types and thread
+  functions, unscoped enums, enumerator naming, C-style casts, and the C string functions and
+  `printf`-family formatting. The macro constant sets and the `.tbl` tables are converted and
+  recorded but not guarded: the only checks that could guard them also flag code outside this
+  feature's scope (research R3).
 - **FR-022**: The exceptions list and the test-change ledger MUST live in this spec's directory;
   each entry gives the file, the reason and, for exceptions, the interface that requires it.
 - **FR-023**: The docs that disagree with this feature MUST be updated as part of it: the Phase 4p
@@ -532,8 +538,8 @@ tier pass with the same results.
   report nothing new.
 - **SC-006**: A game saved on the base and loaded and re-saved on the branch without play produces
   the same entries; the script API snapshot and the expansion corpus results are unchanged.
-- **SC-007**: Reintroducing any converted category in a single line fails the static checks on the
-  next run, naming the file and line.
+- **SC-007**: Reintroducing any category FR-021 guards, in a single line, fails the static checks
+  or the build on the next run, naming the file and line.
 - **SC-008**: Entity-heavy scenes and game loading are no slower than the base beyond the noise
   tolerance of the project's performance measurements (spec 006), and quitting with a background
   task in flight takes no longer than on the base.

@@ -47,6 +47,10 @@ In `.github/workflows/build-all.yaml`, after the Arch build: `./mk.sh tidy`. It 
 exactly when `./mk.sh tidy` fails. If it takes more than 15 minutes, it is restricted to the
 translation units of files changed against the merge base, and a full run is added on a schedule.
 
+Not guarded (FR-021): the macro constant sets and the `.tbl` tables; their searches in
+data-model.md run by hand. `vsnprintf` is left out of `CustomFunctions` because `oofnd`'s printf
+engine keeps it (FR-026).
+
 Not used (research R3): `cppcoreguidelines-owning-memory` (needs `gsl::owner` annotations) and
 `modernize-macro-to-enum` (flags plain numeric constants that are out of scope). The macro sets
 are guarded by the per-set searches in data-model.md.

@@ -69,7 +69,9 @@ check: deleting their headers makes any reintroduction a compile error.
   by the exceptions list and review instead. `modernize-macro-to-enum` flags any run of adjacent
   integer macros, including the hundreds of plain numeric constants (`HeadUpDisplay.h` alone has
   156) that are not enumerations and are out of scope; the about 10 macro sets are listed in
-  data-model.md with a search each instead.
+  data-model.md with a search each instead. Those searches, and the `.tbl` file count, run only by
+  hand through the planning repo's `check.sh`, which CI does not run, so FR-021 does not count
+  them as guards (decided 2026-11-11, `/speckit-analyze` finding G2).
 - The three checks used, and the two rejected, all exist in clang-tidy 22.1.8 (604 checks). Nothing runs clang-tidy today: not CI,
   not `mk.sh` (only a comment at `:92`), not `tests/run.sh`. So the CI step is new; it is the
   first thing that makes `WarningsAsErrors` mean anything.
@@ -533,7 +535,8 @@ behind `bugprone-unsafe-functions`.
 - **Guard:** `bugprone-unsafe-functions` is already fatal through `bugprone-*`, with its default
   list. Its `CustomFunctions` option takes the extra names (`strcpy`, `strncpy`, `strcat`,
   `strncat`, `strcmp`, `strncmp`, `strcasecmp`, `strlen`, `strdup`, `strchr`, `strrchr`,
-  `strstr`, `strtok`, `sprintf`, `snprintf`, `vsnprintf`, `atoi`, `atof`), each with its
+  `strstr`, `strtok`, `sprintf`, `snprintf`, `atoi`, `atof`; not `vsnprintf`, which `oofnd`'s
+  printf engine keeps for printf-syntax data formats, FR-026), each with its
   replacement as the message (checked with clang-tidy 22 on a sample). Because the check is
   already fatal, the option is added in the commit that brings the count to zero, not before.
   `const char*` itself has no clean check: it is tracked by a search and the exceptions list.

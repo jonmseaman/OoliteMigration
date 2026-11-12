@@ -10,7 +10,7 @@ A pattern the feature removes. One row per category, kept here and updated at ea
 
 | Field | Meaning |
 |---|---|
-| id | `alloc`, `ownership`, `thread`, `oofnd`, `enum`, `macro-set`, `tbl`, `naming` |
+| id | `alloc`, `ownership`, `thread`, `oofnd`, `enum`, `macro-set`, `tbl`, `naming`, `cast`, `cstring` |
 | search | the command that counts it (below); fails a bead's acceptance before, passes after |
 | guard | the clang-tidy check, or "definition deleted" ([contracts/guards.md](contracts/guards.md)) |
 | before | the search's line count on the base, `518520d43`, measured 2026-11-11 |
@@ -50,8 +50,8 @@ names as text (research R7); they are data and are not changed.
 | thread | 7 lines (5 calls, 2 definitions) | definition deleted | M2 |
 | oofnd | 1,505 lines (including `oofnd`'s own definitions) | definition deleted | M3 |
 | enum | 179 lines | `cppcoreguidelines-use-enum-class` | M4 |
-| macro-set | about 10 sets (listed below) | one search per set | M4 |
-| tbl | 11 files | (file count) | M4 |
+| macro-set | about 10 sets (listed below) | none (FR-021, research R3); one search per set, run by hand | M4 (converted, not fatal) |
+| tbl | 11 files | none (FR-021, research R3); file count, run by hand | M4 (converted, not fatal) |
 | naming | 0 converted | `readability-identifier-naming` | M8 |
 | cast | the `google-readability-casting` count in M0's `./mk.sh tidy` (regex: about 690 lines) | `google-readability-casting`; `-Wold-style-cast` | M5 |
 | cstring | 66 call lines by the search (2026-11-11); 815 `const char*` and `char[N]` lines tracked | `bugprone-unsafe-functions.CustomFunctions` | M6 |

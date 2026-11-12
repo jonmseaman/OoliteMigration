@@ -96,7 +96,7 @@ Format only the `src/` files you changed:
   *Surviving component*).
 - For the format conversion, before each area's commit: a local build with
   `-Wformat-signedness` reports nothing for the area (not committed until the whole tree is clean),
-  and the save round-trip test and the log-capturing tests pass.
+  and the save round-trip test and `test_FormatEquivalence` pass.
 
 ## M4 — enums P1–P9 (US5)
 
@@ -130,7 +130,7 @@ Format only the `src/` files you changed:
   type or an `exceptions.md` row.
 - Every C call in the converted areas takes `c_str()` or a literal (review against
   [contracts/strings.md](contracts/strings.md)).
-- Save round trip and the log-capturing tests pass; ASan smoke clean.
+- Save round trip and `test_FormatEquivalence` pass; ASan smoke clean.
 
 ## M7 — ownership (US2)
 

@@ -54,7 +54,7 @@ Boundary rules:
     ^::strlen$,std::string_view::size,;^::strdup$,std::string,;^::strchr$,std::string_view::find,;
     ^::strrchr$,std::string_view::rfind,;^::strstr$,std::string_view::find,;
     ^::strtok$,oo::str::split,;^::sprintf$,std::format,;^::snprintf$,std::format,;
-    ^::vsnprintf$,std::vformat,;^::atoi$,std::from_chars,;^::atof$,std::from_chars,
+    ^::atoi$,std::from_chars,;^::atof$,std::from_chars,
   ```
 
   The exact regular expressions (with or without `std::`) are confirmed against clang-tidy
