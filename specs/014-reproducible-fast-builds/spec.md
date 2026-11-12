@@ -1,7 +1,8 @@
 # Feature Specification: Reproducible, fast builds
 
 **Feature Branch**: `014-reproducible-fast-builds` (game work on `feature/reproducible-fast-builds`
-in `oolite-dev`, cut from `develop`)
+in `oolite-dev`, appended with Git Town to `seriesb/026-migration-completion`, the top of the
+`seriesb/*` stack, at a3d651a4d or later)
 
 **Created**: 2026-11-12
 
@@ -20,15 +21,19 @@ better to just count the differences in total number of compilations before/afte
 
 The same commit, built twice, should give the same bytes. A build should do only the work its
 changes require: a new commit should not recompile the game, a source should be compiled once per
-flavour, and a build with nothing to do should do nothing. Today none of these holds, and the
-biggest cost is not a date in the source but the version and commit date on every compile line.
+flavour, and a build with nothing to do should do nothing. None of these holds yet. The biggest
+cost was never a date in the source. On `develop` and upstream it is the version and commit date
+on every compile line. The base has moved those into a generated header, but a version change
+still recompiles the game's two slowest files and relinks 71 test executables.
 
 ## Context
 
 The numbers and how they were taken are in [baseline/counts.md](baseline/counts.md); the scripts
-are next to it. They were counted on a throwaway worktree of `develop` (3aa8d65e8) by configuring
-each flavour twice with different versions and walking the build graph. The method predicts the
-230 recompiles a real build measured.
+are next to it. They were counted on throwaway worktrees of the base (a3d651a4d) and of `develop`
+(3aa8d65e8), by configuring each flavour twice with different versions and walking the build
+graph. Every number below is the base's unless it says `develop`. `develop`'s numbers are kept
+because they answer Jon's question about the date and version on the compile line. The method
+predicts the 230 recompiles a real `develop` build measured.
 
 ### Where date and time come in
 
@@ -36,9 +41,9 @@ each flavour twice with different versions and walking the build graph. The meth
   `subprojects/` uses `__DATE__`, `__TIME__` or `__TIMESTAMP__`. Upstream's window title did,
   from 2007 until `mk.sh` arrived (a8818f549, 2026-07-15). It now shows the commit date, and
   neither tree uses `__DATE__`.
-- **The version and the commit date are passed in on the compile line.** On `develop`, `meson.build`
-  passes `OO_VERSION_FULL`, `OO_BUILD_DATE` and `OO_BUILDER` to every game compile with
-  `add_project_arguments`. That is 230 of the deployment build's 240 compile lines; QuickJS-ng's
+- **On `develop`, the version and the commit date are passed in on the compile line.** There,
+  `meson.build` passes `OO_VERSION_FULL`, `OO_BUILD_DATE` and `OO_BUILDER` to every game compile
+  with `add_project_arguments`. That is 230 of the deployment build's 240 compile lines; QuickJS-ng's
   own compiles don't get them. Every date and time involved is the HEAD commit's committer time,
   not the wall clock. In all three of Jon's build directories the recorded `buildtime` equals its
   commit's time to the minute. So a new day changes nothing. But the version string is
@@ -53,12 +58,12 @@ each flavour twice with different versions and walking the build graph. The meth
   day it is never matters; the commit, the branch and the clean or dirty state do. Upstream
   (OoliteProject `4bb1f53de`) and the fork's `master` do the same; `develop` inherited it.
   `develop`'s `mk.sh` has no compiler cache either (56fa88a55 adds it), so nothing softens it.
-- **A fix exists, off `develop`.** `oolite-dev` commit fa5e7e7e6 moves the three values into a
-  generated header, `OOVersion.h`, included by five files. With it, a commit reruns 5 compiles in
-  every flavour, but still relinks 66 core test executables in test and dev. Two of the five are
-  `PlayerEntity.cpp` and `Universe.cpp`, the game's two slowest compiles (17.4 s and 15.1 s). The
-  fix, and fa5e7e7e6's companion 56fa88a55 (ccache on by default when installed), are on
-  `feature/double-wide-support` and `seriesb/026-migration-completion`, not on `develop`.
+- **On the base, they are in a generated header.** The base carries fa5e7e7e6, which writes the
+  three values into `OOVersion.h`, included by five files, and 56fa88a55, which compiles through
+  ccache by default when it is installed. So a new commit, branch switch or first edit reruns 5
+  compiles in every flavour, but still relinks 71 core test executables in test and dev. Two of
+  the five are `PlayerEntity.cpp` and `Universe.cpp`, the game's two slowest compiles (17.4 s and
+  15.1 s).
 - **Wall-clock time does reach the outputs**, after compiling: each `oolite.exe` carries its link
   time in its PE header, `strip` stamps the copy it strips again, and every documentation PDF
   carries the build's time to the second. None of these slows the build. They stop two builds of
@@ -72,13 +77,14 @@ each flavour twice with different versions and walking the build graph. The meth
 
 `get_version.sh` runs at configure time, caches its results in the build directory's
 `.meson_version`, and hands them on as follows. The examples are from Jon's `build/meson_test`
-(commit a3d651a, clean).
+(commit a3d651a, the base itself, clean). On the base, the first three go into `OOVersion.h`; on
+`develop`, they go onto every game compile line as `-D` defines.
 
 | Value | Example | Comes from | Goes to |
 |---|---|---|---|
-| `ver_full` | `1.93.1-double-wide-support.1` | an exact tag, else `gitversion` SemVer (branch label and commit count); `+dirty.N` with uncommitted changes | `-DOO_VERSION_FULL` on every game compile; the meson project version; manifest `version`; macOS `Info.plist` |
-| `app_date` | `2026-11-12` | HEAD's committer date, UTC | `-DOO_BUILD_DATE` on every game compile (shown in the window title) |
-| `builder` | `unknown` | `OoliteProject` when `GITHUB_REPOSITORY` is `OoliteProject/oolite` | `-DOO_BUILDER` on every game compile |
+| `ver_full` | `1.93.1-double-wide-support.1` | an exact tag, else `gitversion` SemVer (branch label and commit count); `+dirty.N` with uncommitted changes | `OO_VERSION_FULL` in `OOVersion.h`; the meson project version; manifest `version`; macOS `Info.plist` |
+| `app_date` | `2026-11-12` | HEAD's committer date, UTC | `OO_BUILD_DATE` in `OOVersion.h` (shown in the window title) |
+| `builder` | `unknown` | `OoliteProject` when `GITHUB_REPOSITORY` is `OoliteProject/oolite` | `OO_BUILDER` in `OOVersion.h` |
 | `buildtime` | `2026.11.12 04:26` | HEAD's committer time, UTC, or `mk.sh --buildtime` | manifest `build_time`; the Linux metainfo date is read back from it |
 | `ver_quad` | `1.93.1.68` | the version plus the commits since the closest tag; with uncommitted changes, the number of changed files | manifest `version_quad`; macOS `Info.plist` |
 | `ver_githash` | `a3d651a` | `git rev-parse --short=7 HEAD`, plus `-dirty` | manifest `git_commit_hash`; the cache key |
@@ -92,13 +98,14 @@ bundle step, so they cost no compile, but they change the bundle per commit, as 
 
 `src/oofnd/meson.build` hands `Exception.cpp` and `objc/OOAssert.cpp` to consumers as the
 `sources:` of `oofnd_objc_dep`. Meson compiles a dependency's sources into every target that uses
-it. So in test and dev each file is compiled 177 times: once for the game, once per test
-executable. That is **352 of the 806 compiles**. The core unit tests already reuse the game's own
-objects through `extract_objects`, so the rest of the game is compiled once.
+it. So in test and dev each file is compiled 185 times: once for the game, and once for each of
+the 182 core test executables and the two oofnd `objc` tests. That is **370 of the 831 compiles**,
+368 of them copies. The core unit tests already reuse the game's own objects through
+`extract_objects`, so the rest of the game is compiled once.
 
 ### Other costs found
 
-- **Unit-test links in the LTO flavours.** The test flavour builds with ThinLTO. Each of the 174
+- **Unit-test links in the LTO flavours.** The test flavour builds with ThinLTO. Each of the 182
   core test executables links the game's objects, which are LLVM bitcode, so each link runs
   ThinLTO code generation over them again. Jon's logs put these links at about 90 s each (wall
   time on a busy machine). The game's own link (deployment 17–29 s) is the only one with a ThinLTO
@@ -115,19 +122,22 @@ objects through `extract_objects`, so the rest of the game is compiled once.
 
 | Change | deployment | dev | test |
 |---|---|---|---|
-| New commit, branch switch, or first edit after a commit (`develop`) | 230 compiles, LTO game link, bundle | 796 compiles, 214 test links, game link, bundle | as dev, every link LTO |
-| The same (fa5e7e7e6) | 5 compiles, LTO game link, bundle | 5 compiles, 66 test links, game link, bundle | as dev, every link LTO |
-| Edit `OOColor.cpp` | 1 compile, LTO game link, bundle | 1 compile, 84 test links, game link, bundle | as dev, every link LTO |
-| Edit `Universe.cpp` | 1 compile, LTO game link, bundle | 1 compile, 66 test links, game link, bundle | as dev, every link LTO |
+| New commit, branch switch, or first edit after a commit | 5 compiles, LTO game link, bundle | 5 compiles, 71 test links, game link, bundle | as dev, every link LTO |
+| The same on `develop` | 230 compiles, LTO game link, bundle | 796 compiles, 214 test links, game link, bundle | as dev, every link LTO |
+| Edit `OOColor.cpp` | 1 compile, LTO game link, bundle | 1 compile, 89 test links, game link, bundle | as dev, every link LTO |
+| Edit `Universe.cpp` | 1 compile, LTO game link, bundle | 1 compile, 71 test links, game link, bundle | as dev, every link LTO |
+| Full build | 241 compiles, 5 links | 831 compiles, 227 links | as dev, every link LTO |
 
 ### Optimisation level for dev
 
 Jon asked whether building dev at `-O0` would save time. Measured on one compile at a time, `-O0`
-saves 10% (`OOColor.cpp`) to 61% (`PlayerEntity.cpp`) of a compile's CPU time. The project pins
-`-O2` on purpose: the top-level `meson.build` says a float result recorded at one optimisation
-level is not comparable to a run at another. The debug flavour already builds at `-O0`. Dev's
-extra cost over deployment is mostly not optimisation: its full build runs 566 more compiles
-(unit tests, and the 352 copies above) and 214 more links. This feature removes most of that.
+saves 10% (`OOColor.cpp`) to 61% (`PlayerEntity.cpp`) of a compile's CPU time. `-O2` used to be
+pinned for float comparability with the golden tests. On the base, the goldens are gone, and
+3902c8903 removed that reason along with the `-ffp-contract=off` pin. `optimization=2` is now
+just the project's default, and every flavour but debug uses it. The debug flavour already
+builds at `-O0`. Dev's
+extra cost over deployment is mostly not optimisation: its full build runs 590 more compiles
+(unit tests, and the 368 copies above) and 222 more links. This feature removes most of that.
 The default is in *Decisions taken by default*.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -142,8 +152,9 @@ Jon commits a change to one file, or switches to a branch a few commits away, an
 changed sources recompile, plus at most one small unit that holds the version. The game relinks.
 No unit-test executable relinks because the version changed.
 
-**Why this priority**: It is what Jon suspected, and the biggest cost found: on `develop` every
-commit recompiles 230 objects in deployment and 796 in test and dev.
+**Why this priority**: It is what Jon suspected. On the base, every commit, branch switch or first
+edit still recompiles the game's two slowest files and relinks 71 test executables. On `develop`
+and upstream, it recompiles 230 objects in deployment and 796 in test and dev.
 
 **Independent Test**: Configure a flavour with one version and build it. Configure it with
 another version and run the build tool's dry run, or `baseline/graph.py`: it lists at most one
@@ -171,7 +182,7 @@ binary against its commit, and it keeps compiler-cache hits honest.
 
 **Independent Test**: A check script builds a flavour twice from one commit, in two directories,
 with the clock moved on between them. It compares the two bundles file by file and exits nonzero
-on any difference, naming the files. It fails on `develop` (PE header times, `strip` times, PDF
+on any difference, naming the files. It fails on the base (PE header times, `strip` times, PDF
 dates) and passes once the feature is in.
 
 **Acceptance Scenarios**:
@@ -192,7 +203,7 @@ dates) and passes once the feature is in.
 An agent runs `./mk.sh build test`. Each source file is compiled once for the flavour.
 `Exception.cpp` and `OOAssert.cpp` are no longer compiled for every test executable.
 
-**Why this priority**: It is the Stack Overflow case. It removes 352 of the 806 compiles in test
+**Why this priority**: It is the Stack Overflow case. It removes 368 of the 831 compiles in test
 and dev, on every clean build and every compiler upgrade.
 
 **Independent Test**: Count the compile steps in a configured test or dev tree (`graph.py`
@@ -202,9 +213,9 @@ different flags, and each of those is listed with its reason.
 **Acceptance Scenarios**:
 
 1. **Given** a configured test or dev tree, **When** its compile steps are counted, **Then**
-   there are at most 456 (806 today), and `Exception.cpp` and `OOAssert.cpp` appear once each,
+   there are at most 465 (831 today), and `Exception.cpp` and `OOAssert.cpp` appear once each,
    or twice where game and tests need different flags.
-2. **Given** the unit suites, **When** they run, **Then** the same tests pass as on `develop`.
+2. **Given** the unit suites, **When** they run, **Then** the same tests pass as on the base.
 
 ---
 
@@ -213,7 +224,7 @@ different flags, and each of those is listed with its reason.
 An agent edits one game source and runs `./mk.sh build test`. The core test executables that
 relink do not each run link-time code generation over the whole game.
 
-**Why this priority**: These links are the largest cost in the test flavour (174 links, about 90 s
+**Why this priority**: These links are the largest cost in the test flavour (182 links, about 90 s
 each in Jon's logs), and every agent session builds that flavour.
 
 **Independent Test**: In a built test tree, touch one game source, rebuild, and measure the CPU
@@ -225,7 +236,7 @@ time of one whole-game core test link. Compare it with the same link before the 
    link spends at most 5 s of CPU time, and the game's own link is still optimised as now.
 2. **Given** the core unit tests, **When** they run in the test flavour, **Then** they still
    exercise the game's objects built with the flavour's compile flags, and the same tests pass as
-   on `develop`.
+   on the base.
 
 ---
 
@@ -277,7 +288,7 @@ file and rebuild: the bundle's copy matches, and no compile or link ran.
 
 A clean build spends less time parsing the same headers in every source.
 
-**Why this priority**: Header parsing is most of a small file's compile, and it is paid 240 times
+**Why this priority**: Header parsing is most of a small file's compile, and it is paid 241 times
 per flavour. The win has to be measured before it is taken.
 
 **Independent Test**: Measure the total compile CPU time of a clean game build with and without a
@@ -329,10 +340,11 @@ precompiled header, compile by compile with `baseline/o0_vs_o2.py`'s method.
 
 - **FR-001**: The version, commit date and builder MUST reach the game through one translation
   unit that holds only those values. Every other unit gets them through a declaration, so a
-  version change recompiles that one unit and nothing else. Today it recompiles 230 (deployment)
-  or 796 (test, dev); with fa5e7e7e6, 5.
-- **FR-002**: A version change MUST NOT relink any unit-test executable. Test executables link a
-  fixed stand-in for the version unit, unless a test needs the real value (edge case above).
+  version change recompiles that one unit and nothing else. On the base it recompiles 5,
+  including the two slowest; on `develop`, 230 (deployment) or 796 (test, dev).
+- **FR-002**: A version change MUST NOT relink any unit-test executable (71 relink on the base).
+  Test executables link a fixed stand-in for the version unit, unless a test needs the real value
+  (edge case above).
 - **FR-003**: The version MUST be computed when the game is built, not only at configure time.
   The game shows the version and date of the commit it was built from, whether the build ran
   through `mk.sh` or the build tool directly. If the values have not changed, the version unit's
@@ -356,8 +368,8 @@ precompiled header, compile by compile with `baseline/o0_vs_o2.py`'s method.
   deployment, test and dev with Clang, and for deployment with GCC. The debug flavour is held to
   the edge case above.
 - **FR-010**: A check MUST build a flavour twice in two directories and compare the bundles file
-  by file. It exits nonzero and names each differing file. It fails on `develop` today and passes
-  with the feature. The plan decides whether CI runs it.
+  by file. It exits nonzero and names each differing file. It fails on the base and passes with
+  the feature. The plan decides whether CI runs it.
 - **FR-011**: Each source MUST be compiled once per flavour, unless two of its compiles need
   different flags. Those are listed with their reason. `Exception.cpp` and `OOAssert.cpp` stop
   being compiled into every consumer.
@@ -372,23 +384,25 @@ precompiled header, compile by compile with `baseline/o0_vs_o2.py`'s method.
 - **FR-015**: The bundle step MUST rebuild documentation only when documentation sources change.
   It MUST copy a changed resource on the next build without a compile or link, and MUST keep
   each build directory's documentation separate from every other's.
-- **FR-016**: The compiler cache MUST be used by default when it is installed, and skipped
-  cleanly when it is not, as in 56fa88a55. `--no-ccache` still turns it off. A clean rebuild of
+- **FR-016**: The compiler cache MUST stay on by default when it is installed and be skipped
+  cleanly when it is not, as the base does (56fa88a55). `--no-ccache` still turns it off. A clean rebuild of
   an already-built commit, including from a second checkout directory, MUST be served from the
   cache (SC-008).
 - **FR-017**: The plan MUST measure a precompiled header for the game's sources (User Story 7). It
   is adopted only if it meets that story's bar, and the measurement is recorded either way.
 - **FR-018**: The game's behaviour MUST NOT change. The unit, component and smoke suites that
-  pass on `develop` pass on the branch. For the same commit, the version, build date and builder
-  the game shows are the same text as on `develop`.
-- **FR-019**: The flavours keep their meaning: deployment, test and dev stay at the pinned `-O2`,
+  pass on the base pass on the branch. For the same commit, the version, build date and builder
+  the game shows are the same text as on the base.
+- **FR-019**: The flavours keep their meaning: deployment, test and dev stay at `-O2`,
   test and deployment keep LTO, and CI keeps calling `./mk.sh build <flavour>` (see *Decisions
   taken by default* on dev and `-O0`).
 - **FR-020**: Changes under `tests/` MUST be build wiring only (`meson.build`, the stand-in
   version unit). No test source, assertion or expected value changes (hard rule 1). Each wiring
   change is listed in the plan.
 - **FR-021**: `docs/current-state.md` MUST say how the version reaches the game, what is
-  reproducible and with which check, and which paths stay in a bundle (the toolchain's own).
+  reproducible and with which check, and which paths stay in a bundle (the toolchain's own). It
+  MUST stop saying that `-ffp-contract=off` and a pinned `-O` keep floating point reproducible:
+  the base has neither (3902c8903).
 
 ### Key Entities
 
@@ -408,14 +422,14 @@ precompiled header, compile by compile with `baseline/o0_vs_o2.py`'s method.
 
 ### Measurable Outcomes
 
-- **SC-001**: After a version change, a built deployment tree reruns at most 1 compile (230 today),
-  the game link and the bundle step. A built test or dev tree reruns at most 1 compile and 0
-  unit-test links (796 compiles and 214 test links today).
-- **SC-002**: A full test or dev build runs at most 456 compiles (806 today), and no source is
-  compiled more than once without a listed reason.
+- **SC-001**: After a version change, a built deployment tree reruns at most 1 compile (5 on the
+  base, 230 on `develop`), the game link and the bundle step. A built test or dev tree reruns at
+  most 1 compile and 0 unit-test links (5 compiles and 71 test links on the base).
+- **SC-002**: A full test or dev build runs at most 465 compiles (831 on the base), and no source
+  is compiled more than once without a listed reason.
 - **SC-003**: The reproducibility check (FR-010) passes for deployment, test and dev with Clang,
   and for deployment with GCC: zero differing files between two builds made at different times
-  in different directories. On `develop` it reports at least the executable and the PDFs.
+  in different directories. On the base it reports at least the executable and the PDFs.
 - **SC-004**: A second `./mk.sh build <flavour>` with nothing changed runs 0 build steps and no
   configure.
 - **SC-005**: After a new commit, the game's `--version` output and log header show that commit's
@@ -426,7 +440,7 @@ precompiled header, compile by compile with `baseline/o0_vs_o2.py`'s method.
   bundle is updated with 0 compiles and 0 links.
 - **SC-008**: With the compiler cache on, a clean rebuild of an already-built commit gets cache
   hits on at least 95% of its compiles, both in the same directory and in a second checkout.
-- **SC-009**: Every unit, component and smoke test that passes on `develop` passes on the branch,
+- **SC-009**: Every unit, component and smoke test that passes on the base passes on the branch,
   and the Clang and GCC builds pass the warning gate.
 - **SC-010**: A precompiled header is adopted with at least a 25% cut in a clean game build's
   compile CPU time, or the plan records the measurement that ruled it out.
@@ -449,13 +463,16 @@ precompiled header, compile by compile with `baseline/o0_vs_o2.py`'s method.
 
 ### Decisions taken by default
 
-- **Dev stays at `-O2`.** Jon asked about building dev at `-O0`. Default: no. The pinned `-O2`
-  exists so float results compare across builds, and the debug flavour already gives `-O0`.
-  Measured, `-O0` saves 10–61% of a compile's CPU time. Dev's extra cost over deployment is
-  mostly unit-test work this feature removes. After this feature, a one-source edit in dev costs
-  1 compile, a non-LTO game link and the bundle step, plus its unit-test links. That should
-  undercut deployment's LTO link (17–29 s). Jon can override: `-O0` for dev is a one-line change,
-  at the cost of float results that no longer match deployment's.
+- **Dev stays at `-O2`.** Jon asked about building dev at `-O0`. Default: no. On the base the
+  float-comparability reason for the pin is gone, so this rests on the flavours' meaning. Dev is
+  upstream's flavour, CI builds it, and a dev build is the one that gets played. The debug
+  flavour already gives `-O0`. Measured, `-O0` saves 10–61% of a compile's CPU time. Dev's extra
+  cost over deployment is mostly unit-test work this feature removes. After this feature, a
+  one-source edit in dev costs 1 compile, a non-LTO game link and the bundle step, plus its
+  unit-test links. That should undercut deployment's LTO link (17–29 s). For an `-O0` dev
+  locally, `./mk.sh build dev --setup-flags=-Doptimization=0` works today. It also defines the
+  debug macros, because `meson.build` treats `optimization=0` as a debug build. Jon can make it
+  dev's default instead; that is a one-line change.
 - **The version is compiled in, not read at run time.** Jon asked (2026-11-12) whether the values
   should live in a config file. A generated file is the right idea, and FR-001 takes it to one
   unit, so a version change costs one small compile and the game link. Reading the values at run
@@ -472,17 +489,18 @@ precompiled header, compile by compile with `baseline/o0_vs_o2.py`'s method.
   of this feature.
 - **No game-only dev option.** Dev keeps building the unit tests. A switch to skip them is easy
   to add later, if the counts after FR-011 and FR-012 still show the test links dominating.
-- **One executable per core test.** Merging the 174 core tests into one runner would remove most
+- **One executable per core test.** Merging the 182 core tests into one runner would remove most
   links, but changes the test names that `tests/run.sh` and the logs use. It is not done.
-- **Built on fa5e7e7e6 and 56fa88a55.** The branch takes those two commits first, then shrinks the
-  version header to one unit (FR-001), so `feature/double-wide-support` merges into `develop`
-  with the least conflict. Their `src/SDL/main.cpp` hunk conflicts with `develop` and is ported
-  by hand.
-- **The base is `develop`, as `CLAUDE.md` says**, although `develop` has had no commit since
-  2026-11-01. Current work happens on the `seriesb/*` stack (since the switch on 2026-11-04), and
-  `feature/double-wide-support` sits on `seriesb/026-migration-completion`. If Jon moves this
-  feature's base to the stack, fa5e7e7e6 and 56fa88a55 are already there and the cherry-picks
-  drop out. The baseline counts were taken on `develop`.
+- **The base is the top of the `seriesb/*` stack (Jon, 2026-11-12).** The branch is appended with
+  Git Town to `seriesb/026-migration-completion` (a3d651a4d at the time of writing), as
+  `feature/double-wide-support` is, so it merges into the stack and not into `develop`.
+  `develop` has had no commit since 2026-11-01, and the line of work moved to the stack on
+  2026-11-04. The handover deletes `seriesb/026-dev-container` and the `seriesb/027-*` branches
+  from `origin` as obsolete names, so they are not candidates. `CLAUDE.md` still names
+  `develop` as the game's branch; this feature follows Jon's instruction instead. The base
+  already carries fa5e7e7e6 (`OOVersion.h`) and 56fa88a55 (ccache by default), so FR-001 and
+  FR-016 start from them and nothing is cherry-picked. If `git town sync` moves the base before
+  the plan runs, the plan recounts with `baseline/graph.py`.
 - **Installers are out of scope.** The NSIS installer, AppImage, Flatpak and DMG are packaging
   steps after the bundle, with their own timestamps. A reproducible installer is a follow-up once
   the bundle is reproducible.

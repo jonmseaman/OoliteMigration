@@ -1,10 +1,12 @@
 # Baseline counts (2026-11-12)
 
-Taken on a throwaway worktree of `develop` (3aa8d65e8), Windows, MSYS2 UCRT64, Clang 23.1.4. The
-machine was running other builds, so the comparison is by **count of build steps**, not by time
-(Jon, 2026-11-12). Nothing was compiled for the counts: each flavour was configured twice, with
-`--ver-full=1.93.1-alpha.9001 --buildtime="2026.11.01 10:00"` and then with `…9002` /
-`"2026.11.02 11:00"`, which is what a new commit changes, and `graph.py` walked the build graph.
+Taken on throwaway worktrees of the feature's base, `seriesb/026-migration-completion`
+(a3d651a4d), and of `develop` (3aa8d65e8), on Windows, MSYS2 UCRT64, Clang 23.1.4. The machine was
+running other builds, so the comparison is by **count of build steps**, not by time (Jon,
+2026-11-12). Nothing was compiled for the counts. Each flavour was configured twice, first with
+`--ver-full=1.93.1-alpha.9001 --buildtime="2026.11.01 10:00"`, then with `…9002` and
+`"2026.11.02 11:00"`, which is what a new commit changes. Then `graph.py` walked the build
+graph, and `touch.py` the effect of one edited source.
 
 How `graph.py` counts: a compile reruns when its command line changes (the two compile databases
 differ) or when a header it includes changes (sources that include the generated `OOVersion.h`).
@@ -12,11 +14,39 @@ Every step downstream of a rerun step (archives, links, the post-build bundle st
 The method was checked against a real build: on `develop`, a deployment build after the version
 bump compiled 230 objects, the number `graph.py` predicts.
 
-"Fix" is `oolite-dev` commit fa5e7e7e6 (version macros in a generated header), which is on
-`feature/double-wide-support` and `seriesb/026-migration-completion` but not on `develop`. It
-was ported by hand onto `develop` for the count, because its `src/SDL/main.cpp` hunk conflicts.
+## The base: `seriesb/026-migration-completion` (a3d651a4d)
 
-## Steps in a full build
+The base carries fa5e7e7e6 (the three version values in a generated `OOVersion.h`) and 56fa88a55
+(ccache by default). No compile line carries a version value.
+
+| Flavour | Compiles | Core test links | oofnd test links | Game link | Other links |
+|---|---:|---:|---:|---:|---:|
+| deployment | 241 | 0 | 0 | 1 (LTO) | 4 |
+| test | 831 | 182 (LTO) | 40 (LTO) | 1 (LTO) | 4 |
+| dev | 831 | 182 | 40 | 1 | 4 |
+
+In test and dev, `Exception.cpp` and `objc/OOAssert.cpp` are each compiled 185 times: for the
+game, the 182 core tests and the two oofnd `objc` tests. That is 370 of the 831 compiles, 368 of
+them copies.
+
+| Change | deployment | test, dev |
+|---|---|---|
+| Version change (new commit, branch switch, first edit) | 5 compiles, game link, bundle step | 5 compiles, game link, 71 core test links, bundle step |
+| Touch `OOColor.cpp` | 1 compile, game link, bundle step | 1 compile, game link, 89 core test links, bundle step |
+| Touch `Universe.cpp` | 1 compile, game link, bundle step | 1 compile, game link, 71 core test links, bundle step |
+
+Everything else the spec relies on was checked on the base as well. No `__DATE__`, `__TIME__`
+or `__TIMESTAMP__`. The PowerShell probe and `gitversion` are still in `get_version.sh`, and
+`mk.sh build` still reconfigures. The bundle step rebuilds the documentation in the source tree's
+`build/documentation`, and its only declared output is a stamp. `oofnd_objc_dep` still hands
+out `sources:`. The test flavour uses ThinLTO, with a ThinLTO cache only for the game's link.
+
+## `develop` (3aa8d65e8), for comparison: the version on every compile line
+
+"Fix" is fa5e7e7e6, ported by hand onto `develop` for the count, because its `src/SDL/main.cpp`
+hunk conflicts there.
+
+### Steps in a full build
 
 | Flavour | Compiles | Core test links | oofnd test links | Game link | Other links |
 |---|---:|---:|---:|---:|---:|
@@ -27,7 +57,7 @@ was ported by hand onto `develop` for the count, because its `src/SDL/main.cpp` 
 In test and dev, `src/oofnd/Exception.cpp` and `src/oofnd/objc/OOAssert.cpp` are each compiled
 177 times: once for the game and once for every test executable. That is 352 of the 806 compiles.
 
-## What a version change (a new commit) reruns
+### What a version change (a new commit) reruns
 
 | Flavour | `develop` today | `develop` + fa5e7e7e6 |
 |---|---|---|
@@ -39,7 +69,7 @@ The five files that include `OOVersion.h` are `PlayerEntity.cpp`, `Universe.cpp`
 `OOLogHeader.cpp`, `MyOpenGLView.cpp` and `main.cpp`. The first two are the two slowest compiles
 in the game (17.4 s and 15.1 s in the deployment build's ninja log).
 
-## What touching one game source reruns
+### What touching one game source reruns
 
 | Flavour | `OOColor.cpp` | `Universe.cpp` |
 |---|---|---|
@@ -50,6 +80,10 @@ in the game (17.4 s and 15.1 s in the deployment build's ninja log).
 
 CPU time of one compile (GetProcessTimes; the best of two runs), dev flavour's own command line
 with only `-O2` swapped for `-O0`. CPU time moves much less than wall time on a busy machine.
+Measured on `develop`'s sources with fa5e7e7e6. The base's lines for these files differ in four
+places: the ccache wrapper, `-std=c++20` for `-std=gnu++20`, and no `-DXP_WIN` or
+`-ffp-contract=off` (dropped in 3902c8903 with the golden tests). The ratios are indicative for
+the base.
 
 | Source | -O2 | -O0 | -O0 / -O2 | Parse only (`-fsyntax-only`) | Preprocessed lines |
 |---|---:|---:|---:|---:|---:|

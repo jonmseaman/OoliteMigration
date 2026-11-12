@@ -41,6 +41,11 @@
   process, not wall time, because the machine runs other builds (Jon, 2026-11-12). The baseline
   for every count is in `baseline/counts.md`. It was taken without compiling, except for one real
   deployment build that confirmed the method (230 recompiles predicted and measured).
+- The base is the top of the `seriesb/*` stack, `seriesb/026-migration-completion` at a3d651a4d
+  (Jon, 2026-11-12), not `develop`. The counts, SC targets and "today" figures were redone there:
+  5 compiles per version change, 71 test relinks, 831 compiles in test and dev (465 targeted).
+  `develop`'s numbers stay as the comparison for the version on the compile line. The dev `-O0`
+  decision was re-argued, because the base dropped the golden tests' float pins (3902c8903).
 - No clarification markers. Jon's two questions are answered in the spec. The date/time cost is
   the Context table and SC-001. Dev at `-O0` is measured and defaulted to "stay at `-O2`" in
   *Decisions taken by default*, with the override stated.
@@ -51,5 +56,6 @@
   give about 90 s of wall time per link, and the plan's first task measures it.
 - `.specify/feature.json` still names spec 012 (see the spec's decisions). Run `/speckit-plan`
   with `specs/014-reproducible-fast-builds`.
-- Validation iterations: 1. A count was corrected while writing (215 links is the game plus 214
-  test executables). All items pass.
+- Validation iterations: 2. A count was corrected while writing (215 links is the game plus 214
+  test executables), and the spec was re-validated after the base moved to the stack. All items
+  pass.
