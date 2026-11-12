@@ -1401,7 +1401,11 @@ sources outside the replayed trees.
     verified, and the 43 commits that had conflicts may not build on their own. Old tips:
     `refs/seriesb-prelinear/*`. Pushed with `--force-with-lease` per branch (Jon allowed force
     pushes on `seriesb/*`, 2026-11-11), 000a/000b included; `git town sync --stack --detached`
-    afterwards found nothing to merge or push.
+    afterwards found nothing to merge or push. Each step's manifest `build_commit` is now its tip
+    (rule 3 assumes sync merges after the build; a linear step's verified commit is its tip), and
+    `series/resolutions/` is gone with step 2's stored `OOJSShip.m` (only the old replay used it).
+    `check` reports 103 problems, down from 236; the rest are the pre-existing kinds (026's test
+    ledger rows, 026 against `develop`, the switch-step rule).
   - Style: upstream chose WebKit in #749 (2026-09-24, after the migration began) with no
     discussion of alternatives (#751). Jon is deciding whether to keep 023's Google-style reformat;
     default until then: 023 stays where it is, described as optional.
