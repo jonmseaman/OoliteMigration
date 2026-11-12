@@ -414,12 +414,14 @@ default where it gives one; T065–T068 carry them out. A group decided as typed
   added to and compared with GUI row positions, not a set of choices. Each group's rows become
   `inline constexpr int` constants, `GUI_FIRST_ROW()`/`GUI_ROW()` become `constexpr` functions, and
   the two `#if GUI_FIRST_ROW() < 0` checks (always false, R14) become `static_assert`s that hold.
-- **D5: `AXIS_*`/`BUTTON_*`** (`OOJoystickManager.h`) → `enum class OOJoystickAxis` and
-  `OOJoystickButton`, each `: int`, with `kOOJoystickAxisCount`/`kOOJoystickButtonCount` as
-  `std::size_t` in place of `AXIS_end`/`BUTTON_end`, and the arrays they index `std::array`s
-  indexed through `oo::ToUnderlying`. Their numbers are the keys of the stick mappings saved in the
-  defaults (`ENUMKEY`, `OOJoystickManager.cpp:280-300`), so each is `static_assert`ed, with the
-  `OO_FOV_INFLIGHT_CONTROL_ENABLED` axis last as it is now.
+- **D5: `AXIS_*`/`BUTTON_*`** (`OOJoystickManager.h`) → typed constants (revised in T067 from
+  `enum class`: the manager's API passes one `int` "function" number that can be an axis or a
+  button, read from the stick mapper's plists and stored in `int8_t` maps, so an enum would need a
+  cast at nearly every call and a second API for the numbers). They keep their names as
+  `inline constexpr int`, each one more than the one before it, `AXIS_end`/`BUTTON_end` stay `int`
+  counts, and the state arrays are `std::array`. Their numbers are the keys of the stick mappings
+  saved in the defaults (`ENUMKEY`, `OOJoystickManager.cpp:280-300`), so each is
+  `static_assert`ed in both `OO_FOV_INFLIGHT_CONTROL_ENABLED` configurations.
 - **D5: `STICKPROFILE_TYPE_*`** (`OOJoystickProfile.h:61-62`, two `#define`s nothing reads) →
   typed constants (`inline constexpr int`, values 1 and 2 kept): upstream's numbers for a stick
   profile's type, with no code to give an enum a job, and not deleted (rule 7: no rewrite for its

@@ -515,6 +515,14 @@ production enum changes in the same commit as it.
   `OOJoystickManager.h:186`) `static_assert`ed in both `OO_FOV_INFLIGHT_CONTROL_ENABLED`
   configurations; `tests/unit/core/test_OOJoystickManager.cpp` changes with it (ledger).
   **Accept:** `cd oolite-dev && ! rg -n -P '#define\s+(CUBE_FACE_|HW_AXIS|HW_BUTTON|STICKPROFILE_TYPE_)' src && $C enum --area core`
+  Part 1 in `6329b654f`: the joystick, hardware, cube-face and stick-profile groups, as typed
+  constants (D5 revised for `AXIS_*`/`BUTTON_*`, research R8); no test change was needed. The
+  accept's second half, `$C enum --area core`, also covers every other unscoped enum left in
+  `src/Core` (about 40: `OOOXZManager.h`, `Universe.h`, `OOCache.h`, `OOTrumble.h`,
+  `OOMusicController.*`, `GuiDisplayGen.h`, `ResourceManager.h`, …), which no other task names;
+  read as part of this task (the conservative reading: the accept is the contract) and done in
+  further commits, each enum as the contract shapes it (a named value enum → `enum class`, a group
+  of constants → typed constants).
 - [ ] T068 [US5] P9: `GameViewKeys`, `OOPixMapFormat`, `OODebugTCPConsoleProtocol.h` numbers and
   the remaining `sdl-debug` and `materials` enums per T064.
   **Accept:** `cd oolite-dev && $C enum`
