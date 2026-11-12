@@ -28,6 +28,9 @@ rg -n -P 'oo::(Expected|Unexpected)\b|\bNS(U?Integer|NotFound|TimeInterval)\b|\b
    --glob '!src/Core/OOTypeEncodings.h' --glob '!src/Core/Entities/OOEntityObjectNamesTable.h'        # oofnd
 rg -n -P '^\s*(typedef\s+)?enum\b(?!\s+class\b)' src "${EXCL[@]}"                                     # enum
 ls src/Core/Tables/*.tbl                                                                             # tbl: only OOOpenGLStates.tbl
+./mk.sh tidy 2>&1 | grep -c 'google-readability-casting'                                              # cast
+rg -n -P '\b(str(n?cpy|n?cat|n?cmp|casecmp|len|dup|r?chr|str|tok)|v?s?n?printf|ato[if]|strto[ld])\s*\(' src "${EXCL[@]}"   # cstring calls
+rg -n -P '\bconst\s+char\s*\*|\bchar\s+\w+\s*\[' src "${EXCL[@]}"                                       # cstring types (tracked)
 ```
 
 Macro sets (research R8 §5), each with its own negated search once converted: the GUI row sets in
@@ -43,13 +46,15 @@ names as text (research R7); they are data and are not changed.
 | id | before | guard | fatal at |
 |---|---:|---|---|
 | alloc | 135 lines | `cppcoreguidelines-no-malloc` | M1 |
-| ownership | 2,007 lines | definition deleted | M5 |
+| ownership | 2,007 lines | definition deleted | M7 |
 | thread | 7 lines (5 calls, 2 definitions) | definition deleted | M2 |
 | oofnd | 1,505 lines (including `oofnd`'s own definitions) | definition deleted | M3 |
 | enum | 179 lines | `cppcoreguidelines-use-enum-class` | M4 |
 | macro-set | about 10 sets (listed below) | one search per set | M4 |
 | tbl | 11 files | (file count) | M4 |
-| naming | 0 converted | `readability-identifier-naming` | M6 |
+| naming | 0 converted | `readability-identifier-naming` | M8 |
+| cast | the `google-readability-casting` count in M0's `./mk.sh tidy` (regex: about 690 lines) | `google-readability-casting`; `-Wold-style-cast` | M5 |
+| cstring | 66 call lines by the search (2026-11-11); 815 `const char*` and `char[N]` lines tracked | `bugprone-unsafe-functions.CustomFunctions` | M6 |
 
 ## Exceptions list (`exceptions.md`)
 

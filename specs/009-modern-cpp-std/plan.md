@@ -11,7 +11,8 @@ containers and smart pointers; the Objective-C-style ownership library becomes
 `std::shared_ptr`/`std::weak_ptr`/`std::unique_ptr` on a small `oofnd` core; the one detached
 thread gets an owner; `oofnd` components with an identical standard equivalent go; and unscoped
 enums, constant macro lists and ten `.tbl` tables become `enum class` with `kPascalCase`
-enumerators. Nothing observable changes. The research ([research.md](research.md)) found where
+enumerators; C-style casts become C++ casts; and C strings become `std::string` and
+`std::string_view`, with `char*` left only at C interfaces. Nothing observable changes. The research ([research.md](research.md)) found where
 the standard types cannot reproduce today's behaviour (deferred release, the weak set, weak
 references during disposal, `oo::Data`, `NSRange`) and the spec was adjusted to keep those (R15).
 
@@ -53,7 +54,9 @@ and `-ffp-contract=off` stay; vendored code and the script engine's C API unchan
 allocation lines in 37 files; about 1,900 ownership lines in about 260 files (plus about 2,000 in
 165 test files); 5 thread call sites; `oofnd` components over about 1,700 game lines (most of it
 545 format calls and 1,125 integer-alias lines); 176 unscoped enums (about 8,760 references, about
-1,400 more in 96 test files).
+1,400 more in 96 test files); about 690 C-style casts to built-in types (about 1,600 with
+pointer casts); 717 `const char*` lines, 99 `char` buffers and 64 C string-function and
+`printf`-family calls.
 
 ## Constitution Check
 
@@ -75,7 +78,7 @@ rules and `docs/workflow.md`'s definition of done, as in spec 003's plan.
 | 9. No writes outside the repo | Scratch goes in `.agent-tmp/`. | pass |
 | 10. clang-format 22 only, on changed files, never `tests/` | `/opt/homebrew/opt/llvm@22/bin/clang-format` on changed `src/` files. Test edits are made by hand in the tests' layout. | pass |
 | Every bead has a failing-then-passing command | Each step's acceptance is a negated search for its pattern (fails before, passes after) plus the build and the guard; see [quickstart.md](quickstart.md). Design steps D1–D5 are labelled `design`. | pass |
-| "Ownership is `oo::Ref<T>`, not `shared_ptr`; no redesign unless the spec asks for it" | The spec asks for it (FR-006). CLAUDE.md's line changes when the bridge is deleted (M5), not before. Spec 003's plan row is amended at the same time. | pass, justified |
+| "Ownership is `oo::Ref<T>`, not `shared_ptr`; no redesign unless the spec asks for it" | The spec asks for it (FR-006). CLAUDE.md's line changes when the bridge is deleted (M7), not before. Spec 003's plan row is amended at the same time. | pass, justified |
 
 **Re-check after Phase 1:** pass. The design adds three things that need justifying (*Complexity
 Tracking*): the transitional bridge, `oo::Immortal`, and a new CI step. The contracts quote every
@@ -96,6 +99,7 @@ specs/009-modern-cpp-std/
 │   ├── ownership.md     # oo::Object, oo::share, oo::Immortal, AutoreleaseScope, WeakSet, entities, the JS slot
 │   ├── enums.md         # OOEnumFlags.h, OOEnumTable.h, the enum header shape, external values
 │   ├── threads.md       # OOAsyncWorkManager ownership and shutdown; the main-thread id
+│   ├── strings.md       # cast mapping; text types and C-boundary rules
 │   └── guards.md        # .clang-tidy entries, ./mk.sh tidy, the CI step
 ├── exceptions.md        # created in M0 (format in data-model.md)
 ├── test-ledger.md       # created in M0 (format in data-model.md)
@@ -114,15 +118,15 @@ mk.sh                                        # new `tidy` command (M0)
 .github/workflows/build-all.yaml             # clang-tidy guard step after the Arch build (M0)
 
 src/oofnd/
-├── Object.hpp          # NEW (M5): oo::Object, oo::share, oo::Immortal
-├── AutoreleaseScope.hpp# NEW (M5): the deferred-release scope on std::shared_ptr
-├── Ref.hpp             # M5: becomes the bridge, then is deleted
-├── WeakSet.hpp         # M5: rebuilt on std::weak_ptr
+├── Object.hpp          # NEW (M7): oo::Object, oo::share, oo::Immortal
+├── AutoreleaseScope.hpp# NEW (M7): the deferred-release scope on std::shared_ptr
+├── Ref.hpp             # M7: becomes the bridge, then is deleted
+├── WeakSet.hpp         # M7: rebuilt on std::weak_ptr
 ├── Thread.hpp          # M2: detach and isMainThread go; naming and priority stay
 ├── Expected.hpp        # M3: deleted
 ├── StdLib.hpp          # M3: unused by the game; deleted when Jon rules on test_stdlib
 ├── Date.hpp, FileSystem.hpp, Exception.hpp, objc/OOFoundationTypes.h   # M3: reduced
-└── README.md           # M3/M6: rules and the surviving components
+└── README.md           # M3/M8: rules and the surviving components
 
 src/Core/
 ├── OODemangle.h        # NEW (M1): the one demangling helper (the listed `free`)
@@ -131,8 +135,8 @@ src/Core/
 ├── OOPixMap.*          # M1: owning pixel buffer
 ├── OOAsyncWorkManager.*# M2: jthread workers, shutdown()
 ├── Tables/*.tbl        # M4: ten become headers (OOScanClass.h …); OOOpenGLStates.tbl stays
-├── Entities/OOEntityHold.h, EntityHelpers.*, Entity.*   # M5: shared ownership with the disposing deleter
-└── Scripting/OOJSPrivateObject.*                         # M5: the slot holds a heap std::shared_ptr
+├── Entities/OOEntityHold.h, EntityHelpers.*, Entity.*   # M7: shared ownership with the disposing deleter
+└── Scripting/OOJSPrivateObject.*                         # M7: the slot holds a heap std::shared_ptr
 ```
 
 **Structure Decision**: no new directories. New headers sit beside the code they serve: the
@@ -152,18 +156,23 @@ sign-off on two ledger rows before its bridge commit, so the work that needs non
 | M1 | **C allocation** by chain (R4): demangling helper; sound (fixes the Vorbis leak); zip reads; the pixel-buffer chain as one unit; snapshots; JS vector and quaternion data; static tables; growable arrays; the TCP decoder handle. `cppcoreguidelines-no-malloc` fatal. | US1 | SC-001; the guard fails on a planted `malloc`. |
 | M2 | **Threads** (R6, D4): `OOAsyncWorkManager` workers as `std::jthread` with `shutdown()` before `exit(0)`; `detach` removed; one main-thread id, merged with the log handler's copy. | US3 | Search finds no `oo::thread::detach`/`isMainThread`; quit-with-task test passes; TSan smoke run clean. |
 | M3 | **`oofnd` → std** (R7): `std::expected`; `StdLib.hpp` out of the game; `oo::Exception : std::exception`; integer aliases → standard types and `oo::kNotFound`; Date's calendar; the identical FileSystem wrappers; literal formats → `std::format` by hand, area by area, after a local `-Wformat-signedness` pass; README rules. | US4 | US4 acceptance 1–4; every test tier as on the base. |
-| M4 | **Enums P1–P9** (R8, D3, D5): helpers and the `OODebugFlags` exemplar; file-local enums; lone constants; internal header enums; bitmasks; number-visible enums; `CASE` string enums; the ten `.tbl` enums; the int-natured groups. Test stand-ins change with their production enum. | US5 | US5 acceptance 1–5 except the naming check, which stays non-fatal until M6; save round-trip identical. |
-| M5 | **Ownership** (R5, D1, D2), after Jon has signed the `test_ref.cpp:514` and construction-form rows. D2's readers inventoried and tested on the base first. Then: the bridge; leaf types and immortals; the script slot; Entities, `EntityHold`, creators, `Universe`; SDL; callers off the bridge; the bridge deleted; frame-rate measurement; CLAUDE.md and spec 003's plan updated. | US2 | SC-002; disposal-order and script-finalisation tests pass; ASan clean; SC-008 measured. |
-| M6 | **Close-out.** P10 (rename the 20 existing `enum class` enumerators) once Jon has signed those rows; the naming check fatal; docs (FR-023); final measurements; `tests/run.sh all` on a Windows machine; the corpus. | US5, all | SC-003 to SC-009. |
+| M4 | **Enums P1–P9** (R8, D3, D5): helpers and the `OODebugFlags` exemplar; file-local enums; lone constants; internal header enums; bitmasks; number-visible enums; `CASE` string enums; the ten `.tbl` enums; the int-natured groups. Test stand-ins change with their production enum. | US5 | US5 acceptance 1–5 except the naming check, which stays non-fatal until M8; save round-trip identical. |
+| M5 | **C-style casts** (R16), by area, after the enums: `google-readability-casting` fix-its, then by hand, per [contracts/strings.md](contracts/strings.md); `memcpy` punning → `std::bit_cast`. The check fatal and `-Wold-style-cast` on in one commit. | US6 | SC-010; a planted C-style cast fails `./mk.sh tidy`; every test tier as on the base. |
+| M6 | **C strings** (R17), by the six areas: signatures to `std::string_view`/`std::string`/`std::optional`; literal tables to `std::array<std::string_view, N>`; `printf`-family calls to `std::format` by M3's method; C string functions to the string types; parses kept identical. `bugprone-unsafe-functions.CustomFunctions` set when the count is zero. | US7 | SC-011; save round trip and log-capturing tests pass; ASan clean. |
+| M7 | **Ownership** (R5, D1, D2), after Jon has signed the `test_ref.cpp:514` and construction-form rows. D2's readers inventoried and tested on the base first. Then: the bridge; leaf types and immortals; the script slot; Entities, `EntityHold`, creators, `Universe`; SDL; callers off the bridge; the bridge deleted; frame-rate measurement; CLAUDE.md and spec 003's plan updated. | US2 | SC-002; disposal-order and script-finalisation tests pass; ASan clean; SC-008 measured. |
+| M8 | **Close-out.** P10 (rename the 20 existing `enum class` enumerators) once Jon has signed those rows; the naming check fatal; docs (FR-023); final measurements; `tests/run.sh all` on a Windows machine; the corpus. | US5, all | SC-003 to SC-009. |
 
 **Order and parallelism:**
 - M0 first. M1, M2 and M3 touch disjoint code and may run in any order after M0 (one branch,
   one commit per bead, so never at the same time); M3's format steps touch many files and are
   sequenced by area.
-- M4 after M1–M3 (it touches the same files as everything).
-- M5 can move up to directly after M1 if Jon has signed by then (that matches the spec's
-  priorities); otherwise after M4. It never runs beside M4: both rewrite `Core/Entities`.
-- Inside M4 and M5, steps are sequential.
+- M4 after M1–M3 (it touches the same files as everything). M5 after M4 (the enum conversion
+  rewrites the enum casts first). M6 after M3 and M5 (it reuses M3's format method and the cast
+  rules).
+- M7 can move up to directly after M1 if Jon has signed by then (that matches the spec's
+  priorities); otherwise after M6. It never runs beside M4, M5 or M6: they all rewrite
+  `Core/Entities`.
+- Inside M4 to M7, steps are sequential.
 
 **Design steps** (interactive, label `design`): D1 the ownership core and the `OOColor` exemplar
 (the CLAUDE.md converted-class exemplar), quoted in [contracts/ownership.md](contracts/ownership.md);
@@ -176,7 +185,7 @@ GUI rows, joystick ids, key codes, pixel formats, the debug protocol).
 
 | Exception | Why it is needed | Simpler alternative, and why it was rejected |
 |---|---|---|
-| The transitional bridge: `oo::Ref`/`WeakRef` reimplemented over `std::shared_ptr`/`weak_ptr` during M5 | Intrusive and standard ownership cannot coexist on one object, and about 2,000 src lines and 165 test files use `oo::Ref`. The bridge lets everything build while callers move area by area. | Converting every caller at once: one unreviewable change of about 4,000 lines with no intermediate state that builds. |
+| The transitional bridge: `oo::Ref`/`WeakRef` reimplemented over `std::shared_ptr`/`weak_ptr` during M7 | Intrusive and standard ownership cannot coexist on one object, and about 2,000 src lines and 165 test files use `oo::Ref`. The bridge lets everything build while callers move area by area. | Converting every caller at once: one unreviewable change of about 4,000 lines with no intermediate state that builds. |
 | `oo::Immortal<T>()` for about 25 never-destroyed singletons | They must not run destructors at exit (today's behaviour), and `shared_from_this` must work on them. | Function-local statics (run destructors at exit: a behaviour change). Raw leaked pointers (no owner visible in the declaration, and `share()` would throw). |
 | `oo::AutoreleaseScope` and `oo::WeakSet` stay | The standard library has neither; destruction order and three member sets depend on them (R5). | Keeping objects alive with local `shared_ptr` copies instead: it changes when destructors run. |
 | A new clang-tidy CI step | FR-021 needs a guard that runs; nothing runs clang-tidy today. | A Python scanner (Jon retired the last one on 2026-11-10). |
@@ -186,11 +195,11 @@ GUI rows, joystick ids, key codes, pixel formats, the debug protocol).
 Also recorded in research.md under the R item named.
 
 - **Execution order differs from priority** (above): US2 waits for two sign-offs; the default is
-  M5 after M4, moved up if Jon signs earlier.
+  M7 after M6, moved up if Jon signs earlier.
 - **The `test_ref.cpp:514` assertion** (weak references live during `willDispose()`) is a *needs
   sign-off* row: no standard design can keep it (R5). The bridge changes every reference-counted
-  class's base at once, so there is no partial M5 without it. Default if Jon declines: M5 does not
-  start, US2 is replanned, and M6 closes the feature without it.
+  class's base at once, so there is no partial M7 without it. Default if Jon declines: M7 does not
+  start, US2 is replanned, and M8 closes the feature without it.
 - **Construction-form test edits** (stack and static instances made shared) are *borderline*
   rows for Jon's sign-off at merge (R9). They come with the bridge, so they are signed with the
   row above.
@@ -227,5 +236,10 @@ Also recorded in research.md under the R item named.
   short; `tools/upstream-delta.sh` is the route.
 - **clang-tidy version drift.** CI's clang-tidy is Arch's current one, not pinned; a newer
   version can add findings. They are fixed or recorded, never suppressed (R3).
+- **`std::string_view` misuse** (M6): passing `data()` to C (reads past the end) or keeping a view
+  past its string's life. The boundary rules in contracts/strings.md, review of every C call in the
+  area, and ASan.
+- **Casts that were secretly `reinterpret_cast` or `const_cast`** (M5): spelling them out may
+  reveal a bug; it is recorded and fixed separately, never folded into the conversion.
 - **CI cost.** A clang-tidy run over about 520 files on every push. If it exceeds the Arch job's
   budget, it runs only on the changed files' translation units plus a nightly full run.

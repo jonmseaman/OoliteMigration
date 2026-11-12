@@ -1,4 +1,4 @@
-# Contract: enums (US5, M4 and M6)
+# Contract: enums (US5, M4 and M8)
 
 The helpers design step D3 adds, and the shape every converted enum header takes. Research: R8.
 

@@ -53,6 +53,9 @@
 - **Template resolution.** `pwsh` is not installed on this machine, so `resolve-template.ps1` could
   not run. The repository has no `.specify/templates/overrides/`, `.specify/presets/` or
   `.specify/extensions/`, so `.specify/templates/spec-template.md` is the resolved template.
+- **Stories 6 and 7 added (2026-11-11, Jon):** C-style casts and C strings, with FR-024 to FR-028,
+  SC-010 and SC-011, and five edge cases. Re-validated: each acceptance scenario is a search or a
+  check that fails before and passes after; no clarification markers.
 - First iteration failed four items, fixed in the second: SC-009 was not measurable (now a sampled
   review), SC-004's target was tighter than the files it counts (now 2,000 lines), FR-015's note
   left out Story 3, and `oo::EntityHold`'s fate was unstated (now an assumption, left to the plan).

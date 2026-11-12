@@ -114,7 +114,25 @@ Format only the `src/` files you changed:
 - Every row in *External names and values* has its `static_assert` or test, and they pass in both
   `OO_FOV_INFLIGHT_CONTROL_ENABLED` configurations.
 
-## M5 — ownership (US2)
+## M5 — C-style casts (US6)
+
+- `./mk.sh tidy` reports no `google-readability-casting` finding outside `exceptions.md`.
+- Plant `int i = (int)1.5;` in a `src/Core` file: `./mk.sh tidy` fails naming the line; with
+  `-Wold-style-cast` on, the build warns too. Remove it.
+- The build is warning-free on macOS and in CI with `-Wold-style-cast` added.
+- Every test tier as on the base; the component scenarios' results unchanged (Windows).
+
+## M6 — C strings (US7)
+
+- The `cstring` call search finds only `exceptions.md` rows; `./mk.sh tidy` passes with
+  `bugprone-unsafe-functions.CustomFunctions` set; a planted `strcpy` fails it.
+- Every remaining `const char*` and `char[N]` line from the `cstring` type search is a literal's
+  type or an `exceptions.md` row.
+- Every C call in the converted areas takes `c_str()` or a literal (review against
+  [contracts/strings.md](contracts/strings.md)).
+- Save round trip and the log-capturing tests pass; ASan smoke clean.
+
+## M7 — ownership (US2)
 
 - Before the bridge commit: Jon has signed the `test_ref.cpp:514` and construction-form rows in
   `test-ledger.md`, and every D2 *disposal reader* has a test that passes on the base.
@@ -124,7 +142,7 @@ Format only the `src/` files you changed:
 - ASan and leaks clean as in M1.
 - Frame rate and start-up within the base's run-to-run spread (five runs, median).
 
-## M6 — close-out
+## M8 — close-out
 
 - P10 done (after sign-off); `./mk.sh tidy` with `readability-identifier-naming` fatal exits 0.
 - On a Windows machine: `tests/run.sh all`, on Clang (and GCC with `--native-file=gcc.ini`).

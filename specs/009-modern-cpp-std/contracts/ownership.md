@@ -1,4 +1,4 @@
-# Contract: ownership (US2, M5)
+# Contract: ownership (US2, M7)
 
 The interfaces design step D1 adds, quoted so the fan-out steps add none. D1 may change a detail
 here only by editing this file in the same commit, with the reason. Research: R5.
@@ -152,7 +152,7 @@ The finaliser keeps today's order (`OOJSPrivateObject.cpp:88-102`): take the slo
 the slot, call `clearJSSelf`, delete the holder (releasing the object). Observing holders
 (`OOJSEntityHolder`, `ScriptPrivate`) keep a `std::weak_ptr`.
 
-## The transitional bridge (M5 only)
+## The transitional bridge (M7 only)
 
 While callers move, `oofnd/Ref.hpp` keeps its names over the standard types:
 

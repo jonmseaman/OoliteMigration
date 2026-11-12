@@ -16,7 +16,8 @@ of macros"
 
 The game is C++ now, but much of it still reads as C plus Objective-C: memory from `malloc`, object
 lifetimes through an Objective-C-style retain/release library, threads through an `NSThread`
-stand-in, and constants as unscoped C enums or lists of macros. This feature moves that code onto
+stand-in, constants as unscoped C enums or lists of macros, conversions as C-style casts, and text
+as `char` pointers and buffers handled with the C string functions. This feature moves that code onto
 the C++ standard library and its idioms directly, so that a C++ developer reading the game meets
 the types they already know, and so that the compiler and the project's static checks can catch
 mistakes the old forms hide. Nothing a player, an expansion author or a saved game can observe
@@ -63,6 +64,16 @@ What the tree is today (counts from `oolite-dev/src`, first-party code, 2026-11-
   Some numeric values are written into saved games: `OOLongRangeChartMode`'s ordinal is saved as
   `chart_colour_mode`, and its `.tbl` value column is not the value the program uses
   (`notes/2026-11-07 Enum Tables from tbl X-Macros.md`).
+- **C-style casts.** About 690 lines cast to a built-in type the C way (`(int)x`, `(GLfloat)y`,
+  `(NSUInteger)z`); the idiom review's compiler pass (2026-10-28) counted about 1,600
+  `-Wold-style-cast` warnings including pointer casts, against about 935 `static_cast`s. Worst:
+  `PlayerEntity.cpp`, `ShipEntity.cpp`, `OOOpenGLExtensionManager.cpp`, `Universe.cpp`. No check
+  flags them today.
+- **C strings.** 717 lines with `const char*`, 99 `char name[N]` buffers, 36 `snprintf`/`sprintf`
+  calls, 22 calls to `strcmp`, `strcpy`, `strcat`, `strlen` and the like (the exception names in
+  `Universe.cpp` are compared with `strcmp`), and 6 `atoi`/`strtol`-style parses. Many
+  `const char*` uses are legitimate: string literals, and the C interfaces of QuickJS, SDL, OpenGL,
+  OpenAL, libpng and libcurl, which need a null-terminated pointer.
 - **Tests.** 205 test files use the `oofnd` types this feature replaces, about 2,000 lines on
   `oo::Ref` and friends alone. `tests/unit/oofnd` has a test per component, including `test_ref`,
   `test_weakset`, `test_thread`, `test_expected`, `test_data` and `test_date`.
@@ -247,6 +258,73 @@ colour mode included); and the script API snapshot and expansion corpus do not r
 5. **Given** a set of bit flags, **When** code combines, tests or clears flags, **Then** it does so
    with the enum's own operators, and mixing flags of two different sets does not compile.
 
+### User Story 6 - Conversions are C++ casts (Priority: P6)
+
+A developer finds every type conversion in first-party C++ written as the C++ cast that says what
+it does (`static_cast`, `const_cast`, `reinterpret_cast`, or `std::bit_cast` for reinterpreting
+bytes), never as a C-style cast that may silently do any of them. Every conversion computes exactly
+what it does today.
+
+**Why this priority**: It is mechanical but wide (well over 1,000 casts), and it comes after the
+enums because converting enums to `enum class` rewrites the casts to and from enum types anyway.
+
+**Independent Test**: Before: about 690 lines (more counting pointer casts) use C-style casts, and
+no check flags them. After: the static checks fail on any new C-style cast in first-party C++,
+the build is clean with the compiler's old-style-cast warning on, and every test tier passes with
+the same results.
+
+**Acceptance Scenarios**:
+
+1. **Given** the converted tree, **When** the static checks run, **Then** they report no C-style
+   cast in first-party C++ outside the exceptions list (casts produced inside third-party macros).
+2. **Given** a change that adds a C-style cast, **When** the static checks run, **Then** they fail
+   and name the file and line.
+3. **Given** a C-style cast that removed `const` or reinterpreted a pointer, **When** it is
+   converted, **Then** the replacement names that operation (`const_cast`, `reinterpret_cast`),
+   so the conversion's meaning is unchanged and visible.
+4. **Given** a fixed seed and inputs, **When** the component scenarios and the smoke run execute,
+   **Then** their results are the same as on the base (float-to-integer truncation and rounding
+   unchanged).
+
+---
+
+### User Story 7 - Text is `std::string` and `std::string_view` (Priority: P7)
+
+A developer finds owned text held in `std::string`, borrowed text passed as `std::string_view`,
+formatted with `std::format`, and compared, searched and parsed with the string types' own
+operations. A `char*` remains only where a C interface needs a null-terminated pointer, and there
+it comes from a `std::string` (`c_str()`) at the call, never from a `std::string_view`.
+
+**Why this priority**: It changes function signatures across the tree, and its formatting part
+reuses the method US4 settles for `oo::str::format`, so it comes after US4 and US6.
+
+**Independent Test**: Before: 717 `const char*` lines, 99 `char` buffers, 36 `printf`-family
+formatting calls and 28 C string-function and parse calls. After: the C string functions and
+`printf`-family formatting are gone from first-party C++ and the static checks fail on a new one;
+every remaining `const char*` and `char` buffer is a string literal's type or on the exceptions
+list with the C interface it serves; the save round trip, the log-capturing tests and every test
+tier pass with the same results.
+
+**Acceptance Scenarios**:
+
+1. **Given** the converted tree, **When** first-party C++ is searched for `strcpy`, `strncpy`,
+   `strcat`, `strncat`, `strcmp`, `strncmp`, `strcasecmp`, `strlen`, `strdup`, `strchr`,
+   `strrchr`, `strstr`, `strtok`, `sprintf`, `snprintf`, `vsnprintf`, `atoi` and `atof`, **Then**
+   nothing is found outside the exceptions list, and the static checks fail on a new one.
+2. **Given** a function that takes or returns text, **When** the feature is done, **Then** it uses
+   `std::string_view` for text it only reads, `std::string` for text it keeps or returns, and
+   `std::optional` of either where "no text" differs from "empty text".
+3. **Given** a call into a C interface that needs a null-terminated string, **When** it is made,
+   **Then** the pointer comes from a `std::string`'s `c_str()` or a string literal, never from a
+   `std::string_view`'s `data()`.
+4. **Given** text that is formatted for the log, a saved game, the console or the screen, **When**
+   the formatting call is converted, **Then** the output bytes are identical to the base's.
+5. **Given** a number parsed from text with `atoi`/`strtol`-style calls, **When** it is converted,
+   **Then** it gives the same result as the base for every input the tests use, including signs,
+   leading spaces, trailing junk and overflow.
+
+---
+
 ### Edge Cases
 
 - **Objects that hand themselves to an owner.** Code that today makes an owning reference from
@@ -272,6 +350,19 @@ colour mode included); and the script API snapshot and expansion corpus do not r
   X-Macros.md`).
 - **Macros the preprocessor tests.** A constant tested by `#if` cannot become an enumerator and
   stays a macro.
+- **Casts inside other people's macros.** A C-style cast that comes from expanding a third-party
+  macro (OpenGL, SDL, QuickJS headers) cannot be rewritten here; it is an exceptions-list entry if
+  the checks report it.
+- **Casts that change meaning when spelled out.** A C-style cast may fall back to
+  `reinterpret_cast` or drop `const` without saying so; spelled as `static_cast` it may not compile,
+  which is the point. The replacement must keep the conversion, not "fix" it.
+- **Null versus empty text.** A `const char*` can be null, meaning "no text", which a
+  `std::string` cannot say. Where the code tells the two apart, the replacement is a
+  `std::optional`, not an empty string.
+- **`std::string_view` is not null-terminated.** Passing its `data()` to a C interface reads past
+  the end. Every C call takes `c_str()` of a `std::string` or a literal.
+- **Fixed buffers filled by C.** A `char` buffer that a C function fills (a path from the OS, a GL
+  info log) stays a buffer, as `std::array<char, N>` or a sized `std::string`, at that call only.
 - **Platforms not built here.** Linux-only and Windows-only code must still compile on its
   platform; CI is the judge for the platforms the session cannot build.
 
@@ -374,10 +465,32 @@ colour mode included); and the script API snapshot and expansion corpus do not r
 - **FR-020**: The ten enum `.tbl` tables MUST become ordinary headers with the enum, its default
   and its name table, and their `.tbl` files MUST be deleted; `OOOpenGLStates.tbl` stays.
 
+**Casts (Story 6)**
+
+- **FR-024**: First-party C++ MUST NOT contain C-style casts, except those produced by expanding a
+  third-party macro, each on the exceptions list. Each replacement MUST perform the same conversion
+  (`static_cast`, `const_cast`, `reinterpret_cast`, or `std::bit_cast` for byte reinterpretation).
+- **FR-025**: Once the count is zero, the compiler's old-style-cast warning MUST be on for
+  first-party C++ on every toolchain, with no new warnings.
+
+**Strings (Story 7)**
+
+- **FR-026**: First-party C++ MUST NOT call the C string functions or the `printf` family listed
+  in Story 7's first acceptance scenario, except where a C interface's contract requires one
+  (each on the exceptions list). Formatting MUST keep its output byte for byte, converted call by
+  call by the method US4 uses.
+- **FR-027**: Text MUST be `std::string` when owned and `std::string_view` when borrowed;
+  `std::optional` of either where the code distinguishes "no text" from "empty". A `const char*` or
+  `char` buffer MAY remain only as a string literal's type or at a C interface that needs it, and a
+  pointer passed to C MUST come from a `std::string` or a literal.
+- **FR-028**: Parsing numbers from text MUST give the same results as today for every input the
+  game and tests use; where `std::from_chars` differs (leading spaces, `+`, overflow, the platform
+  width of `long`), the parse keeps an `oofnd` helper that reproduces today's answer.
+
 **Guards and records**
 
 - **FR-021**: Each converted category (C allocation, the removed `oofnd` types, unscoped enums,
-  enumerator naming) MUST be guarded by a check that fails when the category comes back, run with
+  enumerator naming, C-style casts, the C string functions and `printf`-family formatting) MUST be guarded by a check that fails when the category comes back, run with
   the project's existing static checks, without suppressions.
 - **FR-022**: The exceptions list and the test-change ledger MUST live in this spec's directory;
   each entry gives the file, the reason and, for exceptions, the interface that requires it.
@@ -387,7 +500,8 @@ colour mode included); and the script API snapshot and expansion corpus do not r
 
 ### Key Entities
 
-- **Converted category**: a pattern this feature removes (C allocation, a replaced `oofnd` type, an
+- **Converted category**: a pattern this feature removes (C allocation, a C-style cast, a C string
+  function, a replaced `oofnd` type, an
   unscoped enum), with its search, its guard and its count before and after.
 - **Exceptions list**: the places a converted pattern may remain, each with its file, the C
   interface or preprocessor use that requires it, and, for ownership crossings, the owner and the
@@ -425,6 +539,12 @@ colour mode included); and the script API snapshot and expansion corpus do not r
 - **SC-009**: Of 20 heap allocations in first-party C++ picked at random, every one's owner can be
   read from the declaration that holds it (a smart pointer, a container or a value member) or is on
   the exceptions list.
+
+- **SC-010**: First-party C++ has zero C-style casts outside the exceptions list (down from well
+  over 1,000), and the build is warning-free with the old-style-cast warning on.
+- **SC-011**: First-party C++ has zero C string-function and `printf`-family calls outside the
+  exceptions list (down from about 65), and every remaining `const char*` or `char` buffer is a literal's
+  type or an exceptions-list entry (down from 717 and 99 lines).
 
 ## Assumptions
 
@@ -483,3 +603,7 @@ Jon can override any of them:
    existing `enum class` types forces test edits the amended rule 1 does not plainly cover. Both
    are *needs sign-off* rows in the test-change ledger. The work they block (US2's bridge, and the
    last enum step) is scheduled after the work they don't, so nothing waits.
+10. **Casts and C strings added (Jon, 2026-11-11).** The idiom review's §2.3 items Jon had already
+   put in scope on 2026-10-28 ("Don't use C strings"; C-style casts) are Stories 6 and 7 of this
+   spec rather than a spec of their own, because they share the branch, the guards, the ledger and
+   the files. Out-parameters, the other §2.3 item, stay out: they were not asked for here.

@@ -459,3 +459,86 @@ spec required without changing behaviour:
 5. **FR-017:** single constants become typed constants, not enums (R8).
 6. **SC-004:** at least 1,500 lines (R7).
 7. **Context:** the `realloc` leak is already fixed; the Vorbis leak is new (R4).
+
+## R16. C-style casts (US6, M5)
+
+**Decision:** convert area by area after the enums (M4), starting each area with clang-tidy's
+`google-readability-casting` fix-its and finishing by hand; then make the check fatal and turn on
+`-Wold-style-cast` for the game in the same commit.
+
+- **Size.** About 690 lines cast to a built-in type the C way (regex, 2026-11-11); the idiom
+  review's compiler pass counted about 1,595 `-Wold-style-cast` warnings including pointer casts,
+  against about 935 `static_cast`s. Worst files then: `PlayerEntity.cpp` (169), `ShipEntity.cpp`
+  (144), `OOOpenGLExtensionManager.cpp` (131), `Universe.cpp` (99). M0 records the exact baseline:
+  the check's finding count from `./mk.sh tidy`.
+- **Why after M4:** converting to `enum class` already rewrites the 56 C-style casts to enum types
+  and the 18 enum-to-int casts (R8); doing casts first would touch them twice.
+- **What each becomes:** arithmetic and enum conversions `static_cast`; removing `const`
+  `const_cast`; pointer reinterpretation `reinterpret_cast`; `void*` from a C callback back to its
+  type `static_cast`; byte reinterpretation through `memcpy` (`OOPlanetTextureGenerator.cpp:809`,
+  `OOStandaloneAtmosphereGenerator.cpp:438`) `std::bit_cast`. The 152 `(Entity*)nullptr` ternary
+  arms become `static_cast<Entity*>(nullptr)`. Casts to `void` are not C-style casts for the check
+  and stay.
+- **Same conversion, always.** A C-style cast that compiled as `reinterpret_cast` or dropped
+  `const` must be spelled as that, not "fixed"; a fix is a separate, recorded bug. Float-to-integer
+  truncation is identical under `static_cast`, and `-ffp-contract=off` is untouched, so simulation
+  results do not move.
+- **Macros.** Casts inside our own macros are rewritten in the macro. Casts that come from
+  expanding third-party macros (GL, SDL, QuickJS) are reported only if those headers are not
+  treated as system headers; M0's baseline shows whether any are, and each is an exceptions-list
+  row.
+- **Guard:** `google-readability-casting` (flags every C-style cast in C++) into
+  `WarningsAsErrors` once at zero; `-Wold-style-cast` added to the game's warning flags in
+  `src/meson.build` in the same commit (GCC and Clang both have it), so it adds no warnings.
+- Tests are not first-party C++ for this story and are not touched.
+
+**Alternatives:** `cppcoreguidelines-pro-type-cstyle-cast` (flags only casts that act as
+`reinterpret_cast`, `const_cast` or a downcast, so most arithmetic casts would remain); converting
+before the enums (double work); a script rewrite (cannot tell which C++ cast a C cast performs).
+
+## R17. C strings (US7, M6)
+
+**Decision:** convert by area (the six of the epics outline: Entities, Scripting,
+Materials/OpenGL/Textures, SDL/Debug, Core-top, `oofnd`), signatures first, with the boundary rules
+in [contracts/strings.md](contracts/strings.md); the C string functions and `printf` family then go
+behind `bugprone-unsafe-functions`.
+
+- **Size (2026-11-11):** 717 `const char*` lines, 99 `char name[N]` buffers, 36
+  `snprintf`/`sprintf`/`vsnprintf`, 22 C string-function calls, 6 `atoi`/`atof`/`strtol`/`strtod`.
+- **Legitimate `const char*`:** string literals and the C interfaces that need a null-terminated
+  pointer: QuickJS (`JS_NewAtom`, `JS_NewString`, `JS_GetPropertyStr` and kin), SDL, OpenGL (shader
+  sources, uniform names), OpenAL, libpng (error callbacks), libcurl (`curl_easy_setopt`),
+  `getenv`, `main`'s `argv`. These stay, as literal types or exceptions-list rows.
+- **Signatures:** text a function only reads becomes `std::string_view`; text it keeps or returns
+  becomes `std::string`; `std::optional` of either where null meant "no text". Functions that
+  return a literal return `std::string_view` (or stay `const char*` where every caller passes the
+  result to C, as a listed exception). Tables of literals (`static const char* names[]`) become
+  `constexpr std::array<std::string_view, N>`; the enum name tables are already this after M4.
+- **The `std::string_view` trap:** it is not null-terminated, so its `data()` must never reach a
+  C call; and it must not outlive the string it views. Contract rules: no `string_view` member
+  except over a literal; every C call takes `c_str()` of a `std::string` or a literal. ASan judges
+  the lifetime part.
+- **Formatting:** the 36 `printf`-family calls become `std::format` by the method R7 settles for
+  `oo::str::format` (by hand, `-Wformat-signedness` first, output compared). `char` buffers that
+  existed only to format into go with them.
+- **Comparison and search:** `strcmp` and friends become `std::string_view` operators and members;
+  the exception-name comparisons (`Universe.cpp:4496,4562,4602,10451`) become `==` on
+  `std::string_view`.
+- **Parsing:** `std::from_chars` only where it gives today's answer for every input the tests use;
+  it differs from `strtol`/`atoi` on leading whitespace, a leading `+`, overflow and the width of
+  `long` (R7's `intValue` note). Those parses keep (or move to) an `oofnd/String.hpp` helper.
+- **Buffers C fills** (OS paths, GL info logs, `OOCPUInfo`) stay as `std::array<char, N>` or a
+  sized `std::string` at that call.
+- **Guard:** `bugprone-unsafe-functions` is already fatal through `bugprone-*`, with its default
+  list. Its `CustomFunctions` option takes the extra names (`strcpy`, `strncpy`, `strcat`,
+  `strncat`, `strcmp`, `strncmp`, `strcasecmp`, `strlen`, `strdup`, `strchr`, `strrchr`,
+  `strstr`, `strtok`, `sprintf`, `snprintf`, `vsnprintf`, `atoi`, `atof`), each with its
+  replacement as the message (checked with clang-tidy 22 on a sample). Because the check is
+  already fatal, the option is added in the commit that brings the count to zero, not before.
+  `const char*` itself has no clean check: it is tracked by a search and the exceptions list.
+- Tests are not touched (src only). `oofnd` stays C++: its `String.hpp` helpers already take
+  `std::string`/`std::string_view`.
+
+**Alternatives:** `std::string` everywhere (copies at every call and a conversion at every C
+boundary); `const char*` → `std::string_view` by script (cannot see the C-boundary and
+null-termination cases); a separate spec (Jon chose this one, 2026-11-11).

@@ -12,7 +12,8 @@ Checks: >
   ...existing entries...,
   cppcoreguidelines-no-malloc,
   cppcoreguidelines-use-enum-class,
-  readability-identifier-naming
+  readability-identifier-naming,
+  google-readability-casting
 CheckOptions:
   cppcoreguidelines-use-enum-class.IgnoreUnscopedEnumsInClasses: false
   readability-identifier-naming.ScopedEnumConstantCase: CamelCase
@@ -23,7 +24,9 @@ CheckOptions:
 |---|---|
 | `cppcoreguidelines-no-malloc` | M1 |
 | `cppcoreguidelines-use-enum-class` | M4 (its findings at zero apart from the exceptions list, which needs no suppression because every exception is a construct the check does not flag: a typed constant, a QuickJS flag macro, an `#if`-tested macro) |
-| `readability-identifier-naming` (enum constants only) | M6, after P10 |
+| `readability-identifier-naming` (enum constants only) | M8, after P10 |
+| `google-readability-casting`, plus `-Wold-style-cast` in the game's warning flags | M5 |
+| `bugprone-unsafe-functions` (already fatal) with `CustomFunctions` set ([contracts/strings.md](strings.md)) | M6 (the option is added in the commit that reaches zero) |
 
 If an exceptions-list entry turns out to be flagged by its check, the check stays non-fatal and the
 conflict is recorded in `exceptions.md`; no `NOLINT` and no `IgnoredRegexp` (FR-003).
