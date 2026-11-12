@@ -1,6 +1,6 @@
 # Let OO_RANDOM_SEED pin the random seed
 
-**Series:** step 1 of 24 · base `seriesb/000b-upstream-768-quickjs-only` · next `seriesb/002-safety-net` **(gen)**
+**Series:** step 1 of 26 · base `seriesb/000b-upstream-768-quickjs-only` · next `seriesb/002-safety-net` **(gen)**
 
 **Replays:** `series/001-random-seed-env` (old 1 of the master-based series) · 11 src, 0 tests, 0 other changed lines; 0 lines in deleted files **(gen)**
 
@@ -31,16 +31,18 @@ One hunk in `src/Core/GameController.m`. Run with `OO_RANDOM_SEED=42` twice and 
 
 ## Verified **(gen)**
 
-Windows x64, `ebd84f7c40`, 2026-11-03.
+Windows x64, `c58d86dbba`, 2026-11-11.
 
 | Check | Result |
 |---|---|
 | build_clang | pass |
-| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| build_gcc | n/a: not required for this series (the code builds with Clang, as upstream's CI) |
 | clang_format | pass |
 | component | n/a: no component scenario touched |
+| no_facade | pass |
 | no_new_spidermonkey_or_gnustep | pass |
 | no_new_suppressions | pass |
+| poc | n/a: the harness needs GNUstep here, so upstream builds it on Linux only |
 | smoke | pass |
 | tests_untouched | pass |
 | unit | n/a: the tree has no unit suites |

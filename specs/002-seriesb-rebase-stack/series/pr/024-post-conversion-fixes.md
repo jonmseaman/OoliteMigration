@@ -1,16 +1,17 @@
 # Small fixes after the conversion; Mozilla polyfills for expansions
 
-**Series:** step 24 of 24 · base `seriesb/023-google-style-format` · next `—` **(gen)**
+**Series:** step 24 of 26 · base `seriesb/023-google-style-format` · next `seriesb/025-libcurl-http` **(gen)**
 
-**Source:** the tree of `feature/upstream-quickjs-poc-cxx` (`270c74ea78`), with the series' exclusions and additions · 44 src, 42 tests, 87 other changed lines; 0 lines in deleted files **(gen)**
+**Source:** the tree of `feature/upstream-quickjs-poc-cxx` (`270c74ea78`), with the series' exclusions and additions · 3.1k src, 94 tests, 99 other changed lines; 38 lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
 ## What this changes
 
-Small fixes and one addition on top of step 024. The scripting layer stays upstream #768's
-QuickJS-ng binding as steps 003–024 carry it: its code, its profiler macros, its time-limiter
-clock, its `dependency('quickjs-ng')` build wiring and its `src/Core/Scripting/README.md`.
+Small fixes, dead-code removal and clang-tidy cleanups on top of step 023, in step 023's style,
+and one addition for expansions. The scripting layer stays upstream #768's QuickJS-ng binding as
+steps 003–023 carry it: its code, its profiler macros, its time-limiter clock, its
+`dependency('quickjs-ng')` build wiring and its `src/Core/Scripting/README.md`.
 
 | File | What | Why |
 |---|---|---|
@@ -18,36 +19,73 @@ clock, its `dependency('quickjs-ng')` build wiring and its `src/Core/Scripting/R
 | `src/Core/OOHPVector.h` | Drops an empty `#if __OBJC__` / `#endif` pair | Left behind when its Objective-C declaration moved out |
 | `Resources/Scripts/oolite-global-prefix.js` | Adds `String.prototype.quote()` and the Array/String generics (`Array.forEach(array, fn)`, `String.replace(string, …)`) | Mozilla extensions that SpiderMonkey-era expansions call; `oolite-quickjs-compat.js` (#768) already defines `toSource()` and `uneval()` and is not changed; each install is guarded |
 | `tests/unit/core/meson.build` | The 8 tests that open OpenAL are also in suite `openal` | A sanitized run can leave them out (`--no-suite openal`); every test stays in `core` |
-| `src/Core/Scripting/OOJavaScriptEngine.cpp`, `OOJSScript.cpp` | Clears the exception when a getter throws while the engine reads an error's `name`/`stack`, a value's `constructor`/`name`, a function's `name`, a described array element, the const rewriter or an unconstructable class's `name` | The exception was left pending for the next script; pinned by `test_OOJavaScriptEngine`'s `throwingAccessorsLeaveNoPendingException` (added) |
+| `src/Core/Scripting/OOJavaScriptEngine.cpp`, `OOJSScript.cpp` | Clears the exception when a getter throws while the engine reads an error's `name`/`stack`, a value's `constructor`/`name`, a function's `name`, a described array element, the const rewriter or an unconstructable class's `name` | The exception was left pending for the next script |
 | `src/Core/Scripting/OOJSScript.cpp` | Indents the `script.javaScript.willLoad` log unconditionally | It outdented without indenting after an early load failure; upstream's `OOJSScript.m` indents unconditionally |
+| `GameController`, `Universe`, `PlayerEntity*`, `OOFoundation.h`, `OOMacroOpenGL.h`, `OOOpenGLExtensionManager`, `OOMusicController.h`, `OOFullScreenController.h`, `OOLogHeader.cpp`, `OOOXPVerifier.cpp` | Removes `OOLITE_MAC_COCOA_UI` and the macros derived from it (`OO_USE_FULLSCREEN_CONTROLLER`, `OOLITE_ITUNES_SUPPORT`, `OOOPENGLEXTMGR_LOCK_SET_ACCESS`), keeping the non-Cocoa arm of each conditional | The Cocoa front end's Objective-C blocks are never compiled in the C++ tree (`OOLITE_SDL` is 1 on every build) |
+| `src/Core/OOObjCPList.h` (deleted) and its includers, 17 tests among them | Each file includes `OODescription.h`, `oofnd/PList.hpp` and `oofnd/StdLib.hpp` as it needs them | The header only forwarded those three |
+| `src/Core/dummy.cpp` (deleted) | — | An empty file from the Xcode project; no build file lists it |
+| About 130 files under `src/Core`, `src/SDL`, `src/oofnd` | clang-tidy 22 `-fix`, then clang-format 22: `modernize-use-nullptr`, `modernize-redundant-void-arg`, `modernize-use-using`, `modernize-use-override`, `performance-inefficient-vector-operation`, `bugprone-macro-parentheses`, `performance-unnecessary-copy-initialization` | One commit per check; the last two diffs were read by hand |
+| `src/Core/OOProfilingStopwatch.h` | Fences `<windef.h>` and `<timeapi.h>` with `clang-format off`/`on` | Keeps the include sorter from putting `timeapi.h` first again, which breaks the Windows build |
+| `src/Core/Entities/DockEntity.h`, `ShipEntity.cpp` | Comment fixes | Trailing comments moved above the code they describe; a stale section comment dropped |
+| `ShellScripts/macOS/create_app_bundle_fn.sh` | `bundle_dylibs()` resolves `@rpath/` dependencies through the original file's rpaths | Homebrew LLVM's `libc++` names `libc++abi` and `libunwind` as `@rpath/…`; the bundler skipped them and the app aborted at launch |
 
 ## Why
 
-Jon (2026-11-04): the series uses upstream's QuickJS-ng binding as upstream wrote it, not the
-fork's restyle of it. This step therefore holds only the genuine fixes found between 024 and the
-end target. Left out: the restyle of #768's binding and its tests, the `subproject()` wiring (and
-the `llvm-ar` it needed), and small forms that are neutral or would revert upstream (the
-`OOLITE_SDL` guards, the `STRINGIFY` fallback, the `#endif`/`#ifdef` pair in `OOPlanetDrawable.cpp`,
-the include sets).
+These are the fixes found after the conversion that belong with the series: build fixes for
+Linux, macOS and Windows that the reformat or the converted tree needed, removal of code that is
+never compiled, the clang-tidy checks the series' `.clang-tidy` enables, and the Mozilla
+extensions that SpiderMonkey-era expansions call and #768's compatibility script does not
+define. The fork's restyle of #768's binding is not here: the series uses that binding as
+upstream wrote it.
 
 ## Behaviour changes
 
-_To write._
+- A getter that throws while the engine reads a property for its own bookkeeping no longer
+  leaves the exception pending for the next script; the read falls back as for a missing
+  property. Pinned by `throwingAccessorsLeaveNoPendingException` in
+  `tests/unit/core/test_OOJavaScriptEngine.cpp` (added; it fails without the fix).
+- Scripts can call `String.prototype.quote()`, `Array.forEach(array, fn)` and the other
+  Array/String generics. Not pinned by a test.
+- The `script.javaScript.willLoad` log indent is balanced after an early load failure. Not pinned
+  by a test.
+- macOS app bundles carry `libc++abi` and `libunwind`. Not pinned by a test, and not verified by
+  this series.
+- Otherwise none: the Cocoa blocks were never compiled, `OOOpenGLExtensionManager` already took
+  its lock on every build, and the clang-tidy fixes keep the code's meaning.
 
 ## How to review
 
-Read the four commits; each names its files. `git diff --shortstat` against 024 is under 200
-lines. No existing assertion changes; one test is added.
+Read the commits; each names its files and is small, apart from the clang-tidy ones, which are
+one check each and mechanical (`git show --word-diff`). The Cocoa removal is mostly deletions in
+`GameController.cpp` and `Universe.cpp`; check that each kept arm is the one an SDL build
+compiled. No existing assertion changes; one test is added, and 17 tests change their include
+lines only.
 
 ## Test changes **(gen)**
 
 Existing test files this step changes, each listed in the series' test ledger (`test-changes.md`):
 
 - `tests/unit/core/meson.build`
+- `tests/unit/core/test_OOCache.cpp`
+- `tests/unit/core/test_OOCharacter.cpp`
+- `tests/unit/core/test_OODebugMonitor.cpp`
+- `tests/unit/core/test_OOJSEquipmentInfo.cpp`
+- `tests/unit/core/test_OOJSPlayer.cpp`
+- `tests/unit/core/test_OOJSShipGroup.cpp`
+- `tests/unit/core/test_OOJSStation.cpp`
+- `tests/unit/core/test_OOJSSystem.cpp`
+- `tests/unit/core/test_OOJSSystemInfo.cpp`
+- `tests/unit/core/test_OOJSVisualEffect.cpp`
 - `tests/unit/core/test_OOJavaScriptEngine.cpp`
+- `tests/unit/core/test_OOPlanetTextureGenerator.cpp`
+- `tests/unit/core/test_OOProbabilitySet.cpp`
+- `tests/unit/core/test_OOShaderMaterial.cpp`
+- `tests/unit/core/test_OOStandaloneAtmosphereGenerator.cpp`
+- `tests/unit/core/test_OOVector.cpp`
+- `tests/unit/core/test_StationEntity.cpp`
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`fd837749e3`) yet: the last record is for `57a0c89a9e` (2026-11-03), an earlier build of this step.
+Not verified at this branch's tip (`8d524e16d3`) yet: the last record is for `57a0c89a9e` (2026-11-03), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

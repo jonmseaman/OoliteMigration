@@ -1,8 +1,8 @@
 # Small fixes after the migration
 
-**Series:** step 18 of 24 · base `seriesb/017-gcc-build` · next `seriesb/019-source-hygiene` **(gen)**
+**Series:** step 18 of 26 · base `seriesb/017-gcc-build` · next `seriesb/019-source-hygiene` **(gen)**
 
-**Replays:** `series/021-develop-fixes` (old 21 of the master-based series) · 276 src, 355 tests, 9 other changed lines; 0 lines in deleted files **(gen)**
+**Replays:** `series/021-develop-fixes` (old 21 of the master-based series) · 276 src, 355 tests, 30 other changed lines; 0 lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
@@ -29,6 +29,10 @@
 - **`test_objc_assert.cpp`** takes the 80-column layout, with its two one-line helpers that record
   `__LINE__` kept on one line under `clang-format off`, so the line they record stays the
   assertion's.
+- **macOS packaging.** `darwin.ini` adds Homebrew's keg-only `icu4c` to `pkg_config_path` and
+  `ShellScripts/macOS/install_packages.sh` installs it, because oofnd needs `icu-uc` and
+  `icu-i18n`. `ShellScripts/common/post_build.sh` keeps `Resources/Info-gnustep.plist` in the app
+  bundle, since the game reads its version from it.
 
 ## Why
 
@@ -37,12 +41,18 @@ formatter sorts includes, which step 23 (`seriesb/023-google-style-format`) does
 finds such headers and keeps them fixed; the `OOJSEngineNativeWrappers.h` declarations are what it
 found in #768's code. For the maths headers the step follows #748, which made them includable on
 their own, and adds `OOMathsBase.h` so that each one gets the shared definitions without going
-through `OOMaths.h`.
+through `OOMaths.h`. The macOS packaging lines are what a fresh macOS configure and app bundle
+need once oofnd and the converted version lookup are in.
 
 ## Behaviour changes
 
-None. The changes are to includes and declarations, tests and comments; the game's code is the
-same. `test_OOMathsHeaders` pins the standalone maths headers, the `headers` suite the rest.
+- The macOS app bundle keeps `Resources/Info-gnustep.plist`. Without it the version is null,
+  every resource directory is refused as incompatible and the game exits for want of
+  `descriptions.plist`. No test pins it; macOS is not verified by this series.
+
+Otherwise none. The other changes are to includes and declarations, tests and comments; the game's
+code is the same. `test_OOMathsHeaders` pins the standalone maths headers, the `headers` suite the
+rest.
 
 ## How to review
 
@@ -51,10 +61,11 @@ lines at the top of each maths header. The other header changes are one or three
 `tests/check_headers_standalone.py` is new; its `FRAGMENTS` table lists the few headers that are
 not standalone by design, each with the reason. The path changes in READMEs and the GUI and
 component tiers are mechanical. `test_objc_assert.cpp`'s diff is layout (rewrapped comments,
-braces, include order) apart from the `clang-format off`/`on` pair; its checks are unchanged.
+braces, include order) apart from the `clang-format off`/`on` pair; its checks are unchanged. The
+macOS packaging is one line each in `darwin.ini`, `install_packages.sh` and `post_build.sh`.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`ad4601e061`) yet: the last record is for `a83f7ad720` (2026-11-03), an earlier build of this step.
+Not verified at this branch's tip (`e40ed2d9fd`) yet: the last record is for `a83f7ad720` (2026-11-03), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

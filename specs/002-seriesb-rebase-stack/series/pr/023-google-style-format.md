@@ -1,8 +1,8 @@
 # Reformat with Google-style clang-format (optional)
 
-**Series:** step 23 of 24 · base `seriesb/022-upstream-28ceaaba0-ports` · next `seriesb/024-post-conversion-fixes` **(gen)**
+**Series:** step 23 of 26 · base `seriesb/022-upstream-28ceaaba0-ports` · next `seriesb/024-post-conversion-fixes` **(gen)**
 
-**Replays:** `series/026-google-style-format` (old 26 of the master-based series) · 418.8k src, 23.2k tests, 55 other changed lines; 0 lines in deleted files **(gen)**
+**Replays:** `series/026-google-style-format` (old 26 of the master-based series) · 418.6k src, 23.1k tests, 55 other changed lines; 0 lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
@@ -17,12 +17,19 @@ the CI check would reject, warning when the local clang-format's major version i
 
 Reproduce: take `.clang-format` from this step, then run clang-format 22 with `-i` over every
 `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `.mm` under `src/` until it changes nothing (two passes:
-one leaves some comment reflows). Every file in `src/` then equals this step's. In `tests/`, 84
-C and C++ files that clang-format 22 would change are left as they are.
+one leaves some comment reflows). Every file in `src/` then equals this step's, apart from the
+two hand edits below. The step's later format commits (`OOFoundation.h`'s `OOSortFunction`
+comment, 20 files in a second run, and 7 more files) are the same command over code that came in
+from earlier steps after the first run, so every file passes upstream's clang-format check. In `tests/`, 84 C and C++ files
+that clang-format 22 would change are left as they are.
 
-One hand edit: Google style sorts includes, which put `<timeapi.h>` ahead of `<windef.h>` in
-`OOProfilingStopwatch.h` and broke the Windows build. A comment line between the two keeps
-clang-format from sorting them.
+Two hand edits, both because Google style sorts includes:
+
+- `OOProfilingStopwatch.h`: sorting put `<timeapi.h>` ahead of `<windef.h>` and broke the Windows
+  build. A comment line between the two keeps clang-format from sorting them.
+- `OOMatrix.cpp`: sorting put `<SDL3/SDL_opengl.h>` above `OOOpenGLOnly.h`, so SDL's header was
+  read before `GL_GLEXT_PROTOTYPES` was defined and `glUniformMatrix3fvARB` was not declared. The
+  include is removed; `OOOpenGLOnly.h` includes it in the right order.
 
 ## Why
 
@@ -33,8 +40,9 @@ this step; step 024 is written in this step's style.
 ## Behaviour changes
 
 None: formatting only. Code tokens are the same before and after in every file, include lines
-compared as a set; the only exceptions are two Objective-C `@"..."` literals in fenced Mac code
-that clang-format splits.
+compared as a set; the exceptions are two Objective-C `@"..."` literals in fenced Mac code that
+clang-format splits, and `OOMatrix.cpp`'s `<SDL3/SDL_opengl.h>` include, which goes (the header
+still reaches the file through `OOOpenGLOnly.h`).
 
 ## How to review
 
@@ -45,6 +53,6 @@ example in `PlayerEntity.h`), so `./mk.sh format-check` with 23 reports files th
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`9814ba3131`) yet: the last record is for `29f6d6dead` (2026-11-03), an earlier build of this step.
+Not verified at this branch's tip (`afebed9791`) yet: the last record is for `29f6d6dead` (2026-11-03), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

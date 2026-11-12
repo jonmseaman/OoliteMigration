@@ -1,6 +1,6 @@
 # Delete the Objective-C bridges
 
-**Series:** step 14 of 24 · base `seriesb/013-universe-player-slices` · next `seriesb/015-entity-facade` **(gen)**
+**Series:** step 14 of 26 · base `seriesb/013-universe-player-slices` · next `seriesb/015-entity-facade` **(gen)**
 
 **Replays:** `series/016-facade-deletions` (old 16 of the master-based series) · 49.8k src, 25.9k tests, 0 other changed lines; 22.0k lines in deleted files **(gen)**
 
@@ -41,6 +41,12 @@ Upstream changes kept in the converted code:
 - #756: the converted debug-monitor code stays under `OO_DEBUG_MONITOR_ENABLED`, and the entity
   shader-binding table, which moves into `Entity+ObjCBridge.mm`, keeps the guard of
   `OOShaderUniformMethodType.h` (`OO_SHADERS || defined(OO_DEBUG_MONITOR_ENABLED)`).
+- #783: the GUI screens read the joystick's GUI buttons (`joyButtonState[BUTTON_GUI...]`) beside
+  their keys, in `PlayerEntityControls`, `KeyMapper`, `LoadSave` and `StickMapper`. No test
+  pins these reads.
+- #786: the stick mapper's hardware names come from the descriptions (`stickmapper-axis` and so
+  on). `stickMapperHardwareAndGuiDicts` in `tests/unit/core/test_PlayerEntity.mm` supplies the
+  three entries and checks that `hwToString()` answers them.
 
 New tests: `test_DockEntity`, `test_OOJSShip` and `test_ProxyPlayerEntity`.
 
@@ -85,6 +91,6 @@ or visual effect. Step 15 turns them into C++ tables.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`aec817ac82`) yet: the last record is for `ee94df4a1b` (2026-11-03), an earlier build of this step.
+Not verified at this branch's tip (`1acb43182f`) yet: the last record is for `ee94df4a1b` (2026-11-03), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

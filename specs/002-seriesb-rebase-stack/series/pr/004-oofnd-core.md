@@ -1,6 +1,6 @@
 # Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation
 
-**Series:** step 4 of 24 · base `seriesb/003-objcpp-switch` · next `seriesb/005-typed-accessors` **(gen)**
+**Series:** step 4 of 26 · base `seriesb/003-objcpp-switch` · next `seriesb/005-typed-accessors` **(gen)**
 
 **Replays:** `series/006-oofnd-core` (old 6 of the master-based series) · 9.8k src, 6.4k tests, 11 other changed lines; 460 lines in deleted files **(gen)**
 
@@ -21,7 +21,12 @@ parts of GNUstep Foundation the game uses:
 types. The library and its 20 unit tests in `tests/unit/oofnd/` are 48 files, +14.6k lines. The
 tests are registered as `meson test --suite oofnd`, built on Windows in every flavour but the
 deployment build (they test assertion paths that `NDEBUG` compiles out, and use the Windows
-toolchain's headers and LLP64 types).
+toolchain's headers and LLP64 types). The floor links against the `objc_lib` that
+`src/meson/linux/meson.build` found, where there is one (on Fedora, GNUstep's libobjc is in
+`/usr/local/lib64`, off the linker's default path); elsewhere it searches for `objc` as before.
+
+The game builds as `c++20` (not `gnu++20`) from here on, through `cpp_std` in `src/meson.build`,
+which meson also applies to Objective-C++.
 
 The game starts using some of these (60 files under `src/Core` and `src/SDL`, +917/−1069):
 - `oo::process`, captured in `main`, replaces `NSProcessInfo`.
@@ -30,7 +35,8 @@ The game starts using some of these (60 files under `src/Core` and `src/SDL`, +9
 - `OOLogging`'s per-thread indent becomes `thread_local`.
 - `OORoleSet` is rerooted onto `OOObject`.
 - `OOPListView.h` gives Foundation collections `PList`'s typed `get<T>`; `OOWaypointEntity.mm`
-  uses it.
+  uses it. Booleans are read as `get<bool>`: there is no `BOOL` row, because outside Windows the
+  GNUstep runtime's `BOOL` is `unsigned char` and the row would redefine that one.
 - `CollisionRegion`, `OOPriorityQueue`, `OOProbabilitySet` and `OOShipGroup` raise `OOException`
   instead of `NSException`.
 - `OOJSCall` and `OOShaderUniform` match a method's types through the runtime's type encodings
@@ -74,6 +80,9 @@ Not pinned by a test:
   enumerating, a failed allocation). A `@catch (NSException *)` does not catch an `OOException`
   (a `@catch (id)` does), and their messages print an object as `<ClassName: 0x...>` rather than
   through `-description`.
+- Building as `c++20` defines `__STRICT_ANSI__`, so where `OOMaths.h` defines `MIN`, `MAX` and
+  `ABS` itself it now uses the plain macros, which evaluate their arguments twice, rather than
+  the GNU statement-expression ones.
 
 `OORoleSet` keeps its `-description`. Other `OOObject` subclasses log as `<ClassName: 0x...>`,
 as `NSObject` did, through the temporary `src/Core/OOObjectGNUstepBridge.mm`. The game-level
@@ -105,10 +114,26 @@ tiers from step 2 (`tests/component/`, `tests/gui/`) also run against this step.
 
    The remaining files are small swaps of `NSProcessInfo`, `NSThread`, `NSException`,
    `NSSelectorFromString` or `NSAutoreleasePool` for their `oo::` or runtime equivalents.
-5. `meson.build`, `src/meson.build`: the `oofnd` dependency, `gnu++20`, and the test suite.
+5. `meson.build`, `src/meson.build`, `src/oofnd/meson.build`: the `oofnd` dependency, `c++20`,
+   the floor's libobjc, and the test suite.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`a5bc2d63e3`) yet: the last record is for `6e3649712d` (2026-11-02), an earlier build of this step.
+Windows x64, `e178ae9254`, 2026-11-11.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: not required for this series (the code builds with Clang, as upstream's CI) |
+| clang_format | pass |
+| component | fail: exit 1 (see .agent-tmp\seriesb-verify-logs\004-component.log) (2 earlier attempt(s) failed; see the log) |
+| no_facade | pass |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | pass |
+| poc | n/a: the harness needs GNUstep here, so upstream builds it on Linux only |
+| smoke | pass |
+| tests_untouched | fail: tests/component/README.md, tests/component/conftest.py, tests/component/console.py, tests/gui/test_g2_exit_via_keyboard.py, tests/gui/test_g5_screen_round_trips.py, tests/gui/test_g6_window_lifecycle.py, tests/gui/test_g8_scenario_screen_back_out.py, tests/gui/test_g9_post_exit_hygiene.py |
+| unit | pass: oofnd |
+| warnings_clang | pass: 0 new warnings (6 inherited from the parent) |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

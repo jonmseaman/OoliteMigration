@@ -1,8 +1,8 @@
 # Delete the Entity bridge and the last Objective-C bridges
 
-**Series:** step 15 of 24 · base `seriesb/014-facade-deletions` · next `seriesb/016-objc-runtime-out` **(gen)**
+**Series:** step 15 of 26 · base `seriesb/014-facade-deletions` · next `seriesb/016-objc-runtime-out` **(gen)**
 
-**Replays:** `series/017-entity-facade` (old 17 of the master-based series) · 26.8k src, 17.2k tests, 58 other changed lines; 17.6k lines in deleted files **(gen)**
+**Replays:** `series/017-entity-facade` (old 17 of the master-based series) · 26.9k src, 17.2k tests, 58 other changed lines; 17.6k lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
@@ -24,7 +24,8 @@ The other 22 remaining bridges go too: `Universe`, `GameController`, `MyOpenGLVi
 manager, the texture, texture loader, texture generator and material roots, the cache, resource,
 ship-registry and async-work managers, the two joystick managers, `OOStringExpander` and the
 Quirium cascade. With `Entity`'s, 23 bridges (45 files) go; only `OOWeakReference`'s is left, for
-step 16.
+step 16. With the joystick bridges gone, the SDL manager derives from `OOJoystickManager` and its
+button decoder reads #783's GUI-button map as its own member.
 
 #768's binding is converted with them. The entity classes register `OOJSCxxObjectWrapperFinalize`
 and `OOJSEntityObjectConverter`. `global.quitGame()` is still deferred, as #768 has it, now through
@@ -92,6 +93,6 @@ fixes above are small and stand alone: `OOTextureScaling.mm` and `GameController
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`f8b845dfcc`) yet: the last record is for `850be031b5` (2026-11-03), an earlier build of this step.
+Not verified at this branch's tip (`cd157d105f`) yet: the last record is for `850be031b5` (2026-11-03), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

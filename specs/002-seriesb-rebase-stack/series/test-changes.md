@@ -346,6 +346,7 @@ from old 020's (rows above). No assertion changed.
 | `tests/unit/core/test_OOJSMissionVariables.cpp` (`deletingAVariableTheScriptNeverSet`), `tests/unit/core/test_ShipEntity.cpp` (`CountingFlasher`, `updateReachesNonShipSubentities`, the `OOFlasherEntity.h` include) | Added as old 021 adds them, in the parent's layout (tabs, braces on their own lines, one line per call; the include in the parent's include order). | The parent's layout; step 024 reformats. | None. |
 | `tests/component/test_exit_runs_js_leak_check.py` (new, T069) | Added in its own commit after the replay, the end target's file unchanged (`8a0a3c97a`). | It pins #768's exit `shutDown` leak check, which the stack keeps throughout; added at 021, the tests-and-tooling step. | New test. |
 | `tests/run.sh` | Committed `100755` (old 021 had `100644`). | It is run as a bare program and has a shebang (repo rule); the end target has it `100755`. | n/a |
+| `tests/unit/core/test_OOJavaScriptEngine.cpp` (`deleteReachesTheClassHookWithNoOwnProperty`, Sync 2) | The last check deletes the vault with `delete global.vault` (was `delete globalThis.vault`); it still expects `true`. | Upstream #768 (`ac0f8a3d3`, "keep the global object to SpiderMonkey's names") removes `globalThis` and the other ES2015 globals from the game's global object; `global` refers to the same object. Kept to upstream's behaviour (CLAUDE.md rule 1's upstream exception). | One: the global reached by its SpiderMonkey name. |
 
 ## Step 021 (was 022)
 
@@ -406,6 +407,32 @@ check leaked it); its other test restyles go too.
 |---|---|---|---|
 | `tests/unit/core/test_OOJavaScriptEngine.cpp` | Test added: `throwingAccessorsLeaveNoPendingException` (a throwing `constructor`, `name`, array-element or error `name`/`stack` getter read by the engine leaves no exception pending). | Pins the engine fix in this step; it fails without it. | None (a test is added; existing tests unchanged). |
 | `tests/unit/core/meson.build` | The 8 tests that open OpenAL (`test_OOOpenALController`, `test_OOSound`, `test_OOALBufferedSound`, `test_OOALStreamedSound`, `test_OOMusic`, `test_OOSoundChannel`, `test_OOSoundMixer`, `test_MyOpenGLView`) are also in suite `openal`. | A sanitized run can leave them out with `--no-suite openal`; every test stays in `core`. | None. |
+
+## Step 025
+
+Step 025 (`seriesb/025-libcurl-http`): libcurl replaces WinHTTP, so `test_http` runs on every
+platform. Tests not listed are unchanged.
+
+| path | what changed | why | assertions changed? |
+|---|---|---|---|
+| `tests/unit/oofnd/test_http.cpp` | The loopback server is built on BSD sockets as well as winsock and is no longer Windows-only; the link note drops `-lwinhttp`. `refused_connection_fails` looks for `libcurl error 7` (couldn't connect) where it looked for WinHTTP's `12029`. | The backend is libcurl on every platform; the refused connection is the same case, reported in libcurl's code. | One: the expected error code in `refused_connection_fails`. |
+| `tests/unit/oofnd/meson.build` | `test_http` links libcurl (and `ws2_32` on Windows) instead of WinHTTP, on every platform. | As above. | None. |
+
+## Step 026
+
+Step 026 (`seriesb/026-migration-completion`): GNUstep and the last Objective-C leave the build.
+Jon asked for each test change below (commit messages `2492776af`, `8ec7631d3`, `505642ab8`).
+Tests not listed are unchanged.
+
+| path | what changed | why | assertions changed? |
+|---|---|---|---|
+| `tests/unit/core/test_OOShaderProgram.cpp` (`2492776af`) | The four checks after a failed initialiser's teardown accept `GL_INVALID_VALUE` or no error, and still require nothing else left behind. | `glDeleteObjectARB(0)` (upstream's `-dealloc` does the same): NVIDIA reports `GL_INVALID_VALUE`, Mesa ignores it, so the checks pinned one driver and failed in CI. The game code is unchanged. | Yes: four checks widened to accept either driver's answer. |
+| `tests/check_headers_standalone.py` (deleted, `8ec7631d3`) | The `headers_standalone` test is removed; the `headers` suite keeps `debug_monitor_guards`. | A migration-era check (222 s in CI) that has served its purpose. | The test is removed. |
+| `tests/idiom_check.py` (deleted, `8ec7631d3`) | Removed; `check_debug_monitor_guards.py` carries its own copy of the scanning and comment-stripping helpers. | As above. | The check is removed. |
+| `tests/check_debug_monitor_guards.py` (`8ec7631d3`) | No longer imports `idiom_check`; the scan scope, vendored exclusions and comment stripping are in the file. | `idiom_check.py` is deleted. It reports the same hits as before. | None. |
+| `tests/source_paths.py`, `tests/gui/test_source_paths.py` (deleted, `505642ab8`) | Removed. | They found a game source by stem across the `.m` -> `.mm` -> `.cpp` renames; every implementation file is `.cpp` now. | The helper's own test is removed. |
+| `tests/gui/test_double_click_timing.py` (`505642ab8`) | Opens `src/<path>.cpp` directly instead of through `source_paths.resolve_source`. | `source_paths.py` is deleted. | None (its two checks are unchanged). |
+| `tests/unit/core/meson.build` (`12b62c436`) | Adds `test_OOMatrix`, `test_OOQuaternion` and `test_OOHPVector`. | New tests. | None. |
 
 ## Reference: the end target's moves off the façade (not a step)
 

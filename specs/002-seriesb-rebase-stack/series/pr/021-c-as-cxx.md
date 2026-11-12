@@ -1,8 +1,8 @@
 # Compile the remaining C sources as C++; build QuickJS-ng with the fork's patches
 
-**Series:** step 21 of 24 · base `seriesb/020-tests-and-tooling` · next `seriesb/022-upstream-28ceaaba0-ports` **(gen)**
+**Series:** step 21 of 26 · base `seriesb/020-tests-and-tooling` · next `seriesb/022-upstream-28ceaaba0-ports` **(gen)**
 
-**Replays:** `series/024-c-as-cxx` (old 24 of the master-based series) · 13.6k src, 5.3k tests, 239 other changed lines; 0 lines in deleted files **(gen)**
+**Replays:** `series/024-c-as-cxx` (old 24 of the master-based series) · 13.6k src, 5.1k tests, 224 other changed lines; 0 lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
@@ -31,17 +31,22 @@
   file, and including `<windows.h>` here
   would put `<winsock.h>` ahead of a later `<winsock2.h>`. #768's timer is unchanged.
 - QuickJS-ng stays at 0.17.0, as #768 has it. `subprojects/quickjs-ng.wrap` becomes a
-  `[wrap-file]` for the 0.17.0 tarball, with three patches: `quickjs-ng-o2.patch` (QuickJS-ng's
-  own defaults build at `-O2` with `NDEBUG`, the game's pinned level, where its wrapdb defaults
-  are `-O3`), `quickjs-ng-void-return.patch` (four `return` statements of a void expression in
-  void functions, QuickJS-ng's 4 `-Wpedantic` warnings) and #768's primitive-property patch,
-  kept. `subprojects/.gitignore` keeps the fetched source out of the tree, and the flatpak
-  manifest fetches the same tarball.
+  `[wrap-file]` for the 0.17.0 tarball (wrapdb's copy as the fallback URL), with four patches in
+  its `diff_files`: `quickjs-ng-o2.patch` (QuickJS-ng's own defaults build at `-O2` with
+  `NDEBUG`, the game's pinned level, where its wrapdb defaults are `-O3`),
+  `quickjs-ng-void-return.patch` (four `return` statements of a void expression in void
+  functions, QuickJS-ng's 4 `-Wpedantic` warnings), and #768's two,
+  `0001-oolite-primitive-property-assignment` and `0002-oolite-new-on-native-functions`, kept.
+  `subprojects/.gitignore` keeps the fetched source out of the tree. The flatpak manifest fetches
+  the same tarball into meson's package cache, in place of the git checkout and the two patch
+  sources it listed, so meson applies the same four patches there.
 - `tests/check_debug_monitor_guards.py` (new, in the `headers` suite) checks that debug-monitor
   code is guarded by `OO_DEBUG_MONITOR_ENABLED`, not `NDEBUG` (#756's rule). It uses
   `tests/idiom_check.py`, a comment-aware checker for old idioms, added here.
 - Tooling: `.clang-tidy` and `.editorconfig`; `./mk.sh` copies `compile_commands.json` to the
   root, where `.clangd` now reads it; `tests/unit/asan-suppressions.txt` for sanitized runs.
+- A last commit runs clang-format 22 over `OOCallByName.h`, so upstream's clang-format check
+  passes.
 - The GUI and component tiers no longer reach for a desktop lock outside this repository
   (`tools/gui-lock`): the `desktop_lock` fixture, its lock environment variables and
   `test_g10`'s guard test of the lock (`test_the_child_cannot_deadlock_on_the_lock_its_parent_holds`)
@@ -78,6 +83,6 @@ guard to fix.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`c5897f4f21`) yet: the last record is for `f518b81af8` (2026-11-03), an earlier build of this step.
+Not verified at this branch's tip (`7258f16a92`) yet: the last record is for `f518b81af8` (2026-11-03), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

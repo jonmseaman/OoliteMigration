@@ -1,8 +1,8 @@
 # Add a test safety net: deterministic runs, GUI and component tests
 
-**Series:** step 2 of 24 · base `seriesb/001-random-seed-env` · next `seriesb/003-objcpp-switch` **(gen)**
+**Series:** step 2 of 26 · base `seriesb/001-random-seed-env` · next `seriesb/003-objcpp-switch` **(gen)**
 
-**Replays:** `series/002-safety-net` (old 2 of the master-based series) · 493 src, 13.6k tests, 27 other changed lines; 0 lines in deleted files **(gen)**
+**Replays:** `series/002-safety-net` (old 2 of the master-based series) · 484 src, 12.0k tests, 0 other changed lines; 0 lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
@@ -17,10 +17,9 @@ This step adds tests and the few game hooks those tests need, before any product
   remains within 900 ticks". Each scenario starts the game with `OO_RANDOM_SEED` (step 1).
 - `tests/launch_snapshot.py` is reworked so several copies can run at once, each with its own
   console port and its own staged copy of `oolite.app`.
-- On the game side: floating-point contraction is turned off for every build (`-ffp-contract=off`),
-  `ship.speed` becomes writable from scripts, and debug builds get an opt-in shuffle of
-  `NSDictionary`/`NSSet` enumeration order (`OOEnumerationShuffle`), which `GameController`
-  initialises at start-up so its seed is logged first.
+- On the game side: `ship.speed` becomes writable from scripts, and debug builds get an opt-in
+  shuffle of `NSDictionary`/`NSSet` enumeration order (`OOEnumerationShuffle`), which
+  `GameController` initialises at start-up so its seed is logged first.
 
 ## Why
 
@@ -29,17 +28,13 @@ the Objective-C classes, #768's JavaScript binding. These tests are written agai
 Objective-C game, so they record what it does now, and each later step is checked against them.
 They come first because a test added after a rewrite can only tell you what the new code does.
 
-The game-side hooks make those runs repeatable or controllable. `-ffp-contract=off` stops the
-compiler from fusing `a*b + c` into an FMA differently from one machine or compiler version to
-another. A writable `ship.speed` lets a script hold a ship at a known speed, which writing
-`ship.velocity` cannot do (the engine rebuilds the velocity from the flight speed on the next
-frame). The enumeration shuffle catches code that silently relies on GNUstep's hash order, which
-the C++ containers in later steps will not reproduce.
+The game-side hooks make those runs repeatable or controllable. A writable `ship.speed` lets a
+script hold a ship at a known speed, which writing `ship.velocity` cannot do (the engine rebuilds
+the velocity from the flight speed on the next frame). The enumeration shuffle catches code that
+silently relies on GNUstep's hash order, which the C++ containers in later steps will not reproduce.
 
 ## Behaviour changes
 
-- **`-ffp-contract=off` in every build** (`meson.build`). Where the compiler used to fuse
-  multiply-adds, floating-point results may differ in their low-order bits. Not pinned by a test.
 - **`ship.speed` is writable for non-player ships** (`OOJSShip.m`). The setter calls `-setSpeed:`,
   refuses negative values and NaN with a script error, has no upper clamp, and stays read-only on
   the player ship. Not pinned by a test in this step; `setterNumbers` in
@@ -59,8 +54,8 @@ Start with the game side, which is small:
 - `src/Core/OOEnumerationShuffle.{h,m}`, `OOEnumerationShufflePRNG.h`, and the call in
   `src/Core/GameController.m`.
 - The `kShip_speed` setter in `src/Core/Scripting/OOJSShip.m`, written in #768's idiom.
-- The two `meson.build` hunks: `-ffp-contract=off`, and a comment on the existing `optimization=2`
-  default saying why it stays fixed.
+- `src/Core/meson.build`, which adds `OOEnumerationShuffle.m` to the sources. The top-level
+  `meson.build` is unchanged.
 
 Everything else, about 13.6k lines, is under `tests/`. For the component tier, read
 `tests/component/README.md` (the step catalogue), then `console.py`, `steps/world_steps.py` and one
@@ -80,18 +75,20 @@ Where this step's change differs from `series/002-safety-net`'s, and why:
 
 ## Verified **(gen)**
 
-Windows x64, `b5602101cd`, 2026-11-02.
+Windows x64, `12eca88f7f`, 2026-11-11.
 
 | Check | Result |
 |---|---|
 | build_clang | pass |
-| build_gcc | n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too) |
+| build_gcc | n/a: not required for this series (the code builds with Clang, as upstream's CI) |
 | clang_format | pass |
-| component | pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships (1 earlier attempt(s) failed; see the log) |
+| component | pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships |
+| no_facade | pass |
 | no_new_spidermonkey_or_gnustep | pass |
 | no_new_suppressions | pass |
+| poc | n/a: the harness needs GNUstep here, so upstream builds it on Linux only |
 | smoke | pass |
-| tests_untouched | pass |
+| tests_untouched | fail: tests/component/README.md, tests/component/conftest.py, tests/component/console.py, tests/gui/test_g2_exit_via_keyboard.py, tests/gui/test_g5_screen_round_trips.py, tests/gui/test_g6_window_lifecycle.py, tests/gui/test_g8_scenario_screen_back_out.py, tests/gui/test_g9_post_exit_hygiene.py |
 | unit | n/a: the tree has no unit suites |
 | warnings_clang | pass: 0 new warnings (6 inherited from the parent) |
 

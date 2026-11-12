@@ -1,8 +1,8 @@
 # Compile the game as Objective-C++, keeping #768's QuickJS-ng binding
 
-**Series:** step 3 of 24 · base `seriesb/002-safety-net` · next `seriesb/004-oofnd-core` **(gen)**
+**Series:** step 3 of 26 · base `seriesb/002-safety-net` · next `seriesb/004-oofnd-core` **(gen)**
 
-**Replays:** `series/005-quickjs-switch` (old 3, 4, 5 of the master-based series) · 864 src, 0 tests, 2.1k other changed lines; 0 lines in deleted files **(gen)**
+**Replays:** `series/005-quickjs-switch` (old 3, 4, 5 of the master-based series) · 891 src, 0 tests, 2.2k other changed lines; 0 lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
@@ -12,16 +12,16 @@ The game compiles as Objective-C++. Every Objective-C source file in `src/` is r
 to `.mm` (247 renames, including #768's `poc/` harness), and the build declares the `objcpp`
 language (`meson.build`, `clang.ini`). `src/meson/meson.build` gives Objective-C++ the same
 exception flags as Objective-C and, for Clang off macOS, the same GNUstep-runtime flags. Every
-`meson.build` source list names the `.mm` files. 285 files change, +1695/−1306; no file is added
+`meson.build` source list names the `.mm` files. 288 files change, +1738/−1334; no file is added
 or deleted.
 
-133 renames are byte-identical. The other 114, and 26 headers, get the edits that C++ requires:
+131 renames are byte-identical. The other 116, and 29 headers, get the edits that C++ requires:
 
 - identifiers that are C++ keywords are renamed: `this` → `thisObj` in #768's binding (the
   `OOJS_GETTER_ARGS`/`OOJS_SETTER_ARGS` macros and every callback), `class` → `klass`, `new` →
   `newValue`, `export`, `mutable`, `template`, `private` and `operator` likewise;
-- explicit casts where C converts implicitly: `void *` results (`malloc`, `-bytes`,
-  `JS_GetOpaque`, `pointerValue`) and integers assigned to enums;
+- explicit casts where C converts implicitly: `void *` results (`malloc`, `alloca`, `dlsym`,
+  `-bytes`, `JS_GetOpaque`, `pointerValue`) and integers assigned to enums;
 - variable-length arrays become `std::vector`;
 - `extern "C"` guards in the headers that declare C functions;
 - a few C-only constructs get C++ equivalents: `OO_CAST_PARAMETER` in `OOStringExpander.h` picks
@@ -29,7 +29,13 @@ or deleted.
   state table moves above its first use and lists its entries and fields in declaration order;
   declarations that a `goto` or `case` would jump over get their own block or lose their
   initialiser to a separate assignment; `OOJSPropID.h`'s `OOJSID` macro puts a space between
-  `""` and its argument.
+  `""` and its argument;
+- `OOFoundation.h` adds `OOSortFunction()`, used at the `sortedArrayUsingFunction:` and
+  `sortUsingFunction:` call sites. With Apple's Foundation it casts the sort function to the
+  `NSInteger` signature the SDK declares; with GNUstep, whose declaration already takes
+  `NSComparisonResult`, it passes the function as it is. `OONSOperation.h`'s priority names become
+  typed constants, and `OOMaths.h` includes `<tgmath.h>` before its `extern "C"` block, because
+  libc++ declares templates there.
 
 #768's QuickJS-ng binding stays the scripting layer, here and in every later step; only the edits
 above touch it. `oolite-quickjs-compat.js`, the QuickJS-ng wrap and its patch, and upstream's
@@ -57,7 +63,7 @@ against this step unchanged.
 
 ## How to review
 
-1. See only the files whose content changed (114 edited renames, 38 modified files):
+1. See only the files whose content changed (116 edited renames, 41 modified files):
 
        git diff -M --name-status seriesb/002-safety-net seriesb/003-objcpp-switch | grep -v '^R100'
 
@@ -79,6 +85,21 @@ against this step unchanged.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`768166d647`) yet: the last record is for `a6e785314d` (2026-11-02), an earlier build of this step.
+Windows x64, `e8b7c8d6d9`, 2026-11-11.
+
+| Check | Result |
+|---|---|
+| build_clang | pass |
+| build_gcc | n/a: not required for this series (the code builds with Clang, as upstream's CI) |
+| clang_format | pass |
+| component | pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships (1 earlier attempt(s) failed; see the log) |
+| no_facade | pass |
+| no_new_spidermonkey_or_gnustep | pass |
+| no_new_suppressions | fail: src/Core/Scripting/poc/OOJavaScriptEnginePoc.mm: #pragma clang diagnostic ignored "-Wincomplete-implementatio |
+| poc | n/a: the harness needs GNUstep here, so upstream builds it on Linux only |
+| smoke | pass |
+| tests_untouched | fail: tests/component/README.md, tests/component/conftest.py, tests/component/console.py, tests/gui/test_g2_exit_via_keyboard.py, tests/gui/test_g5_screen_round_trips.py, tests/gui/test_g6_window_lifecycle.py, tests/gui/test_g8_scenario_screen_back_out.py, tests/gui/test_g9_post_exit_hygiene.py |
+| unit | n/a: the tree has no unit suites |
+| warnings_clang | pass: 0 new warnings (6 inherited from the parent) |
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

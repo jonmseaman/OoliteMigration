@@ -66,7 +66,7 @@
    "branch": "seriesb/000a-upstream-767-quickjs-option",
    "gate": "pass",
    "git_town_type": "observed",
-   "head": "4fc77cd99f0362f1d706d3d9188b903db108ecd3",
+   "head": "079fce06c46df1ace3cca5b278489bf9a2ea7e50",
    "kind": "upstream",
    "parent": "upstream-master",
    "tracking": "hobleyd/seriesb/000a-upstream-767-quickjs-option",
@@ -82,10 +82,10 @@
      "./mk.sh test deployment",
      "./mk.sh build test"
     ],
-    "commit": "4fc77cd99f0362f1d706d3d9188b903db108ecd3",
-    "date": "2026-11-07",
+    "commit": "079fce06c46df1ace3cca5b278489bf9a2ea7e50",
+    "date": "2026-11-11",
     "era": "objc-spidermonkey",
-    "tree": "6fe391fe6a7e36694fef70c2bdd9d6684e3a653d",
+    "tree": "e071b0b9903cdfa4f23a7e88b70786b96873652e",
     "warning_keys": [],
     "warnings": {
      "default": 1,
@@ -97,7 +97,7 @@
    "branch": "seriesb/000b-upstream-768-quickjs-only",
    "gate": "pass",
    "git_town_type": "observed",
-   "head": "8b841c1bab1f77585708a32132a3d3b403e61ed7",
+   "head": "cacb3c6a083c567c4147cec991573067342a50f6",
    "kind": "upstream",
    "parent": "seriesb/000a-upstream-767-quickjs-option",
    "tracking": "hobleyd/seriesb/000b-upstream-768-quickjs-only",
@@ -113,10 +113,10 @@
      "./mk.sh test deployment",
      "./mk.sh build test"
     ],
-    "commit": "8b841c1bab1f77585708a32132a3d3b403e61ed7",
-    "date": "2026-11-07",
+    "commit": "cacb3c6a083c567c4147cec991573067342a50f6",
+    "date": "2026-11-11",
     "era": "objc-quickjs",
-    "tree": "e0577260c2cf6215b74b8502081bc6d3d8956ad8",
+    "tree": "2271e87d754fb242f93ea91f3beba52e5bba21e9",
     "warning_keys": [
      "clang++: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
      "clang: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
@@ -132,10 +132,16 @@
    }
   }
  ],
+ "pending_sync": {
+  "before": {
+   "seriesb/000a-upstream-767-quickjs-option": "4fc77cd99f0362f1d706d3d9188b903db108ecd3",
+   "seriesb/000b-upstream-768-quickjs-only": "8b841c1bab1f77585708a32132a3d3b403e61ed7"
+  }
+ },
  "steps": [
   {
    "branch": "seriesb/001-random-seed-env",
-   "build_commit": "ebd84f7c406539e3d172ff40a903368031dec12b",
+   "build_commit": "c58d86dbba4f077120629542dccdb97a8dbed255",
    "chapter": null,
    "description": "series/pr/001-random-seed-env.md",
    "differs_from_old": [],
@@ -160,28 +166,30 @@
     "old_step": 1,
     "type": "replay"
    },
-   "state": "stale",
+   "state": "verified",
    "target_tree": "def24e11d46974272d6f7b9ee2e84046f14df100",
    "title": "Let OO_RANDOM_SEED pin the random seed",
    "verification": {
-    "after_sync": 0,
+    "after_sync": 1,
     "checks": {
      "build_clang": "pass",
-     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "build_gcc": "n/a: not required for this series (the code builds with Clang, as upstream's CI)",
      "clang_format": "pass",
      "component": "n/a: no component scenario touched",
+     "no_facade": "pass",
      "no_new_spidermonkey_or_gnustep": "pass",
      "no_new_suppressions": "pass",
+     "poc": "n/a: the harness needs GNUstep here, so upstream builds it on Linux only",
      "smoke": "pass",
      "tests_untouched": "pass",
      "unit": "n/a: the tree has no unit suites",
      "warnings_clang": "pass: 0 new warnings (6 inherited from the parent)"
     },
     "clean": true,
-    "commit": "ebd84f7c406539e3d172ff40a903368031dec12b",
-    "date": "2026-11-03",
+    "commit": "c58d86dbba4f077120629542dccdb97a8dbed255",
+    "date": "2026-11-11",
     "era": "objc-quickjs",
-    "tree": "def24e11d46974272d6f7b9ee2e84046f14df100",
+    "tree": "d9d8c87d5ff3e69929315c4cae291b92deea9685",
     "warning_keys": [
      "clang++: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
      "clang: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
@@ -194,7 +202,7 @@
   },
   {
    "branch": "seriesb/002-safety-net",
-   "build_commit": "b5602101cd204f5ec3905d411fb33ad0e06e2ca7",
+   "build_commit": "12eca88f7f469874f4d5f8edb33aacf98f9a465b",
    "chapter": {
     "first": "7555b5d4254e0a89cc609a5c2263385d2b54904e",
     "last": "8af7966e7d95101c57ceea1f66b338f0abeec2a1",
@@ -223,19 +231,13 @@
    "reasons": {
     "src/Core/Scripting/OOJSShip.m": "#768 rewrote OOJSShip.m for QuickJS-ng (its property table as OOJS_PROPERTY_* macros, setters returning JSValue); the old step made ship.speed read/write for the safety net's tests. Kept #768's file with speed as OOJS_PROPERTY_RW and the old step's setter case in #768's idiom (JS_ToFloat64, JS_UNDEFINED, OOJSNativeFailure)."
    },
-   "resolutions": [
-    {
-     "how": "stored",
-     "path": "src/Core/Scripting/OOJSShip.m",
-     "reason": "#768 rewrote OOJSShip.m for QuickJS-ng (its property table as OOJS_PROPERTY_* macros, setters returning JSValue); the old step made ship.speed read/write for the safety net's tests. Kept #768's file with speed as OOJS_PROPERTY_RW and the old step's setter case in #768's idiom (JS_ToFloat64, JS_UNDEFINED, OOJSNativeFailure)."
-    }
-   ],
+   "resolutions": [],
    "rules": [],
    "size": {
     "deleted_files": 0,
-    "other": 27,
-    "src": 493,
-    "tests": 13624
+    "other": 0,
+    "src": 484,
+    "tests": 12029
    },
    "source": {
     "old_branch": "series/002-safety-net",
@@ -243,28 +245,30 @@
     "old_step": 2,
     "type": "replay"
    },
-   "state": "stale",
+   "state": "failed",
    "target_tree": "015850d16f1e44ae27079be0d8ecb1541a2e3843",
    "title": "Add a test safety net: deterministic runs, GUI and component tests",
    "verification": {
-    "after_sync": 0,
+    "after_sync": 1,
     "checks": {
      "build_clang": "pass",
-     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "build_gcc": "n/a: not required for this series (the code builds with Clang, as upstream's CI)",
      "clang_format": "pass",
-     "component": "pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships (1 earlier attempt(s) failed; see the log)",
+     "component": "pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships",
+     "no_facade": "pass",
      "no_new_spidermonkey_or_gnustep": "pass",
      "no_new_suppressions": "pass",
+     "poc": "n/a: the harness needs GNUstep here, so upstream builds it on Linux only",
      "smoke": "pass",
-     "tests_untouched": "pass",
+     "tests_untouched": "fail: tests/component/README.md, tests/component/conftest.py, tests/component/console.py, tests/gui/test_g2_exit_via_keyboard.py, tests/gui/test_g5_screen_round_trips.py, tests/gui/test_g6_window_lifecycle.py, tests/gui/test_g8_scenario_screen_back_out.py, tests/gui/test_g9_post_exit_hygiene.py",
      "unit": "n/a: the tree has no unit suites",
      "warnings_clang": "pass: 0 new warnings (6 inherited from the parent)"
     },
     "clean": false,
-    "commit": "b5602101cd204f5ec3905d411fb33ad0e06e2ca7",
-    "date": "2026-11-02",
+    "commit": "12eca88f7f469874f4d5f8edb33aacf98f9a465b",
+    "date": "2026-11-11",
     "era": "objc-quickjs",
-    "tree": "015850d16f1e44ae27079be0d8ecb1541a2e3843",
+    "tree": "99cf24dc2787531a86b075140fb19df3039dfd0e",
     "warning_keys": [
      "clang++: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
      "clang: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
@@ -277,7 +281,7 @@
   },
   {
    "branch": "seriesb/003-objcpp-switch",
-   "build_commit": "768166d647f301d5c6e661b330631ce5a5e9f8b7",
+   "build_commit": "e8b7c8d6d9d5c228f93d743a510ae9b7ef3dfdeb",
    "chapter": {
     "first": "3b6aec8c6ffca4445a742d4f9cd23251c9a5d57d",
     "last": "a7e3ed1efcf202eb22d16951be73c23e3b2b264c",
@@ -301,8 +305,8 @@
    "rules": [],
    "size": {
     "deleted_files": 0,
-    "other": 2137,
-    "src": 864,
+    "other": 2181,
+    "src": 891,
     "tests": 0
    },
    "source": {
@@ -317,7 +321,7 @@
     ],
     "type": "replay"
    },
-   "state": "stale",
+   "state": "failed",
    "take_old": {
     "keep": [
      "tools/js-parity/**",
@@ -328,30 +332,39 @@
    "target_tree": "6f42fe4e74aebe315741b3aedfc795bcf7f1d94b",
    "title": "Compile the game as Objective-C++, keeping #768's QuickJS-ng binding",
    "verification": {
-    "after_sync": 0,
+    "after_sync": 1,
     "checks": {
      "build_clang": "pass",
-     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "build_gcc": "n/a: not required for this series (the code builds with Clang, as upstream's CI)",
      "clang_format": "pass",
-     "component": "n/a: no component scenario touched",
+     "component": "pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships (1 earlier attempt(s) failed; see the log)",
+     "no_facade": "pass",
      "no_new_spidermonkey_or_gnustep": "pass",
-     "no_new_suppressions": "pass",
+     "no_new_suppressions": "fail: src/Core/Scripting/poc/OOJavaScriptEnginePoc.mm: #pragma clang diagnostic ignored \"-Wincomplete-implementatio",
+     "poc": "n/a: the harness needs GNUstep here, so upstream builds it on Linux only",
      "smoke": "pass",
-     "tests_untouched": "pass",
+     "tests_untouched": "fail: tests/component/README.md, tests/component/conftest.py, tests/component/console.py, tests/gui/test_g2_exit_via_keyboard.py, tests/gui/test_g5_screen_round_trips.py, tests/gui/test_g6_window_lifecycle.py, tests/gui/test_g8_scenario_screen_back_out.py, tests/gui/test_g9_post_exit_hygiene.py",
      "unit": "n/a: the tree has no unit suites",
-     "warnings_clang": "pass: 0 warnings"
+     "warnings_clang": "pass: 0 new warnings (6 inherited from the parent)"
     },
     "clean": false,
-    "commit": "a6e785314ddf6bb2b42d7e829ea63e222c81e6bb",
-    "date": "2026-11-02",
+    "commit": "e8b7c8d6d9d5c228f93d743a510ae9b7ef3dfdeb",
+    "date": "2026-11-11",
     "era": "objc-quickjs",
-    "tree": "6f42fe4e74aebe315741b3aedfc795bcf7f1d94b",
-    "warning_keys": []
+    "tree": "3d51dc014ffae4ebf6d31155879ef96def9fe8f2",
+    "warning_keys": [
+     "clang++: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
+     "clang: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCString' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringRT' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringRT_UTF16' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringUTF16' should not return void expression [-Wpedantic]"
+    ]
    }
   },
   {
    "branch": "seriesb/004-oofnd-core",
-   "build_commit": "5b609646ae61608663d1d046ff0cbed7170ef83d",
+   "build_commit": "e178ae92548e046e2d1e0001526c7a5416ddedb8",
    "chapter": {
     "first": "e31130fa0d6116abe5928624d276dfcf18eece16",
     "last": "916311e66db2e9d025c763b9d028a9ff26d33ff0",
@@ -379,7 +392,7 @@
    "size": {
     "deleted_files": 460,
     "other": 11,
-    "src": 9768,
+    "src": 9771,
     "tests": 6371
    },
    "source": {
@@ -388,34 +401,43 @@
     "old_step": 6,
     "type": "replay"
    },
-   "state": "stale",
+   "state": "failed",
    "target_tree": "1e8ea118622e0f1ee288549073a119c7c4cf5c24",
    "title": "Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation",
    "verification": {
-    "after_sync": 0,
+    "after_sync": 1,
     "checks": {
      "build_clang": "pass",
-     "build_gcc": "n/a: Objective-C with the GNUstep runtime builds with Clang only (upstream too)",
+     "build_gcc": "n/a: not required for this series (the code builds with Clang, as upstream's CI)",
      "clang_format": "pass",
-     "component": "n/a: no component scenario touched",
+     "component": "fail: exit 1 (see .agent-tmp\\seriesb-verify-logs\\004-component.log) (2 earlier attempt(s) failed; see the log)",
+     "no_facade": "pass",
      "no_new_spidermonkey_or_gnustep": "pass",
      "no_new_suppressions": "pass",
+     "poc": "n/a: the harness needs GNUstep here, so upstream builds it on Linux only",
      "smoke": "pass",
-     "tests_untouched": "pass",
+     "tests_untouched": "fail: tests/component/README.md, tests/component/conftest.py, tests/component/console.py, tests/gui/test_g2_exit_via_keyboard.py, tests/gui/test_g5_screen_round_trips.py, tests/gui/test_g6_window_lifecycle.py, tests/gui/test_g8_scenario_screen_back_out.py, tests/gui/test_g9_post_exit_hygiene.py",
      "unit": "pass: oofnd",
-     "warnings_clang": "pass: 0 warnings"
+     "warnings_clang": "pass: 0 new warnings (6 inherited from the parent)"
     },
     "clean": false,
-    "commit": "6e3649712d6cab6ce058449fa1bfd40056a8f301",
-    "date": "2026-11-02",
+    "commit": "e178ae92548e046e2d1e0001526c7a5416ddedb8",
+    "date": "2026-11-11",
     "era": "objc-quickjs",
-    "tree": "1e8ea118622e0f1ee288549073a119c7c4cf5c24",
-    "warning_keys": []
+    "tree": "76e7c473166120830740e227b1d127770cfd0d9c",
+    "warning_keys": [
+     "clang++: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
+     "clang: warning: argument unused during compilation: '-pthread' [-Wunused-command-line-argument]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCString' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringRT' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringRT_UTF16' should not return void expression [-Wpedantic]",
+     "subprojects/quickjs-ng/quickjs.c: warning: void function 'JS_FreeCStringUTF16' should not return void expression [-Wpedantic]"
+    ]
    }
   },
   {
    "branch": "seriesb/005-typed-accessors",
-   "build_commit": "a4d0a10cbfd8a35310e1c6a1784c90b6c00b125f",
+   "build_commit": "71752bcbdec0b2fe2592ebd51b6774a68748835b",
    "chapter": {
     "first": "b73f2cd400db84dd246061c8b9cd95cb478a9534",
     "last": "bc9a02ca7b948001da5824b9c073b42b3e24ca08",
@@ -475,7 +497,7 @@
   },
   {
    "branch": "seriesb/006-foundation-wave-1",
-   "build_commit": "1afa395c364fcc511bed53b704a18d051608c929",
+   "build_commit": "d9c3adfe407e55ca550b9ca3976e94fb64e31d35",
    "chapter": {
     "first": "931bee60e9e766df7298710946f16fb5f43038fa",
     "last": "ecfafab47981c8224790752d96f2340d6b07c833",
@@ -499,8 +521,8 @@
    "size": {
     "deleted_files": 0,
     "other": 0,
-    "src": 34856,
-    "tests": 1202
+    "src": 34979,
+    "tests": 1095
    },
    "source": {
     "old_branch": "series/008-foundation-wave-1",
@@ -535,7 +557,7 @@
   },
   {
    "branch": "seriesb/007-foundation-wave-2",
-   "build_commit": "0ffa5f13ed51646b89cc08e2b97e087d7ed0f87c",
+   "build_commit": "65c6efa3b556a14c693617190f32d9e7c31b8707",
    "chapter": {
     "first": "5faa477a34d862eb81b59a6fe3d2e74592e1cad2",
     "last": "fa9cbc6c24fec4d77881a47e47e7b2591ece94d4",
@@ -560,7 +582,7 @@
    "size": {
     "deleted_files": 1663,
     "other": 34,
-    "src": 48152,
+    "src": 48269,
     "tests": 2919
    },
    "source": {
@@ -596,7 +618,7 @@
   },
   {
    "branch": "seriesb/008-selector-families",
-   "build_commit": "037cf9049b03de3678016cbb847ac1b7d74b9d3d",
+   "build_commit": "b4bfdeb596b9dc61529f027b3b8a33de1dbcc475",
    "chapter": {
     "first": "b75b5d1bc6f7957740adab23f8f09e65901302b3",
     "last": "e0b9e24b22ab4f7373ccf71dbf4d58ac5553c4be",
@@ -621,7 +643,7 @@
    "size": {
     "deleted_files": 10362,
     "other": 14,
-    "src": 18585,
+    "src": 18682,
     "tests": 1071
    },
    "source": {
@@ -657,7 +679,7 @@
   },
   {
    "branch": "seriesb/009-leaf-conversions",
-   "build_commit": "c455bb32cb2a159ec1568365ecc31a2ad7599707",
+   "build_commit": "cd191bf28fa5f6a901cf23a80ad6cc68cb75ca58",
    "chapter": {
     "first": "66914fbbede7e1b621fea3ffba830ac2130ccaf9",
     "last": "67027c84d11fe03fcf208697938023d05d13f63c",
@@ -682,10 +704,10 @@
    "resolutions": [],
    "rules": [],
    "size": {
-    "deleted_files": 1783,
+    "deleted_files": 1784,
     "other": 32,
-    "src": 29717,
-    "tests": 18067
+    "src": 29740,
+    "tests": 17994
    },
    "source": {
     "old_branch": "series/011-leaf-conversions",
@@ -720,7 +742,7 @@
   },
   {
    "branch": "seriesb/010-module-conversions",
-   "build_commit": "f74cfe074ad8ec1e2877b44773e855abc1d461c2",
+   "build_commit": "d4bbf9e343ec8472292a1973c35a309bcb70fcb0",
    "chapter": {
     "first": "1964f76209e19f37b8f7311a6057e469cb919c7e",
     "last": "ab5dc6cd728a5b26951c588d3d6e0ef99049009c",
@@ -747,7 +769,7 @@
    "size": {
     "deleted_files": 2354,
     "other": 96,
-    "src": 38856,
+    "src": 38929,
     "tests": 41845
    },
    "source": {
@@ -787,7 +809,7 @@
   },
   {
    "branch": "seriesb/011-first-slices",
-   "build_commit": "c80d55fde4085fd984078438898b804a12e26799",
+   "build_commit": "c245c5da16412af2e194e5b37fa59e3784629190",
    "chapter": {
     "first": "ad82bd1efe7e79a499cb62fc9ea52fc7f8123f08",
     "last": "0c01939de79a4ac04237390d93dc78437057c5e0",
@@ -854,7 +876,7 @@
   },
   {
    "branch": "seriesb/012-shipentity-slices",
-   "build_commit": "f8f3c21af3e8b214cfdb2fe89c9d0352ba355231",
+   "build_commit": "d2b32c525e294dce5d92847fd5e31669a2c75512",
    "chapter": {
     "first": "477a4919bcb8c6160d4765ee9d225e920fbf241f",
     "last": "9a7a14fe2bae2e367da366156e7b9d61883f9dd1",
@@ -878,7 +900,7 @@
    "size": {
     "deleted_files": 57,
     "other": 105,
-    "src": 29064,
+    "src": 29069,
     "tests": 6868
    },
    "source": {
@@ -921,7 +943,7 @@
   },
   {
    "branch": "seriesb/013-universe-player-slices",
-   "build_commit": "9304fedba8228649d5e7a3aeb3f4617e46bd89ed",
+   "build_commit": "dafa48f08bc6a18786e1b9f6628372af071f4e21",
    "chapter": {
     "first": "4b272b165ececbc7e183a328c4962cfbc65e4d78",
     "last": "33abe8621907d4dceb14d17cdd5d9d3b852fbee2",
@@ -946,7 +968,7 @@
    "size": {
     "deleted_files": 1157,
     "other": 0,
-    "src": 17669,
+    "src": 17671,
     "tests": 3638
    },
    "source": {
@@ -989,7 +1011,7 @@
   },
   {
    "branch": "seriesb/014-facade-deletions",
-   "build_commit": "aec817ac8276ab44c2642ce5cca469be806997f3",
+   "build_commit": "1acb43182f5a90629537f971beba41fe219896ad",
    "chapter": {
     "first": "d01d45e47c50bda1ebbfd44c5f94596519ba840b",
     "last": "2c2aae1316b5a125038a797c213162ffba389279",
@@ -1013,8 +1035,8 @@
    "size": {
     "deleted_files": 21985,
     "other": 0,
-    "src": 49766,
-    "tests": 25853
+    "src": 49825,
+    "tests": 25859
    },
    "source": {
     "old_branch": "series/016-facade-deletions",
@@ -1056,7 +1078,7 @@
   },
   {
    "branch": "seriesb/015-entity-facade",
-   "build_commit": "f8b845dfcca6f08a48497d4d0f4ab3ce64c5a37a",
+   "build_commit": "cd157d105fe726139e34111d19f607a10c2fc88a",
    "chapter": {
     "first": "d012b77f217a361b096ab70d04aa848eb174b04f",
     "last": "473facf4692fe8a54f8ca7ecc2342b8f0096b6e3",
@@ -1078,10 +1100,10 @@
    "resolutions": [],
    "rules": [],
    "size": {
-    "deleted_files": 17608,
+    "deleted_files": 17618,
     "other": 58,
-    "src": 26806,
-    "tests": 17182
+    "src": 26856,
+    "tests": 17184
    },
    "source": {
     "old_branch": "series/017-entity-facade",
@@ -1118,7 +1140,7 @@
   },
   {
    "branch": "seriesb/016-objc-runtime-out",
-   "build_commit": "9dfcc4cb512c42161a15902f3d00b49e09e68cf0",
+   "build_commit": "4b585f4a803f6b8d457228b560aa447a609e367e",
    "chapter": {
     "first": "1248d43e1bbf6f5de945fe89d898630122a8e641",
     "last": "af1f220542e4917a23833902e8efc313a8eb463b",
@@ -1142,8 +1164,8 @@
    "rules": [],
    "size": {
     "deleted_files": 8619,
-    "other": 10894,
-    "src": 6637,
+    "other": 10908,
+    "src": 6639,
     "tests": 2139
    },
    "source": {
@@ -1181,7 +1203,7 @@
   },
   {
    "branch": "seriesb/017-gcc-build",
-   "build_commit": "c37c508ddef66ab7a1cd137828f65b618977a434",
+   "build_commit": "e05dea569a06ebeab86fc859c859592306d28413",
    "chapter": {
     "first": "5fda5e404c04bbf37a5faadb2c685e3819a60662",
     "last": "903e52cbdda60f19b7c0ab3722c8d07394b2d849",
@@ -1205,7 +1227,7 @@
    "size": {
     "deleted_files": 0,
     "other": 0,
-    "src": 267,
+    "src": 270,
     "tests": 1678
    },
    "source": {
@@ -1243,7 +1265,7 @@
   },
   {
    "branch": "seriesb/018-develop-fixes",
-   "build_commit": "84209ee260f636f65dd8c2e700d7ead7a1e93628",
+   "build_commit": "e40ed2d9fd3b12a7624df21d63f3b826a661b4d9",
    "chapter": null,
    "description": "series/pr/018-develop-fixes.md",
    "differs_from_old": [],
@@ -1258,7 +1280,7 @@
    "rules": [],
    "size": {
     "deleted_files": 0,
-    "other": 9,
+    "other": 30,
     "src": 276,
     "tests": 355
    },
@@ -1295,7 +1317,7 @@
   },
   {
    "branch": "seriesb/019-source-hygiene",
-   "build_commit": "f83d09a093a30b3df4d1f6b8c51c95bad098976c",
+   "build_commit": "f60dc7c70bc2b62b42d5c530dffca817c5cd4325",
    "chapter": null,
    "description": "series/pr/019-source-hygiene.md",
    "differs_from_old": [],
@@ -1310,9 +1332,9 @@
    "rules": [],
    "size": {
     "deleted_files": 0,
-    "other": 19,
-    "src": 18265,
-    "tests": 77066
+    "other": 15,
+    "src": 18784,
+    "tests": 77106
    },
    "source": {
     "old_branch": "series/022-source-hygiene",
@@ -1347,7 +1369,7 @@
   },
   {
    "branch": "seriesb/020-tests-and-tooling",
-   "build_commit": "ecbc3e19c2c34696066ad6f13aa3799d1b425e7c",
+   "build_commit": "9ec1bec16e06ef4613f64d93b40de25cdf5a9141",
    "chapter": null,
    "description": "series/pr/020-tests-and-tooling.md",
    "differs_from_old": [],
@@ -1364,7 +1386,7 @@
     "deleted_files": 0,
     "other": 13,
     "src": 19,
-    "tests": 1157
+    "tests": 1032
    },
    "source": {
     "old_branch": "series/023-tests-and-tooling",
@@ -1399,7 +1421,7 @@
   },
   {
    "branch": "seriesb/021-c-as-cxx",
-   "build_commit": "c3417fdfff0a4126f6a3a5c44963bbf015a54a4a",
+   "build_commit": "7258f16a921ba0ce3547f04331f7cc189b44f95a",
    "chapter": null,
    "description": "series/pr/021-c-as-cxx.md",
    "differs_from_old": [],
@@ -1414,9 +1436,9 @@
    "rules": [],
    "size": {
     "deleted_files": 0,
-    "other": 239,
-    "src": 13575,
-    "tests": 5301
+    "other": 224,
+    "src": 13553,
+    "tests": 5085
    },
    "source": {
     "old_branch": "series/024-c-as-cxx",
@@ -1451,7 +1473,7 @@
   },
   {
    "branch": "seriesb/022-upstream-28ceaaba0-ports",
-   "build_commit": "167118dff05edfb925b976545023313b582cac5b",
+   "build_commit": "45bbec8afd12cf919da07d92d82b931c6e09ec5b",
    "chapter": null,
    "description": "series/pr/022-upstream-28ceaaba0-ports.md",
    "differs_from_old": [],
@@ -1466,9 +1488,9 @@
    "rules": [],
    "size": {
     "deleted_files": 0,
-    "other": 42,
-    "src": 436,
-    "tests": 234
+    "other": 11,
+    "src": 109,
+    "tests": 209
    },
    "source": {
     "old_branch": "series/025-upstream-49a5eb9fc-ports",
@@ -1503,7 +1525,7 @@
   },
   {
    "branch": "seriesb/023-google-style-format",
-   "build_commit": "9157d099347d321da7a82fbed6070783a25f89c0",
+   "build_commit": "afebed9791970c497641c3721c5ecc5daacd84f8",
    "chapter": null,
    "description": "series/pr/023-google-style-format.md",
    "differs_from_old": [],
@@ -1519,8 +1541,8 @@
    "size": {
     "deleted_files": 0,
     "other": 55,
-    "src": 418791,
-    "tests": 23210
+    "src": 418553,
+    "tests": 23132
    },
    "source": {
     "old_branch": "series/026-google-style-format",
@@ -1555,7 +1577,7 @@
   },
   {
    "branch": "seriesb/024-post-conversion-fixes",
-   "build_commit": "fd837749e3fa5e859662d0e03cf4483fa8ec0a24",
+   "build_commit": "8d524e16d351ef38a11a1e4537833910cb6a8ab9",
    "chapter": null,
    "description": "series/pr/024-post-conversion-fixes.md",
    "differs_from_old": [],
@@ -1569,10 +1591,10 @@
    "resolutions": [],
    "rules": [],
    "size": {
-    "deleted_files": 0,
-    "other": 87,
-    "src": 44,
-    "tests": 42
+    "deleted_files": 38,
+    "other": 99,
+    "src": 3142,
+    "tests": 94
    },
    "source": {
     "commit": "270c74ea7896a7dc8b6f06c905df3df1b19c5ef3",
@@ -1604,6 +1626,70 @@
     "tree": "337f41d61619a114206bc0e7c480fac7a467a854",
     "warning_keys": []
    }
+  },
+  {
+   "branch": "seriesb/025-libcurl-http",
+   "build_commit": "ab6ac68b3b327d9acec0258412ff7ddbebbaf5be",
+   "chapter": null,
+   "description": "series/pr/025-libcurl-http.md",
+   "differs_from_old": [],
+   "era": "cxx",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": "4ff172f3c26260d879e87fbb6ae5339d37ab5dca",
+   "n": 25,
+   "parent": "seriesb/024-post-conversion-fixes",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": {
+    "deleted_files": 0,
+    "other": 9,
+    "src": 411,
+    "tests": 77
+   },
+   "source": {
+    "commit": "d0b99ed68566591e1ca43e2607bb5b79c3d290d6",
+    "ref": "seriesb/025-libcurl-http",
+    "test_ledger": "specs/002-seriesb-rebase-stack/series/test-changes.md",
+    "type": "target"
+   },
+   "state": "stale",
+   "target_tree": "4ff172f3c26260d879e87fbb6ae5339d37ab5dca",
+   "title": "Fetch http(s) with libcurl on every platform",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/026-migration-completion",
+   "build_commit": "a5eae8ff364b865f649481b77302cc95a041c586",
+   "chapter": null,
+   "description": "series/pr/026-migration-completion.md",
+   "differs_from_old": [],
+   "era": "cxx",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": "630c729b20800398860444487940aa2ca6fed48b",
+   "n": 26,
+   "parent": "seriesb/025-libcurl-http",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": {
+    "deleted_files": 7357,
+    "other": 1245,
+    "src": 1551,
+    "tests": 452
+   },
+   "source": {
+    "commit": "48c6c56a03a2f73d54b01ac4dcb28e872f0f4b3e",
+    "ref": "seriesb/026-migration-completion",
+    "test_ledger": "specs/002-seriesb-rebase-stack/series/test-changes.md",
+    "type": "target"
+   },
+   "state": "stale",
+   "target_tree": "630c729b20800398860444487940aa2ca6fed48b",
+   "title": "Drop GNUstep and the last Objective-C; cache builds in CI",
+   "verification": null
   }
  ],
  "syncs": [

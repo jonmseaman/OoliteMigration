@@ -1363,3 +1363,47 @@ sources outside the replayed trees.
   - `seriesb/026-migration-completion` (another session's branch, child of 025) was left untouched;
     it is based on an older 025 and needs its own sync. Pushing used `git town sync` per step, not
     `--stack`, so that branch was not merged into or pushed.
+- **Sync 2 (2026-11-11): onto upstream `master` `4bb1f53de` (#792) and the 10 Nov #767/#768.** New
+  PR heads `000a` `079fce06c`, `000b` `cacb3c6a0` (were `4fc77cd99`, `8b841c1ba`); local
+  `upstream-master` fast-forwarded to `4bb1f53de`. Merged by hand with rebase semantics as in Sync 1;
+  pre-sync tips are `refs/seriesb-presync2/*` in `oolite-dev`. Decisions taken:
+  - #768's 9–10 Nov binding fixes are ported into each step's idiom (first-'(' location parse,
+    errors always reach the debug monitor, uneval cycles, the rewritten-source cache, removal of the
+    non-SpiderMonkey globals with a read-only const rewriter, QuickJS patch 0002 in 021's wrap,
+    `willNotFireAgain` for one-shot timers). #792: `post_build.sh` reads `build_docs` as `${13}` up to
+    025 and `${12}` at 026, where the GNUstep argument goes.
+  - Fixes made in the first step that needed them: 004 `src/oofnd/meson.build` reuses `objc_lib`
+    (Fedora CI configure); 005–007 `get<bool>`/`at<bool>` for PListView reads (BOOL has no row; did
+    not compile on CI's Windows); 016 `bool`, not `BOOL`, in `RemoveNonSpiderMonkeyGlobals` (Linux
+    and macOS CI 021+); 018 the macOS bundler resolves `@loader_path` siblings next to the original,
+    so ICU's `libicudata` is bundled (the app aborted at launch in CI 018–021); format commits at 016,
+    019, 021 and 023 so every step passes upstream's clang-format 22 check.
+  - Upstream behaviour over the fork's test (Jon, 2026-11-07 rule): `deleteReachesTheClassHook...`
+    (020 on) deletes `global.vault`, because #768 now removes `globalThis` (`test-changes.md`).
+  - Verified per step 003–026 on Windows: `./mk.sh build test`, `./mk.sh test test`, the unit suites
+    (`tests/run.sh unit` from 020, meson suites before), smoke (`tests/run.sh smoke` from 020; before
+    that `./mk.sh test test` is the smoke test). All pass. 001–004 also passed the full `verify` up
+    to 004's component scenario s1, which timed out once; component tests were then dropped from the
+    loop (Jon, 2026-11-11: build, mk.sh test, unit and smoke are the checks).
+  - CI after the sync: green on every job at every step except macOS 004–017, which Jon accepts
+    (2026-11-11, "don't worry about the intermediate mac failures"). 004–006 fail on
+    `objc/objc-arc.h`: the Objective-C floor needs GNUstep's libobjc2 runtime, which Apple's lacks
+    (also `objc_retain_fast_np`, the constant-string and forwarding hooks); not fixable without
+    porting the floor, which 016 deletes. 007–017 fail earlier, at configure: Homebrew's ICU is
+    keg-only until 018's "Find Homebrew's ICU", which hides the libobjc2 errors up to 015.
+  - **Linearised (Jon, 2026-11-11: keep each step's own commits, drop the merges).** The stack is
+    now 164 commits with no merges: the 141 own commits (David Hobley's earlier #767/#768 copies in
+    001 dropped; 000a/000b carry those PRs) replayed in topological order onto the previous step,
+    as `git rebase -X ours` (`git merge-tree -X ours --merge-base=C^`), plus a "Match <step> to its
+    verified tree" commit at 23 steps carrying what the merges had resolved. Format commits are
+    rebuilt by running clang-format 22.1.8 on the replayed parent's text rather than cherry-picked.
+    Every step's tree is byte-identical to the tree built and tested above; only the step tips are
+    verified, and the 43 commits that had conflicts may not build on their own. Old tips:
+    `refs/seriesb-prelinear/*`. Pushed with `--force-with-lease` per branch (Jon allowed force
+    pushes on `seriesb/*`, 2026-11-11), 000a/000b included; `git town sync --stack --detached`
+    afterwards found nothing to merge or push.
+  - Style: upstream chose WebKit in #749 (2026-09-24, after the migration began) with no
+    discussion of alternatives (#751). Jon is deciding whether to keep 023's Google-style reformat;
+    default until then: 023 stays where it is, described as optional.
+  - Future syncs: `rerere.enabled` is set globally (Jon, 2026-11-11). Git Town's
+    `sync-feature-strategy = rebase` would avoid the merge pile-up; not set, Jon's call.

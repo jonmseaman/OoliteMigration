@@ -23,11 +23,9 @@ after the base and is not in the stack.
    Merged upstream as it stands, this would move existing macOS players' add-ons and settings. See
    [pr-766.md](pr-766.md). I confirmed the log-path part myself against
    `148575aab:src/Core/OOLogOutputHandler.m:562`.
-2. **#768, the stack's copy is behind upstream.** 000a and 000b are upstream's 7 Nov copy.
-   Upstream pushed nine binding fixes on 9 Nov (`fd0ca9304` .. `16e5f84be`) that HEAD doesn't
-   have. One example is the `rfind('(')` paths fix: HEAD still has the old code at
-   `OOJavaScriptEngine.cpp:654`. Refreshing 000a and 000b also brings in #792, because upstream's
-   heads sit on it. See [pr-768.md](pr-768.md) and [pr-767.md](pr-767.md).
+2. **#768, the stack's copy was behind upstream (done in Sync 2, 2026-11-11).** 000a and 000b
+   are now upstream's 10 Nov heads, and every step carries the nine 9 Nov binding fixes in its
+   own idiom (`plan.md` Notes, "Sync 2").
 3. **#788 and #751, CI policy.** These come from the fork's own 977698a93:
    - **Narrower release trigger:** the release job runs only on master and develop, where upstream
      also covers `*maintenance`. The maintenance clean-up conditions can no longer be true.
@@ -35,9 +33,8 @@ after the base and is not in the stack.
      job needs it.
 
    Decide this before upstreaming. See [pr-788.md](pr-788.md).
-4. **#792, not in the stack.** Taking it conflicts in `post_build.sh`, `Windows/install_deps.sh`
-   and `build-all.yaml`. The new `post_build.sh` argument is `${12}` in the fork, not upstream's
-   `${13}`. See [pr-792.md](pr-792.md).
+4. **#792 (done in Sync 2).** It is in the stack's base now. `post_build.sh` reads
+   `build_docs` as `${13}` up to 025 and as `${12}` at 026, matching `src/meson.build` at each step.
 
 ## Smaller notes
 

@@ -1,6 +1,6 @@
 # Convert scripting, entities, audio and materials classes to C++
 
-**Series:** step 10 of 24 · base `seriesb/009-leaf-conversions` · next `seriesb/011-first-slices` **(gen)**
+**Series:** step 10 of 26 · base `seriesb/009-leaf-conversions` · next `seriesb/011-first-slices` **(gen)**
 
 **Replays:** `series/012-module-conversions` (old 12 of the master-based series) · 38.9k src, 41.8k tests, 96 other changed lines; 2.4k lines in deleted files **(gen)**
 
@@ -22,10 +22,13 @@ This step converts the next layer of classes to C++ in the house style of step 9
   sun, sky, wormholes, waypoints);
 - the debug monitor, the TCP console client and the JavaScript console;
 - `AI`, `OOJoystickManager`, `OOShipRegistry` and the remaining OXP verifier stages.
-  #742's SDL joystick decoders become members of the C++ `OOSDLJoystickManager`.
+  #742's SDL joystick decoders become members of the C++ `OOSDLJoystickManager`, and #783's
+  GUI-button map (`guibuttonmap`, `setGuiFunctionForButton`, `unsetGuiButtonFunction`,
+  `guiButtonFunctions`) becomes members of the C++ `OOJoystickManager`.
 
 #768's `OOJavaScriptEngine.h` is split. Its plain C++ part (reporters, converters, class
-registration, the time limiter, return macros) is the new `OOJSEngineCore.h`, which C++ binding
+registration, the time limiter, the read-only const rewriter `OOJSLegacyConstRewriter()`, return
+macros) is the new `OOJSEngineCore.h`, which C++ binding
 files include directly. The native-wrapper macros, with #768's names, move into
 `OOJSEngineNativeWrappers.h`, which the core includes. `OOJavaScriptEngine.h` includes the core.
 
@@ -69,6 +72,11 @@ didn't:
   the script as `Native exception: <what()>`, where the `@catch (id)` it replaces let the process
   terminate. Pinned by `test_OOJSManifest.mm` and `test_OOJSMissionVariables.mm`
   (`nativeExceptions`).
+- `clearMappings()` resets the GUI-button table along with the axis and button tables. #783's
+  version leaves it all 0 (`BUTTON_INCTHRUST`), so every button with no GUI function also drove
+  `BUTTON_INCTHRUST`, and a save and reload bound `BUTTON_INCTHRUST` to the last stick's last
+  button, unbinding the player's own increase-thrust button. The bug is in upstream too. Pinned by
+  `savesAndLoadsSettings` in `tests/unit/core/test_OOJoystickManager.mm`.
 
 ## How to review
 
@@ -98,13 +106,14 @@ with the Objective-C function it replaces; `test_OOShaderProgram.mm`'s `translat
 
 The double-click change is the hunk in `src/SDL/MyOpenGLView+Input.mm` that sets `timeOfClick` from
 `mbtn_event->timestamp`, and the one in `MyOpenGLView.mm` that starts `timeIntervalAtLastClick` on
-`SDL_GetTicksNS()`. `tests/component/steps/world_steps.py` and
+`SDL_GetTicksNS()`. The GUI-button reset is the one added `memset` in
+`OOJoystickManager::clearMappings()` (`src/Core/OOJoystickManager.mm`). `tests/component/steps/world_steps.py` and
 `tests/component/test_world_setup_clear.py` fix a harness race: clearing the system before
 counting ships now repeats until a clear-then-count sees only the player. No game code changes for
 that.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`f74cfe074a`) yet: the last record is for `2e613e4a44` (2026-11-02), an earlier build of this step.
+Not verified at this branch's tip (`d4bbf9e343`) yet: the last record is for `2e613e4a44` (2026-11-02), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

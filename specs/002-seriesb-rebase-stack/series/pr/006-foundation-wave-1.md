@@ -1,8 +1,8 @@
 # Move Foundation usage to oofnd, part 1
 
-**Series:** step 6 of 24 · base `seriesb/005-typed-accessors` · next `seriesb/007-foundation-wave-2` **(gen)**
+**Series:** step 6 of 26 · base `seriesb/005-typed-accessors` · next `seriesb/007-foundation-wave-2` **(gen)**
 
-**Replays:** `series/008-foundation-wave-1` (old 8 of the master-based series) · 34.9k src, 1.2k tests, 0 other changed lines; 0 lines in deleted files **(gen)**
+**Replays:** `series/008-foundation-wave-1` (old 8 of the master-based series) · 35.0k src, 1.1k tests, 0 other changed lines; 0 lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
@@ -15,6 +15,8 @@ library added in step 4. File by file, the `NSString`, `NSArray`, `NSDictionary`
 selector that only one class declares takes and returns the C++ types, and its callers change at the
 call expression only. A selector that several classes declare (a "shared" selector) keeps `id` at its
 boundary for now and converts on the inside. #768's binding files are swept the same way as the rest.
+The `oo_*ForKey:` calls these files still had move to `PListView` as in step 5, booleans included:
+those read `get<bool>`/`at<bool>`.
 
 Where a class has too many callers to adapt in the same change, it gets a `cxx_`-prefixed C++ API,
 and a transitional `X+FoundationBridge.h/.mm` category (a bridge) keeps its old Foundation-typed
@@ -89,6 +91,6 @@ bounded wait could return while the thread still used the test's stack frame.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`1afa395c36`) yet: the last record is for `02c82ec354` (2026-11-02), an earlier build of this step.
+Not verified at this branch's tip (`d9c3adfe40`) yet: the last record is for `02c82ec354` (2026-11-02), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

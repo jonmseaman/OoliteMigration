@@ -1,8 +1,8 @@
 # Fix code that GCC warns about or evaluates differently
 
-**Series:** step 17 of 24 · base `seriesb/016-objc-runtime-out` · next `seriesb/018-develop-fixes` **(gen)**
+**Series:** step 17 of 26 · base `seriesb/016-objc-runtime-out` · next `seriesb/018-develop-fixes` **(gen)**
 
-**Replays:** `series/019-gcc-build` (old 19 of the master-based series) · 267 src, 1.7k tests, 0 other changed lines; 0 lines in deleted files **(gen)**
+**Replays:** `series/019-gcc-build` (old 19 of the master-based series) · 270 src, 1.7k tests, 0 other changed lines; 0 lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
@@ -21,7 +21,8 @@ No warning flag changes.
   `printf` (`gnu_printf`), so `%zu` and `%lld` check correctly. `PRIu64` formats a 64-bit
   commodity price and a character's insurance credits.
 - **Includes.** Files include what they use (`<cstring>`, `<cinttypes>` and the like), where
-  Clang's headers happened to pull them in.
+  Clang's headers happened to pull them in. `OOFoundation.h` drops the `<string.h>` that step 9
+  added to stand in for Foundation.h's, since the files that use it now include it themselves.
 - **Other diagnostics**, one small hunk each: `-Wstrict-aliasing` (type punning through a cast,
   now `memcpy`), `-Wnonnull-compare`, `-Wmaybe-uninitialized`, `-Wsign-compare`, unchecked
   `chdir()` results in `src/SDL/main.cpp`, and the C-only `gnu_inline` attribute in
@@ -67,6 +68,6 @@ The test changes are mostly mechanical (`#import` to `#include`). The others are
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`c541f1aaa2`) yet: the last record is for `db43363c08` (2026-11-03), an earlier build of this step.
+Not verified at this branch's tip (`e05dea569a`) yet: the last record is for `db43363c08` (2026-11-03), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

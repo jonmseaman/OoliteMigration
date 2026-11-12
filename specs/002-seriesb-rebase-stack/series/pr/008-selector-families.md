@@ -1,8 +1,8 @@
 # Retire the remaining Foundation selectors and their bridge callers
 
-**Series:** step 8 of 24 · base `seriesb/007-foundation-wave-2` · next `seriesb/009-leaf-conversions` **(gen)**
+**Series:** step 8 of 26 · base `seriesb/007-foundation-wave-2` · next `seriesb/009-leaf-conversions` **(gen)**
 
-**Replays:** `series/010-selector-families` (old 10 of the master-based series) · 18.6k src, 1.1k tests, 14 other changed lines; 10.4k lines in deleted files **(gen)**
+**Replays:** `series/010-selector-families` (old 10 of the master-based series) · 18.7k src, 1.1k tests, 14 other changed lines; 10.4k lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
@@ -16,7 +16,9 @@ the `cxx_` APIs, so all 35 `X+FoundationBridge` bridges are deleted (34 header a
 `Entity+FoundationBridge.h`), along with `NSUserDefaults+OODefaultsBridge` and its test. #768's own
 binding code still called some of these bridges, for example the compiled-script cache in
 `OOJSScript.mm` (through `OOCacheManager`) and the debug console's settings in `OOJSConsole.mm`; it
-moves to the `cxx_` APIs the same way as the rest.
+moves to the `cxx_` APIs the same way as the rest. In the same file, #768's session cache of
+rewritten script sources (`RewriteLegacyConst()`) becomes a `std::unordered_map` keyed by the
+source text, still filled only when the const rewriter succeeds.
 
 The remaining Foundation helpers also go: the `NSBundle`, `NSUserDefaults` and `NSFileManager`
 categories, `OODeepCopy`, `OOFilteringEnumerator`, `OOFoundationException`, `SDL/Comparison`, and
@@ -27,6 +29,8 @@ the debug-only `OOEnumerationShuffle` that step 2 added. Their replacements are 
 - `Core/OOCallByName.h`: calling a method named at run time with C++ arguments, which replaces
   `-performSelector:withObject:` for AI, legacy-script, HUD-dial and deferred calls;
 - `Core/OOPListGameTypes.h`: vectors, quaternions and the fuzzy boolean read from plists.
+
+The OXP verifier's schema reads `allowOthers` with `get<bool>`, as the other boolean lookups do.
 
 The build is stricter: `meson.build` makes Clang's `objc-method-access` warning an error. While
 categories are being deleted, that warning is the only compile-time sign that something still sends
@@ -75,6 +79,6 @@ it would not build against this tree; nothing builds it.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`0fd950db16`) yet: the last record is for `741729301a` (2026-11-02), an earlier build of this step.
+Not verified at this branch's tip (`b4bfdeb596`) yet: the last record is for `741729301a` (2026-11-02), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

@@ -5,7 +5,7 @@ The fork's first migration commit is dated 2026-09-05. This list covers every PR
 whether the seriesb stack keeps its behaviour. Sources: `gh pr list -R OoliteProject/oolite`, and
 `git log --first-parent upstream/master` up to `4bb1f53de` (fetched 2026-11-10).
 
-The stack's base is `148575aab` (#789) since the 7 Nov rebase of 000a/000b. Every PR up to #789 is therefore already in the code the
+The stack's base is `4bb1f53de` (#792) since Sync 2 (2026-11-11), when 000a/000b were reset to #767 `079fce06c` and #768 `cacb3c6a0`. Every PR up to #792 is therefore already in the code the
 stack starts from; the question for those is whether the conversion steps keep their behaviour.
 Steps use the numbers after T076's renumbering (old 019–025 are now 018–024). "Where" names the
 step that converts or carries the PR's code and the test that pins it, where one exists. Step
@@ -48,14 +48,14 @@ Each PR has a review document in [`series/upstream-review/`](series/upstream-rev
 | #787 | 2026-11-05 | hobleyd | Fix intermittent macOS snapshot test failures | base | present at HEAD | [ ] [doc](series/upstream-review/pr-787.md) |
 | #788 | 2026-11-05 | mcarans | Release only deployment builds; include the documentation zip in releases | base | CI; release trigger narrowed by the fork's 977698a93 | [ ] [doc](series/upstream-review/pr-788.md) |
 | #789 | 2026-11-05 | phkb | Add missing info to various Oolite RS pages | base (stack's base commit) | documentation only | [ ] [doc](series/upstream-review/pr-789.md) |
-| #792 | 2026-11-08 | hobleyd | Build the documentation with typst only, and make it optional | **not in the stack** | conflicts in `post_build.sh`, `install_deps.sh`, `build-all.yaml` | [ ] [doc](series/upstream-review/pr-792.md) |
+| #792 | 2026-11-08 | hobleyd | Build the documentation with typst only, and make it optional | base (since Sync 2) | merged into every step by hand on 2026-11-11; `post_build.sh` reads `build_docs` as `${13}`, and as `${12}` from 026, where the GNUstep argument goes | [ ] [doc](series/upstream-review/pr-792.md) |
 
 ## Open (as of 2026-11-10)
 
 | PR | Opened | Author | Title | Relation to the stack | Review |
 |--:|---|---|---|---|---|
 | #767 | 2026-10-21 | hobleyd | Replace SpiderMonkey 1.8.5 with QuickJS-ng behind `-Djs_engine=quickjs` | the stack's first base branch, `seriesb/000a` | [doc](series/upstream-review/pr-767.md) |
-| #768 | 2026-10-21 | hobleyd | Make QuickJS-ng the only JavaScript engine; remove SpiderMonkey | `seriesb/000b`; its binding is carried through every step | [doc](series/upstream-review/pr-768.md) |
+| #768 | 2026-10-21 | hobleyd | Make QuickJS-ng the only JavaScript engine; remove SpiderMonkey | `seriesb/000b` at `cacb3c6a0` (10 Nov); its binding, with the 9 Nov fixes, is carried through every step | [doc](series/upstream-review/pr-768.md) |
 | #771 | 2026-10-21 | hobleyd | SDL_GPU renderer, opt-in with `-Drenderer=sdl_gpu` | not in the stack | [doc](series/upstream-review/pr-771.md) |
 | #772 | 2026-10-22 | hobleyd | Test more of the game: in-game JavaScript tests, a longer smoke test and a wider parity probe | not in the stack | [doc](series/upstream-review/pr-772.md) |
 | #794 | 2026-11-06 | hobleyd | Add a key bindings screen on '9' | not in the stack | [doc](series/upstream-review/pr-794.md) |

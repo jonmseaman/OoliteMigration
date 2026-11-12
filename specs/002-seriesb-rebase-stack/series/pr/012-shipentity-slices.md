@@ -1,6 +1,6 @@
 # Convert ShipEntity to C++
 
-**Series:** step 12 of 24 · base `seriesb/011-first-slices` · next `seriesb/013-universe-player-slices` **(gen)**
+**Series:** step 12 of 26 · base `seriesb/011-first-slices` · next `seriesb/013-universe-player-slices` **(gen)**
 
 **Replays:** `series/014-shipentity-slices` (old 14 of the master-based series) · 29.1k src, 6.9k tests, 105 other changed lines; 57 lines in deleted files **(gen)**
 
@@ -18,7 +18,8 @@ The step also converts `GuiDisplayGen` (four slices, the star chart last), `Game
 shell, frame loop and deferred calls, start-up), `OOVisualEffectEntity`, `OOStringExpander` and
 `OOShipLibraryDescriptions`, and adds `Universe`'s class shell. `OOMatrix.mm`,
 `OOPixMapChannelOperations.mm` and `OOConvertCubeMapToLatLong.mm`, which have no Objective-C left,
-become `.cpp`.
+become `.cpp`. `OOMatrix.cpp` does not include `OOFoundation.h`, so `OOOpenGLOnly.h` now also
+tests the Linux build's `LINUX` define before defining `GL_GLEXT_PROTOTYPES`.
 
 Each converted class except `OOShipLibraryDescriptions` keeps an Objective-C bridge
 (`X+ObjCBridge.h/.mm`) whose methods forward, one line each, to the C++ object, so code that still
@@ -72,6 +73,6 @@ are the same.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`eaf9516878`) yet: the last record is for `62b20bd82e` (2026-11-02), an earlier build of this step.
+Not verified at this branch's tip (`d2b32c525e`) yet: the last record is for `62b20bd82e` (2026-11-02), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

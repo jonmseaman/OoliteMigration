@@ -1,8 +1,8 @@
 # Move Foundation usage to oofnd, part 2
 
-**Series:** step 7 of 24 · base `seriesb/006-foundation-wave-1` · next `seriesb/008-selector-families` **(gen)**
+**Series:** step 7 of 26 · base `seriesb/006-foundation-wave-1` · next `seriesb/008-selector-families` **(gen)**
 
-**Replays:** `series/009-foundation-wave-2` (old 9 of the master-based series) · 48.2k src, 2.9k tests, 34 other changed lines; 1.7k lines in deleted files **(gen)**
+**Replays:** `series/009-foundation-wave-2` (old 9 of the master-based series) · 48.3k src, 2.9k tests, 34 other changed lines; 1.7k lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
@@ -29,6 +29,12 @@ Two more Foundation services get game-side replacements:
   for most callers, including #768's `quitGame()`;
 - the JavaScript engine posts its reset notifications only on `oo::NotificationCenter`; it posted
   them on `NSNotificationCenter` as well, and the last observer there (`OOJSFunction`) moves over.
+
+The swept files' remaining `oo_*ForKey:` calls move to `PListView`, booleans as
+`get<bool>`/`at<bool>`. In `OOJavaScriptEngine.mm`'s now `std::string`-based error reporting,
+#768's two fixes are kept: a stack frame's location starts at its first `(` (`frame.find('(')`),
+so a path such as `Program Files (x86)` parses, and only warnings are dropped when their log
+class is off; errors and exceptions always reach the debug monitor.
 
 A transitional `NSUserDefaults+OODefaultsBridge` points the game's standard `NSUserDefaults` at
 `oo::Defaults`, so both APIs share one preferences store while callers move over.
@@ -120,6 +126,6 @@ is not in the tree, so in practice it does not pin the expander either.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`0ffa5f13ed`) yet: the last record is for `7add964f14` (2026-11-02), an earlier build of this step.
+Not verified at this branch's tip (`65c6efa3b5`) yet: the last record is for `7add964f14` (2026-11-02), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

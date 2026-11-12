@@ -1,6 +1,6 @@
 # Convert the large files in slices; delete the first Objective-C bridges
 
-**Series:** step 11 of 24 · base `seriesb/010-module-conversions` · next `seriesb/012-shipentity-slices` **(gen)**
+**Series:** step 11 of 26 · base `seriesb/010-module-conversions` · next `seriesb/012-shipentity-slices` **(gen)**
 
 **Replays:** `series/013-first-slices` (old 13 of the master-based series) · 25.6k src, 13.1k tests, 2 other changed lines; 5.1k lines in deleted files **(gen)**
 
@@ -19,7 +19,10 @@ Objective-C callers:
 
 The engine is `cxx::OOJavaScriptEngine`, with #768's members and runtime. Its bridge keeps #768's
 selectors and is the object that posts the engine's reset notifications, so `oo::ToObjC(engine)`
-always answers the same object. `OOJSSpecialFunctions.mm`, which has no Objective-C left, becomes
+always answers the same object. The converted engine and error reporter keep #768's current
+behaviour: errors and exceptions always reach the debug monitor (only an ignored warning stops
+early), a stack frame's location is read from its first `(`, and the non-SpiderMonkey globals are
+removed when the context is set up. `OOJSSpecialFunctions.mm`, which has no Objective-C left, becomes
 `.cpp` with no bridge; it keeps #768's `JSSpecialFunctionsObjectWrapper`.
 
 `ShipEntity` only starts. Its state (every ivar) moves to `cxx::ShipEntity`, and its Objective-C
@@ -108,6 +111,6 @@ The `GameController.mm` hunk is the priority change, under `OO_DEBUG_MONITOR_ENA
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`c80d55fde4`) yet: the last record is for `4ca2448d62` (2026-11-02), an earlier build of this step.
+Not verified at this branch's tip (`c245c5da16`) yet: the last record is for `4ca2448d62` (2026-11-02), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

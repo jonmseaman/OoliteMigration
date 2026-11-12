@@ -1,6 +1,6 @@
 # Move most oo_*ForKey dictionary accessors to typed PListView::get
 
-**Series:** step 5 of 24 · base `seriesb/004-oofnd-core` · next `seriesb/006-foundation-wave-1` **(gen)**
+**Series:** step 5 of 26 · base `seriesb/004-oofnd-core` · next `seriesb/006-foundation-wave-1` **(gen)**
 
 **Replays:** `series/007-typed-accessors` (old 7 of the master-based series) · 11.0k src, 2.0k tests, 15 other changed lines; 0 lines in deleted files **(gen)**
 
@@ -8,12 +8,13 @@
 
 ## What this changes
 
-About 1,180 `oo_<type>ForKey:` and `oo_<type>AtIndex:` calls (OOCollectionExtractors) in 73
-files become `oo::PListView(dict).get<T>(key, fallback)` / `.at<T>(index, fallback)`. The
-receiver, key and fallback are unchanged, and the conversion function is the same one, so the
-result is the same. This is not yet the whole sweep: `PlayerEntity.mm`, `Universe.mm`,
-`ShipEntity.mm`, `HeadUpDisplay.mm` and about a dozen smaller files still use the old calls, and
-`OOCollectionExtractors` stays.
+About 1,180 `oo_<type>ForKey:` and `oo_<type>AtIndex:` calls (OOCollectionExtractors) in 73 files
+become `oo::PListView(dict).get<T>(key, fallback)` / `.at<T>(index, fallback)`. The receiver, key
+and fallback are unchanged, and the conversion function is the same one, so the result is the same.
+`oo_boolForKey:` becomes `get<bool>` (about 100 sites): `PListView` has no `BOOL` row, and `BOOL`
+would be read as a number outside Windows. This is not yet the whole sweep: `PlayerEntity.mm`,
+`Universe.mm`, `ShipEntity.mm`, `HeadUpDisplay.mm` and about a dozen smaller files still use the old
+calls, and `OOCollectionExtractors` stays.
 
 83 game classes are rerooted from `NSObject` onto the Foundation-free `OOObject` from step 4. What
 the game's own `NSObject` categories gave them gets an `OOObject` twin next to each category
@@ -53,9 +54,10 @@ before the bulk Foundation steps (6 and 7), which use them.
 
 None intended:
 - **Typed lookups.** `PListView` uses the same lookup and conversion as the method it replaces,
-  including a `nil` receiver returning zero/nil/NO rather than the fallback. The C++ form of those
-  conversions is tested by `tests/unit/oofnd/test_plist_get.cpp`; the `PListView` call sites are
-  not pinned by a test of their own.
+  including a `nil` receiver returning zero/nil/NO rather than the fallback. Booleans go through
+  the `bool` row, which converts as `oo_boolForKey:` does (so `"yes"` is true). The C++ form of
+  those conversions is tested by `tests/unit/oofnd/test_plist_get.cpp`; the `PListView` call
+  sites are not pinned by a test of their own.
 - **Log output.** `oo::log` must produce, line for line, the transcript of the Objective-C
   `OOLogging.mm` it replaces. `tests/unit/oofnd/test_log.cpp` checks this against a transcript
   captured from the original.
@@ -98,6 +100,6 @@ These need a real read:
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`f4b3c46b1e`) yet: the last record is for `39f37df90b` (2026-11-02), an earlier build of this step.
+Not verified at this branch's tip (`71752bcbde`) yet: the last record is for `39f37df90b` (2026-11-02), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

@@ -1,8 +1,0 @@
-{
- "src/Core/Scripting/OOJSShip.m": {
-  "base": "c34f8cc3801261c17dd539e3b2aa54202457ae55",
-  "deleted": false,
-  "ours": "27f531b1491e6691d611de597c85a5adce668657",
-  "theirs": "53fc9f034795adbbd2b5d0d1c636476f4401cf6f"
- }
-}

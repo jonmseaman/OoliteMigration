@@ -1,6 +1,6 @@
 # Remove the Objective-C runtime and rename the sources to .cpp
 
-**Series:** step 16 of 24 · base `seriesb/015-entity-facade` · next `seriesb/017-gcc-build` **(gen)**
+**Series:** step 16 of 26 · base `seriesb/015-entity-facade` · next `seriesb/017-gcc-build` **(gen)**
 
 **Replays:** `series/018-objc-runtime-out` (old 18 of the master-based series) · 6.6k src, 2.1k tests, 10.9k other changed lines; 8.6k lines in deleted files **(gen)**
 
@@ -24,7 +24,8 @@ every unit as C++.
   `src/Core/OOTypeEncodings.h`.
 - Every `.mm` file is renamed `.cpp`, and `#import` becomes `#include` in the sources (the
   macOS-only blocks, which the series does not convert, keep theirs).
-  `meson.build` drops the `objc`/`objcpp` languages, libobjc2 and every `-fobjc-*` flag;
+  `meson.build` drops the `objc`/`objcpp` languages, libobjc2 and every `-fobjc-*` flag (so
+  `src/oofnd/meson.build`'s Objective-C floor no longer links the `objc_lib` step 4 found);
   `clang.ini` and `gcc.ini` drop their Objective-C lines; the README drops its Objective-C section.
 
 #768's own Objective-C becomes C++ in the same way: `OOJSObjectWrapperFinalize` and
@@ -76,7 +77,9 @@ Most of the diff is the rename:
 files, use `git diff -M --diff-filter=R seriesb/015-entity-facade seriesb/016-objc-runtime-out`.
 The common edits are `#import` to `#include` in the sources, `@autoreleasepool { }` to a plain
 block or an `oo::AutoreleaseScope` in the tests, and dropped `__OBJC__` guards. The tests keep
-their `#import` lines here (Clang accepts them); step 17 converts them.
+their `#import` lines here (Clang accepts them); step 17 converts them. One commit only runs
+clang-format 22 over `PlayerEntityControls.cpp` (three of #783's GUI-button conditions), so the
+step passes upstream's format check.
 
 The parts worth reading:
 
@@ -99,6 +102,6 @@ pairs did not pair as renames and show as a delete and an add (`OOShaderUniformM
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`9dfcc4cb51`) yet: the last record is for `1cfe5a027e` (2026-11-03), an earlier build of this step.
+Not verified at this branch's tip (`4b585f4a80`) yet: the last record is for `1cfe5a027e` (2026-11-03), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

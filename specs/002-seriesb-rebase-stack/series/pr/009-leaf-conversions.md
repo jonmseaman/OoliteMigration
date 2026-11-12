@@ -1,8 +1,8 @@
 # Drop gnustep-base, then convert the first classes to C++: maths, leaf utilities, OXP verifier
 
-**Series:** step 9 of 24 · base `seriesb/008-selector-families` · next `seriesb/010-module-conversions` **(gen)**
+**Series:** step 9 of 26 · base `seriesb/008-selector-families` · next `seriesb/010-module-conversions` **(gen)**
 
-**Replays:** `series/011-leaf-conversions` (old 11 of the master-based series) · 29.7k src, 18.1k tests, 32 other changed lines; 1.8k lines in deleted files **(gen)**
+**Replays:** `series/011-leaf-conversions` (old 11 of the master-based series) · 29.7k src, 18.0k tests, 32 other changed lines; 1.8k lines in deleted files **(gen)**
 
 **Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
 
@@ -16,6 +16,8 @@ The first part finishes removing Foundation:
   first message to a literal.
 - `gnustep-base` comes off the Windows link line and out of `ShellScripts/Windows/install_deps.sh`,
   leaving libobjc2. `post_build.sh` and `run_oolite.sh` treat `GNUstep.conf` as optional.
+- `OOFoundation.h` includes `<string.h>`, which `Foundation.h` used to bring into every file. On
+  Windows `<windows.h>` still provides it; elsewhere `memcpy` and `strcmp` would be undeclared.
 - The last boundary headers (`OOFoundationBridge.h`, `OOStringBridge.h`, `OOPListView.h`,
   `OOObjectGNUstepBridge`) and `OOCollectionExtractors` are deleted, and so is `OOMusic.mm`, a
   stub that was not in the build.
@@ -38,7 +40,9 @@ become `.cpp`. The first classes become C++ classes that derive from `oo::RefCou
   SDL's event types. They stay Objective-C for now, in a category of its bridge, because they use
   `OOJoystickManager`'s state;
 - the first files of #768's binding: `OOJSVector`, `OOJSQuaternion`, `OOJSFunction`, `OOJSTimer`.
-  As in #768, `OOJSVector` and `OOJSQuaternion` keep no conversion statistics. #768's
+  As in #768, `OOJSVector` and `OOJSQuaternion` keep no conversion statistics. `cxx::OOJSTimer`
+  keeps #768's `willNotFireAgain()`: the finalizer does not warn about a one-shot timer freed by
+  its own callback. #768's
   native-wrapper macros (`OOJS_NATIVE_ENTER`/`EXIT` and the profiling pairs) become a C++ `try`, a
   `catch (...)` and scope guards; the handler is in the new `OOJSEngineNativeWrappers.mm`.
 
@@ -133,6 +137,6 @@ Edits to existing tests:
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`c455bb32cb`) yet: the last record is for `81a1b9d7d3` (2026-11-02), an earlier build of this step.
+Not verified at this branch's tip (`cd191bf28f`) yet: the last record is for `81a1b9d7d3` (2026-11-02), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.

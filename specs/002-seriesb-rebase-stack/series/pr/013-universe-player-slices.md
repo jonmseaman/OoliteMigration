@@ -1,6 +1,6 @@
 # Convert Universe and PlayerEntity to C++
 
-**Series:** step 13 of 24 · base `seriesb/012-shipentity-slices` · next `seriesb/014-facade-deletions` **(gen)**
+**Series:** step 13 of 26 · base `seriesb/012-shipentity-slices` · next `seriesb/014-facade-deletions` **(gen)**
 
 **Replays:** `series/015-universe-player-slices` (old 15 of the master-based series) · 17.7k src, 3.6k tests, 0 other changed lines; 1.2k lines in deleted files **(gen)**
 
@@ -35,7 +35,9 @@ The step also:
   `OOJSObjectWrapperToString`). A C++ class implements the `OOJSPrivateObject` interface and its JS
   class uses `OOJSGetCxxPrivate`, `OOJSCxxObjectWrapperFinalize` and
   `OOJSCxxObjectWrapperToString`. #768 has no such glue; `cxx::OOJSTimer` is its first user, and a
-  Timer's slot now holds the C++ timer rather than its bridge;
+  Timer's slot now holds the C++ timer rather than its bridge. The Timer finalizer's
+  unrooted-timer warning moves into `OOJSTimer::clearJSSelf()` and keeps #768's
+  `willNotFireAgain()` test, so a one-shot timer freed by its own callback still does not warn;
 - has the music controller hold `OOMusic` as `oo::Ref<OOMusic>`.
 
 ## Why
@@ -74,7 +76,9 @@ shows the added lines that are anything else (three closing braces).
 `tests/unit/core/test_PlayerEntity.mm` pins the player's answers against the Objective-C class.
 
 For `OOJSPrivateObject`, read its header, then `OOJSTimer.mm`, and
-`tests/unit/core/test_OOJSPrivateObject.mm`. The Timer's object converter still answers the
+`tests/unit/core/test_OOJSPrivateObject.mm`; `unrootedRunningTimerGC` in
+`tests/unit/core/test_OOJSTimer.mm` covers the finalizer path the warning moved to (no test
+checks whether the warning is logged). The Timer's object converter still answers the
 Objective-C bridge, because Objective-C code holds and messages that.
 
 The bridge deletions remove `X+ObjCBridge.*`, move `cxx::X` to the global namespace and turn the
@@ -83,6 +87,6 @@ lists each changed check.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`df9106042c`) yet: the last record is for `d9bf73afa4` (2026-11-02), an earlier build of this step.
+Not verified at this branch's tip (`dafa48f08b`) yet: the last record is for `d9bf73afa4` (2026-11-02), an earlier build of this step.
 
 macOS (its platform code is not converted yet) and Linux are not verified by this series.
