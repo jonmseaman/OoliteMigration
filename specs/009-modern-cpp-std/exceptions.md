@@ -71,3 +71,24 @@ is a conflict to record here, never a suppression.
 | cstring-types | `src/Core/Scripting/OOJSEngineTimeManagement.cpp` | `const char* function)` | `OOJSProfileEnter` | as above | — | T078 |
 | cstring-types | `src/Core/Scripting/OOJSEngineTimeManagement.cpp` | `OOTimeProfileEntry(const char* name)` | a profile entry's nullable name | as above | — | T078 |
 | cstring-types | `src/Core/Scripting/OOJSEngineTimeManagement.h` | `OOTimeProfileEntry(const char* name)` | its declaration | as above | — | T078 |
+| cstring-types | `src/Core/OOOpenGLCheck.h` | `cxx_OOCheckOpenGLErrors(const char* format` | the printf-style GL error check | its formats are printf syntax at its call sites (FR-026), and two tests define stand-ins with this signature (`test_OOCrosshairs.cpp:43`, `test_OOTrumble.cpp:265`) | — | T079 |
+| cstring-types | `src/Core/OOOpenGL.cpp` | `cxx_OOCheckOpenGLErrors(const char* format` | its definition | as above | — | T079 |
+| cstring-types | `src/Core/OOOpenGLCheck.h` | `OOGLNoteCurrentFunction(const char*` | the GL call tracker's function name (`__FUNCTION__`) | the tracker compares names by pointer, and a test defines a stand-in with this signature (`test_OOCrosshairs.cpp:45`) | — | T079 |
+| cstring-types | `src/Core/OOOpenGLStateManager.cpp` | `OOGLNoteCurrentFunction(const char*` | its definitions | as above | — | T079 |
+| cstring-types | `src/Core/OOOpenGL.h` | `const char* function` | `OOSetOpenGLState_` and `OOVerifyOpenGLState_`'s caller names | tests define stand-ins with these signatures (`test_OOCrosshairs.cpp:38-39`) | — | T079 |
+| cstring-types | `src/Core/OOOpenGLStateManager.cpp` | `const char* function` | their definitions | as above | — | T079 |
+| cstring-types | `src/Core/OOOpenGLStateManager.cpp` | `const char* caller` | the verifier's caller names, from those entry points (declared `NONNULL_FUNC`) | as above | — | T079 |
+| cstring-types | `src/Core/OOOpenGLStateManager.cpp` | `const char* nominalCaller` | as above | as above | — | T079 |
+| cstring-types | `src/Core/OOOpenGLExtensionManager.cpp` | `reinterpret_cast<const char*>(` | GL's own strings (`glGetString`) | the OpenGL C interface returns `const GLubyte*` | — | T079 |
+| cstring-types | `src/Core/OOOpenGL.cpp` | `reinterpret_cast<const char*>(errString)` | `gluErrorString`'s answer | the GLU C interface | — | T079 |
+| cstring-types | `src/Core/OOOpenGLMatrixManager.h` | `ooliteStandardMatrixUniforms[]` | the standard matrix uniform names | they go to `glGetUniformLocation`, which takes NUL-terminated names | — | T079 |
+| cstring-types | `src/Core/Materials/OOPNGTextureLoader.cpp` | `reinterpret_cast<const char*>(fileData->bytes())` | a byte pointer into the PNG data | byte arithmetic for `memcpy`, not text | — | T079 |
+| cstring-types | `src/Core/Materials/OOShaderMaterial.h` | `const char* property` | the entity-binding property name, null allowed | the binding function type (`OOShaderUniformMethodType.h`) and a test stand-in have it; null binds nothing (as T077's rows) | — | T079 |
+| cstring-types | `src/Core/Materials/OOShaderMaterial.cpp` | `const char* property` | as above | as above | — | T079 |
+| cstring-types | `src/Core/Materials/OOShaderMaterial.cpp` | `const char* propertyName` | the nullable property name handed to the binding | as above | — | T079 |
+| cstring-types | `src/Core/Materials/OOShaderUniform.h` | `const char* property` | as above | as above | — | T079 |
+| cstring-types | `src/Core/Materials/OOShaderUniform.cpp` | `const char* property` | as above | as above | — | T079 |
+| cstring-types | `src/Core/Materials/OOShaderUniformMethodType.h` | `const char* property` | the binding function type | as above | — | T079 |
+| cstring-types | `src/Core/Materials/OOShaderUniformMethodType.h` | `OOShaderUniformTypeFromEncoding(const char* typeCode)` | a type encoding, null allowed (answers invalid) | tests pass table encodings that may be null (`test_OOJSCallEntityMethods.cpp:121,178`) | — | T079 |
+| cstring-types | `src/Core/Materials/OOShaderUniformMethodType.cpp` | `OOShaderUniformTypeFromEncoding(const char* typeCode)` | its definition | as above | — | T079 |
+| cstring-types | `src/Core/Materials/OOShaderUniformMethodType.cpp` | `sTemplates[` | the encodings it compares with, null for an unused slot | as above | — | T079 |
