@@ -30,18 +30,23 @@ constexpr bool Any(E v) noexcept { return ToUnderlying(v) != 0; }
 
 }  // namespace oo
 
-template <oo::FlagEnum E> constexpr E operator|(E a, E b) noexcept { return E(oo::ToUnderlying(a) | oo::ToUnderlying(b)); }
-template <oo::FlagEnum E> constexpr E operator&(E a, E b) noexcept { return E(oo::ToUnderlying(a) & oo::ToUnderlying(b)); }
-template <oo::FlagEnum E> constexpr E operator^(E a, E b) noexcept { return E(oo::ToUnderlying(a) ^ oo::ToUnderlying(b)); }
-template <oo::FlagEnum E> constexpr E operator~(E a) noexcept { return E(~oo::ToUnderlying(a)); }
+template <oo::FlagEnum E> constexpr E operator|(E a, E b) noexcept { return static_cast<E>(oo::ToUnderlying(a) | oo::ToUnderlying(b)); }
+template <oo::FlagEnum E> constexpr E operator&(E a, E b) noexcept { return static_cast<E>(oo::ToUnderlying(a) & oo::ToUnderlying(b)); }
+template <oo::FlagEnum E> constexpr E operator^(E a, E b) noexcept { return static_cast<E>(oo::ToUnderlying(a) ^ oo::ToUnderlying(b)); }
+template <oo::FlagEnum E> constexpr E operator~(E a) noexcept { return static_cast<E>(~oo::ToUnderlying(a)); }
 template <oo::FlagEnum E> constexpr E& operator|=(E& a, E b) noexcept { return a = a | b; }
 template <oo::FlagEnum E> constexpr E& operator&=(E& a, E b) noexcept { return a = a & b; }
 template <oo::FlagEnum E> constexpr E& operator^=(E& a, E b) noexcept { return a = a ^ b; }
 ```
 
-D3 checks the risk that global operator templates are not found from inside `namespace oo`
-(R8, inferred). If they are not, D3 adds `using ::operator|;` (and the others) to `namespace oo`
-and records it here.
+D3 checked the risk that global operator templates are not found from inside `namespace oo`
+(R8). Answer: for a flag enum declared in the global namespace (every game enum) they are always
+found, because argument-dependent lookup searches the enum's own namespace, the global one, even
+where `namespace oo` declares an unrelated `operator|`. `tests/unit/core/test_OOEnumFlags.cpp`
+pins this with a `constexpr` `|` inside `namespace oo` beside such an operator. A flag enum
+declared inside a namespace would be found only by ordinary lookup, which stops at the first
+enclosing namespace that declares that operator; that namespace adds `using ::operator|;` and the
+others.
 
 ## `src/Core/OOEnumTable.h`
 
@@ -67,7 +72,8 @@ constexpr EnumTable<E, sizeof...(Values)> MakeEnumTable() noexcept;
 
 ## The shape of a converted enum header
 
-Exemplar: `src/Core/OODebugFlags.h` (D3). Every converted named enum follows it:
+Exemplar: `src/Core/Debug/OODebugFlags.h` (D3). A flag enum's bit test reads through a named
+helper where that is clearer (`OODebugFlagIsOn(OODebugFlags::kCollisions)`). Every converted named enum follows it:
 
 ```cpp
 enum class OODebugFlags : std::uint32_t {

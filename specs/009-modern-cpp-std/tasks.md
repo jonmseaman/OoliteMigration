@@ -403,7 +403,7 @@ production enum changes in the same commit as it.
   visibility table, the value read from the code (not a `.tbl` column), and `pin` set to the
   `static_assert` or test that will pin it.
   **Accept:** `grep -c '^| ' specs/009-modern-cpp-std/external-values.md` prints at least 40
-- [ ] T046 [US5] (design D3) Add `src/Core/OOEnumFlags.h` and `src/Core/OOEnumTable.h` exactly as
+- [X] T046 [US5] (design D3) Add `src/Core/OOEnumFlags.h` and `src/Core/OOEnumTable.h` exactly as
   contracts/enums.md declares them; convert `src/Core/Debug/OODebugFlags.h` to the exemplar shape
   (`enum class OODebugFlags : std::uint32_t`, `OOEnableFlagOperators`, `OOEnumName` with the
   `DEBUG_*` spellings, `static_assert`s), replacing `#define DEBUG_ALL` and the `#x` stringification
