@@ -546,7 +546,7 @@ production enum changes in the same commit as it.
 Each area: run `run-clang-tidy -p . -checks='-*,google-readability-casting' -fix` over the area,
 review every fix, convert the rest by hand per the contract's table.
 
-- [ ] T070 [US6] Area `entities`, `PlayerEntity*.cpp` (about 169 in `PlayerEntity.cpp`).
+- [X] T070 [US6] Area `entities`, `PlayerEntity*.cpp` (about 169 in `PlayerEntity.cpp`).
   **Accept:** `cd oolite-dev && $C cast --area entities | { ! grep -q 'PlayerEntity'; }`
 - [ ] T071 [US6] Area `entities`, the rest (`ShipEntity*.cpp` about 144, the other entities; the
   152 `(Entity*)nullptr` arms → `static_cast<Entity*>(nullptr)`).
