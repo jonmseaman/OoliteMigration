@@ -58,7 +58,7 @@ Format only the `src/` files you changed:
 - `./mk.sh tidy` runs and exits 0 with the new checks reporting (non-fatal).
 - The FR-016 tests added in M0 pass on the base (save round trip of every enum-valued entry,
   unknown-name fallbacks, quitting with a background task).
-- Baselines recorded in `specs/009-modern-cpp-std/exceptions.md`'s sibling notes: smoke start-up
+- Baselines recorded in `specs/009-modern-cpp-std/baselines.md`: smoke start-up
   time (`tests/launch_snapshot.py` prints it), and frame rate by the method in
   `notes/2026-11-10 Frame Rate Comparison.md`, five runs, median.
 
@@ -102,13 +102,9 @@ Format only the `src/` files you changed:
 
 - The `enum` search finds only `exceptions.md` rows; `ls src/Core/Tables/*.tbl` lists only
   `OOOpenGLStates.tbl`.
-- Save round trip: load the M0 baseline save on the branch, save without play, and the files are
-  identical:
-
-  ```bash
-  diff <base-save>.oolite-save <branch-save>.oolite-save
-  ```
-
+- Save round trip: the M0 round-trip test passes. It loads the baseline save on the branch,
+  saves without play, and compares every enum-valued entry (a plain `diff` of the two files is
+  not the check: the save records its own time).
 - The JS API contract and the expansion corpus do not regress (planning repo):
 
   ```bash

@@ -11,9 +11,7 @@ category to zero:
 Checks: >
   ...existing entries...,
   cppcoreguidelines-no-malloc,
-  cppcoreguidelines-owning-memory,
   cppcoreguidelines-use-enum-class,
-  modernize-macro-to-enum,
   readability-identifier-naming
 CheckOptions:
   cppcoreguidelines-use-enum-class.IgnoreUnscopedEnumsInClasses: false
@@ -24,8 +22,7 @@ CheckOptions:
 | Check | Fatal in |
 |---|---|
 | `cppcoreguidelines-no-malloc` | M1 |
-| `cppcoreguidelines-owning-memory` | M5 |
-| `cppcoreguidelines-use-enum-class`, `modernize-macro-to-enum` | M4 (their findings at zero apart from the exceptions list, which needs no suppression because every exception is a construct the check does not flag: a C-API constant passed as `int`, an `#if`-tested macro) |
+| `cppcoreguidelines-use-enum-class` | M4 (its findings at zero apart from the exceptions list, which needs no suppression because every exception is a construct the check does not flag: a typed constant, a QuickJS flag macro, an `#if`-tested macro) |
 | `readability-identifier-naming` (enum constants only) | M6, after P10 |
 
 If an exceptions-list entry turns out to be flagged by its check, the check stays non-fatal and the
@@ -46,6 +43,10 @@ reports. Builds first if the database is missing.
 In `.github/workflows/build-all.yaml`, after the Arch build: `./mk.sh tidy`. It fails the job
 exactly when `./mk.sh tidy` fails. If it takes more than 15 minutes, it is restricted to the
 translation units of files changed against the merge base, and a full run is added on a schedule.
+
+Not used (research R3): `cppcoreguidelines-owning-memory` (needs `gsl::owner` annotations) and
+`modernize-macro-to-enum` (flags plain numeric constants that are out of scope). The macro sets
+are guarded by the per-set searches in data-model.md.
 
 ## Removed types
 

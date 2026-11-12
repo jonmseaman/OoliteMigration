@@ -60,18 +60,27 @@ check: deleting their headers makes any reintroduction a compile error.
 | Category | Check | Fatal when |
 |---|---|---|
 | C allocation | `cppcoreguidelines-no-malloc` (defaults cover `malloc`, `calloc`, `realloc`, `free`) | end of US1 |
-| Owning raw `new` | `cppcoreguidelines-owning-memory` (277 hits today) | end of US2 |
 | Unscoped enums | `cppcoreguidelines-use-enum-class` (`IgnoreUnscopedEnumsInClasses=false`) | end of US5 |
-| Macro constant sets | `modernize-macro-to-enum` | end of US5 |
 | Enumerator naming | `readability-identifier-naming` with `ScopedEnumConstantCase: CamelCase`, `ScopedEnumConstantPrefix: k` | end of US5 |
 
-- All five checks exist in clang-tidy 22.1.8 (604 checks). Nothing runs clang-tidy today: not CI,
+- Two checks were considered and rejected. `cppcoreguidelines-owning-memory` (277 hits) flags
+  the intended ownership crossings (the script slot's heap `shared_ptr`, the immortal singletons)
+  unless they are annotated with `gsl::owner`, which the project does not use; FR-005 is checked
+  by the exceptions list and review instead. `modernize-macro-to-enum` flags any run of adjacent
+  integer macros, including the hundreds of plain numeric constants (`HeadUpDisplay.h` alone has
+  156) that are not enumerations and are out of scope; the about 10 macro sets are listed in
+  data-model.md with a search each instead.
+- The three checks used, and the two rejected, all exist in clang-tidy 22.1.8 (604 checks). Nothing runs clang-tidy today: not CI,
   not `mk.sh` (only a comment at `:92`), not `tests/run.sh`. So the CI step is new; it is the
   first thing that makes `WarningsAsErrors` mean anything.
 - No `NOLINT`, no `IgnoredRegexp` options (FR-003). One `NOLINT` already exists
   (`ShipEntityAI.cpp:1428`); it is not this feature's.
 - Spec 005 (cpplint) plans its own ratchet "copying `.clang-tidy`'s WarningsAsErrors approach";
   this is compatible and does not depend on it.
+
+- CI's clang-tidy is whatever Arch ships (22 or 23); a newer version can report findings 22 does
+  not. The CI step pins nothing; a new finding from a version change is fixed or recorded, never
+  suppressed.
 
 **Alternatives:** a Python source scanner in `tests/` (Jon deleted `tests/idiom_check.py` on
 2026-11-10, `8ec7631d3`, as a retired migration-era check; a new one would repeat it). A meson

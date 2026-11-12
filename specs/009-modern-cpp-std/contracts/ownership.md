@@ -140,7 +140,8 @@ inline EntityHold Hold(Entity* e) {
 
 ```cpp
 // Stores a new heap std::shared_ptr<oo::Object> holding obj in the JS object's
-// opaque slot (was: retain obj, store the raw pointer).
+// opaque slot (was: retain obj, store the raw pointer). D1 keeps today's other
+// parameters; only the object's type changes.
 void OOJSSetCxxPrivate(JSContext* ctx, JSValueConst jsObj, std::shared_ptr<oo::Object> obj);
 
 // The object in the slot, or null (was a cast of the raw opaque pointer).
@@ -164,6 +165,11 @@ While callers move, `oofnd/Ref.hpp` keeps its names over the standard types:
 | `leakRef()` / `adopt(p)` | a manual hold taken / given back | removed (singletons use `oo::Immortal`; the script slot holds a heap `shared_ptr`) |
 | `retainCount()` | `use_count()` of the object's control block, plus manual holds | `use_count()` |
 | `dropWeakReferences()` | no-op: weak references are already empty in `willDispose()` | removed |
+
+The bridge must keep today's "+1 from `new`" convention: an object made with a bare `new` and no
+owner yet counts as held once by its creator; `adopt(p)` on such an object creates its owning
+`std::shared_ptr` with `oo::Dispose`, and on an object that already has an owner gives back one
+manual hold. D1 writes these rules into `test_ref`'s ported cases before any caller moves.
 
 The bridge commit is the one where `test_ref.cpp:514` changes meaning; it waits for Jon's
 sign-off (plan.md *Notes*).

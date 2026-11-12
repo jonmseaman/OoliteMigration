@@ -99,6 +99,8 @@ specs/009-modern-cpp-std/
 │   └── guards.md        # .clang-tidy entries, ./mk.sh tidy, the CI step
 ├── exceptions.md        # created in M0 (format in data-model.md)
 ├── test-ledger.md       # created in M0 (format in data-model.md)
+├── baselines.md         # created in M0: start-up and frame-rate medians, the baseline save
+├── external-values.md   # created at the start of M4 (format in data-model.md)
 ├── checklists/requirements.md
 └── tasks.md             # /speckit-tasks
 ```
@@ -151,12 +153,13 @@ sign-off on two ledger rows before its bridge commit, so the work that needs non
 | M2 | **Threads** (R6, D4): `OOAsyncWorkManager` workers as `std::jthread` with `shutdown()` before `exit(0)`; `detach` removed; one main-thread id, merged with the log handler's copy. | US3 | Search finds no `oo::thread::detach`/`isMainThread`; quit-with-task test passes; TSan smoke run clean. |
 | M3 | **`oofnd` → std** (R7): `std::expected`; `StdLib.hpp` out of the game; `oo::Exception : std::exception`; integer aliases → standard types and `oo::kNotFound`; Date's calendar; the identical FileSystem wrappers; literal formats → `std::format` by hand, area by area, after a local `-Wformat-signedness` pass; README rules. | US4 | US4 acceptance 1–4; every test tier as on the base. |
 | M4 | **Enums P1–P9** (R8, D3, D5): helpers and the `OODebugFlags` exemplar; file-local enums; lone constants; internal header enums; bitmasks; number-visible enums; `CASE` string enums; the ten `.tbl` enums; the int-natured groups. Test stand-ins change with their production enum. | US5 | US5 acceptance 1–5 except the naming check, which stays non-fatal until M6; save round-trip identical. |
-| M5 | **Ownership** (R5, D1, D2), after Jon has signed the `test_ref.cpp:514` and construction-form rows. D2's readers inventoried and tested on the base first. Then: the bridge; leaf types and immortals; the script slot; Entities, `EntityHold`, creators, `Universe`; SDL; callers off the bridge; the bridge deleted; `cppcoreguidelines-owning-memory` fatal; frame-rate measurement; CLAUDE.md and spec 003's plan updated. | US2 | SC-002; disposal-order and script-finalisation tests pass; ASan clean; SC-008 measured. |
+| M5 | **Ownership** (R5, D1, D2), after Jon has signed the `test_ref.cpp:514` and construction-form rows. D2's readers inventoried and tested on the base first. Then: the bridge; leaf types and immortals; the script slot; Entities, `EntityHold`, creators, `Universe`; SDL; callers off the bridge; the bridge deleted; frame-rate measurement; CLAUDE.md and spec 003's plan updated. | US2 | SC-002; disposal-order and script-finalisation tests pass; ASan clean; SC-008 measured. |
 | M6 | **Close-out.** P10 (rename the 20 existing `enum class` enumerators) once Jon has signed those rows; the naming check fatal; docs (FR-023); final measurements; `tests/run.sh all` on a Windows machine; the corpus. | US5, all | SC-003 to SC-009. |
 
 **Order and parallelism:**
-- M0 first. M1, M2 and M3 touch disjoint code and may run in parallel beads after M0; M3's format
-  steps touch many files and are sequenced by area.
+- M0 first. M1, M2 and M3 touch disjoint code and may run in any order after M0 (one branch,
+  one commit per bead, so never at the same time); M3's format steps touch many files and are
+  sequenced by area.
 - M4 after M1–M3 (it touches the same files as everything).
 - M5 can move up to directly after M1 if Jon has signed by then (that matches the spec's
   priorities); otherwise after M4. It never runs beside M4: both rewrite `Core/Entities`.
@@ -222,5 +225,7 @@ Also recorded in research.md under the R item named.
   before any rename; `static_assert` on every visible number, in both configurations.
 - **Upstream ports get harder** once enums are renamed (about 8,800 references). M4 is late and
   short; `tools/upstream-delta.sh` is the route.
+- **clang-tidy version drift.** CI's clang-tidy is Arch's current one, not pinned; a newer
+  version can add findings. They are fixed or recorded, never suppressed (R3).
 - **CI cost.** A clang-tidy run over about 520 files on every push. If it exceeds the Arch job's
   budget, it runs only on the changed files' translation units plus a nightly full run.

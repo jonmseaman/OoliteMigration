@@ -174,8 +174,8 @@ game during a download or while textures load in the background takes no longer 
 2. **Given** a background task in progress (an expansion download, background texture or planet
    generation), **When** the player quits, **Then** the game exits within the time it does on the
    base, with no crash and no hang.
-3. **Given** the converted tree, **When** the unit suites run under the thread sanitizer where the
-   platform has one, **Then** it reports no race that the base does not also report.
+3. **Given** the converted tree, **When** it runs under the thread sanitizer (the unit suites
+   where the platform has one, otherwise the smoke run), **Then** it reports no race that the base does not also report.
 4. **Given** a named background thread, **When** a debugger lists threads, **Then** it shows the
    same name as on the base.
 
@@ -192,8 +192,8 @@ answers from the ones the game depends on, and each survivor says so in one line
 independent, so it can be done piece by piece once the C++23 switch is in.
 
 **Independent Test**: Before: game code includes `Expected.hpp` and `StdLib.hpp`, `Date.hpp` has
-its own calendar arithmetic, and literal formats go through printf. After: the first two are
-deleted, the rest are reduced to the documented remainder, no first-party code uses the replaced
+its own calendar arithmetic, and literal formats go through printf. After: `Expected.hpp` is
+deleted, no game file includes `StdLib.hpp`, the rest are reduced to the documented remainder, no first-party code uses the replaced
 names, `oofnd`'s README lists each
 remaining component with its reason, and every test tier passes with the same results.
 
@@ -253,7 +253,8 @@ colour mode included); and the script API snapshot and expansion corpus do not r
   `this` (possible with intrusive counting, not with standard shared ownership) must get its owner
   another way; it cannot do this during construction.
 - **Stack and member instances.** Some reference-counted classes are also created on the stack or
-  as members (tests do this). Converting must not force them onto the heap where the base did not.
+  as members. None exist in first-party code; tests have a few, and those become shared-owned
+  through *borderline* ledger rows (research R9).
 - **Reference cycles.** A cycle that the base broke by an explicit release, an autorelease or
   disposal must still be broken; the leak check is the judge.
 - **Ownership across C interfaces.** Native objects stored in script-engine objects and in C

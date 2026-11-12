@@ -21,7 +21,7 @@ Searches, run from `oolite-dev` (`SRC` = `src/Core src/SDL src/oofnd`, excluding
 
 ```bash
 EXCL=(--glob '!src/Core/MiniZip/**' --glob '!src/SDL/EXRSnapshotSupport/**' --glob '!**/stb_*')
-rg -n -P '(?<![\w:])(std::)?(malloc|calloc|realloc|free)\s*\(' src "${EXCL[@]}"                       # alloc
+rg -n -P '(?<![\w:.>])(::|std::)?(malloc|calloc|realloc|free)\s*\(' src "${EXCL[@]}"                  # alloc
 rg -n -P '\b(RefCounted|oo::Ref\b|oo::WeakRef|makeRef|leakRef|adopt\s*\()' src "${EXCL[@]}"          # ownership
 rg -n 'oo::thread::(detach|isMainThread)' src                                                         # thread
 rg -n -P 'oo::(Expected|Unexpected)\b|\bNS(U?Integer|NotFound|TimeInterval)\b|\bCGFloat\b|oofnd/StdLib\.hpp' src \
@@ -30,17 +30,24 @@ rg -n -P '^\s*(typedef\s+)?enum\b(?!\s+class\b)' src "${EXCL[@]}"               
 ls src/Core/Tables/*.tbl                                                                             # tbl: only OOOpenGLStates.tbl
 ```
 
+Macro sets (research R8 §5), each with its own negated search once converted: the GUI row sets in
+`PlayerEntityKeyMapper.h:42-65`, `PlayerEntityContracts.h:59`, `PlayerEntityStickMapper.h:40-51`,
+`PlayerEntityStickProfile.cpp:38` and `PlayerEntityLoadSave.h:42-52`; `CUBE_FACE_*`
+(`OOVoxel.h:37-42`); `HW_AXIS`/`HW_BUTTON` (`OOJoystickManager.h:157`); `STICKPROFILE_TYPE_*`
+(`OOJoystickProfile.h:44`); `DEBUG_ALL` and `VALID_WEAPON_FACINGS` with their flag enums. The 23
+`kOOTCPPacket_*` string defines are strings, not an enumeration, and stay.
+
 The two excluded files in the `oofnd` search hold frozen type-encoding strings that contain those
 names as text (research R7); they are data and are not changed.
 
 | id | before | guard | fatal at |
 |---|---:|---|---|
 | alloc | 135 lines | `cppcoreguidelines-no-malloc` | M1 |
-| ownership | 2,007 lines | definition deleted; `cppcoreguidelines-owning-memory` | M5 |
+| ownership | 2,007 lines | definition deleted | M5 |
 | thread | 7 lines (5 calls, 2 definitions) | definition deleted | M2 |
 | oofnd | 1,505 lines (including `oofnd`'s own definitions) | definition deleted | M3 |
 | enum | 179 lines | `cppcoreguidelines-use-enum-class` | M4 |
-| macro-set | about 10 sets | `modernize-macro-to-enum` | M4 |
+| macro-set | about 10 sets (listed below) | one search per set | M4 |
 | tbl | 11 files | (file count) | M4 |
 | naming | 0 converted | `readability-identifier-naming` | M6 |
 
@@ -91,8 +98,8 @@ sign-off*); `test_stdlib` and any `test_foundation_types` assertion with no coun
 ## External names and values
 
 Every name or number that leaves the program, written down before its enum or format is changed
-(FR-018, research R8 and R7). Kept in `exceptions.md`'s sibling section *External values*, or here
-until M4 starts.
+(FR-018, research R8 and R7). Kept in `external-values.md` in this directory, created at the start
+of M4.
 
 | Field | Meaning |
 |---|---|
