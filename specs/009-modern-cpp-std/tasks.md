@@ -704,6 +704,20 @@ edits.**
   data-model.md.
   Write one line per criterion: `SC-0NN: met (evidence)` or `SC-0NN: not met — reason`.
   **Accept:** `test "$(grep -c -E '^- SC-0(0[1-9]|1[01]): (met|not met — )' specs/009-modern-cpp-std/checklists/requirements.md)" -eq 11`
+- [ ] T106 Last, after T105: bring `seriesb/027-modern-cpp` onto the rewritten series. On
+  `jonmseaman/oolite` the `seriesb/*` branches were rewritten (merge commits squashed into each
+  other), so 027's history still holds the old commits of its parent `seriesb/026-migration-completion`.
+  In `oolite-dev` only (local config, the same as Jon's Windows machine):
+  `git config --local rerere.enabled true` and
+  `git config --local git-town.sync-feature-strategy rebase`. Before fetching, record the old parent
+  tip: `old=$(git merge-base seriesb/027-modern-cpp seriesb/026-migration-completion)`. Then
+  `git fetch origin`, `git town sync --no-push` (the parents take the rewritten commits), and
+  `git rebase --onto origin/seriesb/026-migration-completion "$old" seriesb/027-modern-cpp`, so only
+  027's own commits are replayed (rerere reuses any conflict resolution it has seen). After the
+  rebase: `./mk.sh build test`, smoke and `./mk.sh tidy` as at every task. The rewritten branch
+  needs a forced push, which hard rule 3 leaves to Jon (`git push --force-with-lease origin
+  seriesb/027-modern-cpp`); say so in the report.
+  **Accept:** `cd oolite-dev && test "$(git config --local rerere.enabled)" = true && test "$(git config --local git-town.sync-feature-strategy)" = rebase && git merge-base --is-ancestor origin/seriesb/026-migration-completion seriesb/027-modern-cpp && test -z "$(git rev-list --merges origin/seriesb/026-migration-completion..seriesb/027-modern-cpp)"`
 
 ---
 
@@ -720,7 +734,7 @@ Phase 1 (T001–T003) → Phase 2 (T004–T013)
   → Phase 9 US2 (T084–T100)        T084–T086 any time after Phase 2 (they only add or record);
                                     T087 (rewrites Entities code) never beside Phases 6–8;
                                     T088+ after Jon signs
-  → Phase 10 (T101–T105)           T101 after Jon signs the P10 rows
+  → Phase 10 (T101–T106)           T101 after Jon signs the P10 rows; T106 is the last task
 ```
 
 - Phase 9 may move to directly after Phase 3 if Jon signs early (it never runs beside Phases 6–8:
