@@ -563,7 +563,7 @@ review every fix, convert the rest by hand per the contract's table.
   *Done (0527cdda7).* The 139 casts in `OOOpenGLExtensionManager.cpp` are under `#if OOLITE_WINDOWS`, so
   the macOS check does not see them; they were converted by hand (`reinterpret_cast<PFN...>`) and
   T105's Windows build is the first to compile them.
-- [ ] T074 [US6] Area `scripting`.
+- [X] T074 [US6] Area `scripting`.
   **Accept:** `cd oolite-dev && $C cast --area scripting`
 - [ ] T075 [US6] Areas `sdl-debug` and `oofnd`; casts from third-party macro expansions, if any are
   reported, become `exceptions.md` rows.
