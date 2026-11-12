@@ -478,6 +478,11 @@ precompiled header, compile by compile with `baseline/o0_vs_o2.py`'s method.
   version header to one unit (FR-001), so `feature/double-wide-support` merges into `develop`
   with the least conflict. Their `src/SDL/main.cpp` hunk conflicts with `develop` and is ported
   by hand.
+- **The base is `develop`, as `CLAUDE.md` says**, although `develop` has had no commit since
+  2026-11-01. Current work happens on the `seriesb/*` stack (since the switch on 2026-11-04), and
+  `feature/double-wide-support` sits on `seriesb/026-migration-completion`. If Jon moves this
+  feature's base to the stack, fa5e7e7e6 and 56fa88a55 are already there and the cherry-picks
+  drop out. The baseline counts were taken on `develop`.
 - **Installers are out of scope.** The NSIS installer, AppImage, Flatpak and DMG are packaging
   steps after the bundle, with their own timestamps. A reproducible installer is a follow-up once
   the bundle is reproducible.
