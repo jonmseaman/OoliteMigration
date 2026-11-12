@@ -338,10 +338,10 @@ colour mode included); and the script API snapshot and expansion corpus do not r
 
 - **FR-015**: Test edits MUST be limited to changes forced by a replaced type, function or
   enumerator name, header or construction form, with every assertion's meaning unchanged; each
-  edited test MUST be listed in a test-change ledger in this spec's directory with the reason; and
-  a test of a removed `oofnd` component MUST move to the standard facility's use in the game or be
-  retired only through that ledger. This needs hard rule 1 amended, which only Jon can do; until he
-  has, work that needs a test edit MUST NOT start, and work that needs none proceeds.
+  edited test MUST be listed in a test-change ledger in this spec's directory with the reason.
+  Hard rule 1's third exception (Jon, 2026-11-11) allows exactly these edits. It does not allow
+  deleting a test: a test of a removed `oofnd` component MUST be ported to the standard facility,
+  keeping its assertions, and a test that cannot be ported is reported to Jon, not deleted.
 - **FR-016**: Every behaviour this feature must preserve that no existing test covers (disposal
   order, release on script finalisation, shutdown with a background task, save-game enum values,
   unknown-name fallbacks) MUST get a test that passes on the base before the change it guards.
@@ -439,14 +439,13 @@ Jon can override any of them:
 2. **Standard types directly, not `oo::Ref` over `shared_ptr`.** The 2026-10-28 plan kept the
    `oo::Ref` names over `std::shared_ptr`. The request names `std::shared_ptr` and `std::weak_ptr`
    instead of `oo::WeakRef`, and "std libraries directly", so the names go too.
-3. **Test edits wait for a rule 1 amendment.** About 205 test files name the replaced types, so
+3. **Test edits: settled (Jon, 2026-11-11).** About 205 test files name the replaced types, so
    Stories 2 to 5 cannot finish without test edits (`test_thread` alone names `oo::thread` 21
-   times), and hard rule 1 has no exception for them.
-   The default is FR-015: spelling-only edits with a ledger, started only after Jon amends rule 1
-   (as his 2026-11-07 decision already intends). Story 1 and the parts of Stories 3–5 that touch no
-   test go first. Proposed wording for the amendment: "a test may be edited where a type, function,
-   enumerator or header it names is replaced by its standard equivalent, keeping every assertion's
-   meaning, and each edit is listed in the feature's test-change ledger."
+   times). Jon approved the proposed amendment, now hard rule 1's third exception in CLAUDE.md:
+   "a test may be edited where a type, function, enumerator or header it names is replaced by its
+   standard equivalent, keeping every assertion's meaning, and each edit is listed in the feature's
+   test-change ledger." FR-015 applies it. It covers edits only, so deleting a test still needs
+   Jon's sign-off. Story 1 still goes first because it needs the fewest test edits.
 4. **C++23 is in scope**, as the prerequisite for `std::expected`; it was Phase 6's first step.
 5. **`std::jthread` by default** for threads with an owner; detached threads only where the base
    detaches and nothing can own the thread, each on the exceptions list.

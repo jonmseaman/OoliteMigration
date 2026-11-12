@@ -45,11 +45,11 @@
   performance measurements where they exist. SC-009 is a sampled review.
 - **Clarifications.** None left open. Hard rule 8 (CLAUDE.md) says to take the conservative default
   and record it, so the open choices are in the spec's "Decisions and notes": placement on
-  `seriesb/027-modern-cpp`, standard types directly, test edits gated on a rule 1 amendment, C++23
-  in scope, `std::jthread`, and `kPascalCase` enumerators.
-- **One blocking dependency, recorded rather than asked.** FR-015 needs Jon to amend hard rule 1
-  before any task that edits a test starts; the spec proposes the wording. Story 1 and the
-  test-free parts of the others do not depend on it.
+  `seriesb/027-modern-cpp`, standard types directly, C++23 in scope, `std::jthread`, and
+  `kPascalCase` enumerators.
+- **Test edits: no longer blocking.** Jon approved the proposed rule 1 amendment on 2026-11-11; it
+  is hard rule 1's third exception in CLAUDE.md and FR-015 applies it. It covers edits only;
+  deleting a test still needs his sign-off.
 - **Template resolution.** `pwsh` is not installed on this machine, so `resolve-template.ps1` could
   not run. The repository has no `.specify/templates/overrides/`, `.specify/presets/` or
   `.specify/extensions/`, so `.specify/templates/spec-template.md` is the resolved template.
