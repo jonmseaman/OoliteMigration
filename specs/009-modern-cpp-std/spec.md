@@ -391,8 +391,9 @@ tier pass with the same results.
 - **FR-005**: An object created with `new` MUST be owned by a smart pointer or a container
   immediately, except where ownership passes to a C interface through `void*`; each such crossing
   MUST be on the exceptions list with its owner and release point. A singleton that is
-  deliberately never destroyed today MUST stay so, through one shared helper that holds it in a
-  smart pointer that is never released, and MUST be on the exceptions list.
+  deliberately never destroyed today MUST stay so, written in plain standard C++ at each site with
+  no helper (a never-deleted `std::shared_ptr` if other objects share it, else a never-deleted
+  object), and MUST be on the exceptions list.
 
 **Ownership (Story 2)**
 

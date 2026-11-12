@@ -56,18 +56,19 @@ std::shared_ptr<T> share(T* p) {
       static_cast<Object*>(const_cast<std::remove_const_t<T>*>(p))->shared_from_this());
 }
 
-// A singleton that is never destroyed (was makeRef(...).leakRef()). The
-// returned reference lives for the rest of the program.
-template <class T>
-const std::shared_ptr<T>& Immortal(std::shared_ptr<T> p) {
-  return *new std::shared_ptr<T>(std::move(p));
-}
-
 }  // namespace oo
 ```
 
-Use: `static const std::shared_ptr<OOCacheManager>& sShared =
-oo::Immortal(oo::makeShared<OOCacheManager>());`. Each use is an `exceptions.md` row (FR-005).
+**Never-destroyed singletons** (was `makeRef(...).leakRef()`): written in plain std at each site,
+with no helper (Jon, 2026-11-11). A singleton that other objects also hold shared:
+
+```cpp
+static const auto& sShared = *new std::shared_ptr<OOCacheManager>(oo::makeShared<OOCacheManager>());
+```
+
+A singleton that nothing else holds: `static auto& sShared = *new OOAsyncWorkManager();`. The heap
+`shared_ptr` (or object) is never deleted, so no destructor runs at exit, as today. Each site is an
+`exceptions.md` row (FR-005).
 
 Shared ownership is `std::shared_ptr<T>`, observation is `std::weak_ptr<T>`, exclusive ownership
 is `std::unique_ptr<T>` or a value member (FR-009). Setters take `std::shared_ptr<T>`; where a
@@ -162,7 +163,7 @@ While callers move, `oofnd/Ref.hpp` keeps its names over the standard types:
 | `oo::Ref<T>` | wraps `std::shared_ptr<T>`; `Ref<T>(T*)` is `oo::share` | `std::shared_ptr<T>` |
 | `oo::WeakRef<T>` | wraps `std::weak_ptr<T>` | `std::weak_ptr<T>` |
 | `oo::makeRef<T>` | `oo::makeShared<T>` | `oo::makeShared<T>` |
-| `leakRef()` / `adopt(p)` | a manual hold taken / given back | removed (singletons use `oo::Immortal`; the script slot holds a heap `shared_ptr`) |
+| `leakRef()` / `adopt(p)` | a manual hold taken / given back | removed (singletons are never-deleted function-local statics in plain std; the script slot holds a heap `shared_ptr`) |
 | `retainCount()` | `use_count()` of the object's control block, plus manual holds | `use_count()` |
 | `dropWeakReferences()` | no-op: weak references are already empty in `willDispose()` | removed |
 

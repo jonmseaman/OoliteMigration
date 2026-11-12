@@ -152,9 +152,10 @@ one at the root).
    holder (today's order, `OOJSPrivateObject.cpp:88-102`). The observing holders
    (`OOJSEntityHolder`, `ScriptPrivate`) keep a `std::weak_ptr`.
 7. **Immortal singletons:** about 25 are `makeRef(...).leakRef()` and must never be destroyed (no
-   work at exit). They become `static std::shared_ptr<T>& s = *new std::shared_ptr<T>(...)`
-   through one helper, `oo::Immortal<T>()`, so `shared_from_this` works on them. Each is on the
-   exceptions list. **Spec change** to FR-005's "owner or function-local static" (R15).
+   work at exit). They become never-deleted function-local statics written in plain std at each
+   site, no helper (Jon, 2026-11-11): `static const auto& s = *new std::shared_ptr<T>(...)` where
+   other objects also hold them shared (so `shared_from_this` works), `static auto& s = *new T()`
+   where nothing does. Each is on the exceptions list. **Spec change** to FR-005's "owner or function-local static" (R15).
 8. **Exclusive owners** become `std::unique_ptr` or values: `HeadUpDisplay::_crosshairs`
    (`HeadUpDisplay.h:412`), `OOJoystickSplineSegment`, `OOSkyQuadSet`, `RouteElement`,
    `OOPreservedAIStateMachine`, `OOOpenGLMatrixStack`, `OOTimeProfileEntry`, the JS holders; likely
@@ -384,7 +385,7 @@ Tests of components that change shape:
 | `test_stdlib` | tests a header that is deleted; nothing to port to | **reported to Jon**, kept building until he decides (the header stays, unused by the game, until then) |
 | `test_foundation_types` | pins `NSInteger` as `long long` (LLP64 only) | ported to assert `std::ptrdiff_t`/`std::size_t` identities where the aliases were; reported to Jon if any assertion has no counterpart |
 | `test_date`, `test_filesystem`, `test_string` | unchanged: the oofnd functions they test stay | — |
-| stack/static instances (`test_OOShaderMaterial.cpp:309,501,588`, `test_OODebugMonitor.cpp:780`, `test_ref.cpp:35`) | construction becomes `std::make_shared`/`oo::Immortal` | construction form: **marked borderline** in the ledger for Jon's sign-off |
+| stack/static instances (`test_OOShaderMaterial.cpp:309,501,588`, `test_OODebugMonitor.cpp:780`, `test_ref.cpp:35`) | construction becomes `oo::makeShared` or a never-deleted static | construction form: **marked borderline** in the ledger for Jon's sign-off |
 | `tests/unit/core/EntityStandIn.h` | mirrors `Entity`'s bases; follows the base change | covered |
 | enum renames of existing `enum class` (P10) | as R8 | **needs sign-off** |
 

@@ -16,8 +16,8 @@ Design step D4. Research: R6.
   void shutdown() noexcept;
   ```
 
-- The manager stays immortal (`oo::Immortal`, FR-005); its destructor is never run, so
-  `shutdown()` is the only join.
+- The manager stays never-destroyed (a never-deleted function-local static, FR-005); its
+  destructor is never run, so `shutdown()` is the only join.
 - Each worker still calls `oo::thread::setCurrentPriority(0.5)` and
   `oo::thread::setCurrentName("OOAsyncWorkManager thread N")` first, as today
   (`OOAsyncWorkManager.cpp:193-194`).

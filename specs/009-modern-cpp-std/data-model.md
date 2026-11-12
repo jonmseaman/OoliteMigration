@@ -71,7 +71,7 @@ The places a converted pattern may remain (FR-022).
 
 Rules: a row is added in the same commit as the code it permits. A row whose construct the guard
 flags is a conflict to record here, never a suppression. Expected rows (research): the demangling
-helper; about 25 `oo::Immortal` singletons; the script slot's heap `shared_ptr`; JS vector and
+helper; about 19 never-deleted singletons; the script slot's heap `shared_ptr`; JS vector and
 quaternion data under their finaliser (if kept as `new`/`delete`); `OOJS_PROP_*`; the debug
 protocol numbers if D5 keeps them; `GameViewKeys` and `OOPixMapFormat` if D5 keeps them as
 constants; feature macros tested by `#if`.

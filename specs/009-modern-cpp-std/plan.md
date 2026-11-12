@@ -81,7 +81,7 @@ rules and `docs/workflow.md`'s definition of done, as in spec 003's plan.
 | "Ownership is `oo::Ref<T>`, not `shared_ptr`; no redesign unless the spec asks for it" | The spec asks for it (FR-006). CLAUDE.md's line changes when the bridge is deleted (M7), not before. Spec 003's plan row is amended at the same time. | pass, justified |
 
 **Re-check after Phase 1:** pass. The design adds three things that need justifying (*Complexity
-Tracking*): the transitional bridge, `oo::Immortal`, and a new CI step. The contracts quote every
+Tracking*): the transitional bridge, never-deleted singletons, and a new CI step. The contracts quote every
 new interface verbatim, so fan-out beads add none (bead rule 3).
 
 ## Project Structure
@@ -96,7 +96,7 @@ specs/009-modern-cpp-std/
 ├── data-model.md        # Phase 1: categories, exceptions list, test-change ledger, external values
 ├── quickstart.md        # Phase 1: how to verify each milestone
 ├── contracts/
-│   ├── ownership.md     # oo::Object, oo::share, oo::Immortal, AutoreleaseScope, WeakSet, entities, the JS slot
+│   ├── ownership.md     # oo::Object, oo::share, singletons, AutoreleaseScope, WeakSet, entities, the JS slot
 │   ├── enums.md         # OOEnumFlags.h, OOEnumTable.h, the enum header shape, external values
 │   ├── threads.md       # OOAsyncWorkManager ownership and shutdown; the main-thread id
 │   ├── strings.md       # cast mapping; text types and C-boundary rules
@@ -118,7 +118,7 @@ mk.sh                                        # new `tidy` command (M0)
 .github/workflows/build-all.yaml             # clang-tidy guard step after the Arch build (M0)
 
 src/oofnd/
-├── Object.hpp          # NEW (M7): oo::Object, oo::share, oo::Immortal
+├── Object.hpp          # NEW (M7): oo::Object, oo::makeShared, oo::share
 ├── AutoreleaseScope.hpp# NEW (M7): the deferred-release scope on std::shared_ptr
 ├── Ref.hpp             # M7: becomes the bridge, then is deleted
 ├── WeakSet.hpp         # M7: rebuilt on std::weak_ptr
@@ -186,7 +186,7 @@ GUI rows, joystick ids, key codes, pixel formats, the debug protocol).
 | Exception | Why it is needed | Simpler alternative, and why it was rejected |
 |---|---|---|
 | The transitional bridge: `oo::Ref`/`WeakRef` reimplemented over `std::shared_ptr`/`weak_ptr` during M7 | Intrusive and standard ownership cannot coexist on one object, and about 2,000 src lines and 165 test files use `oo::Ref`. The bridge lets everything build while callers move area by area. | Converting every caller at once: one unreviewable change of about 4,000 lines with no intermediate state that builds. |
-| `oo::Immortal<T>()` for about 25 never-destroyed singletons | They must not run destructors at exit (today's behaviour), and `shared_from_this` must work on them. | Function-local statics (run destructors at exit: a behaviour change). Raw leaked pointers (no owner visible in the declaration, and `share()` would throw). |
+| About 19 never-deleted singletons, written in plain std at each site (Jon, 2026-11-11) | They must not run destructors at exit (today's behaviour), and `shared_from_this` must work on those other objects hold shared. | Ordinary function-local statics (run destructors at exit: a behaviour change). A shared helper (`oo::Immortal`; Jon preferred plain std). |
 | `oo::AutoreleaseScope` and `oo::WeakSet` stay | The standard library has neither; destruction order and three member sets depend on them (R5). | Keeping objects alive with local `shared_ptr` copies instead: it changes when destructors run. |
 | A new clang-tidy CI step | FR-021 needs a guard that runs; nothing runs clang-tidy today. | A Python scanner (Jon retired the last one on 2026-11-10). |
 
