@@ -74,6 +74,16 @@ Usable in core only if the artist grants the licenses above in writing, which ma
 - [Spaceship Mining Ships ($30)](https://cgtrader.com/3d-models/space/spaceship/scifi-mining-ships): mining ship (~8k tris) and harvester (~3k), FBX/OBJ, 4096 px textures
 - [Spaceship Mining Ship TTB01 ($27.50)](https://cgtrader.com/3d-models/space/spaceship/scifi-mining-ship-ttb01): mining ship and mining drone, ~10.8k polygons. Appears to be by msGameDevelopment ([mirror](https://art.cleberg.net/post/msgamedevelopment/Scifi-Mining-Ship-TTB01-766794127)), the same creator as the cockpit below
 
+**Freighters (msGameDevelopment)**
+
+CGTrader blocks page fetches, so prices and triangle counts are still to be read off the listings.
+
+- [Spaceship CFS24 Heavy Freighter](https://www.cgtrader.com/3d-models/space/spaceship/spaceship-cfs24-heavy-freighter): low-poly, game-ready, December 2022. Also on the Unity Asset Store ([mirror](https://art.cleberg.net/post/msgamedevelopment/CFS24-Heavy-Freighter-940109705))
+- [Spaceship CFS113 Superfreighter](https://www.cgtrader.com/3d-models/space/spaceship/spaceship-cfs113-superfreighter)
+- Same series: [CFS56 Heavy Freighter](https://www.cgtrader.com/3d-models/space/spaceship/spaceship-cfs56-heavy-freighter), [CFS3 Light Freighter](https://www.cgtrader.com/3d-models/space/spaceship/spaceship-cfs3-light-freighter)
+- Bundles: [Civilian Freighter Spaceship Collection (CGTrader)](https://www.cgtrader.com/3d-model-collections/civilian-freighter-spaceship-collection) / [Unity Asset Store](https://marketplace.unity.com/packages/3d/vehicles/space/civilian-freighter-spaceship-collection-235634); a [pack](https://www.cgtrader.com/gallery/project/spaceship-spacecraft) listing CFS15, CFS24, CFS56, CFS113, CH12, 20 modular cargo containers and a loader drone. All FBX/OBJ, PBR, royalty-free
+- msGameDevelopment now has a mining ship (TTB01), a freighter line, a cockpit and a modular hangar. One artist with a consistent style is the natural person to ask for a GPLv2+/CC BY-NC-SA 3.0 license on a set, or to commission new mining hulls from
+
 **Stations and other pieces**
 
 - [Space Factory and Cargo Spaceship (RenderHub)](https://www.renderhub.com/max/space-factory-and-cargo-spaceship): mining plant and freighter, ~9.2k polygons
@@ -165,8 +175,46 @@ in the player's camera space, with a near clip plane and depth handling that don
 and the view-direction switching. This fits the "look left/right" and Everspace-style controls in
 [Mining Summary](Mining%20Summary.md).
 
+## Station interiors and the hangar view (future)
+
+Docked, Oolite shows only the 2D screens (F3 equip, F5 status, F8 market and so on). Stations have
+no interior. The idea is EVE's hangar: while docked, your own ship sits in a hangar and you can spin
+it.
+
+**Hangar models**
+
+- [scifi modular hangar](https://www.cgtrader.com/3d-models/space/spaceship/scifi-modular-hangar) (msGameDevelopment): a modular pack meant as an in-game backdrop for changing, repairing or upgrading ships. Unrigged; door animations would be ours
+- [SF - Modular Hangar](https://www.cgtrader.com/3d-models/space/spaceship/sf-modular-hangar) ($37): 17 parts, ~17.7k tris
+- [NextGEN - Modular Hangar](https://cgtrader.com/3d-models/space/spaceship/nextgen-modular-hangar) ($43): 17 parts, Blender file, 4096 PSD for colour and logos
+- [Sci-Fi Industrial Maintenance Bay Interior](https://www.cgtrader.com/3d-models/interior/other/sci-fi-industrial-maintenance-bay-interior) ($24.90): catwalks, gantry cranes, industrial doors. Fits the mining theme
+- [Modular Mech Hangar](https://cgtrader.com/3d-models/vehicle/sci-fi/modular-mech-hangar) ($50–70): ~150k polygons, too heavy as it stands
+
+**What the engine already has**
+
+The pieces for a spinning ship exist already:
+
+- `PlayerEntity::showShipModelWithKey` (`PlayerEntity.cpp:4393`) puts a rotating demo ship on a GUI
+  screen. The scenario picker, contracts screens and the scripting layer (`showShipModel`) use it;
+  the ship library's demo ships work the same way.
+- A hidden default, `show-ship-model-in-status-screen`, already shows **your own ship** spinning on
+  the F5 status screen (`PlayerEntity::setGuiToStatusScreen`, `PlayerEntity.cpp:8129`). That is the
+  seed of the EVE hangar view.
+
+**What it would take**
+
+- Draw a hangar mesh behind the demo ship on docked screens. Demo ships are ordinary entities with
+  `STATUS_COCKPIT_DISPLAY`, so the hangar could be one too, or a fixed backdrop.
+- Mouse drag to orbit and zoom (the demo ship spins on a timer today).
+- Lighting that suits an interior instead of the system's sun.
+- Per-station variety: hangar style by station type or government, like the market rules.
+- Showing fitted equipment on the model (subentities, weapon mounts) would make it more than a
+  backdrop.
+
 ## Next steps
 
+- [ ] Read prices and triangle counts for CFS24, CFS113 and the modular hangar off the listings.
+- [ ] Ask msGameDevelopment about a GPLv2+/CC BY-NC-SA 3.0 license for the mining ship, freighters, cockpit and hangar as a set.
+- [ ] Try `show-ship-model-in-status-screen` to see the current spinning-ship view.
 - [ ] Ask Griff (or on the BB) about the license on Griff's Shipset Resources.
 - [ ] Ask the C500M and MCCV-2 artists whether they'd sell a GPLv2+/CC BY-NC-SA 3.0 license, and at what price.
 - [ ] Post a commission request on the Oolite BB, and get two or three freelance quotes for a three-ship set.
