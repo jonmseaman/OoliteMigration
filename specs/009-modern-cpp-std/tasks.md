@@ -777,10 +777,21 @@ edits.**
   In `oolite-dev` only (local config, the same as Jon's Windows machine):
   `git config --local rerere.enabled true` and
   `git config --local git-town.sync-feature-strategy rebase`. Before fetching, record the old parent
-  tip: `old=$(git merge-base seriesb/027-modern-cpp seriesb/026-migration-completion)`. Then
-  `git fetch origin`, `git town sync --no-push` (the parents take the rewritten commits), and
-  `git rebase --onto origin/seriesb/026-migration-completion "$old" seriesb/027-modern-cpp`, so only
-  027's own commits are replayed (rerere reuses any conflict resolution it has seen). After the
+  tip: `old=$(git merge-base seriesb/027-modern-cpp seriesb/026-migration-completion)`, and tag
+  every local `seriesb/*` tip (`git tag pre-rewrite/<branch> <branch>`) so nothing is lost. Then
+  `git fetch origin`.
+  **The rewrite was force-pushed (Jon, 2026-11-12).** The local `seriesb/*` parents still hold the
+  pre-rewrite commits, so they must not be synced or rebased onto their remotes: that would replay
+  the old commits on top of the rewritten ones and duplicate them. Do not run `git town sync` for
+  this step. For each local parent with no commits of its own beyond its old remote tip
+  (`git log --oneline origin/<branch>@{1}..<branch>` empty, or `git cherry` shows every commit as
+  already upstream), point it at the rewritten remote with `git branch -f <branch> origin/<branch>`
+  (never `develop`, `master` or `main`). A parent that has local-only commits is left alone and
+  reported. Then `git rebase --onto origin/seriesb/026-migration-completion "$old"
+  seriesb/027-modern-cpp`, so only 027's own commits are replayed (rerere reuses any conflict
+  resolution it has seen). Compare before and after with `git range-diff "$old"..pre-rewrite/seriesb/027-modern-cpp
+  origin/seriesb/026-migration-completion..seriesb/027-modern-cpp`: every 027 commit should appear
+  once, unchanged except for conflict resolutions. After the
   rebase: `./mk.sh build test`, smoke and `./mk.sh tidy` as at every task. The rewritten branch
   needs a forced push, which hard rule 3 leaves to Jon (`git push --force-with-lease origin
   seriesb/027-modern-cpp`); say so in the report.
