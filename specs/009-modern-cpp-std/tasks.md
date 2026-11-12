@@ -662,7 +662,7 @@ edits.**
   `clearBeacon` runs at removal, and on the disposal path only for an entity `Universe::entities`
   still owns, which cannot be disposed (data-model.md). `test_EntityDisposalReaders` passes locally;
   CI runs it with T105.
-- [ ] T088 [US2] (design D1; needs the T002 signatures) Add `src/oofnd/Object.hpp` and
+- [X] T088 [US2] (design D1; needs the T002 signatures) Add `src/oofnd/Object.hpp` and
   `src/oofnd/AutoreleaseScope.hpp` exactly as contracts/ownership.md declares them; rebuild
   `src/oofnd/WeakSet.hpp` on `std::weak_ptr`; turn `src/oofnd/Ref.hpp` into the bridge (the
   contract's table, including the "+1 from `new`" rules for `adopt`); port
