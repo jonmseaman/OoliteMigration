@@ -363,10 +363,10 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   `{:>60}`, `%c` of an `int` → `{:c}` of a `char`, `%.4X` → `{:04X}`, braces escaped); `DESC`
   formats and `vformat` stay printf.
   **Accept:** `cd oolite-dev && ! rg -U -n -P 'oo::str::format\s*\(\s*"' src/Core/Entities` and CI `test_FormatEquivalence` (with this area's rows added) and `test_SaveEnumValues` pass
-- [ ] T038 [US4] As T037, area `scripting` (leave `src/Core/Scripting/OOJSPlayerShip.cpp:1928`'s
+- [X] T038 [US4] As T037, area `scripting` (leave `src/Core/Scripting/OOJSPlayerShip.cpp:1928`'s
   data format).
   **Accept:** `cd oolite-dev && ! rg -U -n -P 'oo::str::format\s*\(\s*"' src/Core/Scripting`
-- [ ] T039 [US4] As T037, area `materials`.
+- [X] T039 [US4] As T037, area `materials`.
   **Accept:** `cd oolite-dev && ! rg -U -n -P 'oo::str::format\s*\(\s*"' src/Core/Materials src/Core/OOOpenGL* src/Core/OOTexture*`
 - [ ] T040 [US4] As T037, area `sdl-debug`.
   **Accept:** `cd oolite-dev && ! rg -U -n -P 'oo::str::format\s*\(\s*"' src/SDL src/Core/Debug`

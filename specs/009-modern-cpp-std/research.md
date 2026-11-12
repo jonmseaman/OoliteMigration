@@ -287,6 +287,13 @@ deleted.
   `AllowCastToVoid: true`: an explicit `(void)` discard is accepted, a silent one is still an
   error. `test_defaults`'s `defaultsDirectoryIsHomeGNUstepDefaults` fails on macOS on the C++20
   base too (Windows paths fed to the macOS filesystem library); it runs only on Windows in CI.
+- **Found while implementing T037–T039 (2026-11-12):** clang-tidy 22's `modernize-use-std-format`,
+  pointed at `::oo::str::format` with `StrictMode` (casts where printf would read the other
+  signedness), converts most literal calls exactly; it skips arguments it cannot cast (`%d` of a
+  `uint16_t`/`uint32_t` typedef), `PRIu64` macros and code the build does not compile, which are
+  converted by hand. One real flaw: it writes `%.4X` as `{:.4X}`, which `std::format` rejects;
+  `{:04X}` is the equivalent. The debug dump code under `DUMP_*` switches has bitrot of its own at
+  HEAD (`DumpMipMap`'s callers, two pointer conversions in the planet generator).
 - `-fno-exceptions` is not used anywhere in the build, and the game throws (49 raise sites, 75
   `catch (...)`). The README's "headers must compile with `-fno-exceptions`" rule and its "C++20
   only" rule are out of date and are rewritten (FR-023).
