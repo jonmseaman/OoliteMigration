@@ -448,7 +448,12 @@ production enum changes in the same commit as it.
   multi-bit filter and channel fields; 275 src and 95 test references) → flag `enum class
   OOTextureFlags : std::uint32_t`; the `%X` cache key (`OODefaultShaderSynthesizer.cpp:353`)
   keeps its text; tests that name the flags change with it (ledger, *covered*).
-  **Accept:** `cd oolite-dev && $C enum --area materials | { ! grep -q 'Materials/OOTexture.h'; }` and `rg -q 'enum class OOTextureFlags' src/Core/Materials/OOTexture.h`
+  **Accept:** `cd oolite-dev && $C enum --area materials | { ! grep -q 'Materials/OOTexture.h'; }` and `rg -q 'enum class OOTextureFlags' src/Core/Materials/OOTextureFlags.h`
+  Done on `seriesb/027-t056-texture-flags` (`ec49dc3f1`, one commit on the T055 tip), held off
+  `seriesb/027-modern-cpp`: its test edits include literal option numbers and `uint32_t` stand-ins
+  (ledger, *borderline*). Once Jon signs those rows, cherry-pick it onto 027 and mark this task.
+  The enum is in `OOTextureFlags.h`, not `OOTexture.h` (the accept's second half was changed to
+  match): the loaders do not include `OOTexture.h`, so tests can stand in for `OOTexture`.
 - [ ] T057 [US5] P6: number-visible enums (`OOAlertCondition` in `src/Core/Entities/ShipEntity.h:191-198`;
   `OOSpeechSettings`, `OOFuelScoopStatus`, `OOMissileStatus`, `OOPlayerFleeingStatus`,
   `OOMarketFilterMode`, `OOMarketSorterMode` in `src/Core/Entities/PlayerEntity.h:86-262`;
