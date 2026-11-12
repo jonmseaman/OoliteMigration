@@ -523,7 +523,7 @@ production enum changes in the same commit as it.
   read as part of this task (the conservative reading: the accept is the contract) and done in
   further commits, each enum as the contract shapes it (a named value enum → `enum class`, a group
   of constants → typed constants).
-- [ ] T068 [US5] P9: `GameViewKeys`, `OOPixMapFormat`, `OODebugTCPConsoleProtocol.h` numbers and
+- [X] T068 [US5] P9: `GameViewKeys`, `OOPixMapFormat`, `OODebugTCPConsoleProtocol.h` numbers and
   the remaining `sdl-debug` and `materials` enums per T064.
   **Accept:** `cd oolite-dev && $C enum`
 - [ ] T069 [US5] Make `cppcoreguidelines-use-enum-class` fatal; run the corpus

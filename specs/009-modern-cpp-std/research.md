@@ -441,6 +441,12 @@ default where it gives one; T065–T068 carry them out. A group decided as typed
   constants, the `OOTCP_*VERSION*` macros `constexpr` functions, and `kOOTCPProtocolVersion_1_1_0`
   is `static_assert`ed as `0x00010100`.
 
+**Uniform types (T068, as D5).** `OOShaderUniformType` became typed constants with its names, an
+alias of `int`, not an `enum class`: the tag is stored as `uint8_t`, indexes the template table and
+starts `OOJSCall`'s method-type numbers (`kMethodTypeObjectObject` follows `kObject`), so it is an
+int-natured group like D5's. `OOSystemConcealment` (T067) is the same: planetinfo.plist's number,
+compared with thresholds.
+
 ## R9. Tests and the ledger (FR-015)
 
 **Decision:** two files in this spec's directory, `exceptions.md` and `test-ledger.md`
@@ -528,6 +534,8 @@ short.
 - `OOALSoundDecoder.cpp:442`: a buffer leak on every OXZ Vorbis read (fixed by US1).
 - `PlayerEntity.h:165,199`: `#if GUI_FIRST_ROW() < 0` is always false (fixed by P9, no behaviour
   change).
+- `OODebugTCPConsoleProtocol.h` `OOTCP_ENCODE_VERSION`: shifts the format, not the major number, into
+  the major byte; harmless while both are 1. Kept (T068) in `OOTCPEncodeVersion`, `static_assert`ed.
 - `HeadUpDisplay.cpp` `drawScannerGrid`: the view-line switch has no custom-view case, so the
   scanner grid draws no view lines in a custom view (upstream's behaviour). Kept as it is (T062):
   the switch now names `OOViewID::kCustom` with an empty case, which `-Wswitch` required.
