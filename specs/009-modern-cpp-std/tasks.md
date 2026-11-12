@@ -325,11 +325,11 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   `src/oofnd/Expected.hpp`; port `tests/unit/oofnd/test_expected.cpp` and the other tests that name
   them (ledger rows, *covered*).
   **Accept:** `cd oolite-dev && ! rg -n 'oo::(Expected|Unexpected|unexpect|BadExpectedAccess)\b|oofnd/Expected\.hpp' src tests && test ! -e src/oofnd/Expected.hpp`
-- [ ] T031 [US4] Replace every `#include "oofnd/StdLib.hpp"` in game code (164 files) with the
+- [X] T031 [US4] Replace every `#include "oofnd/StdLib.hpp"` in game code (164 files) with the
   standard headers that file uses; fix the stale true/false-guard comment at
   `src/Core/OOAsyncWorkManager.cpp:34`; keep `src/oofnd/StdLib.hpp` itself until Jon rules on the
   `test_stdlib` ledger row.
-  **Accept:** `cd oolite-dev && ! rg -n 'oofnd/StdLib\.hpp' src --glob '!src/oofnd/StdLib.hpp'`
+  **Accept:** `cd oolite-dev && ! rg -n 'oofnd/StdLib\.hpp' src --glob '!src/oofnd/StdLib.hpp' --glob '!*.md'`
 - [ ] T032 [P] [US4] Derive `oo::Exception` from `std::exception` in `src/oofnd/Exception.hpp`
   (`what()` returns today's message); add `tests/unit/oofnd/test_exception_std.cpp` (registered)
   that catches a raised `oo::Exception` as `std::exception` and checks the message text.
