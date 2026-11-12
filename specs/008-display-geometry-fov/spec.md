@@ -83,31 +83,48 @@ most wrong. It depends on the screen description from Story 1.
 
 ---
 
-### User Story 3 - A chosen field of view that keeps the proportions (Priority: P2)
+### User Story 3 - A wider field of view with a chosen look (Priority: P2)
 
-The player does not want the true physical field of view (it can feel narrow) and sets a wider or
-narrower one. The view widens or narrows but keeps the shape-correctness of Stories 1 and 2:
-an object still has the same proportions at the edge as at the centre, it is only bigger or smaller
-overall.
+The player finds the true physical field of view narrow and sets a custom horizontal angle. The
+vertical angle is always worked out by the game and shown, never entered. When the custom angle is
+wider than the physical one, no image can be right everywhere (the screen covers less of the eye's
+view than the scene being shown), so the player picks which compromise they prefer:
+
+- **Panini** (default): objects keep their shape everywhere and straight lines stay nearly
+  straight; objects grow towards the edges and the vertical view is a little shorter there.
+- **Even spacing**: objects keep their shape and their size everywhere; horizontal lines bend
+  towards the edges.
+- **Classic flat**: straight lines stay straight; objects stretch sideways towards the edges, as in
+  most wide-angle games.
+
+A custom angle narrower than the physical one is a plain zoom and ignores the look setting.
 
 **Why this priority**: The request says a realistic field of view is not the goal, accurate
-proportions are. This keeps that freedom without bringing back edge stretching. It needs the
+proportions are. This gives that freedom and lets the player choose what to give up. It needs the
 geometry of Stories 1 and 2 first.
 
-**Independent Test**: With the 49" curved settings, set the horizontal field of view to 120° and
-check that the vertical field of view follows from the screen's proportions and that object
-proportions stay within 2% from centre to edge.
+**Independent Test**: With the Odyssey G9 at 80 cm, set the horizontal angle to 120°, switch
+between the three looks, and check the reported vertical angle and the shape, size and line
+measurements below.
 
-**Acceptance Scenarios**:
+**Acceptance Scenarios** (Odyssey G9, 1000R, at 80 cm, custom horizontal 120°):
 
-1. **Given** screen-matching is on, **When** the player sets a horizontal field of view of 120°,
-   **Then** the vertical field of view is derived from the screen shape (not entered separately)
-   and both are shown.
-2. **Given** a chosen field of view that differs from the physical one, **When** an object of fixed
-   angular size moves from the centre to the edge, **Then** its width-to-height ratio stays within
-   2% of its value at the centre.
-3. **Given** a chosen field of view, **When** the player picks "use physical", **Then** the field of
-   view returns to the value worked out from the screen and distance.
+1. **Given** screen-matching is on, **When** the player sets a custom horizontal angle, **Then** the
+   vertical angle is worked out and shown, and there is no way to enter it.
+2. **Given** the Panini look, **When** an object of fixed angular size moves from the centre to the
+   horizontal edge, **Then** its width-to-height ratio stays within 2% of its centre value and its
+   size grows by 25% (±3 points); the reported vertical angle is 36.0° at the centre (±0.5°); a
+   straight horizontal line across the top of the view bends by no more than 2°.
+3. **Given** the even-spacing look, **When** the same object moves to the edge, **Then** its
+   width-to-height ratio and its size each stay within 2% of their centre values; the reported
+   vertical angle is 34.0° (±0.5°).
+4. **Given** the classic flat look, **When** a straight edge in space crosses the full width,
+   **Then** it looks straight from the seat (within 0.2°); the object's width-to-height ratio at
+   the edge is 1.49 (±0.03) times its centre value; the reported vertical angle is 44.1° (±0.5°).
+5. **Given** a custom angle narrower than the physical one, **When** the player changes the look,
+   **Then** the view does not change.
+6. **Given** a custom angle, **When** the player picks "Physical", **Then** the angle returns to the
+   value worked out from the screen and distance, and the view is exact again (Story 2).
 
 ---
 
@@ -157,9 +174,12 @@ detected.
   four views, and external views).
 - **Shaders off**: curved drawing needs the shader detail levels. With shaders off, the curved
   setting falls back to a flat view of the same field of view, and the settings screen says so.
-- **Very wide chosen field of view**: above about 120° horizontal, a single flat render loses
-  detail at the centre of the screen; the view may be drawn in several slices that are joined by
-  the same final step, with no seams (FR-018).
+- **Very wide chosen field of view**: above about 120° horizontal, a single flat render needs a
+  much larger off-screen image to keep the centre sharp, and somewhere above 150° (on the G9) it
+  would exceed the largest image the graphics hardware can hold. The view is then drawn in several
+  slices joined by the same final step, with no seams (FR-018). Slices never change the look.
+- **Shaders off with a custom look**: Panini and even spacing need the final step as well; with
+  shaders off the view falls back to classic flat, and the settings say so (FR-017).
 - **Other camera features**: in-flight field-of-view control, mouse-look (spec 004), snapshots and
   the sun glare / break-pattern effects must use the same field of view as the space view, so
   nothing appears in the wrong place relative to the scene.
@@ -187,13 +207,18 @@ detected.
 - **FR-004**: Players MUST be able to enter their viewing distance from the centre of the screen.
 - **FR-005**: The system MUST work out the horizontal and vertical field of view from the screen
   description and viewing distance, and show both to the player in the settings.
+- **FR-005a**: The field of view setting MUST offer "Physical" (the default: the angles from
+  FR-005) or a custom horizontal angle. The vertical angle MUST always be worked out by the system
+  and shown; players MUST NOT be able to enter it. [Jon, 2026-11-12: a vertical angle that
+  disagrees with the horizontal one can only squash or stretch the whole view.]
 - **FR-006**: The system MUST draw the space view so that each point on the physical screen shows
   the scene in the direction of that point from the stated eye position (flat: a flat perspective;
   curved: a view matched to the curve).
-- **FR-006a**: For a curved screen, the scene MUST be drawn flat into an off-screen image and then
+- **FR-006a**: For a curved screen, or for the Panini or even-spacing look, the scene MUST be drawn flat into an off-screen image and then
   warped in one final full-screen step: for each pixel of the physical screen the step works out
-  the direction from the eye to that pixel (from the screen description and viewing distance) and
-  takes the colour the flat image shows in that direction. [Approach chosen by Jon, 2026-11-10; see
+  the direction from the eye to that pixel (from the screen description and viewing distance),
+  converts it to the scene direction the chosen look puts there (identity at the physical angle),
+  and takes the colour the flat image shows in that scene direction. [Approach chosen by Jon, 2026-11-10; see
   Assumptions.]
 - **FR-006b**: The warped view MUST have no seams: a straight edge in space (a station's edge, a
   laser beam) drawn across the screen at the physical field of view MUST look straight from the
@@ -203,9 +228,17 @@ detected.
 - **FR-006d**: Effects that work on the finished image (bloom, sun glare, other post-effects) MUST
   line up with the warped scene; they are applied either before the warp or to the warped image,
   never split across both.
-- **FR-007**: Players MUST be able to replace the physical horizontal field of view with a chosen
-  one; the vertical field of view MUST then follow from the screen's shape, and object proportions
-  MUST stay correct from centre to edge (User Story 3).
+- **FR-007**: When the custom horizontal angle is wider than the physical one, players MUST be able
+  to choose the look: Panini (default), even spacing, or classic flat, with the behaviour and
+  measurements of User Story 3. The look setting MUST be saved with the other preferences.
+- **FR-007a**: Panini on a curved screen MUST be laid out along the screen's surface (so that
+  objects keep their shape on the curve); on a flat screen it is laid out on the flat surface.
+  Even spacing MUST give equal angles from the seat to equal angles in the scene, in both
+  directions. Classic flat MUST be a flat perspective at the custom angle, shown through the same
+  final step so a curved screen still shows straight lines straight.
+- **FR-007b**: When the custom angle is equal to or narrower than the physical one, the view MUST be
+  a flat perspective at that angle shown through the final step, and the look setting MUST have no
+  effect.
 - **FR-008**: Players MUST be able to return to the physical field of view in one action.
 - **FR-009**: The system MUST try to detect the screen's physical size and aspect from the
   operating system when no screen description is saved, and MUST say whether detection succeeded.
@@ -225,10 +258,13 @@ detected.
 - **FR-016**: On a window wider than 16:9, the HUD, menus and status screens MUST be laid out in a
   centred 16:9 area at full window height, while the space view fills the whole window. This
   applies whether or not screen-matching is on.
-- **FR-017**: With shaders off, a curved screen description MUST fall back to a flat view at the
-  same horizontal field of view, and the settings MUST say that curved drawing needs shaders.
+- **FR-017**: With shaders off, a curved screen description, or the Panini or even-spacing look,
+  MUST fall back to classic flat at the same horizontal field of view, and the settings MUST say
+  that these need shaders.
 - **FR-018**: For a horizontal field of view above 120°, the system MAY draw the flat image as
-  several slices before the warp; the result MUST still meet FR-006b and FR-006c.
+  several slices before the warp, and MUST do so when one image would be larger than the graphics
+  hardware supports; the result MUST still meet FR-006b and FR-006c and look the same as a single
+  image would.
 
 ### Key Entities
 
@@ -237,7 +273,9 @@ detected.
 - **Viewer position**: distance from the eye to the centre of the screen, on the screen's centre
   line.
 - **Field of view**: horizontal and vertical angles; either physical (worked out from screen and
-  viewer) or chosen (horizontal set by the player, vertical derived).
+  viewer) or custom (horizontal set by the player, vertical always worked out).
+- **Wide-angle look**: Panini (default), even spacing or classic flat; used only when the custom
+  horizontal angle is wider than the physical one. Saved with preferences.
 
 ## Success Criteria *(mandatory)*
 
@@ -246,9 +284,10 @@ detected.
 - **SC-001**: For the three reference setups (27" 16:9 flat at 60 cm; 49" 32:9 1800R at 80 cm;
   Samsung Odyssey G9, 49" 32:9 1000R, at 80 cm and at 100 cm) the reported horizontal and vertical
   field of view match the values in Stories 1 and 2 within 0.5°.
-- **SC-002**: With screen-matching on, an object of fixed angular size keeps its width-to-height
-  ratio within 2% of its centre value anywhere across the horizontal extent of the screen, for every
-  reference setup and for a chosen 120° horizontal field of view.
+- **SC-002**: With screen-matching on at the physical angle, an object of fixed angular size keeps
+  its width-to-height ratio within 2% of its centre value anywhere across the horizontal extent of
+  the screen, for every reference setup; at a custom 120° with the Panini or even-spacing look, the
+  same holds on the Odyssey G9 at 80 cm.
 - **SC-003**: With screen-matching off, every existing test and snapshot comparison of the space
   view passes unchanged.
 - **SC-004**: A player with a supported display that reports its size can go from turning on
@@ -276,11 +315,17 @@ detected.
 - Operating systems usually report physical size but never curvature, so curvature is always
   entered by the player; detection may be missing or wrong on some displays, hence FR-009's
   "say whether it succeeded".
-- With a chosen field of view (Story 3), proportions are kept by spacing the view evenly by angle;
-  this means long straight lines may curve slightly towards the edges of a wide chosen view. This
-  trade-off follows the request: proportions accurate, field of view not necessarily realistic.
-  When the chosen field of view equals the physical one, the view is exactly the physical one and
-  straight lines are straight.
+- **Angle entry and wide-angle looks (Jon, 2026-11-12).** Screen and distance are the main inputs;
+  the field of view is Physical or a custom horizontal angle; the vertical angle is never entered;
+  a custom angle wider than physical uses a chosen look, Panini by default. Panini is the default
+  because on the G9 it keeps shapes within 1% and lines nearly straight up to 120°, where even
+  spacing bends lines about 4° and classic flat stretches edges by about half. At the physical
+  angle the exact warp beats every look, which is why the look only applies above it. Measured
+  trade-offs on the G9 at 80 cm (edge object size growth / line bend): 120° Panini 25% / 1.7°,
+  even 0% / 3.7°; 150° Panini 49% / 5.6°, even 0% / 6.2°. Above about 150° every look reads as
+  stylised.
+- The Story 3 figures were computed from the G9 geometry for each look as defined in FR-007a;
+  the plan should reproduce them with a unit test of the mapping before any drawing is changed.
 - Reference values were computed from the screen geometry: 27" 16:9 is 59.8 × 33.6 cm; 49" 32:9 is
   119.8 × 33.7 cm, and with 1800R the edges are at ±40.0° from a seat 80 cm away. The Odyssey G9
   is the same 119.8 × 33.7 cm panel at 1000R: its edges are at ±42.0° from 80 cm, and ±34.3° from

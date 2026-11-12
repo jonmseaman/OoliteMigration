@@ -41,4 +41,7 @@
   FR-017 mentions shaders. That is implementation detail, kept on purpose because Jon chose the
   method; the "no implementation details" items stay ticked with this exception recorded. Added
   FR-016–018, SC-006 (straight lines) and SC-007 (16:9 HUD and menus); all are testable.
+- 2026-11-12 revision: angle entry settled (FR-005a, FR-007, FR-007a, FR-007b; Story 3 rewritten
+  with measurable figures per look on the G9). Panini, even spacing and classic flat are named as
+  looks the player sees, not as implementation. All new items are testable.
 - FR-014 / SC-005 name "the reference machine"; the plan must say which machine that is.
