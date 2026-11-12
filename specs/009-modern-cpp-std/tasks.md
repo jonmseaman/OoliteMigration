@@ -597,7 +597,7 @@ kept or returned, `std::optional` where null meant "no text"), literal tables to
 
 - [X] T077 [US7] Area `entities`.
   **Accept:** `cd oolite-dev && $C cstring --area entities && test -z "$($C cstring-types --unclassified --area entities)"`
-- [ ] T078 [US7] Area `scripting` (QuickJS calls take `c_str()` or literals).
+- [X] T078 [US7] Area `scripting` (QuickJS calls take `c_str()` or literals).
   **Accept:** `cd oolite-dev && $C cstring --area scripting && test -z "$($C cstring-types --unclassified --area scripting)"`
 - [ ] T079 [US7] Area `materials` (GL shader sources and uniform names).
   **Accept:** `cd oolite-dev && $C cstring --area materials && test -z "$($C cstring-types --unclassified --area materials)"`

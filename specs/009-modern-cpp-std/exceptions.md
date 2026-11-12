@@ -34,3 +34,40 @@ is a conflict to record here, never a suppression.
 | cstring-types | `src/Core/Entities/EntityShaderBindings.cpp` | `const char* encoding;` | the shader-binding table's encodings | as above | — | T077 |
 | cstring-types | `src/Core/Entities/EntityShaderBindings.cpp` | `const char* property` | the shader binding's property name, null allowed | the binding function's type is the materials area's (`OOShaderUniformMethodType.h`) and a test stand-in (`test_OOShaderMaterial.cpp:318`) has its signature; null answers false | — | T077 |
 | cstring-types | `src/Core/Entities/Entity.h` | `const char* property` | the declaration of the binding above | as above | — | T077 |
+| cstring-types | `src/Core/Scripting/OOJavaScriptEngine.cpp` | `const char* format` | the printf-style JS error and warning reporters (`cxx_OOJSReportError` and kin) | their formats are printf syntax at some 600 call sites and go through oofnd's printf engine (FR-026); converting them to std::format is a call-site change of its own | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSEngineCore.h` | `const char* format` | the declarations of those reporters | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/poc/OOJavaScriptEnginePoc.cpp` | `const char* format` | the proof-of-concept harness's copies of the reporters | as above; the harness mirrors the engine's declarations | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJavaScriptEngine.cpp` | `ResetNotificationName =` | the engine-reset notification names | seven tests define these names as `const char* const` stand-ins of the header's declaration | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSEngineCore.h` | `ResetNotificationName;` | the declarations of those names | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSClasses.cpp` | `sClassNames[` | the registered class names, QuickJS `JSClassDef.class_name` pointers | QuickJS keeps and is given them as C strings (`JS_NewCFunction2`); null is "not registered" | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSClasses.cpp` | `OOJSClassName(` | `OOJSClassName`, which answers a registered name or null | as above, and tests check it with `!= nullptr` and `std::strcmp` (`test_OOJSShip.cpp:354`) | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSEngineCore.h` | `OOJSClassName(` | its declaration | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSPrivateObject.cpp` | `= OOJSClassName(` | a local holding its nullable answer | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSScript.cpp` | `= OOJSClassName(` | a local holding its nullable answer | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJavaScriptEngine.cpp` | `= OOJSClassName(` | a local holding its nullable answer | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSEngineDebuggerHelpers.cpp` | `= OOJSClassName(` | a local holding its nullable answer | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSSystemInfo.cpp` | `= JS_ToCString(` | a C string QuickJS returns, freed with `JS_FreeCString` | the QuickJS C interface | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJavaScriptEngine.cpp` | `= JS_ToCStringLen(` | a C string QuickJS returns, freed with `JS_FreeCString` | the QuickJS C interface | — | T078 |
+| cstring-types | `src/Core/Scripting/poc/OOJavaScriptEnginePoc.cpp` | `= JS_ToCStringLen(` | a C string QuickJS returns | the QuickJS C interface | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSEngineDebuggerHelpers.cpp` | `= JS_ToCStringLen(` | a C string QuickJS returns | the QuickJS C interface | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSEngineDebuggerHelpers.cpp` | `= JS_AtomToCString(` | a C string QuickJS returns | the QuickJS C interface | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSEngineDebuggerHelpers.cpp` | `Dbg(` | the debugger helpers (`JSValueToStrDbg` and kin) and their banner | called from a debugger (`p JSValueToStrDbg(v)`), which prints a C string | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSEngineDebuggerHelpers.cpp` | `DebuggerCString(` | the helpers' C-string pool | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSPropID.h` | `OOJSInternAtomPRIVATE(const char* name)` | the atom interner behind `OOJSID("literal")` | `JS_NewAtom` takes a NUL-terminated name; every caller is the macro, with a literal | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJavaScriptEngine.cpp` | `OOJSInternAtomPRIVATE(const char* name)` | its definition | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSMission.cpp` | `const char* key` | the mission parameters' property names | `JS_GetPropertyStr` takes a NUL-terminated name; every caller passes a literal | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSStation.cpp` | `const char* key` | a parameter's property name | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSSystem.cpp` | `const char* key` | a parameter's property name | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSGlobal.cpp` | `const char* key` | a parameter's property name | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/poc/OOJSScript.h` | `stringPropertyNamed(const char* name` | the harness's property-name lookup | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/poc/OOJSScript.cpp` | `stringPropertyNamed(const char* name` | its definition | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/poc/main.cpp` | `const char* argv[]` | the harness's `main` | `main`'s argv | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSFunction.cpp` | `const char** argNames` | a compiled function's argument names | a test stand-in (`test_OORegExpMatcher.cpp:72`) has this signature | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSFunction.h` | `const char** argNames` | its declaration | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSCallEntityMethods.h` | `*name;` | the callObjC table's names | the tests read the table (`std::string bare = row.name`); kept with the encodings below | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSCallEntityMethods.h` | `*encoding;` | the callObjC table's encodings, null for a row that is not Typed | null means "not Typed" | — | T078 |
+| cstring-types | `src/Core/Scripting/OOConstToJSString.cpp` | `const char* cString;` | the constant tables' names | `JS_NewAtom` takes them as NUL-terminated names | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSEngineNativeWrappers.h` | `const char* function` | the profiler's frame name | null is a nameless frame, which the profile reports as "(null)" (`test_OOJSEngineTimeManagement.cpp` passes NULL) | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSEngineTimeManagement.cpp` | `const char* function)` | `OOJSProfileEnter` | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSEngineTimeManagement.cpp` | `OOTimeProfileEntry(const char* name)` | a profile entry's nullable name | as above | — | T078 |
+| cstring-types | `src/Core/Scripting/OOJSEngineTimeManagement.h` | `OOTimeProfileEntry(const char* name)` | its declaration | as above | — | T078 |
