@@ -438,7 +438,7 @@ production enum changes in the same commit as it.
   `enum class OOWeaponFacing : std::uint8_t` flags; `weapon_facings` plist bits and
   `weaponFacings` JS numbers pinned.
   **Accept:** `cd oolite-dev && ! rg -n '\bVALID_WEAPON_FACINGS\b|\bWEAPON_FACING_' src`
-- [ ] T054 [US5] P5: `kOOUniformConvert*` (`src/Core/Materials/OOShaderMaterial.h:48`),
+- [X] T054 [US5] P5: `kOOUniformConvert*` (`src/Core/Materials/OOShaderMaterial.h:48`),
   `kOOExpand*` (`src/Core/OOStringExpander.h:34`), `kOORegExp*` → flag `enum class`es.
   **Accept:** `cd oolite-dev && ! rg -n -P '(?<!::)\bkOO(UniformConvert|Expand|RegExp)\w+' src`
 - [ ] T055 [US5] P5: `kOOByName*` (`src/Core/Entities/OOEntityCalledByName.h:46`, about 1,006
