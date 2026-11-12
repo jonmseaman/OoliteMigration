@@ -141,11 +141,11 @@ the same way at the C++20 base, so none is a spec 009 regression; they are repor
 
 | test | what fails | why |
 |---|---|---|
-| `tests/unit/oofnd/test_thread.cpp` | `setCurrentNameIsReadBack` | macOS names only the calling thread, differently from Windows |
-| `tests/unit/oofnd/test_defaults.cpp` | `defaultsDirectoryIsHomeGNUstepDefaults` | the defaults directory is the Windows layout |
-| `tests/unit/oofnd/test_plist_get.cpp` | 149 checks | `long` is 64-bit on macOS, 32-bit on Windows |
-| `tests/unit/oofnd/test_string.cpp` | 4 checks | as above |
-| `tests/unit/oofnd/test_foundation_types.cpp` | the `long long` assertion | as above |
+| `tests/unit/oofnd/test_thread.cpp` | `setCurrentNameIsReadBack` | not investigated |
+| `tests/unit/oofnd/test_defaults.cpp` | `defaultsDirectoryIsHomeGNUstepDefaults` | not investigated |
+| `tests/unit/oofnd/test_plist_get.cpp` | 149 checks | not investigated |
+| `tests/unit/oofnd/test_string.cpp` | 4 checks | not investigated |
+| `tests/unit/oofnd/test_foundation_types.cpp` | the `long long` assertion | not investigated |
 | `tests/unit/core/test_OOJSOolite.cpp` | `toneMappers` (lines 581-591) | HDR output and the HDR tone mapper exist only under `OOLITE_WINDOWS` |
 
 Tests that include `process.h` or `winsock2.h` (`test_OOMesh`, `test_OOSoundMixer`,
