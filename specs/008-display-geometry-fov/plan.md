@@ -1,6 +1,6 @@
 # Implementation Plan: Display Geometry and Field of View (ultrawide and curved monitors)
 
-**Branch**: `epic/display-geometry-fov` (in `oolite-dev`) | **Date**: 2026-11-12 | **Spec**: [spec.md](spec.md)
+**Branch**: `feature/double-wide-support` (in `oolite-dev`) | **Date**: 2026-11-12 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `specs/008-display-geometry-fov/spec.md`
 
@@ -60,7 +60,7 @@ rules and `docs/workflow.md`'s definition of done, as in specs 003 and 009.
 |---|---|---|
 | 1. No test changed to make it pass | Only new tests (G, H, C ids). Existing GUI and smoke tests must pass unchanged (SC-003, H4). | pass |
 | 2. No warning silenced | None needed; platform calls are plain C APIs. | pass |
-| 3. Never touch `develop`/`master`/`main`; no force-push | Game work on `epic/display-geometry-fov`; spec docs on the planning repo's current branch; Jon merges. | pass |
+| 3. Never touch `develop`/`master`/`main`; no force-push | Game work on `feature/double-wide-support`; spec docs on the planning repo's current branch; Jon merges. | pass |
 | 4. Never read expansion content | Nothing here reads expansion files. Expansion HUDs are a risk (they place items with `x_offset`), covered by the HUD area keeping the same virtual units; not tested against expansion content. | pass |
 | 5. Tools judge correctness | Every spec number is a unit test; rendering is judged by the existing suites plus C/H tests; the hand check is Jon's. | pass |
 | 6. No `libgnustep-base` or SpiderMonkey | Nothing added. | pass |

@@ -1,7 +1,7 @@
 # Quickstart: verifying Display Geometry and Field of View
 
 All commands from `oolite-dev` in an MSYS2 UCRT64 shell, on the feature branch
-`epic/display-geometry-fov`. Test ids refer to the contracts.
+`feature/double-wide-support`. Test ids refer to the contracts.
 
 ## Every milestone
 

@@ -24,7 +24,7 @@ proves. "Unchanged when off" is proved by the projection pin C5 (research R8a), 
 pictures.
 
 **Organization**: by user story. All paths are in `oolite-dev/`, on the branch
-`epic/display-geometry-fov`. Every task also passes `tests/run.sh unit` and is clean at
+`feature/double-wide-support`. Every phase also passes `tests/run.sh unit` and is clean at
 `-Wall -Wextra` (docs/workflow.md, *Done, for one bead*). Run `clang-format` 22 on changed `src/`
 files only, never on `tests/`. New interfaces are those quoted in the contracts; a task that needs
 another one stops and the contract is extended first.
@@ -51,9 +51,9 @@ another one stops and the contract is extended first.
 **Purpose**: the branch and the test tools later tasks need, with today's projection recorded
 before anything changes.
 
-- [ ] T001 Create the branch `epic/display-geometry-fov` from `develop` in `oolite-dev` (with
-  `.claude/skills/beads-worker/scripts/branch.sh` if the work runs as beads). **Accept:**
-  `git -C oolite-dev rev-parse --abbrev-ref HEAD | grep -qx epic/display-geometry-fov`
+- [ ] T001 Create the branch `feature/double-wide-support` from `develop` in `oolite-dev`.
+  (`branch.sh` would name it `epic/…`; create it by hand.) **Accept:**
+  `git -C oolite-dev rev-parse --abbrev-ref HEAD | grep -qx feature/double-wide-support`
 - [ ] T002 [P] Add a `--window WxH` option to `tests/run.sh` for the `smoke` and `component` tiers,
   passed to the game as its window-size preference by `tests/launch_snapshot.py` and
   `tests/component/console.py` (research R8a). **Accept:** `tests/run.sh smoke --window 3840x1080`

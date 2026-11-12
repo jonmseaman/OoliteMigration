@@ -1,6 +1,6 @@
 # Feature Specification: Display Geometry and Field of View (ultrawide and curved monitors)
 
-**Feature Branch**: `008-display-geometry-fov`
+**Feature Branch**: `feature/double-wide-support` (in `oolite-dev`)
 
 **Created**: 2026-11-10
 
