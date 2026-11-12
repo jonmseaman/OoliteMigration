@@ -556,10 +556,13 @@ review every fix, convert the rest by hand per the contract's table.
   *Done (11758e5ff).* `check.sh`'s `core` area now leaves out the other areas' clang-tidy lines, as its
   search globs already did; before, it also reported Scripting, Materials and Debug. Two macOS-only
   failures found at the C++20 base were added to `baselines.md`.
-- [ ] T073 [US6] Area `materials` (`src/Core/OOOpenGLExtensionManager.cpp` about 131); the
+- [X] T073 [US6] Area `materials` (`src/Core/OOOpenGLExtensionManager.cpp` about 131); the
   `memcpy` byte punning at `src/Core/Materials/OOPlanetTextureGenerator.cpp:809` and
   `src/Core/Materials/OOStandaloneAtmosphereGenerator.cpp:438` → `std::bit_cast`.
   **Accept:** `cd oolite-dev && $C cast --area materials`
+  *Done (0527cdda7).* The 139 casts in `OOOpenGLExtensionManager.cpp` are under `#if OOLITE_WINDOWS`, so
+  the macOS check does not see them; they were converted by hand (`reinterpret_cast<PFN...>`) and
+  T105's Windows build is the first to compile them.
 - [ ] T074 [US6] Area `scripting`.
   **Accept:** `cd oolite-dev && $C cast --area scripting`
 - [ ] T075 [US6] Areas `sdl-debug` and `oofnd`; casts from third-party macro expansions, if any are
