@@ -171,11 +171,12 @@ FR-021). **No story task starts until this phase is done.**
   ordinals of `OOLongRangeChartMode` (research R8: `OOLRC_MODE_UNKNOWN` is 0,
   `OOLRC_MODE_TECHLEVEL` is 4).
   **Accept:** CI `unit-tests-windows` runs `test_SaveEnumValues` and it passes (it does not exist before)
-- [ ] T011 [P] Add `oolite-dev/tests/unit/core/test_EnumNameFallbacks.cpp`: for every enum with a
+- [X] T011 [P] Add `oolite-dev/tests/unit/core/test_EnumNameFallbacks.cpp`: for every enum with a
   string reverse lookup in `src/Core/OOConstToString.cpp` and `src/Core/Scripting/OOConstToJSString.cpp`,
   assert the default returned for an unknown name and for each known name its value, and for each
   value its exact string.
   **Accept:** CI `unit-tests-windows` runs `test_EnumNameFallbacks` and it passes
+  Added in `1790fac04` (38 tests, 535 checks), passing on macOS; CI has not run it yet.
 - [X] T012 [P] Add `oolite-dev/tests/unit/core/test_FormatEquivalence.cpp` (registered): a table of
   rows `{printf format, std::format format, arguments}`, each asserting
   `oo::str::format(printf, args...) == std::format(std, args...)`. Seed it with one row per
