@@ -1,10 +1,8 @@
 # Move Foundation usage to oofnd, part 1
 
-**Series:** step 6 of 26 · base `seriesb/005-typed-accessors` · next `seriesb/007-foundation-wave-2` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/008-foundation-wave-1` (old 8 of the master-based series) · 35.0k src, 1.1k tests, 0 other changed lines; 0 lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 6 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/008-foundation-wave-1`.
 
 ## What this changes
 
@@ -91,6 +89,4 @@ bounded wait could return while the thread still used the test's stack frame.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`d9c3adfe40`) yet: the last record is for `02c82ec354` (2026-11-02), an earlier build of this step.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not verified at this branch's tip (`d9c3adfe40`) yet; the last record (2026-11-02) is for an earlier build.

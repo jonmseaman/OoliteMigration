@@ -1,10 +1,8 @@
 # Let OO_RANDOM_SEED pin the random seed
 
-**Series:** step 1 of 26 · base `seriesb/000b-upstream-768-quickjs-only` · next `seriesb/002-safety-net` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/001-random-seed-env` (old 1 of the master-based series) · 11 src, 0 tests, 0 other changed lines; 0 lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 1 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/001-random-seed-env`.
 
 ## What this changes
 
@@ -31,21 +29,17 @@ One hunk in `src/Core/GameController.m`. Run with `OO_RANDOM_SEED=42` twice and 
 
 ## Verified **(gen)**
 
-Windows x64, `c58d86dbba`, 2026-11-11.
+Windows x64, `c58d86dbba`, 2026-11-11. macOS and Linux are not verified.
 
 | Check | Result |
 |---|---|
 | build_clang | pass |
-| build_gcc | n/a: not required for this series (the code builds with Clang, as upstream's CI) |
 | clang_format | pass |
-| component | n/a: no component scenario touched |
 | no_facade | pass |
 | no_new_spidermonkey_or_gnustep | pass |
 | no_new_suppressions | pass |
-| poc | n/a: the harness needs GNUstep here, so upstream builds it on Linux only |
 | smoke | pass |
 | tests_untouched | pass |
-| unit | n/a: the tree has no unit suites |
 | warnings_clang | pass: 0 new warnings (6 inherited from the parent) |
 
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not applicable here: build_gcc, component, poc, unit.

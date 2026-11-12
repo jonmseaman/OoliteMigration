@@ -1,10 +1,8 @@
 # Reformat with Google-style clang-format (optional)
 
-**Series:** step 23 of 26 · base `seriesb/022-upstream-28ceaaba0-ports` · next `seriesb/024-post-conversion-fixes` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/026-google-style-format` (old 26 of the master-based series) · 418.6k src, 23.1k tests, 55 other changed lines; 0 lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 23 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/026-google-style-format`.
 
 ## What this changes
 
@@ -53,6 +51,4 @@ example in `PlayerEntity.h`), so `./mk.sh format-check` with 23 reports files th
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`afebed9791`) yet: the last record is for `29f6d6dead` (2026-11-03), an earlier build of this step.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not verified at this branch's tip (`248fc953ba`) yet; the last record (2026-11-03) is for an earlier build.

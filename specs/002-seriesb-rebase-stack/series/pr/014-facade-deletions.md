@@ -1,10 +1,8 @@
 # Delete the Objective-C bridges
 
-**Series:** step 14 of 26 · base `seriesb/013-universe-player-slices` · next `seriesb/015-entity-facade` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/016-facade-deletions` (old 16 of the master-based series) · 49.8k src, 25.9k tests, 0 other changed lines; 22.0k lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 14 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/016-facade-deletions`.
 
 ## What this changes
 
@@ -91,6 +89,4 @@ or visual effect. Step 15 turns them into C++ tables.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`1acb43182f`) yet: the last record is for `ee94df4a1b` (2026-11-03), an earlier build of this step.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not verified at this branch's tip (`1acb43182f`) yet; the last record (2026-11-03) is for an earlier build.

@@ -1,10 +1,8 @@
 # Drop gnustep-base, then convert the first classes to C++: maths, leaf utilities, OXP verifier
 
-**Series:** step 9 of 26 · base `seriesb/008-selector-families` · next `seriesb/010-module-conversions` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/011-leaf-conversions` (old 11 of the master-based series) · 29.7k src, 18.0k tests, 32 other changed lines; 1.8k lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 9 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/011-leaf-conversions`.
 
 ## What this changes
 
@@ -137,6 +135,4 @@ Edits to existing tests:
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`cd191bf28f`) yet: the last record is for `81a1b9d7d3` (2026-11-02), an earlier build of this step.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not verified at this branch's tip (`cd191bf28f`) yet; the last record (2026-11-02) is for an earlier build.

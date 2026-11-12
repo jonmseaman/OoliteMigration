@@ -1206,40 +1206,61 @@ def _root_pr(m):
     return f"`{root}` (a fix on top of upstream's PRs)"
 
 
+PLATFORMS_NOT_VERIFIED = "macOS and Linux are not verified."
+TESTS_LISTED = 20  # a switch step's changed tests listed by name; the rest by a command
+GENERATED_NOTE = ("<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four "
+                  "hand-written sections and rewrites the rest. -->")
+
+
+def _on_open_prs(m):
+    """Whether the stack still hangs from upstream's unmerged QuickJS-ng PRs (or a fix on top of them):
+    false once the parents are retired onto upstream `master`."""
+    from tools.series import seriesb
+    root = seriesb.root(m)
+    return next((p for p in m.get("parents", []) if p["branch"] == root), {}).get("kind") != "upstream-master"
+
+
+def _header_replay(m, step):
+    """The one line under the title: the step's place in the stack, what it needs first, and where it
+    comes from. GitHub shows the base branch and the diff's size, so the line does not."""
+    src = step["source"]
+    line = f"Step {step['n']} of {len(m['steps'])}"
+    if _on_open_prs(m):
+        line += f", stacked on {_root_pr(m)}, so not independent of #767 and #768"
+    line += "."
+    if src.get("type") != "target":
+        folded = f" ({_old_range(step)})" if src.get("old_steps") else ""
+        line += f" Replays `{src['old_branch']}`{folded}."
+    elif src["ref"] != step["branch"]:
+        line += f" Takes the tree of `{src['ref']}` (`{src['commit'][:10]}`), with the series' exclusions and additions."
+    return line
+
+
 def render_description_replay(m, step, kept, tip=None, tests_changed=None):
     """The step's description. `tip`: the branch's tip commit, when it exists (a verification record
     made for another commit is then reported as not current). `tests_changed`: the existing test files
     the step modifies or deletes, for the last step's Test changes section."""
-    steps = m["steps"]
-    nxt = steps[step["n"]]["branch"] if step["n"] < len(steps) else "—"
-    size = step.get("size")
-    size_txt = (f"{fmt_k(size['src'])} src, {fmt_k(size['tests'])} tests, {fmt_k(size['other'])} other changed lines; "
-                f"{fmt_k(size['deleted_files'])} lines in deleted files") if size else "not built yet"
     src = step["source"]
     switch = src.get("type") == "target"
-    lines = [f"# {step['title']}", "",
-             f"**Series:** step {step['n']} of {len(steps)} · base `{step['parent']}` · next `{nxt}` **(gen)**", "",
-             (f"**Source:** the tree of `{src['ref']}` (`{src['commit'][:10]}`), with the series' exclusions and "
-              f"additions · {size_txt} **(gen)**") if switch else
-             f"**Replays:** `{src['old_branch']}` ({_old_range(step)} of the master-based series) · {size_txt} **(gen)**",
-             "",
-             f"**Based on:** {_root_pr(m)}, so this step is not independent of upstream's QuickJS-ng PRs "
-             "(#767, #768). **(gen)**", ""]
+    lines = [f"# {step['title']}", "", GENERATED_NOTE, "", _header_replay(m, step), ""]
     for h in HAND_SECTIONS:
         lines += [f"## {h}", "", kept.get(h) or TODO, ""]
     differs = step.get("differs_from_old") or []
     ledger = os.path.basename(src.get("test_ledger") or "") or "the test ledger"
     if switch:
-        lines += ["## Test changes **(gen)**", ""]
+        lines += ["## Test changes", ""]
         if tests_changed:
-            lines.append(f"Existing test files this step changes, each listed in the series' test ledger (`{ledger}`):")
+            lines.append(f"Existing test files this step changes (test ledger: `{ledger}`):")
             lines.append("")
-            lines += [f"- `{p}`" for p in tests_changed]
+            lines += [f"- `{p}`" for p in tests_changed[:TESTS_LISTED]]
+            if len(tests_changed) > TESTS_LISTED:
+                lines.append(f"- ... and {len(tests_changed) - TESTS_LISTED} more: `git diff --name-only "
+                             f"--diff-filter=MD {step['parent']} {step['branch']} -- tests/`")
         else:
-            lines.append(f"No existing test file changes (the series' test ledger is `{ledger}`).")
+            lines.append(f"No existing test file changes (the test ledger is `{ledger}`).")
         lines.append("")
     elif differs:
-        lines += ["## Differences from the old step **(gen)**", "",
+        lines += ["## Differences from the old step", "",
                   f"Where this step's change differs from `{src['old_branch']}`'s, and why:", ""]
         for d in differs[:40]:
             lines.append(f"- `{d['path']}`: {d['reason']}")
@@ -1249,17 +1270,19 @@ def render_description_replay(m, step, kept, tip=None, tests_changed=None):
     lines += ["## Verified **(gen)**", ""]
     v = step.get("verification")
     if v and tip and v.get("commit") != tip:
-        lines += [f"Not verified at this branch's tip (`{tip[:10]}`) yet: the last record is for "
-                  f"`{str(v.get('commit'))[:10]}` ({v.get('date', '')}), an earlier build of this step.", ""]
+        lines += [f"Not verified at this branch's tip (`{tip[:10]}`) yet; the last record "
+                  f"({v.get('date', '')}) is for an earlier build.", ""]
     elif v:
-        lines += [f"Windows x64, `{v.get('commit', '')[:10]}`, {v.get('date', '')}.", "",
-                  "| Check | Result |", "|---|---|"]
-        for k, r in sorted(v.get("checks", {}).items()):
-            lines.append(f"| {k} | {r} |")
-        lines.append("")
+        checks = sorted((v.get("checks") or {}).items())
+        ran = [(k, r) for k, r in checks if not str(r).startswith("n/a")]
+        na = [k for k, r in checks if str(r).startswith("n/a")]
+        lines += [f"Windows x64, `{v.get('commit', '')[:10]}`, {v.get('date', '')}. {PLATFORMS_NOT_VERIFIED}", ""]
+        if ran:
+            lines += ["| Check | Result |", "|---|---|"] + [f"| {k} | {r} |" for k, r in ran] + [""]
+        if na:
+            lines += [f"Not applicable here: {', '.join(na)}.", ""]
     else:
         lines += ["Not verified yet.", ""]
-    lines += [NOT_VERIFIED_PLATFORMS, ""]
     return "\n".join(lines)
 
 
@@ -1373,8 +1396,10 @@ def render_handover_replay(m, remote=None):
         z = s.get("size") or {}
         size = f"{fmt_k(z.get('src', 0))} / {fmt_k(z.get('tests', 0))} / {fmt_k(z.get('other', 0))}" if z else "—"
         title = s["title"].replace("|", "\\|")
-        what = (f"`{s['source']['ref']}` (the switch)" if s["source"].get("type") == "target"
-                else f"`{s['source']['old_branch']}` ({_old_range(s)})")
+        src = s["source"]
+        what = ("written on its own branch" if src.get("type") == "target" and src.get("ref") == s["branch"]
+                else f"`{src['ref']}` (the switch)" if src.get("type") == "target"
+                else f"`{src['old_branch']}` ({_old_range(s)})")
         out.append(f"| {s['n']} | `{s['branch']}` | {what} | `{s['parent']}` "
                    f"| {title} | {size} | {verification_summary(s)} |")
     git = f"GIT_TERMINAL_PROMPT=0 {PUSH_GIT} -C oolite-dev push"

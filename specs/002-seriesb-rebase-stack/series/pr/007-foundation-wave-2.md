@@ -1,10 +1,8 @@
 # Move Foundation usage to oofnd, part 2
 
-**Series:** step 7 of 26 · base `seriesb/006-foundation-wave-1` · next `seriesb/008-selector-families` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/009-foundation-wave-2` (old 9 of the master-based series) · 48.3k src, 2.9k tests, 34 other changed lines; 1.7k lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 7 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/009-foundation-wave-2`.
 
 ## What this changes
 
@@ -126,6 +124,4 @@ is not in the tree, so in practice it does not pin the expander either.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`65c6efa3b5`) yet: the last record is for `7add964f14` (2026-11-02), an earlier build of this step.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not verified at this branch's tip (`65c6efa3b5`) yet; the last record (2026-11-02) is for an earlier build.

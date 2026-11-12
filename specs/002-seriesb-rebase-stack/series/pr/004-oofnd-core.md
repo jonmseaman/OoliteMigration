@@ -1,10 +1,8 @@
 # Add oofnd, a small Foundation replacement, and an Objective-C floor without Foundation
 
-**Series:** step 4 of 26 · base `seriesb/003-objcpp-switch` · next `seriesb/005-typed-accessors` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/006-oofnd-core` (old 6 of the master-based series) · 9.8k src, 6.4k tests, 11 other changed lines; 460 lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 4 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/006-oofnd-core`.
 
 ## What this changes
 
@@ -119,21 +117,19 @@ tiers from step 2 (`tests/component/`, `tests/gui/`) also run against this step.
 
 ## Verified **(gen)**
 
-Windows x64, `e178ae9254`, 2026-11-11.
+Windows x64, `e178ae9254`, 2026-11-11. macOS and Linux are not verified.
 
 | Check | Result |
 |---|---|
 | build_clang | pass |
-| build_gcc | n/a: not required for this series (the code builds with Clang, as upstream's CI) |
 | clang_format | pass |
 | component | fail: exit 1 (see .agent-tmp\seriesb-verify-logs\004-component.log) (2 earlier attempt(s) failed; see the log) |
 | no_facade | pass |
 | no_new_spidermonkey_or_gnustep | pass |
 | no_new_suppressions | pass |
-| poc | n/a: the harness needs GNUstep here, so upstream builds it on Linux only |
 | smoke | pass |
 | tests_untouched | fail: tests/component/README.md, tests/component/conftest.py, tests/component/console.py, tests/gui/test_g2_exit_via_keyboard.py, tests/gui/test_g5_screen_round_trips.py, tests/gui/test_g6_window_lifecycle.py, tests/gui/test_g8_scenario_screen_back_out.py, tests/gui/test_g9_post_exit_hygiene.py |
 | unit | pass: oofnd |
 | warnings_clang | pass: 0 new warnings (6 inherited from the parent) |
 
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not applicable here: build_gcc, poc.

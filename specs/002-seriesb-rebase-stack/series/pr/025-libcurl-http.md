@@ -1,10 +1,8 @@
 # Fetch http(s) with libcurl on every platform
 
-**Series:** step 25 of 26 · base `seriesb/024-post-conversion-fixes` · next `seriesb/026-migration-completion` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Source:** the tree of `seriesb/025-libcurl-http` (`d0b99ed685`), with the series' exclusions and additions · 411 src, 77 tests, 9 other changed lines; 0 lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 25 of 28, stacked on upstream #768's branch, so not independent of #767 and #768.
 
 ## What this changes
 
@@ -61,9 +59,9 @@ the socket portability and the one error string; its other assertions are unchan
 packaging is not changed here: an installed build needs MSYS2's `libcurl-4.dll` and its
 dependencies next to the game, and this series does not verify that.
 
-## Test changes **(gen)**
+## Test changes
 
-Existing test files this step changes, each listed in the series' test ledger (`test-changes.md`):
+Existing test files this step changes (test ledger: `test-changes.md`):
 
 - `tests/unit/oofnd/meson.build`
 - `tests/unit/oofnd/test_http.cpp`
@@ -71,5 +69,3 @@ Existing test files this step changes, each listed in the series' test ledger (`
 ## Verified **(gen)**
 
 Not verified yet.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.

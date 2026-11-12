@@ -1,10 +1,8 @@
 # Make comments describe the code; use #pragma once
 
-**Series:** step 19 of 26 · base `seriesb/018-develop-fixes` · next `seriesb/020-tests-and-tooling` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/022-source-hygiene` (old 22 of the master-based series) · 18.8k src, 77.1k tests, 15 other changed lines; 0 lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 19 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/022-source-hygiene`.
 
 ## What this changes
 
@@ -56,6 +54,4 @@ does not remove those.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`f60dc7c70b`) yet: the last record is for `4d85d7996e` (2026-11-03), an earlier build of this step.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not verified at this branch's tip (`f60dc7c70b`) yet; the last record (2026-11-03) is for an earlier build.

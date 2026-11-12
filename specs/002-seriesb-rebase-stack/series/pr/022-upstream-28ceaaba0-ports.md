@@ -1,10 +1,8 @@
 # Port upstream #783 (joystick control of GUI screens); build the macOS bundle without Foundation
 
-**Series:** step 22 of 26 · base `seriesb/021-c-as-cxx` · next `seriesb/023-google-style-format` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/025-upstream-49a5eb9fc-ports` (old 25 of the master-based series) · 109 src, 209 tests, 11 other changed lines; 0 lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 22 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/025-upstream-49a5eb9fc-ports`.
 
 ## What this changes
 
@@ -68,6 +66,4 @@ files are small; the macOS ones are only used by a macOS build.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`45bbec8afd`) yet: the last record is for `3ff3867320` (2026-11-03), an earlier build of this step.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not verified at this branch's tip (`ea8c747b92`) yet; the last record (2026-11-03) is for an earlier build.

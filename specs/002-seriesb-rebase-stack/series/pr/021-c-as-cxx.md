@@ -1,10 +1,8 @@
 # Compile the remaining C sources as C++; build QuickJS-ng with the fork's patches
 
-**Series:** step 21 of 26 · base `seriesb/020-tests-and-tooling` · next `seriesb/022-upstream-28ceaaba0-ports` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/024-c-as-cxx` (old 24 of the master-based series) · 13.6k src, 5.1k tests, 224 other changed lines; 0 lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 21 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/024-c-as-cxx`.
 
 ## What this changes
 
@@ -83,6 +81,4 @@ guard to fix.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`7258f16a92`) yet: the last record is for `f518b81af8` (2026-11-03), an earlier build of this step.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not verified at this branch's tip (`7258f16a92`) yet; the last record (2026-11-03) is for an earlier build.

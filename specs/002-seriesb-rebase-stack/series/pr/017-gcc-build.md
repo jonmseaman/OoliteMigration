@@ -1,10 +1,8 @@
 # Fix code that GCC warns about or evaluates differently
 
-**Series:** step 17 of 26 · base `seriesb/016-objc-runtime-out` · next `seriesb/018-develop-fixes` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/019-gcc-build` (old 19 of the master-based series) · 270 src, 1.7k tests, 0 other changed lines; 0 lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 17 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/019-gcc-build`.
 
 ## What this changes
 
@@ -68,6 +66,4 @@ The test changes are mostly mechanical (`#import` to `#include`). The others are
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`e05dea569a`) yet: the last record is for `db43363c08` (2026-11-03), an earlier build of this step.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not verified at this branch's tip (`e05dea569a`) yet; the last record (2026-11-03) is for an earlier build.

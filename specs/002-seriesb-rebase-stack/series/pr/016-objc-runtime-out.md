@@ -1,10 +1,8 @@
 # Remove the Objective-C runtime and rename the sources to .cpp
 
-**Series:** step 16 of 26 · base `seriesb/015-entity-facade` · next `seriesb/017-gcc-build` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/018-objc-runtime-out` (old 18 of the master-based series) · 6.6k src, 2.1k tests, 10.9k other changed lines; 8.6k lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 16 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/018-objc-runtime-out`.
 
 ## What this changes
 
@@ -102,6 +100,4 @@ pairs did not pair as renames and show as a delete and an add (`OOShaderUniformM
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`4b585f4a80`) yet: the last record is for `1cfe5a027e` (2026-11-03), an earlier build of this step.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not verified at this branch's tip (`4b585f4a80`) yet; the last record (2026-11-03) is for an earlier build.

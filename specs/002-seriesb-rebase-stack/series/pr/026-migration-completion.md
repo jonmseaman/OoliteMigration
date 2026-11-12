@@ -1,10 +1,8 @@
 # Drop GNUstep and the last Objective-C; cache builds in CI
 
-**Series:** step 26 of 26 · base `seriesb/025-libcurl-http` · next `—` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Source:** the tree of `seriesb/026-migration-completion` (`48c6c56a03`), with the series' exclusions and additions · 1.6k src, 452 tests, 1.2k other changed lines; 7.4k lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 26 of 28, stacked on upstream #768's branch, so not independent of #767 and #768.
 
 ## What this changes
 
@@ -107,9 +105,9 @@ Read it by commit; each says what it removes or adds. Most of the 217 files are 
 `OOLITE_MAC_OS_X` and CoreFoundation branches. macOS and Linux builds of this step are not
 verified by this series.
 
-## Test changes **(gen)**
+## Test changes
 
-Existing test files this step changes, each listed in the series' test ledger (`test-changes.md`):
+Existing test files this step changes (test ledger: `test-changes.md`):
 
 - `tests/check_debug_monitor_guards.py`
 - `tests/check_headers_standalone.py`
@@ -123,5 +121,3 @@ Existing test files this step changes, each listed in the series' test ledger (`
 ## Verified **(gen)**
 
 Not verified yet.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.

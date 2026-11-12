@@ -1690,6 +1690,70 @@
    "target_tree": "630c729b20800398860444487940aa2ca6fed48b",
    "title": "Drop GNUstep and the last Objective-C; cache builds in CI",
    "verification": null
+  },
+  {
+   "branch": "seriesb/027-modern-cpp",
+   "build_commit": "3732f6126bee22fa4666da29ff2bbe6630c4a88e",
+   "chapter": null,
+   "description": "series/pr/027-modern-cpp.md",
+   "differs_from_old": [],
+   "era": "cxx",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": "6a8335bad39472d063219c8a9f845484bc87c223",
+   "n": 27,
+   "parent": "seriesb/026-migration-completion",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": {
+    "deleted_files": 1441,
+    "other": 70,
+    "src": 32766,
+    "tests": 3594
+   },
+   "source": {
+    "commit": "3732f6126bee22fa4666da29ff2bbe6630c4a88e",
+    "ref": "seriesb/027-modern-cpp",
+    "test_ledger": "specs/009-modern-cpp-std/test-ledger.md",
+    "type": "target"
+   },
+   "state": "built",
+   "target_tree": "6a8335bad39472d063219c8a9f845484bc87c223",
+   "title": "Use C++23 and the standard library directly",
+   "verification": null
+  },
+  {
+   "branch": "seriesb/028-upstream-772-tests",
+   "build_commit": "bc70a6e90b0637a47119a4b7b70a22b3d49c3db0",
+   "chapter": null,
+   "description": "series/pr/028-upstream-772-tests.md",
+   "differs_from_old": [],
+   "era": "cxx",
+   "kind": "hand-written",
+   "mechanical_command": null,
+   "merge_tree": "0a895316465169901a9c4294e76aaebf6a7bc71b",
+   "n": 28,
+   "parent": "seriesb/027-modern-cpp",
+   "reasons": {},
+   "resolutions": [],
+   "rules": [],
+   "size": {
+    "deleted_files": 51,
+    "other": 3702,
+    "src": 51,
+    "tests": 1658
+   },
+   "source": {
+    "commit": "bc70a6e90b0637a47119a4b7b70a22b3d49c3db0",
+    "ref": "seriesb/028-upstream-772-tests",
+    "test_ledger": "specs/012-adopt-upstream-772-tests/adaptations.md",
+    "type": "target"
+   },
+   "state": "built",
+   "target_tree": "0a895316465169901a9c4294e76aaebf6a7bc71b",
+   "title": "Add upstream #772's JavaScript tests; reject non-dictionary arguments as 1.93 did",
+   "verification": null
   }
  ],
  "syncs": [

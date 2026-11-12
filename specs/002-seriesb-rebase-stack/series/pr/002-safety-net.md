@@ -1,10 +1,8 @@
 # Add a test safety net: deterministic runs, GUI and component tests
 
-**Series:** step 2 of 26 · base `seriesb/001-random-seed-env` · next `seriesb/003-objcpp-switch` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/002-safety-net` (old 2 of the master-based series) · 484 src, 12.0k tests, 0 other changed lines; 0 lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 2 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/002-safety-net`.
 
 ## What this changes
 
@@ -67,7 +65,7 @@ Some comments and READMEs in the new tiers refer to documents and helper scripts
 repository. The fixtures do not need them: where one would use such a helper, it looks for it at
 run time and carries on without it.
 
-## Differences from the old step **(gen)**
+## Differences from the old step
 
 Where this step's change differs from `series/002-safety-net`'s, and why:
 
@@ -75,21 +73,18 @@ Where this step's change differs from `series/002-safety-net`'s, and why:
 
 ## Verified **(gen)**
 
-Windows x64, `12eca88f7f`, 2026-11-11.
+Windows x64, `12eca88f7f`, 2026-11-11. macOS and Linux are not verified.
 
 | Check | Result |
 |---|---|
 | build_clang | pass |
-| build_gcc | n/a: not required for this series (the code builds with Clang, as upstream's CI) |
 | clang_format | pass |
 | component | pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships |
 | no_facade | pass |
 | no_new_spidermonkey_or_gnustep | pass |
 | no_new_suppressions | pass |
-| poc | n/a: the harness needs GNUstep here, so upstream builds it on Linux only |
 | smoke | pass |
 | tests_untouched | fail: tests/component/README.md, tests/component/conftest.py, tests/component/console.py, tests/gui/test_g2_exit_via_keyboard.py, tests/gui/test_g5_screen_round_trips.py, tests/gui/test_g6_window_lifecycle.py, tests/gui/test_g8_scenario_screen_back_out.py, tests/gui/test_g9_post_exit_hygiene.py |
-| unit | n/a: the tree has no unit suites |
 | warnings_clang | pass: 0 new warnings (6 inherited from the parent) |
 
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not applicable here: build_gcc, poc, unit.

@@ -1,10 +1,8 @@
 # Compile the game as Objective-C++, keeping #768's QuickJS-ng binding
 
-**Series:** step 3 of 26 · base `seriesb/002-safety-net` · next `seriesb/004-oofnd-core` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/005-quickjs-switch` (old 3, 4, 5 of the master-based series) · 891 src, 0 tests, 2.2k other changed lines; 0 lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 3 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/005-quickjs-switch` (old 3, 4, 5).
 
 ## What this changes
 
@@ -85,21 +83,18 @@ against this step unchanged.
 
 ## Verified **(gen)**
 
-Windows x64, `e8b7c8d6d9`, 2026-11-11.
+Windows x64, `e8b7c8d6d9`, 2026-11-11. macOS and Linux are not verified.
 
 | Check | Result |
 |---|---|
 | build_clang | pass |
-| build_gcc | n/a: not required for this series (the code builds with Clang, as upstream's CI) |
 | clang_format | pass |
 | component | pass: s1_police_kills_pirate, s2_pirate_attacks_target_registers_attacker, s3_hostile_spawn_drives_ship_into_attack, s4_missile_armed_ship_kills_by_missile, s5_escorts_converge_on_their_mother, s6_damaged_ship_flees, s7_neutral_traffic_is_quiet, s8_destroyed_ships_leave_allships (1 earlier attempt(s) failed; see the log) |
 | no_facade | pass |
 | no_new_spidermonkey_or_gnustep | pass |
 | no_new_suppressions | fail: src/Core/Scripting/poc/OOJavaScriptEnginePoc.mm: #pragma clang diagnostic ignored "-Wincomplete-implementatio |
-| poc | n/a: the harness needs GNUstep here, so upstream builds it on Linux only |
 | smoke | pass |
 | tests_untouched | fail: tests/component/README.md, tests/component/conftest.py, tests/component/console.py, tests/gui/test_g2_exit_via_keyboard.py, tests/gui/test_g5_screen_round_trips.py, tests/gui/test_g6_window_lifecycle.py, tests/gui/test_g8_scenario_screen_back_out.py, tests/gui/test_g9_post_exit_hygiene.py |
-| unit | n/a: the tree has no unit suites |
 | warnings_clang | pass: 0 new warnings (6 inherited from the parent) |
 
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not applicable here: build_gcc, poc, unit.

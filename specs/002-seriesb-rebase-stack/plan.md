@@ -1416,3 +1416,22 @@ sources outside the replayed trees.
     buffers, a moot TODO"), where it first appeared. The conversion changes every file, so blame
     lands on it with or without the list, and the linear rewrite had left all 14 listed commits
     missing. Pre-change 026 tip: `refs/seriesb-preblame/seriesb/026-migration-completion`.
+- **Jon, 2026-11-12: shorter generated description parts; steps 027 and 028 recorded.**
+  - `describe` writes one line under the title (step N of M; "not independent of #767 and #768"
+    until `parents --retire`; the old step, or a target step's ref unless it is its own branch), a
+    Verified line over a table of the checks that ran (n/a checks on one line), and at most 20
+    changed tests by name. Gone: the base and next branches and the size (GitHub shows both), "of
+    the master-based series", the macOS footer, and every `**(gen)**` but Verified's. Existing
+    tests pin the rest, and hard rule 1 leaves them as they are: Verified's `**(gen)**` and table
+    rows (`DescriptionStateTest`), the `# Title` line, `old 3, 4, 5` and the #767/#768 sentence
+    (`test_replay`), and the ledger's name in a target step's Test changes. Jon: no new tests for
+    the shorter text.
+  - `seriesb/027-modern-cpp` (spec 009) and `seriesb/028-upstream-772-tests` (spec 012, D4) are
+    steps 27 and 28, target steps on their own branches recorded at `3732f6126` and `bc70a6e90`, as
+    Sync 2 recorded 025 and 026; their ledgers are spec 009's `test-ledger.md` and spec 012's
+    `adaptations.md`. Their descriptions are new, and 027's describes the branch at T080: it needs
+    updating when spec 009 ends. The handover no longer deletes `origin`'s 027. `check`'s one-switch
+    rule (a target step only last) now fires for 24–27, and its tests group finds 71 of 027's 110
+    changed tests missing from spec 009's ledger as the tool parses it. `build` replaces a step
+    whose tip is its `build_commit` with one commit; since the linearisation that covers every
+    multi-commit step, 027 and 028 included, so the stack is not rebuilt with it.

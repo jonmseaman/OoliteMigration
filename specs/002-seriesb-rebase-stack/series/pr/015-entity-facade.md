@@ -1,10 +1,8 @@
 # Delete the Entity bridge and the last Objective-C bridges
 
-**Series:** step 15 of 26 · base `seriesb/014-facade-deletions` · next `seriesb/016-objc-runtime-out` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/017-entity-facade` (old 17 of the master-based series) · 26.9k src, 17.2k tests, 58 other changed lines; 17.6k lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 15 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/017-entity-facade`.
 
 ## What this changes
 
@@ -93,6 +91,4 @@ fixes above are small and stand alone: `OOTextureScaling.mm` and `GameController
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`cd157d105f`) yet: the last record is for `850be031b5` (2026-11-03), an earlier build of this step.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not verified at this branch's tip (`cd157d105f`) yet; the last record (2026-11-03) is for an earlier build.

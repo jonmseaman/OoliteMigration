@@ -1,10 +1,8 @@
 # Convert the large files in slices; delete the first Objective-C bridges
 
-**Series:** step 11 of 26 · base `seriesb/010-module-conversions` · next `seriesb/012-shipentity-slices` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/013-first-slices` (old 13 of the master-based series) · 25.6k src, 13.1k tests, 2 other changed lines; 5.1k lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 11 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/013-first-slices`.
 
 ## What this changes
 
@@ -111,6 +109,4 @@ The `GameController.mm` hunk is the priority change, under `OO_DEBUG_MONITOR_ENA
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`c245c5da16`) yet: the last record is for `4ca2448d62` (2026-11-02), an earlier build of this step.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not verified at this branch's tip (`c245c5da16`) yet; the last record (2026-11-02) is for an earlier build.

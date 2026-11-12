@@ -1,10 +1,8 @@
 # Small fixes after the conversion; Mozilla polyfills for expansions
 
-**Series:** step 24 of 26 · base `seriesb/023-google-style-format` · next `seriesb/025-libcurl-http` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Source:** the tree of `feature/upstream-quickjs-poc-cxx` (`270c74ea78`), with the series' exclusions and additions · 3.1k src, 94 tests, 99 other changed lines; 38 lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 24 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Takes the tree of `feature/upstream-quickjs-poc-cxx` (`270c74ea78`), with the series' exclusions and additions.
 
 ## What this changes
 
@@ -61,9 +59,9 @@ one check each and mechanical (`git show --word-diff`). The Cocoa removal is mos
 compiled. No existing assertion changes; one test is added, and 17 tests change their include
 lines only.
 
-## Test changes **(gen)**
+## Test changes
 
-Existing test files this step changes, each listed in the series' test ledger (`test-changes.md`):
+Existing test files this step changes (test ledger: `test-changes.md`):
 
 - `tests/unit/core/meson.build`
 - `tests/unit/core/test_OOCache.cpp`
@@ -86,6 +84,4 @@ Existing test files this step changes, each listed in the series' test ledger (`
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`8d524e16d3`) yet: the last record is for `57a0c89a9e` (2026-11-03), an earlier build of this step.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not verified at this branch's tip (`cb53755496`) yet; the last record (2026-11-03) is for an earlier build.

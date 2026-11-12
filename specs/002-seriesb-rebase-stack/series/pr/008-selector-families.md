@@ -1,10 +1,8 @@
 # Retire the remaining Foundation selectors and their bridge callers
 
-**Series:** step 8 of 26 · base `seriesb/007-foundation-wave-2` · next `seriesb/009-leaf-conversions` **(gen)**
+<!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-**Replays:** `series/010-selector-families` (old 10 of the master-based series) · 18.7k src, 1.1k tests, 14 other changed lines; 10.4k lines in deleted files **(gen)**
-
-**Based on:** upstream #768's branch, so this step is not independent of upstream's QuickJS-ng PRs (#767, #768). **(gen)**
+Step 8 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/010-selector-families`.
 
 ## What this changes
 
@@ -79,6 +77,4 @@ it would not build against this tree; nothing builds it.
 
 ## Verified **(gen)**
 
-Not verified at this branch's tip (`b4bfdeb596`) yet: the last record is for `741729301a` (2026-11-02), an earlier build of this step.
-
-macOS (its platform code is not converted yet) and Linux are not verified by this series.
+Not verified at this branch's tip (`b4bfdeb596`) yet; the last record (2026-11-02) is for an earlier build.
