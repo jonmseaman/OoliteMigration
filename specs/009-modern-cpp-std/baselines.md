@@ -152,6 +152,7 @@ the same way at the C++20 base, so none is a spec 009 regression; they are repor
 | `tests/unit/core/test_OOSunEntity.cpp` | segmentation fault, no case named | not investigated |
 | `tests/unit/core/test_ProxyPlayerEntity.cpp` | aborts in `initDefaults` | not investigated |
 | `tests/unit/core/test_StationEntity.cpp` | aborts in `initAndSetUpFromDictionary` | not investigated |
+| `tests/unit/core/test_OOOpenGLExtensionManager.cpp` | `readsTheDriver` (line 147, `major >= 3`) | the OpenGL major version this Mac's test context reports is below 3; why not investigated |
 
 Tests that include `process.h` or `winsock2.h` (`test_OOMesh`, `test_OOSoundMixer`,
 `test_HeadUpDisplay`, `test_OODebugTCPConsoleClient` and others) do not build on macOS at all.

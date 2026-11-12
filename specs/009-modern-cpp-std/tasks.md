@@ -466,7 +466,7 @@ production enum changes in the same commit as it.
   `src/Core/OOConstToString.cpp:33-37` and the hand switch in `src/Core/Entities/WormholeEntity.cpp:854-866`
   with explicit `OOEnumName` switches spelling today's strings, before any rename; `test_EnumNameFallbacks` passes.
   **Accept:** `cd oolite-dev && ! rg -n -P '\bCASE\s*\(|REVERSE_CASE' src/Core/OOConstToString.cpp`
-- [ ] T059 [US5] P7, step 2: `OOCargoType`, `OORouteType`, `OOEnergyUnitType`,
+- [X] T059 [US5] P7, step 2: `OOCargoType`, `OORouteType`, `OOEnergyUnitType`,
   `OODockingClearanceStatus`, `OOGraphicsDetail` (`src/Core/OOTypes.h`), `OOHDRToneMapper`,
   `OOSDRToneMapper` (`src/SDL/MyOpenGLView.h:148-164`), `OOShaderSetting` (`src/Core/OOOpenGL.h:38-44`),
   `WORMHOLE_SCANINFO` (`src/Core/Entities/WormholeEntity.h:42-49`) → `enum class` with
