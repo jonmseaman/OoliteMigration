@@ -572,10 +572,15 @@ review every fix, convert the rest by hand per the contract's table.
   oofnd test sweep found a T037 regression (`pointerDescription` printed `0x0` for a zero low word,
   where printf's `%#x` printed `0`), fixed in cc94abb6d; `test_resourcepaths`' two Windows-home cases
   fail at the C++20 base too and went to `baselines.md`.
-- [ ] T076 [US6] Make `google-readability-casting` fatal and add `-Wold-style-cast` to the game's
+- [X] T076 [US6] Make `google-readability-casting` fatal and add `-Wold-style-cast` to the game's
   warning flags in `src/meson.build` in the same commit. If T009 saved a base event log, repeat it
   on a Windows machine into `.agent-tmp/events/m5.log` (US6 AS-4).
   **Accept:** `cd oolite-dev && ./mk.sh tidy && ./mk.sh build test 2>&1 | { ! grep -q 'Wold-style-cast'; }` and `grep -q 'Wold-style-cast' src/meson.build` and `{ test ! -s ../.agent-tmp/events/base.log || diff -q ../.agent-tmp/events/base.log ../.agent-tmp/events/m5.log; }`
+  *Done (879e99e14; T068 follow-up afafe37c9).* Third-party headers became system headers and the
+  vendored sources a library without the flag (research R16, *Third-party and vendored code*). No base
+  event log was saved (T009), so there is no m5.log. The deployment build had not compiled since T068
+  (`StateFlagToString` outside the verifier block); fixed in afafe37c9. A planted C-style cast fails
+  clang-tidy. Windows (miniz, tinyexr's split, the extension manager) is first compiled by T105.
 
 **Checkpoint**: US6 complete (SC-010).
 

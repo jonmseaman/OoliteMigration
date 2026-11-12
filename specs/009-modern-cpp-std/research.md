@@ -586,6 +586,12 @@ spec required without changing behaviour:
   `WarningsAsErrors` once at zero; `-Wold-style-cast` added to the game's warning flags in
   `src/meson.build` in the same commit (GCC and Clang both have it), so it adds no warnings.
 - Tests are not first-party C++ for this story and are not touched.
+- **Third-party and vendored code (T076).** Every third-party dependency is a system include for
+  the game (`include_type: 'system'`), so a cast in a QuickJS, ICU, SDL or vorbis macro is not the
+  game's; none needed an exceptions row. The vendored sources (MiniZip, the stb_image_write and
+  tinyexr implementations, miniz on Windows) keep their upstream text (rule 7) and build as
+  `liboolite_vendored` with meson's warning level but not `oolite_cpp_args`. This is not silencing:
+  no warning the game's own code produces is hidden, and no `-Wno-*` or pragma is used.
 
 **Alternatives:** `cppcoreguidelines-pro-type-cstyle-cast` (flags only casts that act as
 `reinterpret_cast`, `const_cast` or a downcast, so most arithmetic casts would remain); converting
