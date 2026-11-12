@@ -25,3 +25,4 @@ is a conflict to record here, never a suppression.
 | enum | `src/Core/OOJoystickManager.h` | `inline constexpr int AXIS_` | the joystick axis functions as typed constants | D5 (revised): one `int` function number for axes and buttons, from plists, in `int8_t` maps | — | `6329b654f` (T067) |
 | enum | `src/Core/OOJoystickManager.h` | `inline constexpr int BUTTON_` | the joystick button functions as typed constants | as above | — | `6329b654f` (T067) |
 | enum | `src/Core/OOVoxel.h` | `inline constexpr int CUBE_FACE_` | the cube-face bits as typed constants | masks or-ed into a `long` | — | `6329b654f` (T067) |
+| enum | `src/Core/OOTypes.h` | `enum` | the `enum` line of upstream's commented-out commodity enum (inside a `/* … */` block, `OOTypes.h:121-146`) | upstream's comment, kept as it is (rule 7); it is not code | — | T067 |

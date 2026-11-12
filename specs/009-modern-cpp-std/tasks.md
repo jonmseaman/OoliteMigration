@@ -508,7 +508,7 @@ production enum changes in the same commit as it.
   `PlayerEntityStickMapper.h:40-51`, `PlayerEntityStickProfile.cpp:38`, `PlayerEntityLoadSave.h:42-52`
   → per T064; replace `#if GUI_FIRST_ROW() < 0` (`PlayerEntity.h:165,199`) with a `static_assert`.
   **Accept:** `cd oolite-dev && ! rg -n 'GUI_ROW\(|#if GUI_FIRST_ROW' src`
-- [ ] T067 [US5] P9: `AXIS_*`/`BUTTON_*` (`src/Core/OOJoystickManager.h:60,75`), `HW_AXIS`/`HW_BUTTON`
+- [X] T067 [US5] P9: `AXIS_*`/`BUTTON_*` (`src/Core/OOJoystickManager.h:60,75`), `HW_AXIS`/`HW_BUTTON`
   (`:157`), `CUBE_FACE_*` (`src/Core/OOVoxel.h:37-42`), `STICKPROFILE_TYPE_*`
   (`src/Core/OOJoystickProfile.h:44`) per T064; arrays indexed by them become `std::array`
   indexed through `oo::ToUnderlying`; the preference-key ordinals (`ENUMKEY`,
