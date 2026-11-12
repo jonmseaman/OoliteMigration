@@ -498,7 +498,7 @@ production enum changes in the same commit as it.
   `OOPixMapFormat`, the debug TCP protocol numbers), defaulting as research R8 says; record each
   decision in research.md R8 and each typed-constant group in `exceptions.md`.
   **Accept:** `grep -c 'D5:' specs/009-modern-cpp-std/research.md` prints 7
-- [ ] T065 [US5] P9: the 27 JS property-ID enums (`src/Core/Scripting/OOJSShip.cpp:202` and the
+- [X] T065 [US5] P9: the 27 JS property-ID enums (`src/Core/Scripting/OOJSShip.cpp:202` and the
   others) → `enum class … : std::int16_t`; cast once in the `OOJS_PROPERTY_*` macros
   (`src/Core/Scripting/OOJSEngineCore.h`), `using enum` in each getter's `switch (magic)`;
   `OOJS_PROP_*` flags stay (exceptions row).
