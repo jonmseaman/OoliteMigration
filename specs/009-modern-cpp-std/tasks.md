@@ -551,8 +551,11 @@ review every fix, convert the rest by hand per the contract's table.
 - [X] T071 [US6] Area `entities`, the rest (`ShipEntity*.cpp` about 144, the other entities; the
   152 `(Entity*)nullptr` arms → `static_cast<Entity*>(nullptr)`).
   **Accept:** `cd oolite-dev && $C cast --area entities`
-- [ ] T072 [US6] Area `core` (`Universe.cpp` about 99, the rest of `src/Core`).
+- [X] T072 [US6] Area `core` (`Universe.cpp` about 99, the rest of `src/Core`).
   **Accept:** `cd oolite-dev && $C cast --area core`
+  *Done (11758e5ff).* `check.sh`'s `core` area now leaves out the other areas' clang-tidy lines, as its
+  search globs already did; before, it also reported Scripting, Materials and Debug. Two macOS-only
+  failures found at the C++20 base were added to `baselines.md`.
 - [ ] T073 [US6] Area `materials` (`src/Core/OOOpenGLExtensionManager.cpp` about 131); the
   `memcpy` byte punning at `src/Core/Materials/OOPlanetTextureGenerator.cpp:809` and
   `src/Core/Materials/OOStandaloneAtmosphereGenerator.cpp:438` → `std::bit_cast`.

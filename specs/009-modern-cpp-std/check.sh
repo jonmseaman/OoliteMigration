@@ -71,6 +71,7 @@ done
 paths=()
 globs=(--glob '!src/Core/MiniZip/**' --glob '!src/SDL/EXRSnapshotSupport/**' --glob '!**/stb_*')
 prefix_re='^src/(Core|SDL|oofnd)/'   # for clang-tidy output
+exclude_re='^$'                        # clang-tidy output the area leaves out (core: as its globs)
 case "$area" in
   "") paths=(src) ;;
   entities) paths=(src/Core/Entities); prefix_re='^src/Core/Entities/' ;;
@@ -84,7 +85,8 @@ case "$area" in
     paths=(src/Core)
     globs+=(--glob '!src/Core/Entities/**' --glob '!src/Core/Scripting/**' --glob '!src/Core/Materials/**'
             --glob '!src/Core/Debug/**' --glob '!src/Core/OOOpenGL*' --glob '!src/Core/OOTexture*')
-    prefix_re='^src/Core/' ;;
+    prefix_re='^src/Core/'
+    exclude_re='^src/Core/(Entities/|Scripting/|Materials/|Debug/|OOOpenGL|OOTexture)' ;;
   oofnd) paths=(src/oofnd); prefix_re='^src/oofnd/' ;;
   *) die "unknown area '$area'" ;;
 esac
@@ -109,7 +111,7 @@ tidy() {  # tidy <check>: prints file:line:message for one clang-tidy check over
   "$rct" -p . -quiet -checks="-*,$check" ${extra[@]+"${extra[@]}"} \
     '^(?!.*/(MiniZip|EXRSnapshotSupport)/).*/src/(Core|SDL|oofnd)/.*\.cpp$' 2>/dev/null \
     | sed -n -E "s#^(${root}/|(\.\./)+)([^:]+):([0-9]+):[0-9]+: (warning|error): (.*) \[${check}[^]]*\]\$#\3:\4:\6#p" \
-    | grep -E "$prefix_re" | grep -v -E '/(MiniZip|EXRSnapshotSupport)/|stb_' | sort -u
+    | grep -E "$prefix_re" | grep -v -E "$exclude_re" | grep -v -E '/(MiniZip|EXRSnapshotSupport)/|stb_' | sort -u
 }
 
 case "$category" in

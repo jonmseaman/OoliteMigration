@@ -153,6 +153,8 @@ the same way at the C++20 base, so none is a spec 009 regression; they are repor
 | `tests/unit/core/test_ProxyPlayerEntity.cpp` | aborts in `initDefaults` | not investigated |
 | `tests/unit/core/test_StationEntity.cpp` | aborts in `initAndSetUpFromDictionary` | not investigated |
 | `tests/unit/core/test_DockEntity.cpp` | aborts in `initAndSetUp` | not investigated |
+| `tests/unit/core/test_OOProbabilitySet.cpp` | `objectElements` (line 212, the element node's object) | not investigated (found in T072) |
+| `tests/unit/core/test_OOShipRegistry.cpp` | four cases, all at line 214 (`actual == expected`) | not investigated (found in T072) |
 | `tests/unit/core/test_OOOpenGLExtensionManager.cpp` | `readsTheDriver` (line 147, `major >= 3`) | the OpenGL major version this Mac's test context reports is below 3; why not investigated |
 
 `test_OOBasicMaterial` and `test_OOSingleTextureMaterial` do not build on macOS: they define
