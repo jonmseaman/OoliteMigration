@@ -1,13 +1,15 @@
-# Contract: `OOGameContext`, `OOGame` and the migration bridge
+# Contract: `OOGameContext`, the registers, `OOGame` and script access
 
-New files in `oolite-dev/src/Core/`: `OOGameContext.h/.cpp` and `OOGame.h/.cpp`. They follow the
-style of `Core/OOColor.*`:
+New files in `oolite-dev/src/Core/`: `OOGameContext.h/.cpp`, `OOGame.h/.cpp` and
+`OODeferredCalls.h/.cpp`. They follow the style of `Core/OOColor.*` as spec 009 left it:
 - a GPL banner with a one-line description, then `#pragma once`;
 - `OO`-prefixed classes in the global namespace;
-- `oo::Ref` ownership and camelCase methods;
-- Google formatting.
+- spec 009's ownership: `std::shared_ptr`/`std::weak_ptr`/`std::unique_ptr`, shared game objects
+  from `oo::makeShared`; camelCase methods;
+- Google formatting (clang-format 22).
 
-The signatures below are the interface. Their bodies belong to the tasks.
+The signatures below are the interface. Their bodies belong to the tasks. Research: R1, R2, R3,
+R8, R14.
 
 ## OOGameContext
 
@@ -21,13 +23,14 @@ struct OOGameContextOptions {
 class OOGameContext {
  public:
   explicit OOGameContext(OOGameContextOptions options = {});
-  ~OOGameContext();                      // releases services in reverse registration order
+  ~OOGameContext();                      // releases slots in reverse registration order
   OOGameContext(const OOGameContext&) = delete;
   OOGameContext& operator=(const OOGameContext&) = delete;
 
   const OOGameContextOptions& options() const;
 
-  // The three hot services: direct, no lookup. They are borrowed; OOGame keeps them current.
+  // The three hot services: direct, no lookup. Borrowed; OOGame keeps them current. While this
+  // context is current they read the registers, otherwise its own saved values.
   Universe* universe() const;
   PlayerEntity* player() const;
   OOGame* game() const;
@@ -35,10 +38,13 @@ class OOGameContext {
   // Every other service, looked up by type.
   template <class T> T& get() const;     // raises OOMissingServiceException naming T
   template <class T> T* find() const;    // nullptr when absent
-  template <class T> void set(oo::Ref<T> service);  // adds the service, or replaces it in place
+  template <class T> T& obtain();        // get(); in the process context, creates T if absent
+  template <class T> void set(std::shared_ptr<T> service);  // adds, or replaces in place
 
-  // The bridge (removed in M6). Main thread only.
-  static OOGameContext* current();
+  // The bridge (removed in M6b). Main thread only.
+  static OOGameContext& process();       // never destroyed; the GUI game and existing tests
+  static OOGameContext& current();       // innermost scope's context, else process()
+  bool isCurrent() const;
 };
 
 class OOGameContextScope {               // RAII: makes ctx current, restores the previous one
@@ -52,54 +58,81 @@ class OOMissingServiceException;         // what(): "no <TypeName> service in th
 
 Rules:
 - **The header stays small, to keep compiles fast.**
-  - `OOGameContext.h` includes only `oofnd/Ref.hpp`, `<typeindex>`, `<vector>`, `<optional>` and
-    `<cstdint>`.
+  - `OOGameContext.h` includes only `<memory>`, `<typeindex>`, `<typeinfo>`, `<vector>`,
+    `<optional>` and `<cstdint>`.
   - It forward-declares `Universe`, `PlayerEntity` and `OOGame`, and includes no service header.
-  - Adding a service never edits this file.
-  - There are no per-service accessors beyond the three hot members. Every other service uses
-    `get<T>()`, so `T` has to be complete only where it is called.
+    Adding a service never edits this file.
+  - No per-service accessors beyond the three hot members; `T` is complete only where
+    `get<T>()` is called.
   - Enforced by `test_OOGameContext`, which checks the header's `#include` list against this
     allow-list.
-- A `T` passed to `set` derives from `oo::RefCounted`, which is enforced with a `static_assert`.
-- Universe and player are not registered through `set`. `OOGame` owns them and updates the hot
-  members.
-- `current()` returns the context of the innermost live `OOGameContextScope`, or `nullptr`.
-- **Scopes are opened per call, never held by an object.**
-  - Every `OOGame` entry point (`startUniverse`, `replaceUniverse`, `simulate`,
-    `scheduleDeferredCall`) opens a scope for its own context for the length of the call, so
-    callers never manage scopes.
-  - The one long-lived scope is in `main`, around the GUI run.
-  - An object that kept a scope for its whole lifetime would leave its context current while
-    another game is being driven. Its scope would also be restored in the wrong order whenever
-    such objects are not destroyed last-created-first. `test_OOGameContext` covers nesting,
-    restoring after an exception, and two games driven in turn.
+- **Slots** hold `std::shared_ptr<void>` keyed by `std::type_index(typeid(T))`. A service needs no
+  common base. An `oo::Object` made with `oo::makeShared` keeps its `oo::Dispose` deleter.
+- **`obtain<T>()`** creates only in the process context. In any other context a missing service
+  raises, so a test's context never builds a real window, mixer or engine by accident (FR-004).
+- **Universe and player are not slots.** `OOGame` owns them (`std::shared_ptr<Universe>`,
+  `EntityHold` for the player) and updates the hot members; the old one is released only after
+  the new one is in place (FR-010).
+- **Teardown.** The process context is never destroyed. Any other context, on destruction,
+  releases its slots newest first; each service it held must have a working destructor (R14).
+  Destroying a context that is current is a programming error and asserts.
 
-## The bridge macros (until M6)
+## The registers (until M6b)
 
 ```cpp
-// Universe.h
-OOINLINE Universe* OOGetUniverse() { return OOGameContext::current()->universe(); }
+// Universe.h and PlayerEntity.h: unchanged readers.
+OOINLINE Universe* OOGetUniverse() { return gSharedUniverse; }
 #define UNIVERSE OOGetUniverse()
-// PlayerEntity.h: OOGetPlayer() the same way, keeping its OO_DEBUG assert.
+// OOGetPlayer() the same way over gOOPlayer, keeping its OO_DEBUG assert.
 ```
 
-Behaviour must not change. In the GUI program the context is current for the whole run, set up
-in `main` before `GameController` starts. M6 deletes both macros, `OOGetUniverse`,
-`OOGetPlayer` and `current()`.
+- A **register** is a pointer-sized global whose value belongs to the current context.
+  `gSharedUniverse` and `gOOPlayer` are registers from M1; `gOOJSMainThreadContext` and
+  `gOOJSPlayerIfStale` from M2. Others join only when the inventory shows a many-reader global
+  the headless game needs per game.
+- All registers are listed in one table in `OOGameContext.cpp`. Each context has a saved value
+  per register (null for a new context).
+- **Entering a scope** for `ctx`, when `ctx` is not already current: save every register into
+  the outgoing context, load `ctx`'s saved values, make `ctx` current. **Leaving** does the
+  reverse. Nesting the same context is a no-op.
+- So `UNIVERSE` and `PLAYER` cost what they cost today, tests that assign `gSharedUniverse` /
+  `gOOPlayer` (81 files) act on the process context as before, and `Universe::newUniverse`'s
+  one-universe check holds per context.
+- **Scopes are opened per call, never held by an object.** Every `OOGame` entry point
+  (`startUniverse`, `replaceUniverse`, `simulate`) opens a scope for its own context for the
+  length of the call. The GUI game runs in the process context and needs no scope.
+  `test_OOGameContext` covers nesting, the register swap, restoring after an exception, and two
+  games driven in turn.
+
+M6b deletes the macros, `OOGetUniverse`/`OOGetPlayer`, the registers, `current()` and
+`process()`, once Jon has signed the test-ledger row (research R15).
+
+## Singletons through the context
+
+```cpp
+// was: static auto& sShared = *new std::shared_ptr<OOShipRegistry>(...) (spec 009)
+OOShipRegistry* OOShipRegistry::sharedRegistry() {
+  return &OOGameContext::current().obtain<OOShipRegistry>();
+}
+```
+
+The accessor's name and observable behaviour stay; its never-deleted static and its spec 009
+`exceptions.md` row go. A test or headless game that wants a stand-in calls `set<T>()` on its
+own context before first use.
 
 ## OOGame
 
 ```cpp
 struct OOUniverseOptions {               // the defaults are today's behaviour
-  int addOns = SCENARIO_OXP_DEFINITION_ALL;
+  std::string addOns = SCENARIO_OXP_DEFINITION_ALL;
   bool populate = true;
   bool runWorldScripts = true;
   std::optional<OOGraphicsDetail> detailLevel;   // nullopt: from user defaults
 };
 
-class OOGame : public oo::RefCounted {
+class OOGame : public oo::Object {
  public:
-  explicit OOGame(OOGameContextOptions options = {});
+  explicit OOGame(OOGameContext& context);   // the GUI passes OOGameContext::process()
   OOGameContext& context();
 
   // Lifecycle
@@ -109,31 +142,45 @@ class OOGame : public oo::RefCounted {
   // One simulation frame: universe update, sound update, frame callbacks, then the deferred
   // calls due by the context's clock. It does not draw.
   void simulate(OOTimeDelta dt);
-
-  // Was the free function OOScheduleDeferredCall.
-  void scheduleDeferredCall(OOTimeDelta delay, std::function<void()> call);
 };
 ```
 
-`GameController::doPerformGameTick` becomes three steps:
-1. measure dt;
-2. `game().simulate(dt)`;
-3. `_gameView->updateScreen()`.
+A headless test owns its context (`std::unique_ptr<OOGameContext>`) and an `OOGame` made with
+`oo::makeShared`, destroying the game before the context.
+
+`GameController::doPerformGameTick` becomes three steps: measure dt; `game().simulate(dt)`;
+`_gameView->updateScreen()`.
+
+## Deferred calls
+
+```cpp
+class OODeferredCalls {                  // a context service; was GameController.cpp's statics
+ public:
+  void schedule(OOTimeDelta delay, std::function<void()> call);
+  void runDue(double now);               // called by OOGame::simulate
+};
+
+// Unchanged free function: schedules on OOGameContext::current().obtain<OODeferredCalls>().
+void OOScheduleDeferredCall(...);
+```
 
 ## Script callbacks
 
 ```cpp
 // Core/Scripting/OOJSEngineCore.h
-inline OOGameContext& OOJSGameContext(ooscript::Context cx);  // from ooscript::getContextPrivate
+inline OOGameContext& OOJSGameContext(JSContext* cx) {
+  return *static_cast<OOGameContext*>(JS_GetContextOpaque(cx));
+}
 ```
 
-Each context's engine sets the private slot once, when the context is created. Callbacks that are
-converted (M5) call `OOJSGameContext(cx).universe()` in place of `UNIVERSE`.
+Each context's engine calls `JS_SetContextOpaque(cx, &context)` once, when it creates its
+`JSContext`. Callbacks converted in M5 call `OOJSGameContext(cx).universe()` in place of
+`UNIVERSE`.
 
 ## Headless stand-ins (in `src/Core`, compiled into the game)
 
-The stand-ins live in the game's own sources, not only in `tests/`. That keeps "headless" a mode
-of the real program, and a future `--headless` command-line flag could use them. They are:
+They live in the game's own sources, so headless is a mode of the real program and a future
+`--headless` flag could use them:
 - `OOHeadlessGraphics` (`available() == false`);
 - `OOManualClock`;
 - the null sound mixer;

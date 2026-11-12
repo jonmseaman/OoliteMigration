@@ -33,7 +33,7 @@
 
 1. This is an internal refactor. Its stakeholders are the developers and upstream reviewers, and
    the thing being changed is code structure. So the spec names the symbols that are in scope
-   (`UNIVERSE`, `PLAYER`, `shared…()`), the existing ownership convention (`oo::Ref<T>`) and the
+   (`UNIVERSE`, `PLAYER`, `shared…()`), the ownership convention (spec 009's standard smart pointers) and the
    test suites. Without those names, scope and success can't be measured. The spec leaves the
    mechanism to the plan: the shape of the context, how a service is looked up by type, and the
    inventory format.

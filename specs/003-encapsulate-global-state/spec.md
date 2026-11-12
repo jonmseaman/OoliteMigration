@@ -45,10 +45,13 @@ The game reaches its shared objects through process-wide globals. A survey of `o
 - **The universe and the player.** `gSharedUniverse` and `gOOPlayer` sit behind the `UNIVERSE` and
   `PLAYER` macros. `UNIVERSE` appears about 3,600 times (on about 2,400 lines) and `PLAYER` about 690 times. A universe
   is built by `Universe::newUniverse(MyOpenGLView*)`, so making one requires the game's view.
-- **14 `shared…()` singletons**: `GameController`, `OOMusicController`, `OOOpenALController`,
+- **15 `shared…()` singletons**: `GameController`, `OOMusicController`, `OOOpenALController`,
   `OOSoundMixer`, `OOJoystickManager`, `OOAsyncWorkManager`, `OOGraphicsResetManager`,
-  `OOOpenGLExtensionManager`, `OOOXZManager`, `OOShipRegistry`, `OONullTexture`,
-  `OOJavaScriptEngine`, `OODebugMonitor` and `PlayerEntity`.
+  `OOOpenGLExtensionManager`, `OOOXZManager`, `OOShipRegistry`, `OOCacheManager`, `OONullTexture`,
+  `OOJavaScriptEngine`, `OODebugMonitor` and `PlayerEntity`. (`OOCacheManager` was missed on
+  2026-11-02; recounted 2026-11-12 on spec 009's branch: 3,632 `UNIVERSE` and 687 `PLAYER` uses.)
+- **Tests that use the globals.** 81 unit tests assign `gSharedUniverse`/`gOOPlayer` themselves,
+  and 64 call a `shared…()` accessor (2026-11-12).
 - **About 500 file-scope mutable variables** (`s…` names). Among them is `GameController.cpp`'s
   controller pointer, game-tick schedule, deferred-call queue, message stack and last
   deferred-call exception. The largest clusters are in `OOJSEngineTimeManagement`,
@@ -275,8 +278,10 @@ within Stories 3 and 4. What is left is mostly presentation-side and does not bl
 - **FR-013**: The work MUST be split into stages. Each stage builds, passes every suite, and
   changes no game behaviour, so that it can be merged and proposed upstream on its own. Entries
   the headless game needs are converted before those it does not.
-- **FR-014**: The services MUST keep the project's ownership conventions (`oo::Ref<T>` /
-  `oo::WeakRef<T>`). The feature MUST NOT introduce a third-party dependency-injection library.
+- **FR-014**: The services MUST keep the project's ownership conventions, which after spec 009
+  are `std::shared_ptr`/`std::weak_ptr`/`std::unique_ptr`, with shared game objects made by
+  `oo::makeShared` (amended 2026-11-12; it named `oo::Ref<T>`/`oo::WeakRef<T>`, which spec 009
+  removes). The feature MUST NOT introduce a third-party dependency-injection library.
 - **FR-015**: Vendored C code MUST NOT be changed by this feature (hard rule 7). Its globals are
   listed in the inventory as *kept* and are not converted.
 - **FR-016**: The game's behaviour, saved games, expansion (OXP/OXZ) scripting API and debug
@@ -357,9 +362,16 @@ of them.
 - **Relation to the migration phases.** This is separate work that follows the C++ migration. It
   is not part of Phase 4p or Phase 6, and it is not part of the faithful port's upstream PR series
   (`series/*`, `seriesb/*`). 4p keeps structural changes out of that series so reviewers can
-  compare it line for line. This feature branches from `develop` on its own epic branch, and its
-  decisions live in this spec and its plan, not in a phase doc. It may run alongside Phase 5. It
-  is proposed upstream as its own series after the faithful port. (Decided by Jon, 2026-11-02.)
+  compare it line for line. Its decisions live in this spec and its plan, not in a phase doc. It
+  may run alongside Phase 5. It is proposed upstream as its own series after the faithful port.
+  (Decided by Jon, 2026-11-02.)
+- **Base.** The feature is built on spec 009's implementation (modern C++ on the standard
+  library), not on `develop` as first written: it starts from 009's branch once 009 is done, or
+  from `develop` if 009 has been merged by then (Jon, 2026-11-12).
+- **Existing tests and FR-009.** Deleting the universe and player globals and the macros means
+  editing the 81 tests that use them, which hard rule 1 does not allow without Jon's sign-off.
+  The plan keeps them working through the migration and asks for that sign-off before the last
+  stage; if it is declined, FR-009's deletion and SC-006 stay open (plan research R15).
 - **Threading.** Thread confinement stays as it is today. The feature does not make any service
   thread-safe that is not already. Headless scenes may run tests in parallel only as separate
   processes until Story 4 is done.

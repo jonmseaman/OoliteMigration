@@ -1,7 +1,9 @@
 # Contract: `tests/global_state_check.py`, the inventory and the ratchet
 
-A stdlib-only Python 3 script, committed `100755` with a `#!/usr/bin/env python3` shebang. It is
-modelled on `tests/idiom_check.py` (research R9, R10).
+A stdlib-only Python 3 script, committed `100755` with a `#!/usr/bin/env python3` shebang
+(research R9, R10). It imports `strip_comments_and_literals` from
+`tests/check_debug_monitor_guards.py`, the remaining Python check, and keeps that script's exit
+codes (0 clean, 1 findings), adding 2 for a usage error.
 
 ## Command line
 
@@ -14,8 +16,8 @@ global_state_check.py --build-dir DIR [--inventory FILE] [--ratchet FILE]
 |---|---|
 | `--check inventory` | Lists the mutable globals in the objects under `DIR` and compares them with the inventory. |
 | `--check ratchet` | Counts the tracked tokens in comment-stripped source under `src/` and compares them with the ratchet. |
-| `--check all` | Both. This is the default. |
-| `--list` | Prints every mutable global found as an inventory row with `status=todo`. It is used once, to seed the inventory. |
+| `--check all` | Both. The default. |
+| `--list` | Prints every mutable global found as an inventory row with `status=todo`. Used once, to seed the inventory. |
 | `--count` | Prints the current token counts in ratchet JSON shape. |
 | `--self-test` | Runs built-in fixtures: sample `nm` output, sample source. |
 
@@ -30,18 +32,21 @@ global_state_check.py --build-dir DIR [--inventory FILE] [--ratchet FILE]
   in `DIR`.
 - **Tool:** `llvm-nm --defined-only --demangle` with Clang, `nm -C --defined-only` with GCC.
 - **Mutable:** symbol types `b B d D`, plus `s S` on Mach-O when the section is a data section.
-- **Excluded:** symbols starting `_ZGV` (guard variables), `vtable for`, `typeinfo`,
+  Spec 009's never-deleted singletons (`static auto& s = *new T()`) appear as the reference's
+  storage and are inventoried like any other static.
+- **Excluded:** guard variables (`_ZGV`, "guard variable for"), `vtable for`, `typeinfo`,
   `__emutls_`, and `.refptr.`/`__imp_` stubs.
-- **Vendored code:** symbols from `src/Core/MiniZip/` and `src/SDL/stb_image_write.h` are
-  included, and must be rows with `status=kept`.
+- **Vendored code:** symbols from `src/Core/MiniZip/`, `src/SDL/EXRSnapshotSupport/` and the
+  `stb_*` headers are included, and must be rows with `status=kept`.
 
 ## Inventory: `tests/global-state/inventory.tsv`
 
-The file has a header row, tab-separated values, and rows sorted by `object` then `symbol`:
+Header row, tab-separated values, rows sorted by `object` then `symbol`:
 
 ```text
 symbol	object	category	owner	headless	status	reason
-(anonymous namespace)::sDeferredCalls	Core/GameController.cpp	session	OOGame	yes	todo
+(anonymous namespace)::sDeferredCalls	Core/GameController.cpp	session	OODeferredCalls	yes	todo
+gSharedUniverse	Core/Universe.cpp	session	bridge	yes	todo	register until M6b
 sRANROT	Core/legacy_random.cpp	session	OORandomState	yes	todo
 ```
 
@@ -53,27 +58,28 @@ sRANROT	Core/legacy_random.cpp	session	OORandomState	yes	todo
 - a field holds a value outside the allowed set in [data-model.md](../data-model.md);
 - the rows are not sorted.
 
-A static symbol's name is not unique across objects, so `(object, symbol)` is the key.
+`(object, symbol)` is the key, because a static's name is not unique across objects.
 
 ## Ratchet: `tests/global-state/ratchet.json`
 
 ```json
 {
-  "tokens": ["UNIVERSE", "PLAYER", "OOGameContext::current", "sharedController",
-             "sharedRegistry", "sharedEngine", "sharedMixer", "..."],
+  "tokens": ["UNIVERSE", "PLAYER", "gSharedUniverse", "gOOPlayer", "OOGameContext::current",
+             "OOGameContext::process", "sharedController", "sharedRegistry", "sharedEngine",
+             "sharedCache", "sharedMixer", "..."],
   "ceilings": {
-    "UNIVERSE": {"total": 3600, "Core/Entities": 2600, "Core/Scripting": 400, "...": 0}
+    "UNIVERSE": {"total": 3632, "Core/Entities": 2600, "Core/Scripting": 400, "...": 0}
   }
 }
 ```
 
-Counts are whole-word matches in comment- and literal-stripped source, using `idiom_check.py`'s
-stripper.
+Counts are whole-word matches in comment- and literal-stripped source **under `src/` only**.
+Tests may keep using the bridge until M6b (research R10, R15).
 
 **Findings when:**
 - a count is above its ceiling;
-- a count is below its ceiling. The ceiling must be lowered in the same commit, so that progress
-  is recorded.
+- a count is below its ceiling: the ceiling must be lowered in the same commit, so progress is
+  recorded.
 
 ## meson
 
@@ -82,5 +88,5 @@ test('global-state', python3, args: [files('tests/global_state_check.py'), '--bu
      meson.project_build_root()], suite: 'core', depends: oolite_bin, timeout: 120)
 ```
 
-It is registered beside the `headers` suite. For now it sits inside the Windows guard, like the
-other unit suites; it moves out when Phase 5 lifts the guard.
+Registered beside the `headers` suite, inside the Windows guard like the other unit suites; it
+moves out when Phase 5 lifts the guard.
