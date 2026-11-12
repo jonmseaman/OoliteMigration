@@ -164,13 +164,19 @@ FR-021). **No story task starts until this phase is done.**
   line `events: no Windows machine` to `baselines.md`. Copy the counts into data-model.md's *now*
   column.
   **Accept:** `grep -c '^| ' specs/009-modern-cpp-std/baselines.md` prints at least 15 and `{ test -s .agent-tmp/events/base.log || grep -q '^events: no Windows machine' specs/009-modern-cpp-std/baselines.md; }`
-- [ ] T010 [P] Add `oolite-dev/tests/unit/core/test_SaveEnumValues.cpp` (registered in
+- [X] T010 [P] Add `oolite-dev/tests/unit/core/test_SaveEnumValues.cpp` (registered in
   `tests/unit/core/meson.build`, copying `test_PlayerEntity.cpp`'s set-up): save a player and
   assert today's numbers for `chart_ana_mode`, `chart_colour_mode`, `speech_on`, the legacy
   `energy_unit`, a ship's behaviour, and that loading each back gives the same enum value; pin the
   ordinals of `OOLongRangeChartMode` (research R8: `OOLRC_MODE_UNKNOWN` is 0,
   `OOLRC_MODE_TECHLEVEL` is 4).
   **Accept:** CI `unit-tests-windows` runs `test_SaveEnumValues` and it passes (it does not exist before)
+  Added in `f72909226` (4 tests, 50 checks), passing on macOS; CI has not run it yet. Two
+  decisions, the conservative reading (rule 8): the whole load (`setCommanderDataFromDictionary`)
+  needs the game's data and add-ons (`UNIVERSE->setUseAddOns`, the ship registry), so the saved
+  numbers are read back with the loader's own conversion rather than through it; and a ship's
+  behaviour is not in a saved game, so its numbers are pinned where they leave the program, the
+  by-name `behaviour` call. A full save-and-load belongs to the component suite.
 - [X] T011 [P] Add `oolite-dev/tests/unit/core/test_EnumNameFallbacks.cpp`: for every enum with a
   string reverse lookup in `src/Core/OOConstToString.cpp` and `src/Core/Scripting/OOConstToJSString.cpp`,
   assert the default returned for an unknown name and for each known name its value, and for each
