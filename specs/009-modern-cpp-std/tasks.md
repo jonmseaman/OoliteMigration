@@ -330,7 +330,7 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   `src/Core/OOAsyncWorkManager.cpp:34`; keep `src/oofnd/StdLib.hpp` itself until Jon rules on the
   `test_stdlib` ledger row.
   **Accept:** `cd oolite-dev && ! rg -n 'oofnd/StdLib\.hpp' src --glob '!src/oofnd/StdLib.hpp' --glob '!*.md'`
-- [ ] T032 [P] [US4] Derive `oo::Exception` from `std::exception` in `src/oofnd/Exception.hpp`
+- [X] T032 [P] [US4] Derive `oo::Exception` from `std::exception` in `src/oofnd/Exception.hpp`
   (`what()` returns today's message); add `tests/unit/oofnd/test_exception_std.cpp` (registered)
   that catches a raised `oo::Exception` as `std::exception` and checks the message text.
   **Accept:** CI runs `test_exception_std` and it passes (it does not compile before)
