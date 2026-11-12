@@ -645,7 +645,7 @@ edits.**
   `willDispose()` and record it in research.md R5.
   Write the script-event answer in R5 as a line starting `D2 answer:`.
   **Accept:** `test "$(awk '/^## Disposal reader/{f=1} f' specs/009-modern-cpp-std/data-model.md | grep -c '^| \`')" -ge 2 && grep -q '^D2 answer:' specs/009-modern-cpp-std/research.md`
-- [ ] T085 [US2] Add `tests/unit/core/test_EntityDisposalReaders.cpp` (registered): one test per
+- [X] T085 [US2] Add `tests/unit/core/test_EntityDisposalReaders.cpp` (registered): one test per
   T084 reader pinning its effect (beacon list after a beacon ship is removed, dock and station
   teardown), passing on the base.
   **Accept:** CI runs `test_EntityDisposalReaders` and it passes on today's ownership code
