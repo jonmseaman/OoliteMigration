@@ -84,6 +84,14 @@ check: deleting their headers makes any reintroduction a compile error.
   not. The CI step pins nothing; a new finding from a version change is fixed or recorded, never
   suppressed.
 
+- **Found while implementing T006 (2026-11-11).** clang-tidy 22 reports 27 distinct
+  `bugprone-exception-escape` findings on this tree, the same under C++20 and C++23 (most reach
+  libc++'s `bad_array_new_length`), although `.clang-tidy`'s comment says `WarningsAsErrors` held
+  only checks with no findings. Following that file's own convention, the check joined the `-name`
+  list (still enabled, still printing every finding). Homebrew's clang-tidy also needs the macOS
+  SDK as `-isysroot`, and the vendored directories must be left out of `run-clang-tidy`'s file
+  pattern, because their `.clang-tidy` enables no check and clang-tidy then exits nonzero.
+
 **Alternatives:** a Python source scanner in `tests/` (Jon deleted `tests/idiom_check.py` on
 2026-11-10, `8ec7631d3`, as a retired migration-era check; a new one would repeat it). A meson
 test wrapping clang-tidy (it would need a compile database inside the build; `mk.sh` already writes

@@ -100,7 +100,10 @@ tidy() {  # tidy <check>: prints file:line:message for one clang-tidy check over
   fi
   [ -f compile_commands.json ] || die "no compile_commands.json: run ./mk.sh build test first"
   local root; root=$(pwd)
-  "$rct" -p . -quiet -checks="-*,$check" 'src/(Core|SDL|oofnd)/.*\.cpp' 2>/dev/null \
+  local extra=()
+  if [ "$(uname -s)" = Darwin ]; then extra=("-extra-arg=-isysroot$(xcrun --show-sdk-path)"); fi
+  "$rct" -p . -quiet -checks="-*,$check" ${extra[@]+"${extra[@]}"} \
+    '^(?!.*/(MiniZip|EXRSnapshotSupport)/).*/src/(Core|SDL|oofnd)/.*\.cpp$' 2>/dev/null \
     | sed -n -E "s#^${root}/([^:]+):([0-9]+):[0-9]+: (warning|error): (.*) \[${check}[^]]*\]\$#\1:\2:\4#p" \
     | grep -E "$prefix_re" | grep -v -E '/(MiniZip|EXRSnapshotSupport)/|stb_' | sort -u
 }

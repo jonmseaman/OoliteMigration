@@ -124,26 +124,26 @@ test-ledger rows; if he signs before Phase 3 ends, Phase 9 may run directly afte
 **Purpose**: C++23, the guards, baselines and the tests of preserved behaviour (FR-012, FR-016,
 FR-021). **No story task starts until this phase is done.**
 
-- [ ] T004 Switch the standard to C++23: `cpp_std=c++23` in `oolite-dev/src/meson.build:25` (and
+- [X] T004 Switch the standard to C++23: `cpp_std=c++23` in `oolite-dev/src/meson.build:25` (and
   its comment at `:21`), `oolite-dev/src/oofnd/meson.build:18` (comment at `:3`) and
   `oolite-dev/tools/icosmesh/meson.build:9`; no source change (research R1).
   **Accept:** `cd oolite-dev && ./mk.sh build test && grep -q -- '-std=c++23' compile_commands.json && ! grep -q -- '-std=c++20' compile_commands.json`
-- [ ] T005 [P] Rewrite the "C++20 only", "compiles with `-fno-exceptions`" and "Header-only,
+- [X] T005 [P] Rewrite the "C++20 only", "compiles with `-fno-exceptions`" and "Header-only,
   C++20" claims in `oolite-dev/src/oofnd/README.md:3,8,50` and the `oofnd` header banners to say
   C++23 and that the game uses exceptions (research R1, R7); leave `tests/` alone.
   **Accept:** `cd oolite-dev && ! rg -n -i 'C\+\+20 only|Header-only, C\+\+20|compiles? with -fno-exceptions' src`
-- [ ] T006 [P] Add a `tidy` command to `oolite-dev/mk.sh` (`execute_target`), per
+- [X] T006 [P] Add a `tidy` command to `oolite-dev/mk.sh` (`execute_target`), per
   [contracts/guards.md](contracts/guards.md) *`./mk.sh tidy`*: clang-tidy 22
   (`/opt/homebrew/opt/llvm@22/bin` on macOS, `PATH` elsewhere), `run-clang-tidy -p . -quiet
   'src/(Core|SDL|oofnd)/.*\.cpp'`, building first if `compile_commands.json` is missing, exiting
   nonzero when a `WarningsAsErrors` check reports.
   **Accept:** `cd oolite-dev && ./mk.sh tidy`
-- [ ] T007 Add `cppcoreguidelines-no-malloc`, `cppcoreguidelines-use-enum-class`,
+- [X] T007 Add `cppcoreguidelines-no-malloc`, `cppcoreguidelines-use-enum-class`,
   `readability-identifier-naming` and `google-readability-casting` to `Checks` in
   `oolite-dev/.clang-tidy`, with the `CheckOptions` of contracts/guards.md, none in
   `WarningsAsErrors` yet.
   **Accept:** `cd oolite-dev && /opt/homebrew/opt/llvm@22/bin/clang-tidy --dump-config src/Core/OOColor.cpp | grep -q 'google-readability-casting' && ./mk.sh tidy`
-- [ ] T008 Add a step running `./mk.sh tidy` after the Arch build in
+- [X] T008 Add a step running `./mk.sh tidy` after the Arch build in
   `oolite-dev/.github/workflows/build-all.yaml` (contracts/guards.md *CI step*). Arch's `clang`
   package provides `clang-tidy` and `run-clang-tidy`; the step first prints `clang-tidy --version`
   so a finding that appears only in CI can be traced to a version difference, which is then fixed
