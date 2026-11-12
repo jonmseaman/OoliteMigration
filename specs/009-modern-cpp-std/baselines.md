@@ -150,6 +150,8 @@ the same way at the C++20 base, so none is a spec 009 regression; they are repor
 | `tests/unit/core/test_ShipEntity.cpp` | aborts in `setUpShipFromDictionaryNPC`: `createMainThreadContext` asserts that the main-thread JS context already exists | not investigated |
 | `tests/unit/core/test_ShipEntityAI.cpp` | aborts in `slice1AcceptDistressMessage`, the same assertion | not investigated |
 | `tests/unit/core/test_OOSunEntity.cpp` | segmentation fault, no case named | not investigated |
+| `tests/unit/core/test_ProxyPlayerEntity.cpp` | aborts in `initDefaults` | not investigated |
+| `tests/unit/core/test_StationEntity.cpp` | aborts in `initAndSetUpFromDictionary` | not investigated |
 
 Tests that include `process.h` or `winsock2.h` (`test_OOMesh`, `test_OOSoundMixer`,
 `test_HeadUpDisplay`, `test_OODebugTCPConsoleClient` and others) do not build on macOS at all.

@@ -454,7 +454,7 @@ production enum changes in the same commit as it.
   (ledger, *borderline*). Once Jon signs those rows, cherry-pick it onto 027 and mark this task.
   The enum is in `OOTextureFlags.h`, not `OOTexture.h` (the accept's second half was changed to
   match): the loaders do not include `OOTexture.h`, so tests can stand in for `OOTexture`.
-- [ ] T057 [US5] P6: number-visible enums (`OOAlertCondition` in `src/Core/Entities/ShipEntity.h:191-198`;
+- [X] T057 [US5] P6: number-visible enums (`OOAlertCondition` in `src/Core/Entities/ShipEntity.h:191-198`;
   `OOSpeechSettings`, `OOFuelScoopStatus`, `OOMissileStatus`, `OOPlayerFleeingStatus`,
   `OOMarketFilterMode`, `OOMarketSorterMode` in `src/Core/Entities/PlayerEntity.h:86-262`;
   `OOStationAlertLevel` in `src/Core/Entities/StationEntity.h:39-43`) → `enum class … :
