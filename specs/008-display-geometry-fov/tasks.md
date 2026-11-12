@@ -101,7 +101,7 @@ nothing visible changed. ⚠️ No story starts until this phase is done.
   must reproduce the frustum at `src/Core/Universe.cpp:5329-5340` exactly (both the 4:3-or-wider and
   the narrower branch, `distanceFactor` excluded). **Accept:**
   `meson test -C build test_OODisplayGeometry`
-- [ ] T007 Add the four `MyOpenGLView` members quoted in
+- [X] T007 Add the four `MyOpenGLView` members quoted in
   `specs/008-display-geometry-fov/contracts/hud-area.md` to `src/SDL/MyOpenGLView.h/.cpp`, for now
   with `hudArea()` = the whole window and `getWindowDisplay_z()` = `display_z`. The geometry is
   built with `legacy(fov(false), w, h)` in `updateGLSize` and in `setFov`, and `setFov` rebuilds and
@@ -114,12 +114,12 @@ nothing visible changed. ⚠️ No story starts until this phase is done.
   extents from `gameView->displayGeometry().flatFrustum()` scaled by the near plane, and compute
   `distanceFactor` from those extents; keep the GUI branch (`displayGUI`, ratio 0.5) as it is.
   **Accept:** C5 still passes (`tests/run.sh component -k screen`) and `tests/run.sh smoke`
-- [ ] T009 Add scenario C3 to `tests/component/features/s9_screen_matching.feature` using the
+- [X] T009 **Moved to T021a** (see the note after this phase). Add scenario C3 to `tests/component/features/s9_screen_matching.feature` using the
   debug read's `reticle`, `reticleOld` and `crosshair` (add `reticle` = the new mapping's position,
   computed but not yet drawn): with matching off, a target at the centre and near each edge gives
   equal `reticle` and `reticleOld`; the crosshair is at the window centre. **Accept:**
   `tests/run.sh component -k screen` fails until T010
-- [ ] T010 In `src/Core/HeadUpDisplay.cpp`, draw object-tied markers from the mapping (research
+- [X] T010 **Moved to T021a** (see the note after this phase). In `src/Core/HeadUpDisplay.cpp`, draw object-tied markers from the mapping (research
   R13): `hudDrawReticleOnTarget` and `hudDrawWaypoint` (`:4104-4126` and their callers) map the
   object's eye-relative direction with `sceneToWindow` and draw at that window position with a
   full-window viewport; the reticle size (`:3818-3822`) uses `localPixelsPerRadian`; the scanner
@@ -128,6 +128,17 @@ nothing visible changed. ⚠️ No story starts until this phase is done.
   `tests/run.sh component -k screen` (C3, C5) and `tests/run.sh smoke`
 
 **Checkpoint**: the geometry is the single source of the projection; nothing visible changed.
+
+**Change while implementing (2026-11-12).** The HUD draws its object markers through the scene's
+own field of view (`hudRotateViewpointForVirtualDepth` scales by `fov(true)`). With no warp — every
+flat-screen setting, and every setting with shaders off — the projection is an ordinary
+perspective, so making the view's stored field of view follow the geometry's horizontal angle
+(`MyOpenGLView::_fov = tan(h)` while screen matching is on) keeps the existing frustum code, the
+HUD markers and `fovValue` right with no new marker code. So: T008 uses `flatFrustum()` only when
+screen matching is on and keeps today's expressions when it is off (exact by construction, C5);
+T009–T010's marker-by-mapping path is needed only when `needsWarp()`, cannot be checked before
+the warp exists, and moves to US2 as T021a. Known gap: a window narrower than 4:3 with screen
+matching on keeps the HUD's 4:3 rule while the frustum follows the panel; recorded, not fixed.
 
 ---
 
@@ -225,6 +236,15 @@ passes.
   (`:11659`) read `warped` instead of `targetTextureID`. Log `universe.profile.warp` once per
   frame when the pass runs. **Accept:** `tests/run.sh smoke` with the G9 preferences set has the
   `universe.profile.warp` line, and with matching off has none and C5 passes
+- [ ] T021a [US2] Object markers through the mapping when `needsWarp()` (research R13; moved from
+  T009–T010): `hudDrawReticleOnTarget` and `hudDrawWaypoint` in `src/Core/HeadUpDisplay.cpp` map
+  the target's eye-relative direction with `sceneToWindow`, place the marker at that window point
+  in the HUD's virtual units (a full-window viewport, so a marker outside the HUD area stays on
+  its target), and size the reticle with `localPixelsPerRadian`; the scanner wedge uses
+  `horizontalDeg()`/`verticalDeg()`. With no warp the existing path stays. Add C3 to
+  `s9_screen_matching.feature` with the debug read's `reticle` field: with the G9 settings, a
+  target placed near the right edge has its reticle within 2 px of `sceneToWindow` of its
+  direction, and the crosshair at the window centre. **Accept:** `tests/run.sh component -k screen`
 - [ ] T022 [US2] Fall back without shaders (FR-017): `shadersAvailable=false` gives classic flat,
   and the sub-screen shows "Curved drawing needs shaders" when shaders are off and a curved or
   Panini/even setting is chosen; the geometry is rebuilt when the detail level changes. **Accept:**
