@@ -462,7 +462,7 @@ production enum changes in the same commit as it.
   std::int32_t` with a `static_assert` per value used by shaders (`EntityShaderBindings.cpp:611-661`),
   saves, JS and description keys.
   **Accept:** `cd oolite-dev && ! rg -n -P '\}\s*(OOAlertCondition|OOSpeechSettings|OOFuelScoopStatus|OOMissileStatus|OOPlayerFleeingStatus|OOMarketFilterMode|OOMarketSorterMode|OOStationAlertLevel)\s*;' src`
-- [ ] T058 [US5] P7, step 1: replace every `CASE(#foo)`/`REVERSE_CASE` use in
+- [X] T058 [US5] P7, step 1: replace every `CASE(#foo)`/`REVERSE_CASE` use in
   `src/Core/OOConstToString.cpp:33-37` and the hand switch in `src/Core/Entities/WormholeEntity.cpp:854-866`
   with explicit `OOEnumName` switches spelling today's strings, before any rename; `test_EnumNameFallbacks` passes.
   **Accept:** `cd oolite-dev && ! rg -n -P '\bCASE\s*\(|REVERSE_CASE' src/Core/OOConstToString.cpp`
