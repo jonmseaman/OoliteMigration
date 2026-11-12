@@ -176,7 +176,7 @@ FR-021). **No story task starts until this phase is done.**
   assert the default returned for an unknown name and for each known name its value, and for each
   value its exact string.
   **Accept:** CI `unit-tests-windows` runs `test_EnumNameFallbacks` and it passes
-- [ ] T012 [P] Add `oolite-dev/tests/unit/core/test_FormatEquivalence.cpp` (registered): a table of
+- [X] T012 [P] Add `oolite-dev/tests/unit/core/test_FormatEquivalence.cpp` (registered): a table of
   rows `{printf format, std::format format, arguments}`, each asserting
   `oo::str::format(printf, args...) == std::format(std, args...)`. Seed it with one row per
   specifier mapping research R7 gives (`%g`→`{:g}`, `%u` of an unsigned→`{}`, `%60s`→`{:>60}`,
@@ -358,7 +358,7 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   (`meson configure` of a scratch build directory, not committed) and write the per-area findings
   and every `oo::str::format` literal containing `{` or `}` to `specs/009-modern-cpp-std/format-survey.md`.
   **Accept:** `test -s specs/009-modern-cpp-std/format-survey.md && grep -c '^## ' specs/009-modern-cpp-std/format-survey.md` prints 6
-- [ ] T037 [US4] Literal `oo::str::format` calls → `std::format` in area `entities`, by hand per
+- [X] T037 [US4] Literal `oo::str::format` calls → `std::format` in area `entities`, by hand per
   research R7 (`%g` → `{:g}`, `%u` of a signed value keeps its unsigned conversion, `%60s` →
   `{:>60}`, `%c` of an `int` → `{:c}` of a `char`, `%.4X` → `{:04X}`, braces escaped); `DESC`
   formats and `vformat` stay printf.
