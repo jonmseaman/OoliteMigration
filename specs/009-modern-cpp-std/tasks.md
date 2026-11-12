@@ -277,7 +277,7 @@ baselines and the FR-016 tests exist and pass on the base.
 **Independent test**: `$C thread` exits 0; quit with a background task within the baseline; TSan
 smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
 
-- [ ] T026 [US3] (design D4) In `src/Core/OOAsyncWorkManager.cpp`/`.h`: workers as
+- [X] T026 [US3] (design D4) In `src/Core/OOAsyncWorkManager.cpp`/`.h`: workers as
   `std::vector<std::jthread>` in the internal object, waiting on
   `std::condition_variable_any::wait(lock, stopToken, pred)`; `void shutdown() noexcept` exactly as
   the contract declares; the singleton as a never-deleted function-local static
@@ -289,11 +289,11 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   `src/Core/GameController.cpp:706`; add `tests/unit/core/test_OOAsyncWorkManagerShutdown.cpp`
   (queue a long task, call `shutdown()`, assert it returns once the task ends and that queued tasks
   do not run), registered as **its own** meson test executable so that shutting down the
-  process-wide manager cannot affect other tests. Add `tests/unit/oofnd/test_http_cancel.cpp`
-  (registered): an `oo::http::Download` from a local server thread inside the test that sends a
-  body slowly is destroyed mid-transfer, and the destructor returns within 2 s (quit during an
-  expansion download, US3 AS-2; `oo::http` is unchanged, so this test passes on the base too).
-  **Accept:** `cd oolite-dev && rg -q 'shutdown\(\)' src/Core/GameController.cpp`, and CI runs both new tests and they pass
+  process-wide manager cannot affect other tests. Quitting during an expansion download (US3 AS-2)
+  is already pinned by `tests/unit/oofnd/test_http.cpp`'s `cancel_interrupts_a_stalled_body` (a
+  download stalled mid-body is cancelled and its destructor joins the worker within 10 s), and
+  `oo::http` does not change in this story, so no new HTTP test is added (decided 2026-11-12).
+  **Accept:** `cd oolite-dev && rg -q 'shutdown\(\)' src/Core/GameController.cpp`, and CI runs the new test and it passes
 - [ ] T028 [US3] Add `inline const std::thread::id kMainThreadId` to `src/oofnd/Thread.hpp` per the
   contract; replace `isMainThread()` at `src/Core/OORegExpMatcher.cpp:43,90`,
   `src/Core/GameController.cpp:143`, `src/Core/OOAsyncWorkManager.cpp:304` with
