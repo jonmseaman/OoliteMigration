@@ -89,11 +89,28 @@ conversions or go back to pristine C (hard rule 7), and whether to take WrapDB p
 (`miniz` 3.1.2 is there; MiniZip only as `minizip-ng`, a different API; `stb` and `tinyexr`
 are not).
 
-**Follow-up (its own spec)**: "Mark third-party code". The default to take there is to move each
-copy into `subprojects/<name>/` as a tracked local subproject with its own `meson.build`, its
-licence file, and a `README` naming its origin, version and local changes. That makes one
-directory hold everything not ours (meson's convention, so `force_fallback_for` and
-`meson subprojects` keep working). Alternatives to weigh there: rename the directory to
+**Follow-up (its own spec)**: "Mark third-party code". The default to take there is a **wrap per
+library**, as QuickJS-ng has. A wrap needs no WrapDB entry: it can name any tarball by hash, or a
+git commit, with a small `meson.build` overlay from `packagefiles/` (`patch_directory`) for a
+library that ships none.
+
+| Library | Wrap source | Overlay | To check |
+|---|---|---|---|
+| miniz | WrapDB `miniz` 3.1.2 | none | that tinyexr builds against miniz 3.x (it bundles its own miniz) |
+| MiniZip | zlib's release tarball, which still carries `contrib/minizip` | builds `ioapi.c`, `unzip.c` | our copy is MiniZip 1.1 (2010); zlib's current one keeps the `unz*` API. Distributions and Homebrew package it, so a system dependency with the wrap as fallback also works |
+| tinyexr | GitHub release tarball | include directory only (header-only; our source defines `TINYEXR_IMPLEMENTATION`) | |
+| stb_image_write | GitHub archive of a pinned stb commit (stb has no releases) | include directory only | |
+
+With wraps, `src/` holds no external code and each library is one `.wrap` (plus readable patches)
+in `subprojects/`. Costs to settle in that spec: the fork's edits to the copies (`.c`→`.cpp`,
+formatting, `nullptr`) are dropped by going back to pristine C, which hard rule 7 permits for a
+task about that code, and any real bug fix among them (e.g. "Fix MiniZip comma misuse") returns
+as a patch; pristine sources may warn under `-Wall`, and lowering an overlay's `warning_level`
+would come close to hard rule 2, so a warning is fixed by a patch or reported; upstream builds
+these from `src/`, so it is a divergence; licence files still ship in the installer, because the
+code is still in the binary. Where a library cannot come in by wrap, the fallback is a tracked
+local subproject, `subprojects/<name>/`, with its own `meson.build`, licence file and a `README`
+naming its origin, version and local changes. Other alternatives to weigh there: rename the directory to
 `third_party/` with `project(..., subproject_dir: 'third_party')`, which keeps meson's mechanism
 under the name most C++ codebases use (Chromium, TensorFlow, gRPC) and costs nothing against
 upstream, which has neither directory; or a separate top-level `vendor/` or `third_party/`

@@ -141,8 +141,9 @@ M3 and M5 also wait on the US3 gate (Constitution Check, gate 1).
 
 - **No `vendor/` directory in this feature** (R2). `subprojects/` is the externally owned
   directory; QuickJS-ng is not vendored (only its wrap and patches are in git). The `src/`
-  copies are left for a separate spec whose default is to move each one into a tracked local
-  `subprojects/<name>/` with its licence and a README of its origin and local changes.
+  copies are left for a separate spec whose default is a wrap per library (WrapDB `miniz`;
+  custom wraps for MiniZip from zlib's tarball, tinyexr and stb), with a tracked local
+  `subprojects/<name>/` as the fallback for any that cannot come in that way.
 - **Pin 1.17.0-4, not 1.18.0-1** (R1): the newer has only its first wrap revision and adds
   nothing this feature needs.
 - **US3 waits for a hard-rule-1 exception** signed by Jon in `CLAUDE.md` (R11). Until then, M0–M2
