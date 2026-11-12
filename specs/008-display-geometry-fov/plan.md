@@ -74,6 +74,11 @@ rules and `docs/workflow.md`'s definition of done, as in specs 003 and 009.
 **Re-check after Phase 1:** pass. Two additions need a line in *Complexity Tracking*: the extra
 render pass and buffer, and a platform function per OS.
 
+**Re-check after `/speckit-analyze` (2026-11-12):** "unchanged when off" is proved by the
+projection pin C5 recorded before any change (research R8a), because the smoke run does not
+compare pictures; C5 holds only values no task may change, so hard rule 1 is not at risk. Sun
+glare keeps the window-based `display_z` (R12). The per-frame `setFov` push is handled (R14).
+
 ## Project Structure
 
 ### Documentation (this feature)

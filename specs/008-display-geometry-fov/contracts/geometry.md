@@ -90,6 +90,28 @@ class OODisplayGeometry {
   // The script value (FR-013): horizontal degrees in use.
   double scriptFovValue() const;
 };
+
+struct OOPixelRect {  // window pixels, origin top-left
+  int x, y, width, height;
+};
+
+// The HUD area (contracts/hud-area.md): the window if w / h <= 16/9, else the centred
+// full-height 16:9 rectangle.
+OOPixelRect OOHudAreaForWindow(int windowWidthPx, int windowHeightPx);
+
+// Detection plausibility (research R7): diagonal 10"-120" and aspect within 5% of the pixel aspect.
+bool OOPlausibleDisplaySize(double widthMm, double heightMm, int pixelWidth, int pixelHeight);
+```
+
+Platform query, `src/Core/OODisplaySize.h` (implementations in `src/SDL/`, research R7):
+
+```cpp
+#pragma once
+#include <optional>
+#include <utility>
+
+// Physical width and height in millimetres of the SDL display, or empty if unknown.
+std::optional<std::pair<double, double>> OOQueryDisplayPhysicalSize(int sdlDisplayIndex);
 ```
 
 ## Definitions the tests pin
@@ -121,7 +143,7 @@ Registered as `'test_OODisplayGeometry': ['Core/OODisplayGeometry.cpp']` in
 | G2 | 27" 16:9 flat at 600 mm: 53.0° × 31.3° (±0.5°) | Story 1, SC-001 |
 | G3 | 49" 32:9 1800R at 800 mm: 80.0° × 23.8°; flat at 800 mm: 73.7° | Story 2, SC-001 |
 | G4 | G9 (49" 32:9 1000R) at 800 mm: 84.0° × 23.8°; at 1000 mm: 68.6° × 19.1°; uniform angular spacing within 1% at 1000 mm | Story 2, SC-001 |
-| G5 | Shape within 2% from centre to edge at the physical angle for G2–G4 setups | SC-002 |
+| G5 | Shape and size each within 2% from centre to edge at the physical angle for G2–G4 setups | SC-002, Story 2 scenario 3 |
 | G6 | G9 at 800 mm, custom 120°: Panini shape ±2%, size +25% (±3 points), vertical 36.0°, bend ≤ 2°; even spacing shape and size ±2%, vertical 34.0°; classic flat straight within 0.2°, edge ratio 1.49 ±0.03, vertical 44.1° | Story 3, SC-002 |
 | G7 | Warp mesh interpolation error below 0.1 px over a 5120×1440 window for every look at 84°, 120°, 150° | research R2, FR-006b |
 | G8 | Round trips: `windowToScene(sceneToWindow(d)) == d` within 1e-9 rad over the screen | FR-012 |
@@ -129,3 +151,7 @@ Registered as `'test_OODisplayGeometry': ['Core/OODisplayGeometry.cpp']` in
 | G10 | Flat render size: centre density ≥ window centre density; sliceCount() > 1 when one image would exceed the texture limit | FR-006c, FR-018 |
 | G11 | `needsWarp()`: false for flat + physical, flat + classic, flat + custom ≤ physical, shaders off; true for curved, or Panini/even above physical | research R4, FR-017 |
 | G12 | Straight line on the G9 at 800 mm, physical: deviation ≤ 0.2° | SC-006, FR-006b |
+| G13 | Window covering half the panel (`windowFractionX = windowFractionY = 0.5`, G9 at 800 mm): angles are those of the covered part, and G5's shape check holds inside the window | edge case "Window not full screen" |
+| G14 | Eye behind the centre of curvature (G9 at 1200 mm): angles finite and G5's shape check holds | edge case "Eye outside the curve" |
+| G15 | `windowToScene` at the window's centre is straight ahead (0, 0, 1) for every look and setup | FR-012 (crosshair) |
+| G16 | `OOHudAreaForWindow` (H1) and `OOPlausibleDisplaySize`: 27"/16:9 and 49"/32:9 accepted; 8", 130", and aspect off by more than 5% rejected | FR-016, FR-009 |

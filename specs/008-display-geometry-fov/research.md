@@ -139,6 +139,23 @@ detected size for the player to correct (the spec already says curvature is ente
 **Alternatives**: WMI `WmiMonitorBasicDisplayParams` (centimetres only, COM set-up); SDL's DPI
 (removed in SDL3).
 
+## R8a. Proving "unchanged when off" without image comparison
+
+`tests/launch_snapshot.py` captures snapshots but does not compare them with anything, and
+`tests/run.sh` has no window-size option. Pixel comparison across runs is also fragile (time,
+particles).
+
+**Decision**: pin the *projection*, not the pixels. A debug-build console read returns the frustum
+extents in use, `display_z`, the window `display_z`, the HUD area and `fovValue`. Component
+scenario C5 records today's values at three window sizes before any change (the failing-then-
+passing command is the console read itself: it fails before it exists) and every later task that
+must not change the picture is accepted by C5 still passing. A window-size option is added to the
+smoke and component runs (`--window WxH`, passed to the game as its window-size preference) for
+the wide-window checks.
+
+**Alternatives**: reference snapshots with a pixel tolerance (fragile, and a picture difference
+does not say what changed).
+
 ## R8. Testing the geometry
 
 **Decision**: every number in the spec's stories is a unit test of `OODisplayGeometry` in the
@@ -206,6 +223,13 @@ too, and the bars either side are cleared to the background colour (black). Cont
 computing those from a smaller rectangle moves everything at once; on windows 16:9 or narrower
 nothing changes (SC-003).
 
+**Exception — sun and star glare**: `OOSunEntity::drawDirectVisionSunGlare` and `drawStarGlare`
+(`src/Core/Entities/OOSunEntity.cpp`, the two `getDisplay_z()` reads) are part of the space view,
+not the HUD. If they read the HUD-area `display_z`, the glare would shrink on every window wider
+than 16:9 even with screen-matching off (FR-002). So `MyOpenGLView` keeps the window-based value as
+`getWindowDisplay_z()`, and the glare reads that. The crosshair (`OOCrosshairs.cpp:58`) is HUD and
+keeps `display_z`; the HUD area is centred, so the crosshair stays at the window's centre (FR-012).
+
 **Alternatives**: scaling HUD coordinates per call site (about 60 places); leaving GUI 3D content
 full width (the demo ship would sit in a different place from the panel it belongs to).
 
@@ -220,7 +244,24 @@ results are identical (unit test G1 covers the frustum; component test C3 compar
 window position both ways). The reticle's size uses the mapping's local scale at that position
 instead of `fov(true)`.
 
-**Rationale**: with a warp, the scene projection is no longer what the window shows, so anything
+**Rationale** (and see R14): with a warp, the scene projection is no longer what the window shows, so anything
 drawn "in the scene's projection" after the warp lands in the wrong place, worst at the edges.
 One mapping function is the only route that is right for every look.
 
+
+## R14. The player's field of view is pushed to the view every frame
+
+`PlayerEntity` copies the view's `fov(true)` into its own `fieldOfView` at set-up
+(`PlayerEntity.cpp:2319`) and pushes it back with `setFov(fieldOfView, true)` on every update
+(`:3495`). In-flight field-of-view keys change `fieldOfView` (`PlayerEntityControls.cpp:1855-1885`),
+compiled only when `OO_FOV_INFLIGHT_CONTROL_ENABLED` is set, which no build file sets.
+
+**Decision**: `setFov` rebuilds the geometry only when the value actually changes, so the
+per-frame push costs nothing and does not bump the generation (which would rebuild the warp mesh
+every frame). With screen-matching on, `setFov` from the player is ignored unless in-flight control
+is compiled in, in which case the pushed angle replaces the horizontal angle in use as an unsaved
+custom angle for the session (spec edge case "Other camera features"). The game-options path
+writes `fov-value` as today and does not touch the screen-matching angle.
+
+**Rationale**: keeps today's code path for screen-matching off, and stops the per-frame push from
+fighting the settings.

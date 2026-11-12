@@ -184,7 +184,10 @@ detected.
   shaders off the view falls back to classic flat, and the settings say so (FR-017).
 - **Other camera features**: in-flight field-of-view control, mouse-look (spec 004), snapshots and
   the sun glare / break-pattern effects must use the same field of view as the space view, so
-  nothing appears in the wrong place relative to the scene.
+  nothing appears in the wrong place relative to the scene. The hyperspace tunnel and sun glare are
+  drawn as part of the scene, before the final step. In-flight field-of-view control (a build
+  option, off by default) changes the horizontal angle in use for the session only when
+  screen-matching is on, as a custom angle that is not saved.
 - **Targeting and aim**: the crosshair, scanner target reticle and any HUD marker placed over a
   ship must sit over that ship on the drawn view, including near the edges of a curved projection.
   Anything that turns a screen position into a direction in space (mouse picking, mouse-look) must
@@ -236,11 +239,11 @@ detected.
 - **FR-007a**: Panini on a curved screen MUST be laid out along the screen's surface (so that
   objects keep their shape on the curve); on a flat screen it is laid out on the flat surface.
   Even spacing MUST give equal angles from the seat to equal angles in the scene, in both
-  directions. Classic flat MUST be a flat perspective at the custom angle, shown through the same
-  final step so a curved screen still shows straight lines straight.
+  directions. Classic flat MUST be a flat perspective at the custom angle; on a curved screen it is
+  shown through the same final step so straight lines still look straight.
 - **FR-007b**: When the custom angle is equal to or narrower than the physical one, the view MUST be
-  a flat perspective at that angle shown through the final step, and the look setting MUST have no
-  effect.
+  a flat perspective at that angle (on a curved screen, shown through the final step), and the look
+  setting MUST have no effect.
 - **FR-008**: Players MUST be able to return to the physical field of view in one action.
 - **FR-009**: The system MUST try to detect the screen's physical size and aspect from the
   operating system when no screen description is saved, and MUST say whether detection succeeded.
@@ -249,7 +252,8 @@ detected.
 - **FR-011**: Out-of-range values MUST be clamped to the limits in Edge Cases, and the clamped value
   shown.
 - **FR-012**: HUD markers tied to objects in space (crosshair alignment, target reticle, sighting
-  markers) MUST appear over the object they mark on the drawn view, and every conversion between a
+  markers) MUST appear over the object they mark on the drawn view; the crosshair MUST stay at the
+  window's centre, which every look maps to straight ahead; and every conversion between a
   screen position and a direction in space (mouse picking, mouse-look) MUST use the same mapping as
   the warp in FR-006a.
 - **FR-013**: The field of view reported to scripts MUST be the horizontal field of view actually in

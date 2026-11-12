@@ -48,8 +48,9 @@ H2 passes at 3840×1080 and H4 (the existing GUI tests) are unchanged. H3 via `t
 tests/run.sh component -k screen
 ```
 
-C1 and C3 pass: with screen-matching off, the frustum and the reticle position are what they were.
-The existing smoke snapshots compare equal (SC-003).
+C1, C3 and C5 pass: with screen-matching off, the frustum, `display_z` and the reticle position are
+what they were before the feature (C5 was recorded in Setup, research R8a). This is the proof of
+SC-003; snapshots are not compared.
 
 ## M4 — settings and preferences
 
@@ -66,8 +67,8 @@ restart.
 tests/run.sh smoke
 ```
 
-With screen-matching on and a curved screen set, the snapshot is the warped view, and the frame
-log shows the `warp` pass. Hand check on the reference machine (research R9), Odyssey G9 at 80 cm:
+With screen-matching on and a curved screen set, the log has the `universe.profile.warp` line;
+with it off the line is absent and C5 passes. Hand check on the reference machine (research R9), Odyssey G9 at 80 cm:
 
 1. Game Options → Screen Matching: On; 49", 32:9, Curved 1000R, 80 cm. The rows show 84.0° × 23.8°.
 2. Launch, turn so the station's long edge runs across the whole screen: it looks straight from the
