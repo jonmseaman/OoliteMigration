@@ -180,8 +180,8 @@ game during a download or while textures load in the background takes no longer 
 
 **Acceptance Scenarios**:
 
-1. **Given** the converted tree, **When** it is searched for `oo::thread::detach` and
-   `oo::thread::isMainThread`, **Then** nothing is found.
+1. **Given** the converted tree, **When** it is searched for `oo::thread::detach`, **Then** nothing
+   is found, and `oo::thread::isMainThread()` is a one-line helper over the standard thread id.
 2. **Given** a background task in progress (an expansion download, background texture or planet
    generation), **When** the player quits, **Then** the game exits within the time it does on the
    base, with no crash and no hang.
@@ -416,8 +416,9 @@ tier pass with the same results.
 **Threads (Story 3)**
 
 - **FR-010**: Threads MUST be the standard thread types, each owned by an object that joins or
-  stops it; the main thread MUST be identified by its standard thread identifier.
-  `oo::thread::detach` and `oo::thread::isMainThread` MUST be removed.
+  stops it; the main thread MUST be identified by its standard thread identifier, behind the
+  `oo::thread::isMainThread()` helper (Jon, 2026-11-12: a named helper reads better than the raw
+  comparison). `oo::thread::detach` MUST be removed.
 - **FR-011**: Naming a thread and setting its priority MAY remain as helpers because the standard
   library cannot do either; they MUST keep their current platform behaviour.
 
@@ -618,3 +619,7 @@ Jon can override any of them:
    put in scope on 2026-10-28 ("Don't use C strings"; C-style casts) are Stories 6 and 7 of this
    spec rather than a spec of their own, because they share the branch, the guards, the ledger and
    the files. Out-parameters, the other §2.3 item, stay out: they were not asked for here.
+11. **Thin helpers stay when they read better (Jon, 2026-11-12).** Replacing `oofnd` with the
+   standard library means standard types and facilities underneath, not deleting every one-line
+   wrapper: `oo::thread::isMainThread()` stays, over `kMainThreadId`, because it reads better at
+   the call site than the comparison it wraps. The same test applies to later helpers.

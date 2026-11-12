@@ -273,7 +273,7 @@ baselines and the FR-016 tests exist and pass on the base.
 
 ## Phase 4: User Story 3 — threads (Priority: P3, M2)
 
-**Goal**: owned standard threads; no `oo::thread::detach`/`isMainThread` (FR-010, FR-011).
+**Goal**: owned standard threads; no `oo::thread::detach`; `isMainThread()` a helper over the standard id (FR-010, FR-011).
 **Independent test**: `$C thread` exits 0; quit with a background task within the baseline; TSan
 smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
 
@@ -299,16 +299,16 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   `src/Core/GameController.cpp:143`, `src/Core/OOAsyncWorkManager.cpp:304` with
   `std::this_thread::get_id() == oo::thread::kMainThreadId`; make
   `src/Core/OOLogOutputHandler.cpp:100,107,238` use it instead of `sMainThreadID`; delete `detach`
-  and `isMainThread` from `Thread.hpp`; port their cases in `tests/unit/oofnd/test_thread.cpp`
+  from `Thread.hpp` (`isMainThread()` stays as a helper over `kMainThreadId`, Jon 2026-11-12); port their cases in `tests/unit/oofnd/test_thread.cpp`
   (ledger rows, *covered*).
   **Accept:** `cd oolite-dev && $C thread && ! rg -n 'sMainThreadID' src`
-- [ ] T029 [US3] TSan smoke run (quickstart M2) and quit-time measurement (five runs); record the
+- [X] T029 [US3] TSan smoke run (quickstart M2) and quit-time measurement (five runs); record the
   rows `| quit@M2 | median | spread | lower |` and `tsan-smoke@M2` in `baselines.md`. Check the
   worker threads' names under a debugger (`lldb`, `thread list` while the game runs) and record
   them in `baselines.md` as `thread names: <names>`; they must read `OOAsyncWorkManager thread N`
   as on the base (US3 AS-4).
   Measure the base again in the same session from a `git worktree` of `518520d43` and record it as the base rows for the comparison (baselines.md *Same-session comparison*).
-  **Accept:** `cd oolite-dev && $C bound quit@M2 && $C bound tsan-smoke@M2 && grep -q '^thread names: .*OOAsyncWorkManager thread' ../specs/009-modern-cpp-std/baselines.md`
+  **Accept:** `cd oolite-dev && $C bound quit@M2 --base quit@M2-base && $C bound tsan-smoke@M2 && grep -q '^thread names: .*OOAsyncWorkManager thread' ../specs/009-modern-cpp-std/baselines.md`
 
 **Checkpoint**: US3 complete.
 

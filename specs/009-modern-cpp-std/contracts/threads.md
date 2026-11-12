@@ -32,14 +32,17 @@ namespace oo::thread {
 // The id of the thread that ran static initialisation (the one that calls main).
 inline const std::thread::id kMainThreadId = std::this_thread::get_id();
 
+inline bool isMainThread() { return std::this_thread::get_id() == kMainThreadId; }
+
 bool setCurrentName(std::string_view utf8);   // unchanged
 bool setCurrentPriority(double p);            // unchanged
 
 }  // namespace oo::thread
 ```
 
-`detach` and `isMainThread` are gone. Callers write `std::this_thread::get_id() ==
-oo::thread::kMainThreadId`. `OOLogOutputHandler.cpp`'s own `sMainThreadID` uses `kMainThreadId`.
+`detach` is gone. `isMainThread()` stays as a one-line helper over `kMainThreadId` (Jon,
+2026-11-12: it reads better than the comparison). `OOLogOutputHandler.cpp`'s own `sMainThreadID`
+is replaced by it.
 
 ## Unchanged
 

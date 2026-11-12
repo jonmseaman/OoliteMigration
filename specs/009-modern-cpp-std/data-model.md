@@ -23,7 +23,7 @@ Searches, run from `oolite-dev` (`SRC` = `src/Core src/SDL src/oofnd`, excluding
 EXCL=(--glob '!src/Core/MiniZip/**' --glob '!src/SDL/EXRSnapshotSupport/**' --glob '!**/stb_*')
 rg -n -P '(?<![\w:.>])(::|std::)?(malloc|calloc|realloc|free)\s*\(' src "${EXCL[@]}"                  # alloc
 rg -n -P '\b(RefCounted|oo::Ref\b|oo::WeakRef|makeRef|leakRef|adopt\s*\()' src "${EXCL[@]}"          # ownership
-rg -n 'oo::thread::(detach|isMainThread)' src                                                         # thread
+rg -n 'oo::thread::detach\b' src                                                         # thread
 rg -n -P 'oo::(Expected|Unexpected)\b|\bNS(U?Integer|NotFound|TimeInterval)\b|\bCGFloat\b|oofnd/StdLib\.hpp' src \
    --glob '!src/Core/OOTypeEncodings.h' --glob '!src/Core/Entities/OOEntityObjectNamesTable.h'        # oofnd
 rg -n -P '^\s*(typedef\s+)?enum\b(?!\s+class\b)' src "${EXCL[@]}"                                     # enum

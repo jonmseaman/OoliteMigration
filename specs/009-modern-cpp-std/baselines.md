@@ -46,6 +46,9 @@ Median and spread (max − min) of five runs, except where noted. Scripts and ra
 | asan-smoke | 0 | 0 | lower |
 | tsan-smoke | 5 | 1 | lower |
 | leaks | 288 | 2 | lower |
+| tsan-smoke@M2 | 5 | 1 | lower |
+| quit@M2-base | 0.0765 | 0.0557 | lower |
+| quit@M2 | 0.0766 | 0.0556 | lower |
 
 - **start**: seconds from launching the deployment build until it answers the debug console.
 - **frame**: CPU milliseconds per frame (`ps -o cputime` over frames counted by a JS frame
@@ -115,6 +118,15 @@ gave byte-identical files (`base.json`, `base2.json`).
 
 | js-api | 58a6a19c262330e147449abcc0a05f75ae89284b5cff910e85caecbad506cdb4 |
 |---|---|
+
+## M2 (US3), 2026-11-12
+
+TSan smoke at `b446e6b9e` (T028): 5, 4, 5 warnings (the same three existing races). Quit, same
+session, five alternating rounds: C++20 base `518520d43` 0.0765 s against the branch (with the
+work manager's `shutdown()` join on the quit path) 0.0766 s; the rows above, `quit@M2-base` being
+the base re-measured in that session (`check.sh bound quit@M2 --base quit@M2-base`).
+
+thread names: OOAsyncWorkManager thread 1 … OOAsyncWorkManager thread 8, loggerThread, alsoft-mixer, CVDisplayLink, com.apple.NSEventThread (lldb `thread list` on the running test build)
 
 events: no Windows machine
 

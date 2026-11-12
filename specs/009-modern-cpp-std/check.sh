@@ -2,7 +2,7 @@
 # Spec 009 category searches (data-model.md *Converted category*). Run from oolite-dev.
 #
 #   check.sh <category> [--area <area>] [--count] [--unclassified]
-#   check.sh bound <metric>@<milestone>
+#   check.sh bound <metric>@<milestone> [--base <row>]
 #
 # Categories: alloc ownership thread oofnd enum tbl cast naming cstring cstring-types
 # Areas: entities scripting materials sdl-debug core oofnd (default: all of src)
@@ -25,11 +25,15 @@ if [ $# -lt 1 ]; then die "usage: check.sh <category> [--area A] [--count] [--un
 
 # --- bound ----------------------------------------------------------------------------------------
 if [ "$1" = "bound" ]; then
-  [ $# -eq 2 ] || die "usage: check.sh bound <metric>@<milestone>"
+  [ $# -eq 2 ] || [ $# -eq 4 ] || die "usage: check.sh bound <metric>@<milestone> [--base <row>]"
   [ -f "$BASELINES" ] || die "no $BASELINES"
   later="$2"
   base="${later%@*}"
   [ "$base" != "$later" ] || die "expected <metric>@<milestone>, got '$later'"
+  if [ $# -eq 4 ]; then
+    [ "$3" = "--base" ] || die "unknown option $3"
+    base="$4"  # a base row re-measured in the same session (baselines.md)
+  fi
   awk -F'|' -v base="$base" -v later="$later" '
     function trim(s) { gsub(/^[ \t`]+|[ \t`]+$/, "", s); return s }
     NF >= 5 {
@@ -111,7 +115,7 @@ tidy() {  # tidy <check>: prints file:line:message for one clang-tidy check over
 case "$category" in
   alloc)     hits=$(search '(?<![\w:.>])(::|std::)?(malloc|calloc|realloc|free)\s*\(') ;;
   ownership) hits=$(search '\b(RefCounted|oo::Ref\b|oo::WeakRef|makeRef|leakRef|adopt\s*\()') ;;
-  thread)    hits=$(search 'oo::thread::(detach|isMainThread)') ;;
+  thread)    hits=$(search 'oo::thread::detach\b') ;;
   oofnd)     hits=$(search 'oo::(Expected|Unexpected)\b|\bNS(U?Integer|NotFound|TimeInterval)\b|\bCGFloat\b|oofnd/StdLib\.hpp' \
                       --glob '!src/Core/OOTypeEncodings.h' --glob '!src/Core/Entities/OOEntityObjectNamesTable.h') ;;
   enum)      hits=$(search '^\s*(typedef\s+)?enum\b(?!\s+class\b)') ;;
