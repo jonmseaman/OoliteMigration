@@ -150,13 +150,13 @@ matching on and sees the physical angles; the HUD and menus sit in a centred 16:
 **Independent test**: 27" 16:9 flat at 60 cm reports 53.0° × 31.3° (G2, C2 flat); round objects
 stay round at the edge (G5); menus on a 32:9 window fit the 16:9 area (H2, H3).
 
-- [ ] T011 [P] [US1] Add G16 (`OOHudAreaForWindow` for H1's window sizes, and
+- [X] T011 [P] [US1] Add G16 (`OOHudAreaForWindow` for H1's window sizes, and
   `OOPlausibleDisplaySize`) as new `OO_TEST` cases in `tests/unit/core/test_OODisplayGeometry.cpp`.
   **Accept:** `meson test -C build test_OODisplayGeometry` fails (functions not implemented)
-- [ ] T012 [US1] Implement `OOHudAreaForWindow` and `OOPlausibleDisplaySize` in
+- [X] T012 [US1] Implement `OOHudAreaForWindow` and `OOPlausibleDisplaySize` in
   `src/Core/OODisplayGeometry.cpp` as the contract declares them. **Accept:**
   `meson test -C build test_OODisplayGeometry`
-- [ ] T013 [US1] In `MyOpenGLView::updateGLSize` (`src/SDL/MyOpenGLView.cpp:585-606`) compute
+- [X] T013 [US1] In `MyOpenGLView::updateGLSize` (`src/SDL/MyOpenGLView.cpp:585-606`) compute
   `display_z`, `x_offset` and `y_offset` from `OOHudAreaForWindow`; keep today's window-based value
   for `getWindowDisplay_z()`; `hudArea()` returns the area. Make the sun and star glare
   (`src/Core/Entities/OOSunEntity.cpp`, both `getDisplay_z()` reads) use `getWindowDisplay_z()`
@@ -164,13 +164,13 @@ stay round at the edge (G5); menus on a 32:9 window fit the 16:9 area (H2, H3).
   at 3840×1080, `hudArea` is `[960, 0, 1920, 1080]` and `displayZ` is `480·16/9`. **Accept:**
   `tests/run.sh component -k screen` (H5 fails before; C5 passes unchanged) and
   `tests/run.sh smoke`
-- [ ] T014 [US1] Set the viewport to `hudArea()` for HUD and GUI drawing in
+- [X] T014 [US1] Set the viewport to `hudArea()` for HUD and GUI drawing in
   `src/Core/Universe.cpp` (HUD from about `:5652`, GUI and message GUIs about `:5806-5816`), restore
   the full window for object-tied markers (T010) and the scene; on GUI screens draw the 3D
   background and demo ships in the HUD area and clear the side bars to black (research R12). Add
   check H3 to the smoke tier. **Accept:** `tests/run.sh smoke --window 3840x1080` (H3, fails before)
   and `tests/run.sh smoke` at the default size
-- [ ] T015 [US1] Map GUI mouse positions through the HUD area in
+- [ ] T015 [US1] (code done in `828938a2c`; the H2 test is open, see Notes) Map GUI mouse positions through the HUD area in
   `src/SDL/MyOpenGLView+Input.cpp:342-350` (normalise by the area's size, offset by its origin).
   Add `tests/gui/test_g<next>_wide_window_menu_click.py` (style of
   `tests/gui/test_g1_exit_via_mouse.py`): at 3840×1080 windowed, clicking a menu row's centre
@@ -393,5 +393,19 @@ any checkpoint.
   1920×1080 right 0.5452177, top 0.3066849, display_z 853.3333; at 2560×1080 top 0.2300137,
   window display_z 1137.7778; at 3840×1080 top 0.1533425, window display_z 1706.6666. The frustum
   varies by about 1e-7 between window sizes (float division), hence C5's 1e-6 tolerance.
+- T011–T014 landed in `oolite-dev` `828938a2c`. G16's functions were written with the module
+  (T006), so T011's tests passed on first run rather than failing first. H3 is weak: the start
+  screen's sides were already black before the HUD area, so it cannot fail on the old code; the
+  real evidence is H5 and the snapshots checked by eye (start screen and flight HUD at 3840×1080:
+  HUD and menus inside 960–2880 px, the space view across all 3840). Object markers (reticle,
+  waypoint) do not appear in console-driven runs with or without the change, so their placement
+  in the whole window is argued from the code (MarkersInWholeWindow restores exactly the
+  viewport and projection the HUD used before) and left to the hand check (T031).
+- T015's H2 cannot fail as written: GUI rows are picked by the vertical position, which the HUD
+  area does not change (its height is the window's), and the GUI tier pins a 960×720 window,
+  narrower than 16:9. The mouse change only rescales the horizontal position, which matters for
+  clicks such as the charts'. A test needs a horizontal click target in the GUI tier; open.
+- One smoke run at 3840×1080 lost the game during OpenGL set-up (the log stops at
+  `display.initGL`); two reruns passed and it did not recur. Recorded, not explained.
 - T007's acceptance counts a log line instead of a unit test because `MyOpenGLView` needs a GL
   context; the per-frame `setFov` push (research R14) is what it guards against.
