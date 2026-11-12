@@ -53,13 +53,18 @@ script properties.
 | Id | Scenario |
 |---|---|
 | C1 | Screen-matching off by default; `fovValue` equals `fov-value` |
-| C2 | Setting the G9 preferences at 80 cm over the debug console and turning matching on: `fovValue` is 84.0 (±0.5) without a restart (FR-015) |
+| C2 | Starting with the G9 preferences at 80 cm and matching on: `fovValue` is 84.0 (±0.5); the flat 27" variant gives 53.0 |
 | C3 | With matching off, the target reticle's window position (new mapping) equals the old projection's for a target at the centre and near each edge; the crosshair is at the window centre with matching off and with the G9 settings on |
 | C4 | Entered size survives a restart and is not overwritten by detection (FR-010); with detection succeeding, entering only distance and curvature gives the right angles (SC-004) |
 | C5 | Projection pin (research R8a), matching off, values recorded before the feature and never edited: at 1920×1080 every field of the debug read; at 2560×1080 and 3840×1080 the frustum extents, window `display_z` and `fovValue` (the HUD-area values there change by FR-016 and are checked by H5) |
 
-C2, C4 and C5 need console steps that do not exist yet: "When I set preference X to Y", "Then the
-game setting fovValue is about N" and "Then the projection is <recorded values>".
+The steps are in `tests/component/steps/display_steps.py`: "Given the preference "<key>" is
+"<value>"", "Given a window of <W>x<H>", "Then the game setting "<name>" is about <n>",
+"Then the projection's "<field>" is about <n> within <t>" and "Then the projection's "<field>"
+equals <json>". Preferences are passed on the game's command line when the scenario starts (the
+argument domain: read before the saved preferences, never written back), so a scenario checks what
+the game does with them from the start. "Without a restart" (FR-015) is checked where the player
+changes a setting: the Game Options GUI tests (T017, T023).
 
 ## Debug read (debug builds only)
 

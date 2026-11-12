@@ -55,19 +55,19 @@ before anything changes.
   `seriesb/026-migration-completion` (Jon, 2026-11-12; first cut from `develop`, then recreated).
   (`branch.sh` would name it `epic/…`; create it by hand.) **Accept:**
   `git -C oolite-dev rev-parse --abbrev-ref HEAD | grep -qx feature/double-wide-support`
-- [ ] T002 [P] Add a `--window WxH` option to `tests/run.sh` for the `smoke` and `component` tiers,
+- [X] T002 [P] Add a `--window WxH` option to `tests/run.sh` for the `smoke` and `component` tiers,
   passed to the game as its window-size preference by `tests/launch_snapshot.py` and
   `tests/component/console.py` (research R8a). **Accept:** `tests/run.sh smoke --window 3840x1080`
   runs, and the snapshot it writes is 3840 pixels wide (a check added to the smoke tier; fails
   before the option exists)
-- [ ] T003 [P] Add the step definitions under `tests/component/` (find the file that defines
-  `Given a universe seeded with`): "When I set preference "<key>" to <value>" (through the debug
-  console, as existing steps use `perform`), "Then the game setting "<name>" is about <n>"
-  (`evaluate` of `oolite.gameSettings.<name>`, tolerance 0.5) and "Then the projection is
-  <values>" (compares the debug read below). Add `tests/component/features/s9_screen_matching.feature`
+- [X] T003 [P] Add the step definitions under `tests/component/` (find the file that defines
+  `Given a universe seeded with`): implemented in a new `tests/component/steps/display_steps.py`
+  as "Given the preference "<key>" is "<value>"" and "Given a window of <W>x<H>" (passed on the
+  game's command line at launch, see `contracts/settings.md`), "Then the game setting "<name>" is
+  about <n>" and the two projection steps. Add `tests/component/features/s9_screen_matching.feature`
   with scenario C1 from `specs/008-display-geometry-fov/contracts/settings.md`. **Accept:**
   `tests/run.sh component -k screen` (fails before the steps exist)
-- [ ] T004 Add the debug read `console.__displayProjection()` exactly as
+- [X] T004 Add the debug read `console.__displayProjection()` exactly as
   `specs/008-display-geometry-fov/contracts/settings.md` (*Debug read*) gives it, compiled only with
   `OO_DEBUG_MONITOR_ENABLED`, beside the existing debug-console methods; the frustum extents come
   from the values `drawUniverse` passed to `OOGLFrustum` in the last frame (store them in
@@ -369,5 +369,9 @@ any checkpoint.
 - C5 records only values the feature must never change (every field at 16:9; the frustum, window
   `display_z` and `fovValue` on wider windows), so no later task edits it (hard rule 1). The values
   FR-016 changes on wider windows are checked by the new H5 instead.
+- T002–T004 landed in `oolite-dev` `f36615a11`. C5's values (fov-value 57.2, matching off): at
+  1920×1080 right 0.5452177, top 0.3066849, display_z 853.3333; at 2560×1080 top 0.2300137,
+  window display_z 1137.7778; at 3840×1080 top 0.1533425, window display_z 1706.6666. The frustum
+  varies by about 1e-7 between window sizes (float division), hence C5's 1e-6 tolerance.
 - T007's acceptance counts a log line instead of a unit test because `MyOpenGLView` needs a GL
   context; the per-frame `setFov` push (research R14) is what it guards against.
