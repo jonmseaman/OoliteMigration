@@ -735,8 +735,10 @@ edits.**
 - [ ] T104 [P] If Jon has ruled on `test_stdlib` (T002 row), act on it: delete `src/oofnd/StdLib.hpp`
   only if he approved retiring the test; otherwise leave both and note it in the checklist.
   **Accept:** `row=$(grep 'test_stdlib' specs/009-modern-cpp-std/test-ledger.md); echo "$row" | grep -qE '[0-9]{4}-[0-9]{2}-[0-9]{2}' && if echo "$row" | grep -q 'retire'; then test ! -e oolite-dev/src/oofnd/StdLib.hpp; else test -e oolite-dev/src/oofnd/StdLib.hpp; fi`
-- [ ] T107 (FR-029, Jon 2026-11-12) Remove the `cxx_` prefix: about 2,310 references to 371
-  names in 175 `src` files and 996 in 91 test files. Do it after US6 and US7 (T070–T083), which
+- [ ] T107 (FR-029, Jon 2026-11-12) Remove the `cxx_` prefix from every identifier that has it
+  (functions, types, constants and enumerators alike; the most used are functions such as
+  `cxx_OOStringFromJSValue`, 290 uses): 3,306 references to 384 names (2026-11-12), about 2,310 in
+  175 `src` files and 996 in 91 test files. Do it after US6 and US7 (T070–T083), which
   rewrite many of the same lines, and before T108 and T105. Rename with a literal-aware tool (the
   renamer under `.agent-tmp/us5/` that skips strings and block comments; extend it to `//`
   comments that name the identifier), one area per commit. 115 of the bare names are already in
