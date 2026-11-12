@@ -52,7 +52,13 @@ test-ledger rows; if he signs before Phase 3 ends, Phase 9 may run directly afte
 - **One commit per task**, titled `T0NN: <title>`, ending with the attribution trailer. In
   `oolite-dev`, push after the commit (`git push origin seriesb/027-modern-cpp`) so CI runs; the
   task is done when CI's jobs pass with only the base's known failures (`test_http`,
-  `test_OOOXZManager` in `unit-tests-windows`).
+  `test_OOOXZManager` in `unit-tests-windows`). A task whose Accept is (or includes) a CI run puts
+  that run's URL in its commit message as `CI: <url>`, and the run must show the new or changed test
+  executing.
+- **Platform.** CLAUDE.md's *Commands* assume an MSYS2 UCRT64 shell on Windows. This feature is
+  done from macOS: the build, smoke run, clang-tidy and sanitizers run locally, the unit suites run
+  in CI's `unit-tests-windows` job (they build only on Windows, research R2), and the component and
+  GUI tiers run on a Windows machine when one is available (T009, T105).
 - **Every game task's gate**, from `oolite-dev`, before committing:
   `./mk.sh build test && ./mk.sh test test` and, from T007 on, `./mk.sh tidy`.
 - **Searches.** `C=../specs/009-modern-cpp-std/check.sh` (from `oolite-dev`). `$C <category>` exits
@@ -138,7 +144,10 @@ FR-021). **No story task starts until this phase is done.**
   `WarningsAsErrors` yet.
   **Accept:** `cd oolite-dev && /opt/homebrew/opt/llvm@22/bin/clang-tidy --dump-config src/Core/OOColor.cpp | grep -q 'google-readability-casting' && ./mk.sh tidy`
 - [ ] T008 Add a step running `./mk.sh tidy` after the Arch build in
-  `oolite-dev/.github/workflows/build-all.yaml` (contracts/guards.md *CI step*).
+  `oolite-dev/.github/workflows/build-all.yaml` (contracts/guards.md *CI step*). Arch's `clang`
+  package provides `clang-tidy` and `run-clang-tidy`; the step first prints `clang-tidy --version`
+  so a finding that appears only in CI can be traced to a version difference, which is then fixed
+  or recorded in `exceptions.md`, never suppressed.
   **Accept:** `grep -q 'mk.sh tidy' oolite-dev/.github/workflows/build-all.yaml`, and the pushed run's Arch job passes
 - [ ] T009 Record baselines in a new `specs/009-modern-cpp-std/baselines.md`: every category's
   `check.sh --count` (and `--area` counts for `cast` and `cstring`) on the tree after T004 (C++23,
@@ -146,8 +155,15 @@ FR-021). **No story task starts until this phase is done.**
   `start` (start-up seconds from `tests/launch_snapshot.py`, `lower`), `frame` (frames per second
   by the method of `notes/2026-11-10 Frame Rate Comparison.md`, `higher`) and `quit` (seconds to
   exit while start-up planet generation runs, `lower`), each the median and spread (max − min) of
-  five runs on this Mac. Copy the counts into data-model.md's *now* column.
-  **Accept:** `grep -c '^| ' specs/009-modern-cpp-std/baselines.md` prints at least 12
+  five runs on this Mac. Also, on the same tree, the sanitizer baselines as rows with spread 0 and
+  `lower`: `asan-smoke` (ASan reports in the smoke run), `tsan-smoke` (TSan reports, Homebrew
+  clang) and `leaks` (leaks reported by `leaks --atExit`), with the reports saved under
+  `.agent-tmp/sanitizers/base-*.txt`. And, on a Windows machine if one is available, the logged
+  script-event order of the component scenarios that kill, dock and jump
+  (`tests/run.sh component`) saved to `.agent-tmp/events/base.log`; if none is available, add the
+  line `events: no Windows machine` to `baselines.md`. Copy the counts into data-model.md's *now*
+  column.
+  **Accept:** `grep -c '^| ' specs/009-modern-cpp-std/baselines.md` prints at least 15 and `{ test -s .agent-tmp/events/base.log || grep -q '^events: no Windows machine' specs/009-modern-cpp-std/baselines.md; }`
 - [ ] T010 [P] Add `oolite-dev/tests/unit/core/test_SaveEnumValues.cpp` (registered in
   `tests/unit/core/meson.build`, copying `test_PlayerEntity.cpp`'s set-up): save a player and
   assert today's numbers for `chart_ana_mode`, `chart_colour_mode`, `speech_on`, the legacy
@@ -168,8 +184,12 @@ FR-021). **No story task starts until this phase is done.**
   `%.2f`, `%.3g`, `%.3f`, `%i`), with edge values (0, negative, large, NaN for floats). The
   format tasks (T037–T042, T077–T082) add one row per converted call whose format has anything
   but plain `%s` or a same-typed `%d`, using that call's real format strings and argument types;
-  rows are only ever added, never changed.
-  **Accept:** CI `unit-tests-windows` runs `test_FormatEquivalence` and it passes
+  rows are only ever added, never changed. In the same task add
+  `oolite-dev/tests/unit/core/test_ParseResults.cpp` (registered): for each of the 6
+  `atoi`/`atof`/`strtol`/`strtod` call sites in first-party C++, call the function that contains it
+  (or the same call with the same arguments) on inputs with a sign, a leading `+`, leading spaces,
+  trailing junk, an empty string and an overflowing value, asserting today's results (FR-028).
+  **Accept:** CI `unit-tests-windows` runs `test_FormatEquivalence` and `test_ParseResults` and both pass
 
 - [ ] T013 [P] Restore the JS API snapshot generator Jon removed from the repo, into scratch only:
   `git show bd7a4392d^:tools/js_api_snapshot.py`, `bd7a4392d^:tools/js-api-snapshot.sh` and
@@ -243,8 +263,9 @@ baselines and the FR-016 tests exist and pass on the base.
   **Accept:** `cd oolite-dev && $C alloc`
 - [ ] T025 [US1] Make `cppcoreguidelines-no-malloc` fatal (`WarningsAsErrors` in
   `oolite-dev/.clang-tidy`); run the ASan smoke run (quickstart M1) and `leaks --atExit` and
-  record both in `baselines.md`; mark `alloc` `fatal` in data-model.md.
-  **Accept:** `cd oolite-dev && $C alloc && ./mk.sh tidy && /opt/homebrew/opt/llvm@22/bin/clang-tidy --dump-config src/Core/OOColor.cpp | sed -n '/WarningsAsErrors/,/^[A-Z]/p' | grep -q no-malloc`
+  record them as `asan-smoke@M1` and `leaks@M1` in `baselines.md`; mark `alloc` `fatal` in
+  data-model.md.
+  **Accept:** `cd oolite-dev && $C alloc && $C bound asan-smoke@M1 && $C bound leaks@M1 && ./mk.sh tidy && /opt/homebrew/opt/llvm@22/bin/clang-tidy --dump-config src/Core/OOColor.cpp | sed -n '/WarningsAsErrors/,/^[A-Z]/p' | grep -q no-malloc`
 
 **Checkpoint**: US1 complete and independently verified (SC-001).
 
@@ -267,8 +288,12 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
 - [ ] T027 [US3] Call `OOAsyncWorkManager`'s `shutdown()` on the quit path before `exit(0)` in
   `src/Core/GameController.cpp:706`; add `tests/unit/core/test_OOAsyncWorkManagerShutdown.cpp`
   (queue a long task, call `shutdown()`, assert it returns once the task ends and that queued tasks
-  do not run).
-  **Accept:** `cd oolite-dev && rg -q 'shutdown\(\)' src/Core/GameController.cpp`, and CI runs the new test and it passes
+  do not run), registered as **its own** meson test executable so that shutting down the
+  process-wide manager cannot affect other tests. Add `tests/unit/oofnd/test_http_cancel.cpp`
+  (registered): an `oo::http::Download` from a local server thread inside the test that sends a
+  body slowly is destroyed mid-transfer, and the destructor returns within 2 s (quit during an
+  expansion download, US3 AS-2; `oo::http` is unchanged, so this test passes on the base too).
+  **Accept:** `cd oolite-dev && rg -q 'shutdown\(\)' src/Core/GameController.cpp`, and CI runs both new tests and they pass
 - [ ] T028 [US3] Add `inline const std::thread::id kMainThreadId` to `src/oofnd/Thread.hpp` per the
   contract; replace `isMainThread()` at `src/Core/OORegExpMatcher.cpp:43,90`,
   `src/Core/GameController.cpp:143`, `src/Core/OOAsyncWorkManager.cpp:304` with
@@ -278,8 +303,11 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   (ledger rows, *covered*).
   **Accept:** `cd oolite-dev && $C thread && ! rg -n 'sMainThreadID' src`
 - [ ] T029 [US3] TSan smoke run (quickstart M2) and quit-time measurement (five runs); record the
-  row `| quit@M2 | median | spread | lower |` in `baselines.md`.
-  **Accept:** `cd oolite-dev && $C bound quit@M2`
+  rows `| quit@M2 | median | spread | lower |` and `tsan-smoke@M2` in `baselines.md`. Check the
+  worker threads' names under a debugger (`lldb`, `thread list` while the game runs) and record
+  them in `baselines.md` as `thread names: <names>`; they must read `OOAsyncWorkManager thread N`
+  as on the base (US3 AS-4).
+  **Accept:** `cd oolite-dev && $C bound quit@M2 && $C bound tsan-smoke@M2 && grep -q '^thread names: .*OOAsyncWorkManager thread' ../specs/009-modern-cpp-std/baselines.md`
 
 **Checkpoint**: US3 complete.
 
@@ -352,8 +380,11 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   **Accept:** `cd oolite-dev && ./mk.sh build test 2>&1 | { ! grep -q 'Wformat-signedness'; }`
 - [ ] T044 [US4] Rewrite `src/oofnd/README.md`'s rules (C++23; exceptions are used) and add a
   *Surviving components* table (component | reason | pinned by) covering every row of data-model.md
-  *Surviving `oofnd` component*.
-  **Accept:** `cd oolite-dev && for c in Data String FileSystem Date Exception Finally NSRange PrintfFormat Notification Scanner Process Log LogFile Http Defaults ResourcePaths Encoding PList OOAssert Thread; do grep -q "| \`*$c" src/oofnd/README.md || exit 1; done`
+  *Surviving `oofnd` component*. Where a component's reason names a difference from the standard
+  library and no existing test pins it, add the case to a new
+  `tests/unit/oofnd/test_std_differences.cpp` (registered), for example `hasPrefix("")` false
+  where `starts_with("")` is true (FR-014); the table's *pinned by* names that test.
+  **Accept:** `cd oolite-dev && for c in Data String FileSystem Date Exception Finally NSRange PrintfFormat Notification Scanner Process Log LogFile Http Defaults ResourcePaths Encoding PList OOAssert Thread; do grep -q "| \`*$c" src/oofnd/README.md || exit 1; done && ! grep -E '^\| .*\|\s*\|\s*$' src/oofnd/README.md` (no empty *pinned by*), and CI runs `test_std_differences` and it passes
 
 **Checkpoint**: US4 complete (US4 acceptance 1–4).
 
@@ -505,8 +536,9 @@ review every fix, convert the rest by hand per the contract's table.
   reported, become `exceptions.md` rows.
   **Accept:** `cd oolite-dev && $C cast`
 - [ ] T076 [US6] Make `google-readability-casting` fatal and add `-Wold-style-cast` to the game's
-  warning flags in `src/meson.build` in the same commit.
-  **Accept:** `cd oolite-dev && ./mk.sh tidy && ./mk.sh build test 2>&1 | { ! grep -q 'Wold-style-cast'; }` and `grep -q 'Wold-style-cast' src/meson.build`
+  warning flags in `src/meson.build` in the same commit. If T009 saved a base event log, repeat it
+  on a Windows machine into `.agent-tmp/events/m5.log` (US6 AS-4).
+  **Accept:** `cd oolite-dev && ./mk.sh tidy && ./mk.sh build test 2>&1 | { ! grep -q 'Wold-style-cast'; }` and `grep -q 'Wold-style-cast' src/meson.build` and `{ test ! -s ../.agent-tmp/events/base.log || diff -q ../.agent-tmp/events/base.log ../.agent-tmp/events/m5.log; }`
 
 **Checkpoint**: US6 complete (SC-010).
 
@@ -599,7 +631,7 @@ edits.**
   → plain std at each site, no helper: `static const auto& s = *new
   std::shared_ptr<T>(oo::makeShared<T>(...));` where others share it, `static auto& s = *new
   T(...);` where nothing does; one `exceptions.md` row each.
-  **Accept:** `cd oolite-dev && ! rg -n -P 'makeRef<[^>]+>\([^)]*\)\.leakRef\(\)' src --glob '!src/Core/Scripting/poc/**'`
+  **Accept:** `cd oolite-dev && ! rg -U -n -P 'makeRef<[^>]+>\((?:[^()]|\([^()]*\))*\)\s*\.leakRef\(\)' src --glob '!src/Core/Scripting/poc/**'`
 - [ ] T091 [US2] Leaf types in area `core` (role sets, probability sets, characters, sounds,
   caches, async tasks, `PList::Object` → `std::shared_ptr<PListForeign>`) off the bridge; exclusive
   owners (research R5.8) → `std::unique_ptr` or values.
@@ -627,12 +659,13 @@ edits.**
   file, *covered*); assertions unchanged.
   **Accept:** `cd oolite-dev && ! rg -n -P '\boo::(Ref|WeakRef)\b|\bmakeRef\b|retainCount\s*\(|oofnd/Ref\.hpp' tests`
 - [ ] T098 [US2] Delete the bridge: `src/oofnd/Ref.hpp`, `RefCounted`, `dropWeakReferences`;
-  regenerate the JS API snapshot into `.agent-tmp/js-api/m7.json`.
-  **Accept:** `cd oolite-dev && test ! -e src/oofnd/Ref.hpp && $C ownership && diff -q ../.agent-tmp/js-api/base.json ../.agent-tmp/js-api/m7.json`
+  regenerate the JS API snapshot into `.agent-tmp/js-api/m7.json`; if T009 saved a base event log,
+  repeat it on a Windows machine into `.agent-tmp/events/m7.log` (US2 AS-5).
+  **Accept:** `cd oolite-dev && test ! -e src/oofnd/Ref.hpp && $C ownership && diff -q ../.agent-tmp/js-api/base.json ../.agent-tmp/js-api/m7.json && { test ! -s ../.agent-tmp/events/base.log || diff -q ../.agent-tmp/events/base.log ../.agent-tmp/events/m7.log; }`
 - [ ] T099 [US2] Measure: ASan smoke and `leaks --atExit`; frame rate and start-up, five runs each;
-  record the rows `| frame@M7 | … | higher |` and `| start@M7 | … | lower |` in `baselines.md`
-  (SC-008).
-  **Accept:** `cd oolite-dev && $C bound frame@M7 && $C bound start@M7`
+  record the rows `| frame@M7 | … | higher |`, `| start@M7 | … | lower |`, `asan-smoke@M7` and
+  `leaks@M7` in `baselines.md` (SC-005, SC-008).
+  **Accept:** `cd oolite-dev && $C bound frame@M7 && $C bound start@M7 && $C bound asan-smoke@M7 && $C bound leaks@M7`
 - [ ] T100 [US2] Update CLAUDE.md's "Ownership is `oo::Ref<T>`, not `shared_ptr`" line to the new
   rule (`std::shared_ptr`/`std::weak_ptr`/`std::unique_ptr`, objects from `oo::makeShared`) and
   spec 003's plan gate row (`specs/003-encapsulate-global-state/plan.md:99`).
@@ -660,7 +693,11 @@ edits.**
   only if he approved retiring the test; otherwise leave both and note it in the checklist.
   **Accept:** `row=$(grep 'test_stdlib' specs/009-modern-cpp-std/test-ledger.md); echo "$row" | grep -qE '[0-9]{4}-[0-9]{2}-[0-9]{2}' && if echo "$row" | grep -q 'retire'; then test ! -e oolite-dev/src/oofnd/StdLib.hpp; else test -e oolite-dev/src/oofnd/StdLib.hpp; fi`
 - [ ] T105 On a Windows machine: `tests/run.sh all` on Clang and on GCC
-  (`--native-file=gcc.ini`); the corpus; the JS API snapshot against `.agent-tmp/js-api/base.json`; record results, SC-001 to SC-011 and the final
+  (`--native-file=gcc.ini`); the unit suites under ASan (`meson setup <dir> -Db_sanitize=address`)
+  on the branch and, in a `git worktree` of the base commit, on the base, reporting nothing the
+  base does not (SC-005); the corpus; the JS API snapshot against `.agent-tmp/js-api/base.json`;
+  `oofnd`'s line count (`wc -l src/oofnd/*.hpp src/oofnd/*.h src/oofnd/*.cpp src/oofnd/objc/*`)
+  against the base's 13,322 (SC-004); 20 heap allocations picked with `rg -n 'makeShared|make_unique|\bnew\b' src | shuf -n 20`, each with its owner (SC-009); record results, SC-001 to SC-011 and the final
   converted-category table (every category `fatal`) in `checklists/requirements.md` and
   data-model.md.
   Write one line per criterion: `SC-0NN: met (evidence)` or `SC-0NN: not met — reason`.
@@ -678,7 +715,9 @@ Phase 1 (T001–T003) → Phase 2 (T004–T013)
   → Phase 6 US5 (T045–T069)        after Phases 3–5
   → Phase 7 US6 (T070–T076)        after Phase 6 (enum casts first)
   → Phase 8 US7 (T077–T083)        after Phases 5 and 7 (format method, cast rules)
-  → Phase 9 US2 (T084–T100)        T084–T087 any time after Phase 2; T088+ after Jon signs
+  → Phase 9 US2 (T084–T100)        T084–T086 any time after Phase 2 (they only add or record);
+                                    T087 (rewrites Entities code) never beside Phases 6–8;
+                                    T088+ after Jon signs
   → Phase 10 (T101–T105)           T101 after Jon signs the P10 rows
 ```
 

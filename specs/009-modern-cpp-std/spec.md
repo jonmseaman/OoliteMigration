@@ -466,13 +466,17 @@ tier pass with the same results.
 - **FR-020**: The ten enum `.tbl` tables MUST become ordinary headers with the enum, its default
   and its name table, and their `.tbl` files MUST be deleted; `OOOpenGLStates.tbl` stays.
 
+*FR-024 to FR-028 were added with Stories 6 and 7 and sit with them; FR-021 to FR-023 keep their
+numbers because other documents cite them.*
+
 **Casts (Story 6)**
 
 - **FR-024**: First-party C++ MUST NOT contain C-style casts, except those produced by expanding a
   third-party macro, each on the exceptions list. Each replacement MUST perform the same conversion
   (`static_cast`, `const_cast`, `reinterpret_cast`, or `std::bit_cast` for byte reinterpretation).
 - **FR-025**: Once the count is zero, the compiler's old-style-cast warning MUST be on for
-  first-party C++ on every toolchain, with no new warnings.
+  first-party C++ on every toolchain, with no new warnings (the compiler half of FR-021's cast
+  guard).
 
 **Strings (Story 7)**
 
@@ -540,9 +544,9 @@ tier pass with the same results.
   the same entries; the script API snapshot and the expansion corpus results are unchanged.
 - **SC-007**: Reintroducing any category FR-021 guards, in a single line, fails the static checks
   or the build on the next run, naming the file and line.
-- **SC-008**: Entity-heavy scenes and game loading are no slower than the base beyond the noise
-  tolerance of the project's performance measurements (spec 006), and quitting with a background
-  task in flight takes no longer than on the base.
+- **SC-008**: Entity-heavy scenes and game loading are no slower than the base by more than the
+  base's own spread (max − min) over five runs, comparing medians, and quitting with a background
+  task in flight takes no longer than on the base by the same measure.
 - **SC-009**: Of 20 heap allocations in first-party C++ picked at random, every one's owner can be
   read from the declaration that holds it (a smart pointer, a container or a value member) or is on
   the exceptions list.

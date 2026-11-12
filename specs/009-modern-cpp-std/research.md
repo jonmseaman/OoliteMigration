@@ -64,7 +64,7 @@ check: deleting their headers makes any reintroduction a compile error.
 | Enumerator naming | `readability-identifier-naming` with `ScopedEnumConstantCase: CamelCase`, `ScopedEnumConstantPrefix: k` | end of US5 |
 
 - Two checks were considered and rejected. `cppcoreguidelines-owning-memory` (277 hits) flags
-  the intended ownership crossings (the script slot's heap `shared_ptr`, the immortal singletons)
+  the intended ownership crossings (the script slot's heap `shared_ptr`, the never-deleted singletons)
   unless they are annotated with `gsl::owner`, which the project does not use; FR-005 is checked
   by the exceptions list and review instead. `modernize-macro-to-enum` flags any run of adjacent
   integer macros, including the hundreds of plain numeric constants (`HeadUpDisplay.h` alone has
@@ -153,7 +153,7 @@ one at the root).
    opaque slot. The finaliser takes the slot, nulls it, calls `clearJSSelf`, then deletes the
    holder (today's order, `OOJSPrivateObject.cpp:88-102`). The observing holders
    (`OOJSEntityHolder`, `ScriptPrivate`) keep a `std::weak_ptr`.
-7. **Immortal singletons:** about 25 are `makeRef(...).leakRef()` and must never be destroyed (no
+7. **Never-deleted singletons:** about 25 are `makeRef(...).leakRef()` and must never be destroyed (no
    work at exit). They become never-deleted function-local statics written in plain std at each
    site, no helper (Jon, 2026-11-11): `static const auto& s = *new std::shared_ptr<T>(...)` where
    other objects also hold them shared (so `shared_from_this` works), `static auto& s = *new T()`
@@ -208,7 +208,7 @@ slot (breaks objects JS shares with C++). `std::make_shared` for entities (canno
 disposal hook). Converting call sites first without a bridge (no intermediate state builds).
 
 **Order:** bridge in `oofnd` (with `test_ref` and `test_weakset` ported) → leaf types in
-Core-other and Materials and the immortals → the script slot → D2 readers and their tests →
+Core-other and Materials and the never-deleted singletons → the script slot → D2 readers and their tests →
 Entities, `EntityHold`, the creators and `Universe` → SDL → delete the bridge.
 
 Counts by area (lines): `oo::Ref<` Entities 381, Scripting 138, Materials 262, Core-other 732, SDL
@@ -221,7 +221,7 @@ in src and 227 in tests; 88 `retainCount()` assertions in tests.
 **Decision:** `OOAsyncWorkManager`'s workers become `std::vector<std::jthread>` owned by its
 internal object, waiting with `std::condition_variable_any::wait(lock, stop_token, pred)`. The
 manager gets an explicit `shutdown()` called before `exit(0)` (`GameController.cpp:706`), because
-the singleton is immortal (its destructor calls `abort()`, `OOAsyncWorkManager.cpp:245`) and so a
+the singleton is never deleted (its destructor calls `abort()`, `OOAsyncWorkManager.cpp:245`) and so a
 `jthread` would never be joined. `oo::thread::detach` (one call, `OOAsyncWorkManager.cpp:183`) is
 deleted.
 
@@ -455,7 +455,7 @@ spec required without changing behaviour:
 
 1. **FR-006 / US2:** `oo::AutoreleaseScope` and `oo::WeakSet` stay, rebuilt on the standard
    pointers (R5.3, R5.4).
-2. **FR-005:** immortal singletons through one helper, on the exceptions list (R5.7).
+2. **FR-005:** never-deleted singletons, written in plain std at each site, on the exceptions list (R5.7).
 3. **FR-007:** disposal keeps its effects; non-owning references read empty from the start of
    disposal, and code that read them during disposal is rewritten under tests (R5).
 4. **FR-013 / US4:** `oo::Data` and `NSRange` stay (R7).

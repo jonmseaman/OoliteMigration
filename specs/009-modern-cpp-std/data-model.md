@@ -46,7 +46,7 @@ names as text (research R7); they are data and are not changed.
 | id | before | guard | fatal at |
 |---|---:|---|---|
 | alloc | 135 lines | `cppcoreguidelines-no-malloc` | M1 |
-| ownership | 2,007 lines | definition deleted | M7 |
+| ownership | 2,007 lines (search lines, `oofnd`'s own definitions included; the spec's "about 1,900" counts uses) | definition deleted | M7 |
 | thread | 7 lines (5 calls, 2 definitions) | definition deleted | M2 |
 | oofnd | 1,505 lines (including `oofnd`'s own definitions) | definition deleted | M3 |
 | enum | 179 lines | `cppcoreguidelines-use-enum-class` | M4 |
@@ -64,7 +64,7 @@ The places a converted pattern may remain (FR-022).
 |---|---|
 | file:line | where it is |
 | category | a converted-category id |
-| construct | what stays (`free` in the demangling deleter, an immortal singleton, a QuickJS flag constant, …) |
+| construct | what stays (`free` in the demangling deleter, an never-deleted singleton, a QuickJS flag constant, …) |
 | required by | the interface or rule that forces it (`abi::__cxa_demangle` returns `malloc` memory; FR-005; QuickJS `prop_flags` is `uint8_t`; tested by `#if`) |
 | owner / release | for ownership crossings: who owns it and where it is released |
 | commit | the commit that added the row |
