@@ -191,7 +191,7 @@ FR-021). **No story task starts until this phase is done.**
   trailing junk, an empty string and an overflowing value, asserting today's results (FR-028).
   **Accept:** CI `unit-tests-windows` runs `test_FormatEquivalence` and `test_ParseResults` and both pass
 
-- [ ] T013 [P] Restore the JS API snapshot generator Jon removed from the repo, into scratch only:
+- [X] T013 [P] Restore the JS API snapshot generator Jon removed from the repo, into scratch only:
   `git show bd7a4392d^:tools/js_api_snapshot.py`, `bd7a4392d^:tools/js-api-snapshot.sh` and
   `8958acc80^:tools/js-api-check.sh` into `.agent-tmp/js-api/` (not committed; nothing is added
   back to `tools/`). Run it against the T004 build to write `.agent-tmp/js-api/base.json`, run it a
