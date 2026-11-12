@@ -62,9 +62,10 @@ The places a converted pattern may remain (FR-022).
 
 | Field | Meaning |
 |---|---|
-| file:line | where it is |
 | category | a converted-category id |
-| construct | what stays (`free` in the demangling deleter, an never-deleted singleton, a QuickJS flag constant, …) |
+| file | the file, as the search prints it (`src/Core/OODemangle.h`) |
+| match | a fixed substring of the permitted line; `check.sh` drops a hit in `file` whose line contains it |
+| construct | what stays (`free` in the demangling deleter, a never-deleted singleton, a QuickJS flag constant, …) |
 | required by | the interface or rule that forces it (`abi::__cxa_demangle` returns `malloc` memory; FR-005; QuickJS `prop_flags` is `uint8_t`; tested by `#if`) |
 | owner / release | for ownership crossings: who owns it and where it is released |
 | commit | the commit that added the row |
