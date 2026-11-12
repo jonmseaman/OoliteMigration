@@ -526,11 +526,14 @@ production enum changes in the same commit as it.
 - [X] T068 [US5] P9: `GameViewKeys`, `OOPixMapFormat`, `OODebugTCPConsoleProtocol.h` numbers and
   the remaining `sdl-debug` and `materials` enums per T064.
   **Accept:** `cd oolite-dev && $C enum`
-- [ ] T069 [US5] Make `cppcoreguidelines-use-enum-class` fatal; run the corpus
+- [X] T069 [US5] Make `cppcoreguidelines-use-enum-class` fatal; run the corpus
   (`bash tools/corpus.sh tier1`) and compare with its base result; regenerate the JS API snapshot
   with T013's restored tool into `.agent-tmp/js-api/m4.json` and compare it with the base; check
   every `external-values.md` row has its pin.
   **Accept:** `cd oolite-dev && $C enum && $C tbl && ./mk.sh tidy && ! grep -q '| to add |' ../specs/009-modern-cpp-std/external-values.md && diff -q ../.agent-tmp/js-api/base.json ../.agent-tmp/js-api/m4.json`
+  Done in `03549f57c`: the JS API snapshot `m4.json` is byte-identical to `base.json`. The corpus
+  was not run: `tools/corpus.sh tier1` launches `oolite.exe` and runs only on Windows, and no base
+  result was recorded (T009); T105 runs the corpus on a Windows machine, which covers it.
 
 **Checkpoint**: US5 complete apart from P10 (Phase 10).
 
