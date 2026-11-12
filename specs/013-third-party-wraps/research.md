@@ -50,9 +50,9 @@ On Windows it adds `-D_CRT_SECURE_NO_WARNINGS` and, where supported,
 
 **Hard rule 2**: those two flags are in WrapDB's packaging, which is downloaded, not in the fork's
 tree, the same way QuickJS-ng's own `meson.build` brings its `-Wno-*` list. The fork adds none.
-This is recorded as a decision Jon may override. The alternative is a custom wrap of the same zip
-with the fork's own overlay and no suppression, accepting whatever warnings appear and patching
-them (FR-006).
+Jon accepted this on 2026-11-12 ("Accept, like QuickJS"). The alternative, not taken, was a
+custom wrap of the same zip with the fork's own overlay and no suppression, patching whatever
+warnings appeared (FR-006).
 
 **MINGW_HAS_SECURE_API**: miniz 3.1.2's header no longer mentions it, and the amalgamated
 `miniz.c` selects its stdio wrappers in code the excerpt checked did not show. M1 builds miniz
@@ -60,7 +60,7 @@ alone on UCRT64 with both compilers. If it fails or warns for lack of the secure
 declarations, the fix is a compile definition in the fork's `dependency()` call. A definition
 that makes declarations visible is not a suppression. It is recorded in `data-model.md`.
 
-**Alternatives considered**: a custom wrap with the fork's own overlay (kept as the fallback above).
+**Alternatives considered**: a custom wrap with the fork's own overlay (not taken; see above).
 
 ## R3. MiniZip: zlib 1.4's `contrib/minizip`, nested under its own directory
 

@@ -72,7 +72,7 @@ rules and `docs/workflow.md`'s definition of done, as in specs 005, 009 and 011.
 | Gate | Plan | Status |
 |---|---|---|
 | 1. No test changed to make it pass | Only additions and build wiring under `tests/`. `test_OOSnapshotWriters` is new. `tests/unit/core/meson.build` loses two source paths from three entries because the files are gone (FR-014), and gains one entry. No test source or assertion changes. Each edit is in `test-ledger.md`. `check_debug_monitor_guards.py` is not touched. | pass |
-| 2. No warning silenced | The overlays set no warning options and use plain include directories (R8). WrapDB's own miniz packaging adds `-Wno-deprecated-declarations` on Windows, which the fork's tree does not contain, the same standing as QuickJS-ng's own `-Wno-*` list (R2). Recorded for Jon, with the fallback of a fork-written overlay. | pass, with a recorded decision |
+| 2. No warning silenced | The overlays set no warning options and use plain include directories (R8). WrapDB's own miniz packaging adds `-Wno-deprecated-declarations` on Windows, which the fork's tree does not contain, the same standing as QuickJS-ng's own `-Wno-*` list (R2). Accepted by Jon on that basis (2026-11-12). | pass |
 | 3. Never touch `develop`/`master`/`main`; no force-push | Game work on `feature/third-party-wraps`; spec docs on the planning repo's current branch; Jon merges. | pass |
 | 4. Never read expansion content | The OXZ paths are covered by existing tests and test-made archives. | pass |
 | 5. Tools judge correctness | The suites, the snapshot test, both compilers' warning lists and `meson setup --wrap-mode=nodownload` decide. | pass |
@@ -160,10 +160,9 @@ Each milestone is its own commit series and builds clean on Clang and GCC. Its c
 ## Notes (defaults taken without asking)
 
 - **WrapDB miniz as published** (R2), although its packaging adds `-Wno-deprecated-declarations`
-  on Windows. That flag is WrapDB's, downloaded rather than written by the fork, which is the
-  standing QuickJS-ng's flags already have. If Jon reads hard rule 2 as covering downloaded
-  packaging too, the switch is a fork-written `packagefiles/miniz/meson.build` over the same zip.
-  That is one file, and any warnings it exposes are patched under FR-006.
+  on Windows. Jon, 2026-11-12: accepted, like QuickJS-ng. A flag inside downloaded upstream or
+  WrapDB packaging is not one the fork adds, so hard rule 2 does not apply to it. The fork still
+  adds none of its own.
 - **MiniZip nested under `minizip-zlib-1.4/`** (R3), so a future zlib wrap cannot collide; fallback
   recorded there.
 - **Snapshot expectations from the formats' rules, not stored output** (R9). The test's pass on the
