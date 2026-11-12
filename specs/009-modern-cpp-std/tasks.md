@@ -149,7 +149,7 @@ FR-021). **No story task starts until this phase is done.**
   so a finding that appears only in CI can be traced to a version difference, which is then fixed
   or recorded in `exceptions.md`, never suppressed.
   **Accept:** `grep -q 'mk.sh tidy' oolite-dev/.github/workflows/build-all.yaml`, and the pushed run's Arch job passes
-- [ ] T009 Record baselines in a new `specs/009-modern-cpp-std/baselines.md`: every category's
+- [X] T009 Record baselines in a new `specs/009-modern-cpp-std/baselines.md`: every category's
   `check.sh --count` (and `--area` counts for `cast` and `cstring`) on the tree after T004 (C++23,
   no source change); and a table `| metric | median | spread | better |` with the base rows
   `start` (start-up seconds from `tests/launch_snapshot.py`, `lower`), `frame` (frames per second
@@ -663,7 +663,7 @@ edits.**
   repeat it on a Windows machine into `.agent-tmp/events/m7.log` (US2 AS-5).
   **Accept:** `cd oolite-dev && test ! -e src/oofnd/Ref.hpp && $C ownership && diff -q ../.agent-tmp/js-api/base.json ../.agent-tmp/js-api/m7.json && { test ! -s ../.agent-tmp/events/base.log || diff -q ../.agent-tmp/events/base.log ../.agent-tmp/events/m7.log; }`
 - [ ] T099 [US2] Measure: ASan smoke and `leaks --atExit`; frame rate and start-up, five runs each;
-  record the rows `| frame@M7 | … | higher |`, `| start@M7 | … | lower |`, `asan-smoke@M7` and
+  record the rows `| frame@M7 | … | lower |` (CPU ms per frame, baselines.md), `| start@M7 | … | lower |`, `asan-smoke@M7` and
   `leaks@M7` in `baselines.md` (SC-005, SC-008).
   **Accept:** `cd oolite-dev && $C bound frame@M7 && $C bound start@M7 && $C bound asan-smoke@M7 && $C bound leaks@M7`
 - [ ] T100 [US2] Update CLAUDE.md's "Ownership is `oo::Ref<T>`, not `shared_ptr`" line to the new

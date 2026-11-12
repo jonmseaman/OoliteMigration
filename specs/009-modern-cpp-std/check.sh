@@ -104,7 +104,7 @@ tidy() {  # tidy <check>: prints file:line:message for one clang-tidy check over
   if [ "$(uname -s)" = Darwin ]; then extra=("-extra-arg=-isysroot$(xcrun --show-sdk-path)"); fi
   "$rct" -p . -quiet -checks="-*,$check" ${extra[@]+"${extra[@]}"} \
     '^(?!.*/(MiniZip|EXRSnapshotSupport)/).*/src/(Core|SDL|oofnd)/.*\.cpp$' 2>/dev/null \
-    | sed -n -E "s#^${root}/([^:]+):([0-9]+):[0-9]+: (warning|error): (.*) \[${check}[^]]*\]\$#\1:\2:\4#p" \
+    | sed -n -E "s#^(${root}/|(\.\./)+)([^:]+):([0-9]+):[0-9]+: (warning|error): (.*) \[${check}[^]]*\]\$#\3:\4:\6#p" \
     | grep -E "$prefix_re" | grep -v -E '/(MiniZip|EXRSnapshotSupport)/|stb_' | sort -u
 }
 
