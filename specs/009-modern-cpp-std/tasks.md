@@ -595,7 +595,7 @@ kept or returned, `std::optional` where null meant "no text"), literal tables to
 `constexpr std::array<std::string_view, N>`, comparisons and searches, `printf`-family calls to
 `std::format` by M3's method, parses kept identical; every C call takes `c_str()` or a literal.
 
-- [ ] T077 [US7] Area `entities`.
+- [X] T077 [US7] Area `entities`.
   **Accept:** `cd oolite-dev && $C cstring --area entities && test -z "$($C cstring-types --unclassified --area entities)"`
 - [ ] T078 [US7] Area `scripting` (QuickJS calls take `c_str()` or literals).
   **Accept:** `cd oolite-dev && $C cstring --area scripting && test -z "$($C cstring-types --unclassified --area scripting)"`
