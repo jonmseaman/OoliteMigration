@@ -33,7 +33,9 @@ each flavour twice with different versions and walking the build graph. The meth
 ### Where date and time come in
 
 - **No source uses the compiler's date or time.** Nothing in `src/`, `tests/`, `tools/` or
-  `subprojects/` uses `__DATE__`, `__TIME__` or `__TIMESTAMP__`.
+  `subprojects/` uses `__DATE__`, `__TIME__` or `__TIMESTAMP__`. Upstream's window title did,
+  from 2007 until `mk.sh` arrived (a8818f549, 2026-07-15). It now shows the commit date, and
+  neither tree uses `__DATE__`.
 - **The version and the commit date are passed in on the compile line.** On `develop`, `meson.build`
   passes `OO_VERSION_FULL`, `OO_BUILD_DATE` and `OO_BUILDER` to every game compile with
   `add_project_arguments`. That is 230 of the deployment build's 240 compile lines; QuickJS-ng's
@@ -80,7 +82,7 @@ each flavour twice with different versions and walking the build graph. The meth
 | `buildtime` | `2026.11.12 04:26` | HEAD's committer time, UTC, or `mk.sh --buildtime` | manifest `build_time`; the Linux metainfo date is read back from it |
 | `ver_quad` | `1.93.1.68` | the version plus the commits since the closest tag; with uncommitted changes, the number of changed files | manifest `version_quad`; macOS `Info.plist` |
 | `ver_githash` | `a3d651a` | `git rev-parse --short=7 HEAD`, plus `-dirty` | manifest `git_commit_hash`; the cache key |
-| `cpp_date` | `Nov12 2026` | HEAD's committer date in `__DATE__`'s format | nothing: computed, never used |
+| `cpp_date` | `Nov12 2026` | HEAD's committer date in `__DATE__`'s format | nothing: computed, never used (left from when the title used `__DATE__`) |
 
 The manifest also records `git_remote_url`, the clone's `origin`. No value reaches the Windows
 resource file (`OOResourcesWin.rc` has no version block). The last four values go only to the
@@ -462,6 +464,12 @@ precompiled header, compile by compile with `baseline/o0_vs_o2.py`'s method.
   `OOLoggingInit` prints the log header before resources are found, an executable copied out of
   its bundle would lose its version, and upstream compiles it in. The plan may revisit this if the
   game's LTO link is still the cost of a version change once FR-001 is in.
+- **The builder stays upstream's.** `OO_BUILDER` is `OoliteProject` only when
+  `GITHUB_REPOSITORY` is `OoliteProject/oolite`, and `unknown` in every other build, on every OS
+  (upstream c676e2a36, 2026-06-16). It never reads the person's name, and that stays. A name
+  compiled in would make two people's builds of one commit differ, and would put the builder's
+  name into every binary they share. An explicit override (say `mk.sh --builder=`) is not part
+  of this feature.
 - **No game-only dev option.** Dev keeps building the unit tests. A switch to skip them is easy
   to add later, if the counts after FR-011 and FR-012 still show the test links dominating.
 - **One executable per core test.** Merging the 174 core tests into one runner would remove most
