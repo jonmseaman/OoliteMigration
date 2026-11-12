@@ -434,7 +434,7 @@ production enum changes in the same commit as it.
   Done as the `OODebugFlags` exemplar: the player keeps the flags as a `std::uint16_t` number
   (the by-name `alertFlags` answers it) and `OOAlertFlagIsOn` reads a bit. `test_OOJSPlayer`'s
   stand-in keeps its own `ALERT_FLAG_*` numbers; the `static_assert`s match them.
-- [ ] T053 [US5] P5: `OOWeaponFacing` and `VALID_WEAPON_FACINGS` (`src/Core/OOTypes.h:204-215`) →
+- [X] T053 [US5] P5: `OOWeaponFacing` and `VALID_WEAPON_FACINGS` (`src/Core/OOTypes.h:204-215`) →
   `enum class OOWeaponFacing : std::uint8_t` flags; `weapon_facings` plist bits and
   `weaponFacings` JS numbers pinned.
   **Accept:** `cd oolite-dev && ! rg -n '\bVALID_WEAPON_FACINGS\b|\bWEAPON_FACING_' src`
