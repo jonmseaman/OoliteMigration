@@ -143,6 +143,17 @@ texture sheet is roughly **$800–2,500** at mid-tier rates.
 - References: "industrial, not a copy of any EVE ship"; size in metres against a stock Oolite ship.
 - Also post on the Oolite BB first. Community modellers may do it cheaply or free for a core addition.
 
+## Artists to approach
+
+| Artist | Strengths | How to reach |
+|---|---|---|
+| **msGameDevelopment** ([YouTube](https://www.youtube.com/@MSGDI)) | Game-ready low-poly hulls in one consistent style: mining ship TTB01, the CFS freighter line, a cockpit, a modular hangar | Through their CGTrader listings |
+| **VattalusAssets** ([CGTrader](https://www.cgtrader.com/designers/vattalusassets), [website](https://www.vattalusassets.com/)) | Cockpits and interiors: Sci Fi Fighter Cockpit 2, 4–7, Cockpit Bridge 6 (a large starship bridge), a VR light-fighter cockpit, the Phobos Starhopper (a ship with a full interior), the Tempest Hover Tank. Sells on Unity, Unreal/Fab, Sketchfab, CGTrader and 3DModels.org. The [Sci Fi Fighter Cockpit 8](https://www.cgtrader.com/3d-models/space/spaceship/sci-fi-fighter-cockpit-8) and 5 in the cockpit list are probably theirs too | CGTrader private job requests are **off**. Use the "Commissions & Questions" page on their website (form, email or Messenger). Their bio offers consulting commissions and help optimising art for games. 5.0 rating, 84% response rate |
+
+VattalusAssets is the stronger fit for the cockpit and the station or hangar interior, and
+msGameDevelopment for the hulls. A three-ship mining set and a cockpit could go to different
+artists, as long as the brief fixes the scale and the licence clause for both.
+
 ## Mining and industrial ships in OXPs
 
 From the Oolite wiki pages only; no expansion files were opened. Each needs its author's permission
@@ -226,7 +237,8 @@ The pieces for a spinning ship exist already:
 
 - [ ] Read prices and triangle counts for CFS24, CFS113 and the modular hangar off the listings.
 - [ ] Ask msGameDevelopment about a GPLv2+/CC BY-NC-SA 3.0 license for the mining ship, freighters, cockpit and hangar as a set.
-- [ ] Try `show-ship-model-in-status-screen` to see the current spinning-ship view.
+- [ ] Ask VattalusAssets, through their website's commissions page, for a quote on a cockpit and a hangar or station interior under the licence clause.
+- [x] Try `show-ship-model-in-status-screen` to see the current spinning-ship view (done 2026-11-11).
 - [ ] Ask Griff (or on the BB) about the license on Griff's Shipset Resources.
 - [ ] Ask the C500M and MCCV-2 artists whether they'd sell a GPLv2+/CC BY-NC-SA 3.0 license, and at what price.
 - [ ] Post a commission request on the Oolite BB, and get two or three freelance quotes for a three-ship set.
