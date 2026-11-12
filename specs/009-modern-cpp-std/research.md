@@ -294,6 +294,11 @@ deleted.
   converted by hand. One real flaw: it writes `%.4X` as `{:.4X}`, which `std::format` rejects;
   `{:04X}` is the equivalent. The debug dump code under `DUMP_*` switches has bitrot of its own at
   HEAD (`DumpMipMap`'s callers, two pointer conversions in the planet generator).
+- **T043 (2026-11-12):** after T037–T041 the tree still gives 672 distinct `-Wformat-signedness`
+  lines (Universe 216, HeadUpDisplay 112, GuiDisplayGen 47, OOOpenGL 41, …), none from a literal
+  `oo::str::format` call: they come from the OpenGL debug macros (`OOGLBEGIN` and kin) and the other
+  printf-attributed functions (`OORaiseException`, `cxx_OOJSReportError`, `OOCAssert`). So the flag
+  stays off; US7's printf-family work (T077–T083) is where those calls move to `std::format`.
 - `-fno-exceptions` is not used anywhere in the build, and the game throws (49 raise sites, 75
   `catch (...)`). The README's "headers must compile with `-fno-exceptions`" rule and its "C++20
   only" rule are out of date and are rewritten (FR-023).

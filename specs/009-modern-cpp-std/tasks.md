@@ -373,9 +373,9 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
 - [X] T041 [US4] As T037, area `core` (leave `OOShipLibraryDescriptions.cpp:154,161,171`'s data
   formats).
   **Accept:** `cd oolite-dev && $C oofnd && ! rg -U -n -P 'oo::str::format\s*\(\s*"' src/Core --glob '!src/Core/{Entities,Scripting,Materials,Debug}/**'`
-- [ ] T042 [US4] As T037, area `oofnd` (its own literal calls).
+- [X] T042 [US4] (nothing to convert: no literal `oo::str::format` call in `src/oofnd` outside `String.hpp`) As T037, area `oofnd` (its own literal calls).
   **Accept:** `cd oolite-dev && ! rg -U -n -P 'oo::str::format\s*\(\s*"' src/oofnd --glob '!src/oofnd/String.hpp'`
-- [ ] T043 [US4] Add `-Wformat-signedness` to the game's warning flags in `src/meson.build` if the
+- [X] T043 [US4] (done 2026-11-12: 672 sites remain, all outside literal `oo::str::format` calls, so the flag stays off; research R7 lists them) Add `-Wformat-signedness` to the game's warning flags in `src/meson.build` if the
   whole tree builds without that warning; if not, record the remaining sites in research.md R7 and
   leave it off.
   **Accept:** `cd oolite-dev && ./mk.sh build test 2>&1 | { ! grep -q 'Wformat-signedness'; }`
