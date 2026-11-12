@@ -52,6 +52,10 @@ machine when one is available; the plan does not depend on them per step.
   Windows. T027 and T028 used it. It also showed a test that only holds on Windows and Linux:
   `test_thread.cpp`'s `setCurrentNameIsReadBack` expects Linux's 15-byte name truncation in its
   non-Windows branch, and macOS keeps the whole name (reported to Jon; not edited).
+  More such tests, all failing identically on the C++20 base when run on macOS (2026-11-12):
+  `test_plist_get` (149 checks), `test_string` (4), `test_defaults` (1, Windows paths) and
+  `test_foundation_types` (asserts `long long`, LLP64 only). They are LP64 and path differences
+  the Windows-only gate hides; Phase 5 meets them when it lifts the gate.
 
 **Alternatives:** lift the gate here (out of scope, and it would surface unrelated LP64 failures
 first). Run unit tests only on Windows by hand (slower than CI and not available from this Mac).

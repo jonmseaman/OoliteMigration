@@ -334,7 +334,7 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   (`what()` returns today's message); add `tests/unit/oofnd/test_exception_std.cpp` (registered)
   that catches a raised `oo::Exception` as `std::exception` and checks the message text.
   **Accept:** CI runs `test_exception_std` and it passes (it does not compile before)
-- [ ] T033 [US4] Integer aliases (research R7): `NSInteger` → `std::ptrdiff_t`, `NSUInteger` →
+- [X] T033 [US4] Integer aliases (research R7): `NSInteger` → `std::ptrdiff_t`, `NSUInteger` →
   `std::size_t`, `NSTimeInterval` and `CGFloat` → the type `src/oofnd/objc/OOFoundationTypes.h`
   aliases today; `NSNotFound` → `inline constexpr std::ptrdiff_t kNotFound = INTPTR_MAX;` in
   namespace `oo` in that header; `NSRange`'s fields to `std::size_t`; delete the aliases. Leave the

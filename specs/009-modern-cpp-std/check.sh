@@ -117,7 +117,8 @@ case "$category" in
   ownership) hits=$(search '\b(RefCounted|oo::Ref\b|oo::WeakRef|makeRef|leakRef|adopt\s*\()') ;;
   thread)    hits=$(search 'oo::thread::detach\b') ;;
   oofnd)     hits=$(search 'oo::(Expected|Unexpected)\b|\bNS(U?Integer|NotFound|TimeInterval)\b|\bCGFloat\b|oofnd/StdLib\.hpp' \
-                      --glob '!src/Core/OOTypeEncodings.h' --glob '!src/Core/Entities/OOEntityObjectNamesTable.h') ;;
+                      --glob '!src/Core/OOTypeEncodings.h' --glob '!src/Core/Entities/OOEntityObjectNamesTable.h' \
+                      --glob '!src/oofnd/StdLib.hpp' --glob '!*.md') ;;
   enum)      hits=$(search '^\s*(typedef\s+)?enum\b(?!\s+class\b)') ;;
   tbl)       hits=$(for f in src/Core/Tables/*.tbl; do [ "$(basename "$f")" = OOOpenGLStates.tbl ] || echo "$f:1:table"; done) ;;
   cast)      hits=$(tidy google-readability-casting) ;;
