@@ -410,6 +410,10 @@ gives start-up time.
 - Spec 006's performance tier does not exist yet (spec and checklist only). Its scratch scripts
   (`.agent-tmp/hudrepro/fps_bench.py` and others) are git-ignored and not relied on; the method is
   rewritten as `tools/` script only if the measurement is needed more than three times.
+- **Measured 2026-11-12:** the absolute numbers move by about a third between sessions (machine
+  state), far more than the spread within one, so every later comparison re-measures the C++20
+  base in the same session from a `git worktree` of `518520d43` (baselines.md *Same-session
+  comparison*). C++23 plus T014–T019 showed no difference beyond the spread.
 - Suspects: `shared_ptr` is twice `Ref`'s size, entities need a separate control block (no
   `make_shared` with the disposing deleter), and `share()` is a `weak_ptr` lock. Atomic counting
   is not new (R5).

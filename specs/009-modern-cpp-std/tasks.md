@@ -307,6 +307,7 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   worker threads' names under a debugger (`lldb`, `thread list` while the game runs) and record
   them in `baselines.md` as `thread names: <names>`; they must read `OOAsyncWorkManager thread N`
   as on the base (US3 AS-4).
+  Measure the base again in the same session from a `git worktree` of `518520d43` and record it as the base rows for the comparison (baselines.md *Same-session comparison*).
   **Accept:** `cd oolite-dev && $C bound quit@M2 && $C bound tsan-smoke@M2 && grep -q '^thread names: .*OOAsyncWorkManager thread' ../specs/009-modern-cpp-std/baselines.md`
 
 **Checkpoint**: US3 complete.
@@ -665,6 +666,7 @@ edits.**
 - [ ] T099 [US2] Measure: ASan smoke and `leaks --atExit`; frame rate and start-up, five runs each;
   record the rows `| frame@M7 | … | lower |` (CPU ms per frame, baselines.md), `| start@M7 | … | lower |`, `asan-smoke@M7` and
   `leaks@M7` in `baselines.md` (SC-005, SC-008).
+  Measure the base again in the same session from a `git worktree` of `518520d43` and record it as the base rows for the comparison (baselines.md *Same-session comparison*).
   **Accept:** `cd oolite-dev && $C bound frame@M7 && $C bound start@M7 && $C bound asan-smoke@M7 && $C bound leaks@M7`
 - [ ] T100 [US2] Update CLAUDE.md's "Ownership is `oo::Ref<T>`, not `shared_ptr`" line to the new
   rule (`std::shared_ptr`/`std::weak_ptr`/`std::unique_ptr`, objects from `oo::makeShared`) and
