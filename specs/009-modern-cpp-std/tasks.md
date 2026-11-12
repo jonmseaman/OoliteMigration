@@ -616,11 +616,15 @@ kept or returned, `std::optional` where null meant "no text"), literal tables to
   one `exceptions.md` row each (category `cstring`, required by "printf-syntax data formats",
   FR-026).
   **Accept:** `cd oolite-dev && $C cstring && test -z "$($C cstring-types --unclassified)"`
-- [ ] T083 [US7] Set `bugprone-unsafe-functions.CustomFunctions` in `oolite-dev/.clang-tidy` to
+- [X] T083 [US7] Set `bugprone-unsafe-functions.CustomFunctions` in `oolite-dev/.clang-tidy` to
   contracts/strings.md's list, which leaves out `vsnprintf` so the printf engine T082 keeps needs
   no suppression (confirm the expressions against clang-tidy 22 on a sample file first); ASan
   smoke run clean.
   **Accept:** `cd oolite-dev && ./mk.sh tidy && /opt/homebrew/opt/llvm@22/bin/clang-tidy --dump-config src/Core/OOColor.cpp | grep -q 'strcpy'`
+  *Done (ae5729de0).* The ASan smoke run is `ASAN_OPTIONS=detect_leaks=0 bash -c 'source
+  tests/run_test_fn.sh && run_test asan'` from `oolite-dev` (`mk.sh` does not take an `asan` build
+  type); it reported nothing. The ASan build compiled one OO_DEBUG-only C-style cast that the other
+  builds do not, fixed in 9ec7544c1.
 
 **Checkpoint**: US7 complete (SC-011).
 
