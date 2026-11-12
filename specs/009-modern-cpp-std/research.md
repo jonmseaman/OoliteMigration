@@ -488,6 +488,9 @@ short.
 - `OOALSoundDecoder.cpp:442`: a buffer leak on every OXZ Vorbis read (fixed by US1).
 - `PlayerEntity.h:165,199`: `#if GUI_FIRST_ROW() < 0` is always false (fixed by P9, no behaviour
   change).
+- `HeadUpDisplay.cpp` `drawScannerGrid`: the view-line switch has no custom-view case, so the
+  scanner grid draws no view lines in a custom view (upstream's behaviour). Kept as it is (T062):
+  the switch now names `OOViewID::kCustom` with an empty case, which `-Wswitch` required.
 
 ## R15. Changes this research makes to the spec
 

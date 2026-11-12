@@ -155,5 +155,9 @@ the same way at the C++20 base, so none is a spec 009 regression; they are repor
 | `tests/unit/core/test_DockEntity.cpp` | aborts in `initAndSetUp` | not investigated |
 | `tests/unit/core/test_OOOpenGLExtensionManager.cpp` | `readsTheDriver` (line 147, `major >= 3`) | the OpenGL major version this Mac's test context reports is below 3; why not investigated |
 
+`test_OOBasicMaterial` and `test_OOSingleTextureMaterial` do not build on macOS: they define
+`glActiveTextureARB` and `glClientActiveTextureARB` as variables, which macOS's GL headers declare
+as functions.
+
 Tests that include `process.h` or `winsock2.h` (`test_OOMesh`, `test_OOSoundMixer`,
 `test_HeadUpDisplay`, `test_OODebugTCPConsoleClient` and others) do not build on macOS at all.

@@ -479,7 +479,7 @@ production enum changes in the same commit as it.
 - [X] T061 [US5] P8: `OOBehaviour`, `OOGalacticHyperspaceBehaviour` (its `GALACTIC_HYPERSPACE_##label`
   pasting replaced by explicit strings), `OOLegalStatusReason`.
   **Accept:** `cd oolite-dev && test ! -e src/Core/Tables/OOBehaviour.tbl && test ! -e src/Core/Tables/OOGalacticHyperspaceBehaviour.tbl && test ! -e src/Core/Tables/OOLegalStatusReason.tbl`
-- [ ] T062 [US5] P8: `OOCompassMode`, `OOViewID` (the program's ordinals, not the `.tbl` column:
+- [X] T062 [US5] P8: `OOCompassMode`, `OOViewID` (the program's ordinals, not the `.tbl` column:
   `VIEW_CUSTOM` 4, `VIEW_NONE` 5, `VIEW_GUI_DISPLAY` 6, `VIEW_BREAK_PATTERN` 7, `static_assert`ed;
   leave the `HeadUpDisplay.cpp:4658` missing-`VIEW_CUSTOM` behaviour as it is and record it in R14).
   **Accept:** `cd oolite-dev && test ! -e src/Core/Tables/OOCompassMode.tbl && test ! -e src/Core/Tables/OOViewID.tbl`
