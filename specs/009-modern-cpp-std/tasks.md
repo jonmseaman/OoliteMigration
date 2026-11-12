@@ -489,7 +489,7 @@ production enum changes in the same commit as it.
   `VIEW_CUSTOM` 4, `VIEW_NONE` 5, `VIEW_GUI_DISPLAY` 6, `VIEW_BREAK_PATTERN` 7, `static_assert`ed;
   leave the `HeadUpDisplay.cpp:4658` missing-`VIEW_CUSTOM` behaviour as it is and record it in R14).
   **Accept:** `cd oolite-dev && test ! -e src/Core/Tables/OOCompassMode.tbl && test ! -e src/Core/Tables/OOViewID.tbl`
-- [ ] T063 [US5] P8: `OOLongRangeChartMode` (save-visible ordinals pinned by `test_SaveEnumValues`)
+- [X] T063 [US5] P8: `OOLongRangeChartMode` (save-visible ordinals pinned by `test_SaveEnumValues`)
   and `OOGUIScreenID` (ordinals 0…28); update the `.tbl` include in
   `tests/unit/core/test_OOJSSound.cpp` (ledger, *covered*).
   **Accept:** `cd oolite-dev && ls src/Core/Tables/*.tbl | grep -c tbl` prints 1 and `$C tbl`
