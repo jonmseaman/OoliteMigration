@@ -114,6 +114,24 @@ Platform query, `src/Core/OODisplaySize.h` (implementations in `src/SDL/`, resea
 std::optional<std::pair<double, double>> OOQueryDisplayPhysicalSize(int sdlDisplayIndex);
 ```
 
+## Changes made while implementing (2026-11-12, `oolite-dev` `7b030851d`)
+
+The header in `oolite-dev/src/Core/OODisplayGeometry.h` is the authority; it differs from the
+block above in these ways:
+
+- `legacy(double fovTangent, …)` takes the tangent of half the angle, the value
+  `MyOpenGLView::fov(true)` already stores, so no degrees round trip changes today's frustum.
+- `sceneToEye` returns `std::optional<OODirection>` (empty for a classic-flat direction behind
+  the eye).
+- `warpMesh` returns a triangle list (six vertices per cell) and defaults to 512 × 128 cells.
+  Seams between slices fall on cell edges, so no triangle interpolates across one. 128 × 64 left
+  up to 0.5 texel of error at the G9's edges; 512 × 128 leaves 0.033 (G7).
+- Added `screenMatching()`, `clampedScreen()`, `clampedViewerDistanceMm()` and `clampedChoice()`
+  (FR-011 shows clamped values), and the enums have a `std::uint8_t` base.
+- With no warp (flat screens, or shaders off), "eye" and "scene" are the same and the window maps
+  linearly to the flat perspective; on a curved screen without shaders that is the FR-017
+  fallback, with the vertical extent in the panel's proportions.
+
 ## Definitions the tests pin
 
 - **Eye position**: on the screen's centre line, `viewerDistanceMm` from the centre of the panel.

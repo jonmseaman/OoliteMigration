@@ -49,12 +49,8 @@ shown at that vertex. The `warp` pass draws that mesh with a plain texture shade
 mouse picking and mouse-look call the same C++ functions (FR-012).
 
 **Rationale**: one source of truth that the unit tests can check against every number in the
-spec, and that cannot drift from the shader. The mapping is smooth, so a grid of 128 × 64 cells over the window is expected to keep the
-linear-interpolation error under 0.1 pixel on the G9 (5120 × 1440) for every look up to 150°;
-this is an estimate, not yet measured, and the unit test sets the bound (if it fails, the grid
-gets denser; the cost is negligible either way) (contract
-[geometry.md](contracts/geometry.md), test G7). The mesh is rebuilt only when a setting or the
-window size changes (FR-015), well under a millisecond.
+spec, and that cannot drift from the shader. The grid is 512 × 128 cells: measured, 128 × 64 left up to 0.5 texel of interpolation error at the G9's edges (Panini at 120°) and 512 × 128 leaves 0.033 for every look up to 150° (unit test G7). The mesh is 393k vertices (about 6 MB), rebuilt only when a setting or the window size changes
+(FR-015); its build time is not yet measured.
 
 **Alternatives**: the mapping written again in GLSL (two copies to keep equal, and no way to test
 the GLSL copy in the unit suites); a look-up texture at window resolution (59 MB of RG32F on the

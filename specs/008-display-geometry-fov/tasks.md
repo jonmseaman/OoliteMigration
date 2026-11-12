@@ -51,7 +51,8 @@ another one stops and the contract is extended first.
 **Purpose**: the branch and the test tools later tasks need, with today's projection recorded
 before anything changes.
 
-- [ ] T001 Create the branch `feature/double-wide-support` from `develop` in `oolite-dev`.
+- [X] T001 Create the branch `feature/double-wide-support` in `oolite-dev` with `git town append` on
+  `seriesb/026-migration-completion` (Jon, 2026-11-12; first cut from `develop`, then recreated).
   (`branch.sh` would name it `epic/…`; create it by hand.) **Accept:**
   `git -C oolite-dev rev-parse --abbrev-ref HEAD | grep -qx feature/double-wide-support`
 - [ ] T002 [P] Add a `--window WxH` option to `tests/run.sh` for the `smoke` and `component` tiers,
@@ -84,7 +85,7 @@ before anything changes.
 **Purpose**: the geometry module every story uses, and the renderer and HUD reading it with
 nothing visible changed. ⚠️ No story starts until this phase is done.
 
-- [ ] T005 Write `tests/unit/core/test_OODisplayGeometry.cpp` (style of
+- [X] T005 Write `tests/unit/core/test_OODisplayGeometry.cpp` (style of
   `tests/unit/core/test_OOVector.cpp`, `OO_TEST`/`OO_CHECK`) with tests G1–G15 exactly as the
   table in `specs/008-display-geometry-fov/contracts/geometry.md` gives them (numbers, tolerances,
   window sizes), and register `'test_OODisplayGeometry': ['Core/OODisplayGeometry.cpp']` in the
@@ -93,7 +94,7 @@ nothing visible changed. ⚠️ No story starts until this phase is done.
   header-only stub `src/Core/OODisplayGeometry.h` with the contract's declarations so the test
   compiles. **Accept:** `meson test -C build test_OODisplayGeometry` exits nonzero (the stub has no
   behaviour); T006's acceptance is the same command exiting zero
-- [ ] T006 Implement `src/Core/OODisplayGeometry.h/.cpp` to the contract (style of
+- [X] T006 Implement `src/Core/OODisplayGeometry.h/.cpp` to the contract (style of
   `src/Core/OOColor.*`; a value type, no `oo::Ref`, no GL or SDL). Clamp inputs to the data-model
   limits verbatim: diagonal "254–3048 (10"–120")" mm, aspect "custom 1.0–4.0", curvature
   "800–4000 (800R–4000R)", distance "200–3000" mm, custom horizontal "20–170" degrees. `legacy()`
