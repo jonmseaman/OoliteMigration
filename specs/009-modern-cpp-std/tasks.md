@@ -319,7 +319,7 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
 **Goal**: FR-012–FR-014; research R7. **Independent test**: `$C oofnd` exits 0;
 `src/oofnd/Expected.hpp` gone; README lists every survivor with its reason.
 
-- [ ] T030 [US4] `oo::Expected`/`oo::Unexpected`/`oo::unexpect`/`oo::BadExpectedAccess` to
+- [X] T030 [US4] `oo::Expected`/`oo::Unexpected`/`oo::unexpect`/`oo::BadExpectedAccess` to
   `std::expected`/`std::unexpected`/`std::unexpect`/`std::bad_expected_access` across `src`
   (18 game names in 10 files, 26 in `src/oofnd/FileSystem.hpp`, the other `oofnd` headers); delete
   `src/oofnd/Expected.hpp`; port `tests/unit/oofnd/test_expected.cpp` and the other tests that name

@@ -277,6 +277,12 @@ deleted.
 | `Ref.hpp`, `WeakSet.hpp` | | R5 | |
 | Notification, Scanner, Process, Log, LogFile, Http, Defaults, ResourcePaths, Encoding, PList*, `OOAssert` | | **Keep** | No standard equivalent, or GNUstep-exact output pinned by tests |
 
+- **Found while implementing T030 (2026-11-12):** clang-tidy's `bugprone-unused-return-value`
+  treats `std::expected` as a checked return type, which `oo::Expected` was not, so the nine `oo::fs`
+  results the game discards on purpose with `(void)` became errors. `.clang-tidy` now sets
+  `AllowCastToVoid: true`: an explicit `(void)` discard is accepted, a silent one is still an
+  error. `test_defaults`'s `defaultsDirectoryIsHomeGNUstepDefaults` fails on macOS on the C++20
+  base too (Windows paths fed to the macOS filesystem library); it runs only on Windows in CI.
 - `-fno-exceptions` is not used anywhere in the build, and the game throws (49 raise sites, 75
   `catch (...)`). The README's "headers must compile with `-fno-exceptions`" rule and its "C++20
   only" rule are out of date and are rewritten (FR-023).
