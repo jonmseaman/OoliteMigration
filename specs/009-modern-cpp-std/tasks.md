@@ -709,6 +709,27 @@ edits.**
 - [ ] T104 [P] If Jon has ruled on `test_stdlib` (T002 row), act on it: delete `src/oofnd/StdLib.hpp`
   only if he approved retiring the test; otherwise leave both and note it in the checklist.
   **Accept:** `row=$(grep 'test_stdlib' specs/009-modern-cpp-std/test-ledger.md); echo "$row" | grep -qE '[0-9]{4}-[0-9]{2}-[0-9]{2}' && if echo "$row" | grep -q 'retire'; then test ! -e oolite-dev/src/oofnd/StdLib.hpp; else test -e oolite-dev/src/oofnd/StdLib.hpp; fi`
+- [ ] T107 (FR-029, Jon 2026-11-12) Remove the `cxx_` prefix: about 2,310 references to 371
+  names in 175 `src` files and 996 in 91 test files. Do it after US6 and US7 (T070–T083), which
+  rewrite many of the same lines, and before T108 and T105. Rename with a literal-aware tool (the
+  renamer under `.agent-tmp/us5/` that skips strings and block comments; extend it to `//`
+  comments that name the identifier), one area per commit. 115 of the bare names are already in
+  use (`path`, `description`, `manifest`, `setText`, …); for each, look up upstream's name in
+  `upstream/oolite` (`kGuiShipyardHeadingColor` for `cxx_kGuiShipyardHeadingColor`) and take it,
+  and where it still clashes (a member or local of the same name) let the build find the clash
+  and settle it at that site, writing each choice in this task's notes. Tests name the new
+  identifiers (ledger, *covered*: a name the test uses, renamed, assertions unchanged).
+  **Accept:** `cd oolite-dev && ! rg -n '\bcxx_\w+' src tests --glob '!src/Core/MiniZip/**' --glob '!src/SDL/EXRSnapshotSupport/**'`
+- [ ] T108 (FR-030, Jon 2026-11-12) Remove every unused include from the game and its tests: run
+  `run-clang-tidy -checks='-*,misc-include-cleaner' -fix` over `src` and `tests/unit` (not the
+  vendored directories), keep only its removals (it also suggests adding headers; those are
+  reported, not applied), then build, test, smoke and tidy; a removal that breaks a platform
+  build (Windows `process.h`, `winsock2.h`, an `#if` branch macOS does not compile) goes back with
+  a `// IWYU pragma: keep` and its reason. Add `misc-include-cleaner` to `oolite-dev/.clang-tidy`
+  with its `MissingIncludes: false` option so new unused includes are reported, and make it fatal
+  once the count is zero. Test files' removed includes go in the ledger (*covered*: no assertion
+  changes). Run it last of the code changes, after T107: every task before it moves includes.
+  **Accept:** `cd oolite-dev && test "$(/opt/homebrew/opt/llvm@22/bin/run-clang-tidy -p . -quiet -checks='-*,misc-include-cleaner' -config='{CheckOptions: {misc-include-cleaner.MissingIncludes: false}}' '^(?!.*/(MiniZip|EXRSnapshotSupport)/).*/(src|tests/unit)/.*\.cpp$' 2>/dev/null | grep -c 'warning:.*misc-include-cleaner')" -eq 0`
 - [ ] T105 On a Windows machine: `tests/run.sh all` on Clang and on GCC
   (`--native-file=gcc.ini`); the unit suites under ASan (`meson setup <dir> -Db_sanitize=address`)
   on the branch and, in a `git worktree` of the base commit, on the base, reporting nothing the
@@ -749,7 +770,8 @@ Phase 1 (T001–T003) → Phase 2 (T004–T013)
   → Phase 9 US2 (T084–T100)        T084–T086 any time after Phase 2 (they only add or record);
                                     T087 (rewrites Entities code) never beside Phases 6–8;
                                     T088+ after Jon signs
-  → Phase 10 (T101–T106)           T101 after Jon signs the P10 rows; T106 is the last task
+  → Phase 10 (T101–T108)           T101 after Jon signs the P10 rows; T107 after US6 and US7, then
+                                   T108, both before T105; T106 is the last task
 ```
 
 - Phase 9 may move to directly after Phase 3 if Jon signs early (it never runs beside Phases 6–8:
