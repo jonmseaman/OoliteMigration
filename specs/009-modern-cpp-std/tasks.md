@@ -441,7 +441,7 @@ production enum changes in the same commit as it.
 - [X] T054 [US5] P5: `kOOUniformConvert*` (`src/Core/Materials/OOShaderMaterial.h:48`),
   `kOOExpand*` (`src/Core/OOStringExpander.h:34`), `kOORegExp*` → flag `enum class`es.
   **Accept:** `cd oolite-dev && ! rg -n -P '(?<!::)\bkOO(UniformConvert|Expand|RegExp)\w+' src`
-- [ ] T055 [US5] P5: `kOOByName*` (`src/Core/Entities/OOEntityCalledByName.h:46`, about 1,006
+- [X] T055 [US5] P5: `kOOByName*` (`src/Core/Entities/OOEntityCalledByName.h:46`, about 1,006
   references in `OOEntityCalledByNameTable.h`) → `enum class OOByName : unsigned` flags.
   **Accept:** `cd oolite-dev && ! rg -n -P '(?<!::)\bkOOByName\w+' src`
 - [ ] T056 [US5] P5, last: `OOTexture` flags (`src/Core/Materials/OOTexture.h:47`, 29 values,
