@@ -472,7 +472,7 @@ production enum changes in the same commit as it.
   `WORMHOLE_SCANINFO` (`src/Core/Entities/WormholeEntity.h:42-49`) → `enum class` with
   `kPascalCase` enumerators.
   **Accept:** `cd oolite-dev && ! rg -n -P '\}\s*(OOCargoType|OORouteType|OOEnergyUnitType|OODockingClearanceStatus|OOGraphicsDetail|OOHDRToneMapper|OOSDRToneMapper|OOShaderSetting|WORMHOLE_SCANINFO)\s*;' src`
-- [ ] T060 [US5] P8: `OOScanClass`, `OOEntityStatus`, `OOShipDamageType` tables → headers per
+- [X] T060 [US5] P8: `OOScanClass`, `OOEntityStatus`, `OOShipDamageType` tables → headers per
   `notes/2026-11-07 Enum Tables from tbl X-Macros.md` and contracts/enums.md; delete their `.tbl`
   files; update `OOConstToString.cpp:39-48,122-127` and `OOConstToJSString.cpp:76-82`.
   **Accept:** `cd oolite-dev && test ! -e src/Core/Tables/OOScanClass.tbl && test ! -e src/Core/Tables/OOEntityStatus.tbl && test ! -e src/Core/Tables/OOShipDamageType.tbl`
