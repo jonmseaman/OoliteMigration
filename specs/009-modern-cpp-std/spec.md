@@ -36,7 +36,8 @@ What the tree is today (counts from `oolite-dev/src`, first-party code, 2026-11-
   `std::unique_ptr`, 4 of `std::shared_ptr`.
 - **C allocation.** About 50 `malloc`, 6 `calloc`, 10 `realloc` and 73 `free` lines in about 45
   files (textures, meshes, octrees, collision regions, sound, JavaScript bindings, the OpenGL
-  view). One comment admits a leak when `realloc` fails.
+  view). The `realloc` leak the idiom review found is already fixed (`272aac108`); a new one was
+  found while planning (`OOALSoundDecoder.cpp:442`, a buffer per OXZ Vorbis read).
 - **Threads.** `oofnd/Thread.hpp` already sits on `std::thread`; game code calls
   `oo::thread::detach`, `isMainThread`, `setCurrentName` and `setCurrentPriority` (12 lines,
   5 files). Mutexes are already `std::mutex`.
@@ -117,17 +118,18 @@ and every test tier passes with the same results as before.
 
 A developer sees shared ownership expressed as `std::shared_ptr`, non-owning observation as
 `std::weak_ptr`, and exclusive ownership as `std::unique_ptr` or a plain member. The Objective-C
-lifetime machinery is gone: no reference-counted base class, no `oo::Ref`/`oo::WeakRef`/
-`oo::WeakSet`, no autorelease scopes and no manual `leakRef`/`adopt`. An entity is still disposed
-of at the same moment as before, and objects handed to the script engine still live exactly as
-long as they did.
+lifetime machinery is gone: no reference-counted base class, no `oo::Ref`/`oo::WeakRef` and no
+manual `leakRef`/`adopt`. The deferred-release scope and the weak set stay, rebuilt on the standard
+pointers, because the game's destruction order depends on them and the standard library has
+neither. An entity is still disposed of at the same moment as before, and objects handed to the
+script engine still live exactly as long as they did.
 
 **Why this priority**: It is the largest and most visible change, touching about 260 files, and it
 is what the request names first. It comes after Story 1 because it needs test edits (see FR-015)
 and carries the most behavioural risk: destruction order drives script events and disposal.
 
-**Independent Test**: Before: `oofnd/Ref.hpp` and `oofnd/WeakSet.hpp` exist and about 1,900 lines
-use them. After: both headers are gone, no first-party code names their types, every test tier
+**Independent Test**: Before: about 1,900 lines use `oo::RefCounted`, `oo::Ref` and `oo::WeakRef`.
+After: those types are gone, no first-party code names them, every test tier
 passes with the same results, the expansion corpus and script API snapshot do not regress, and a
 scripted session that kills, docks and jumps away from ships produces the same sequence of script
 events and log lines as the base.
@@ -135,15 +137,16 @@ events and log lines as the base.
 **Acceptance Scenarios**:
 
 1. **Given** the converted tree, **When** first-party code is searched for `RefCounted`, `oo::Ref`,
-   `oo::WeakRef`, `oo::WeakSet`, `AutoreleaseScope`, `leakRef` and `adopt`, **Then** nothing is
-   found, and the headers that defined them are deleted.
+   `oo::WeakRef`, `oo::makeRef`, `leakRef` and `adopt`, **Then** nothing is found, and the code that
+   defined them is deleted.
 2. **Given** an entity whose last owner lets go of it, **When** that happens, **Then** its
    disposal hook runs once, at the same point relative to other game events as on the base, and
-   any non-owning reference to it reads as empty before its destructor runs.
+   what it does to beacons, docks, groups and scripts has the same effect as on the base.
 3. **Given** a script object that refers to a native object, **When** the script engine collects
    the script object, **Then** the native object is released then and not before, as on the base.
 4. **Given** an object that used to be returned autoreleased, **When** its caller keeps the
-   result, **Then** the object stays alive for as long as the caller holds it, with no pool.
+   result, **Then** the object stays alive for as long as the caller holds it, and an object nobody
+   claims is released at the same drain point as on the base.
 5. **Given** a session on the base and on the branch with the same seed and inputs, **When** the
    component scenarios and the smoke tier run, **Then** they pass and the logged script events
    appear in the same order.
@@ -188,15 +191,16 @@ answers from the ones the game depends on, and each survivor says so in one line
 **Why this priority**: It is the broadest "use std directly" item, but each component is
 independent, so it can be done piece by piece once the C++23 switch is in.
 
-**Independent Test**: Before: `Expected.hpp`, `Data.hpp`, `Date.hpp`, `StdLib.hpp` and
-`PrintfFormat.h` exist and game code includes them. After: they are deleted or reduced to the
-documented remainder, no first-party code uses the replaced names, `oofnd`'s README lists each
+**Independent Test**: Before: game code includes `Expected.hpp` and `StdLib.hpp`, `Date.hpp` has
+its own calendar arithmetic, and literal formats go through printf. After: the first two are
+deleted, the rest are reduced to the documented remainder, no first-party code uses the replaced
+names, `oofnd`'s README lists each
 remaining component with its reason, and every test tier passes with the same results.
 
 **Acceptance Scenarios**:
 
 1. **Given** the converted tree, **When** it is searched for `oo::Expected`, `oo::Unexpected`,
-   `oo::Data`, `NSInteger`, `NSUInteger`, `NSRange`, `NSNotFound`, `NSTimeInterval`, `CGFloat` and
+   `NSInteger`, `NSUInteger`, `NSNotFound`, `NSTimeInterval`, `CGFloat` and
    `#include "oofnd/StdLib.hpp"`, **Then** nothing is found.
 2. **Given** an `oofnd` helper whose standard equivalent gives the same answer for every input the
    tests and the game use, **When** the feature is done, **Then** callers use the standard
@@ -294,17 +298,23 @@ colour mode included); and the script API snapshot and expansion corpus do not r
   the interface that requires it.
 - **FR-005**: An object created with `new` MUST be owned by a smart pointer or a container
   immediately, except where ownership passes to a C interface through `void*`; each such crossing
-  MUST be on the exceptions list with its owner and release point. Leaked singletons MUST get an
-  owner or be function-local statics.
+  MUST be on the exceptions list with its owner and release point. A singleton that is
+  deliberately never destroyed today MUST stay so, through one shared helper that holds it in a
+  smart pointer that is never released, and MUST be on the exceptions list.
 
 **Ownership (Story 2)**
 
 - **FR-006**: Shared ownership MUST be `std::shared_ptr`, non-owning references that must detect
   expiry MUST be `std::weak_ptr`, and exclusive ownership MUST be `std::unique_ptr` or a value
-  member. `oo::RefCounted`, `oo::Ref`, `oo::WeakRef`, `oo::WeakSet`, `oo::AutoreleaseScope`,
-  `leakRef` and `adopt` MUST be removed, with the headers that define them.
+  member. `oo::RefCounted`, `oo::Ref`, `oo::WeakRef`, `oo::makeRef`, `leakRef` and `adopt` MUST be
+  removed. `oo::AutoreleaseScope` (deferred release, with today's drain points and order) and
+  `oo::WeakSet` MUST stay, holding standard pointers, because the standard library has no
+  equivalent and destruction order depends on them.
 - **FR-007**: An entity's disposal hook MUST run exactly once, when its last owner releases it, and
-  before then every non-owning reference to it MUST still resolve; once disposal starts, none may.
+  its effects MUST be the same as on the base. Non-owning references to it read as empty from the
+  moment disposal starts (today they go empty after the hook, before the destructor); every piece
+  of code that read such a reference during disposal MUST be found, covered by a test that passes
+  on the base, and rewritten so the test still passes.
 - **FR-008**: Objects referred to by script-engine objects MUST be released when the engine
   finalises those objects, as on the base.
 - **FR-009**: Exclusive ownership MUST NOT be widened to shared ownership just to fit the new
@@ -325,11 +335,13 @@ colour mode included); and the script API snapshot and expansion corpus do not r
   replace stays, and the gap is recorded.
 - **FR-013**: Where the standard library gives the same answer as an `oofnd` component for every
   input the game and tests use, callers MUST use the standard facility directly and the component
-  MUST be removed. This covers at least `Expected` (to `std::expected`), `Data` (to a byte vector
-  and spans), the date helpers (to `std::chrono`, keeping any text format the standard cannot
-  produce), the Foundation integer and range aliases (to standard types and an optional index),
-  the `StdLib.hpp` umbrella (to direct standard includes), printf-style formatting of literal
-  formats (to `std::format`), and the string and file helpers whose standard counterparts agree.
+  MUST be removed. This covers at least `Expected` (to `std::expected`), the date helpers' calendar
+  arithmetic (to `std::chrono`, keeping any text format and constant the standard cannot produce),
+  the Foundation integer aliases (to standard types) and `NSNotFound` (to a named constant with the
+  same value), the `StdLib.hpp` umbrella (to direct standard includes), printf-style formatting of
+  literal formats (to `std::format`, converted call by call so the text stays identical), and the
+  file helpers whose standard counterparts agree. `oo::Data` and `NSRange` stay: the standard
+  types differ in behaviour the game uses, or have no equivalent.
 - **FR-014**: An `oofnd` component or helper that stays MUST be listed in `oofnd`'s README with the
   reason (no standard equivalent, or a named difference in answers), and a test MUST pin each named
   difference. The game's own exception type MUST derive from the standard exception hierarchy.
@@ -351,6 +363,8 @@ colour mode included); and the script API snapshot and expansion corpus do not r
 - **FR-017**: Each related set of integer constants in first-party C++ MUST be an `enum class` with
   an explicit underlying type and `kPascalCase` enumerators, except a set that a C source shares, a
   C interface requires, or the preprocessor tests; each exception MUST be on the exceptions list.
+  A lone constant held in an anonymous enum is not a set: it MUST become a typed `constexpr`
+  constant instead.
 - **FR-018**: Every name and number of a constant that is visible outside the program MUST stay
   byte-identical, including the numeric values the program actually uses today where a `.tbl`
   column says otherwise.
@@ -391,10 +405,11 @@ colour mode included); and the script API snapshot and expansion corpus do not r
 - **SC-001**: First-party C++ has zero C allocation calls outside the exceptions list, down from
   about 140 lines in about 45 files.
 - **SC-002**: First-party code has zero uses of the Objective-C-style ownership types, down from
-  about 1,900 lines in about 260 files, and `Ref.hpp` and `WeakSet.hpp` no longer exist.
+  about 1,900 lines in about 260 files, and `oo::RefCounted`, `oo::Ref` and `oo::WeakRef` no
+  longer exist.
 - **SC-003**: First-party C++ has zero unscoped enum definitions outside the exceptions list, down
   from about 170, and one `.tbl` file remains, down from eleven.
-- **SC-004**: `oofnd` is at least 2,000 lines smaller (of its 13,300), and every component left in it has a
+- **SC-004**: `oofnd` is at least 1,500 lines smaller (of its 13,300), and every component left in it has a
   one-line reason in its README.
 - **SC-005**: Every test tier passes on every CI toolchain with no failure the base commit does not
   have, and the address sanitizer (and the leak and thread sanitizers where the platform has them)
@@ -423,7 +438,7 @@ colour mode included); and the script API snapshot and expansion corpus do not r
   the disposal hook, rebuilt on `std::shared_ptr`; the plan decides whether it stays or goes.
 - Upstream's spellings of enum types are kept where they are type names; only enumerators move to
   `kPascalCase`, and only inside the program.
-- `NSPoint`/`NSSize`/`NSRect` have no standard equivalent and are out of scope here.
+- `NSPoint`/`NSSize`/`NSRect` and `NSRange` have no standard equivalent and are out of scope here.
 - Class design stays as it is (idiom review §2.1 stays out): no constructor rewrites, no splitting
   of `Universe`, `PlayerEntity` or `ShipEntity`, and `UNIVERSE`/`PLAYER` stay.
 
@@ -456,3 +471,14 @@ Jon can override any of them:
    repository has no template overrides, presets or extensions, so the resolved template is the
    core `.specify/templates/spec-template.md`, which this spec follows. A "Purpose", "Context" and
    this section are added, as in specs 006 and 008.
+8. **Planning changed six requirements (2026-11-11).** Research (`research.md` R15) showed the
+   standard library cannot do what they asked without changing behaviour: the deferred-release
+   scope and the weak set stay on standard pointers (FR-006); never-destroyed singletons stay so
+   (FR-005); weak references to a dying entity go empty earlier, so the code that read them during
+   disposal is rewritten under tests (FR-007); `oo::Data` and `NSRange` stay (FR-013); lone
+   constants become `constexpr`, not enums (FR-017); SC-004 is 1,500 lines, not 2,000.
+9. **Two sign-offs Jon owns.** The `test_ref` case that pins weak references as live during
+   disposal (`test_ref.cpp:514`) cannot keep its meaning, and renaming the enumerators of the 20
+   existing `enum class` types forces test edits the amended rule 1 does not plainly cover. Both
+   are *needs sign-off* rows in the test-change ledger. The work they block (US2's bridge, and the
+   last enum step) is scheduled after the work they don't, so nothing waits.
