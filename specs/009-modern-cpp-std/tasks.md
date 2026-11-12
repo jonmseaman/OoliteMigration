@@ -239,7 +239,7 @@ baselines and the FR-016 tests exist and pass on the base.
   `src/Core/Materials/OOStandaloneAtmosphereGenerator.cpp`, using T017's buffer where the result
   becomes a pixmap and `std::vector` elsewhere.
   **Accept:** `cd oolite-dev && ! rg -n -P '\bFREE\s*\(|(?<![\w:.>])(::|std::)?(malloc|calloc|realloc|free)\s*\(' src/Core/Materials/OOPlanetTextureGenerator.cpp src/Core/Materials/OOStandaloneAtmosphereGenerator.cpp`
-- [ ] T019 [P] [US1] Snapshot buffers to `std::vector` in `src/SDL/MyOpenGLView.cpp:1289-1516`.
+- [X] T019 [P] [US1] Snapshot buffers to `std::vector` in `src/SDL/MyOpenGLView.cpp:1289-1516`.
   **Accept:** `cd oolite-dev && $C alloc --area sdl-debug | { ! grep -q MyOpenGLView; }`
 - [ ] T020 [P] [US1] JS vector and quaternion private data in `src/Core/Scripting/OOJSVector.cpp:177,184,495`
   and `src/Core/Scripting/OOJSQuaternion.cpp:143,150,461`: `new`/`delete` of the C++ type, deleted
