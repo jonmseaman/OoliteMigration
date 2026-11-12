@@ -165,10 +165,14 @@ The two rows are reachable in the call graph but not, today, at run time: `doRem
 `clearBeacon` only for an entity still in `Universe::entities`, which owns its entities
 (`oo::EntityHold`), so an entity that reaches disposal has already left the list and its beacon
 list was fixed at removal. T085 pins exactly that: the list after a beacon is removed, and again
-after its last release.
+after its disposal (the universe's dead list keeps a removed entity until the update ends).
+**Fix (T087): `before release`, already the code's.** The head and tail move in
+`doRemoveEntity`, while the entity is still owned, and the disposal path reaches `clearBeacon`'s
+branch only for an entity still in `Universe::entities`, which cannot be disposed; so no code
+changes, and the bridge's expired `std::weak_ptr` cannot be read there.
 
 | function | reached from | reads | test | fix |
 |---|---|---|---|---|
-| `Universe::clearBeacon`, the head | `Entity::willDispose` → `Universe::ensureEntityReallyRemoved` → `doRemoveEntity` → `clearBeacon`, for a beacon that is not a ship (`OOWaypointEntity`, `OOVisualEffectEntity`) disposed while still in the universe | `firstBeacon() == beacon`: the Universe's weak reference to the first beacon, compared with the dying beacon; when it matches, the head moves to the next beacon | `test_EntityDisposalReaders` (40f3f3aad) | T087 |
-| `Universe::clearBeacon`, the tail | as above | `lastBeacon() == beacon`, the same for the last beacon. With both comparisons false the `else` arm relinks the neighbours but leaves the head or tail on the dead beacon, which then reads null and loses the list | `test_EntityDisposalReaders` (40f3f3aad) | T087 |
+| `Universe::clearBeacon`, the head | `Entity::willDispose` → `Universe::ensureEntityReallyRemoved` → `doRemoveEntity` → `clearBeacon`, for a beacon that is not a ship (`OOWaypointEntity`, `OOVisualEffectEntity`) disposed while still in the universe | `firstBeacon() == beacon`: the Universe's weak reference to the first beacon, compared with the dying beacon; when it matches, the head moves to the next beacon | `test_EntityDisposalReaders` (40f3f3aad, 82099e613) | `before release` |
+| `Universe::clearBeacon`, the tail | as above | `lastBeacon() == beacon`, the same for the last beacon. With both comparisons false the `else` arm relinks the neighbours but leaves the head or tail on the dead beacon, which then reads null and loses the list | `test_EntityDisposalReaders` (40f3f3aad, 82099e613) | `before release` |
 

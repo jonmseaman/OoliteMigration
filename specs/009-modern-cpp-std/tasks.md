@@ -654,10 +654,14 @@ edits.**
   object and not before; and an entity's disposal hook runs once, at the same point relative to
   removal from the universe.
   **Accept:** CI runs `test_ScriptFinalisationRelease` and it passes on today's ownership code
-- [ ] T087 [US2] Rewrite each T084 reader per its chosen fix (`before release` or `identity`) so it
+- [X] T087 [US2] Rewrite each T084 reader per its chosen fix (`before release` or `identity`) so it
   no longer depends on weak references being live inside `willDispose()`; both T085 and the
   existing tests pass with today's ownership code.
   **Accept:** CI `test_EntityDisposalReaders` passes, and every *Disposal reader* row in data-model.md has a `fix`
+  *Done (no code change).* Both readers' fix is `before release`, which the code already does:
+  `clearBeacon` runs at removal, and on the disposal path only for an entity `Universe::entities`
+  still owns, which cannot be disposed (data-model.md). `test_EntityDisposalReaders` passes locally;
+  CI runs it with T105.
 - [ ] T088 [US2] (design D1; needs the T002 signatures) Add `src/oofnd/Object.hpp` and
   `src/oofnd/AutoreleaseScope.hpp` exactly as contracts/ownership.md declares them; rebuild
   `src/oofnd/WeakSet.hpp` on `std::weak_ptr`; turn `src/oofnd/Ref.hpp` into the bridge (the
