@@ -354,7 +354,7 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   `tests/unit/oofnd/test_filesystem.cpp` (ledger, *covered*). The other functions keep GNUstep
   semantics and stay.
   **Accept:** `cd oolite-dev && ! rg -n -P 'oo::fs::(fileExists|isDirectory|fileSize|freeSpace|currentDirectory|setCurrentDirectory)\b' src tests`
-- [ ] T036 [US4] Survey: build once locally with `-Wformat-signedness` added on the command line
+- [X] T036 [US4] Survey: build once locally with `-Wformat-signedness` added on the command line
   (`meson configure` of a scratch build directory, not committed) and write the per-area findings
   and every `oo::str::format` literal containing `{` or `}` to `specs/009-modern-cpp-std/format-survey.md`.
   **Accept:** `test -s specs/009-modern-cpp-std/format-survey.md && grep -c '^## ' specs/009-modern-cpp-std/format-survey.md` prints 6
