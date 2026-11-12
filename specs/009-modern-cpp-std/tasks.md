@@ -649,7 +649,7 @@ edits.**
   T084 reader pinning its effect (beacon list after a beacon ship is removed, dock and station
   teardown), passing on the base.
   **Accept:** CI runs `test_EntityDisposalReaders` and it passes on today's ownership code
-- [ ] T086 [P] [US2] Add `tests/unit/core/test_ScriptFinalisationRelease.cpp` (registered): a
+- [X] T086 [P] [US2] Add `tests/unit/core/test_ScriptFinalisationRelease.cpp` (registered): a
   native object referred to by a script object is released when the engine finalises the script
   object and not before; and an entity's disposal hook runs once, at the same point relative to
   removal from the universe.
