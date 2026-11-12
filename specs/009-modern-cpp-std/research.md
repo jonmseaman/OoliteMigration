@@ -46,6 +46,13 @@ machine when one is available; the plan does not depend on them per step.
 - Lifting the Windows-only gate is Phase 5 work, not this feature's. Consequence recorded as a
   risk: LP64 behaviour (macOS, Linux) of anything the unit tests pin is not tested by this feature.
 
+- **Found while implementing (2026-11-12):** a single unit test can be built and run on macOS by
+  compiling it with a game source's flags from `compile_commands.json` and linking it against the
+  test build's own objects (`.agent-tmp/link_run.py`), which is what the meson entry does on
+  Windows. T027 and T028 used it. It also showed a test that only holds on Windows and Linux:
+  `test_thread.cpp`'s `setCurrentNameIsReadBack` expects Linux's 15-byte name truncation in its
+  non-Windows branch, and macOS keeps the whole name (reported to Jon; not edited).
+
 **Alternatives:** lift the gate here (out of scope, and it would surface unrelated LP64 failures
 first). Run unit tests only on Windows by hand (slower than CI and not available from this Mac).
 

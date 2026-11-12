@@ -285,7 +285,7 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   mutex; remove the `oo::thread::detach` call (`:183`), keeping `setCurrentPriority(0.5)` and
   `setCurrentName(...)` (`:193-194`).
   **Accept:** `cd oolite-dev && ! rg -n 'oo::thread::detach|pthread_once' src/Core/OOAsyncWorkManager.cpp`
-- [ ] T027 [US3] Call `OOAsyncWorkManager`'s `shutdown()` on the quit path before `exit(0)` in
+- [X] T027 [US3] Call `OOAsyncWorkManager`'s `shutdown()` on the quit path before `exit(0)` in
   `src/Core/GameController.cpp:706`; add `tests/unit/core/test_OOAsyncWorkManagerShutdown.cpp`
   (queue a long task, call `shutdown()`, assert it returns once the task ends and that queued tasks
   do not run), registered as **its own** meson test executable so that shutting down the
@@ -294,7 +294,7 @@ smoke clean. Contract: [contracts/threads.md](contracts/threads.md).
   download stalled mid-body is cancelled and its destructor joins the worker within 10 s), and
   `oo::http` does not change in this story, so no new HTTP test is added (decided 2026-11-12).
   **Accept:** `cd oolite-dev && rg -q 'shutdown\(\)' src/Core/GameController.cpp`, and CI runs the new test and it passes
-- [ ] T028 [US3] Add `inline const std::thread::id kMainThreadId` to `src/oofnd/Thread.hpp` per the
+- [X] T028 [US3] Add `inline const std::thread::id kMainThreadId` to `src/oofnd/Thread.hpp` per the
   contract; replace `isMainThread()` at `src/Core/OORegExpMatcher.cpp:43,90`,
   `src/Core/GameController.cpp:143`, `src/Core/OOAsyncWorkManager.cpp:304` with
   `std::this_thread::get_id() == oo::thread::kMainThreadId`; make
