@@ -476,7 +476,7 @@ production enum changes in the same commit as it.
   `notes/2026-11-07 Enum Tables from tbl X-Macros.md` and contracts/enums.md; delete their `.tbl`
   files; update `OOConstToString.cpp:39-48,122-127` and `OOConstToJSString.cpp:76-82`.
   **Accept:** `cd oolite-dev && test ! -e src/Core/Tables/OOScanClass.tbl && test ! -e src/Core/Tables/OOEntityStatus.tbl && test ! -e src/Core/Tables/OOShipDamageType.tbl`
-- [ ] T061 [US5] P8: `OOBehaviour`, `OOGalacticHyperspaceBehaviour` (its `GALACTIC_HYPERSPACE_##label`
+- [X] T061 [US5] P8: `OOBehaviour`, `OOGalacticHyperspaceBehaviour` (its `GALACTIC_HYPERSPACE_##label`
   pasting replaced by explicit strings), `OOLegalStatusReason`.
   **Accept:** `cd oolite-dev && test ! -e src/Core/Tables/OOBehaviour.tbl && test ! -e src/Core/Tables/OOGalacticHyperspaceBehaviour.tbl && test ! -e src/Core/Tables/OOLegalStatusReason.tbl`
 - [ ] T062 [US5] P8: `OOCompassMode`, `OOViewID` (the program's ordinals, not the `.tbl` column:
