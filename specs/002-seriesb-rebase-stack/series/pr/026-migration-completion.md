@@ -44,9 +44,8 @@
   by-name tables lose their compiler/ARC and salvage rows.
 - **Small tidies.** The EXR snapshot builds its signature in a `std::string` instead of `strcat`
   into a 255-byte buffer, and frees `custom_attributes`, which it leaked. macOS's
-  `GetSysCtlString` uses a `std::string` buffer instead of `alloca`. `.git-blame-ignore-revs`
-  lists the reformat and clang-tidy commits. The Windows manifest's comment says the Windows 10
-  ID also covers Windows 11.
+  `GetSysCtlString` uses a `std::string` buffer instead of `alloca`. The Windows manifest's
+  comment says the Windows 10 ID also covers Windows 11.
 - **Version header.** `OO_VERSION_FULL`, `OO_BUILD_DATE` and `OO_BUILDER` move from `-D` flags on
   every compile into a generated `OOVersion.h` (`src/Core`'s build directory), included by the
   five files that print them. `main.cpp`'s `"Undefined"` fallback goes.

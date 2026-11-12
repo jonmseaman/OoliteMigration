@@ -1661,7 +1661,7 @@
   },
   {
    "branch": "seriesb/026-migration-completion",
-   "build_commit": "a5eae8ff364b865f649481b77302cc95a041c586",
+   "build_commit": "a3d651a4d586008ace2a90e488b19369a454e4b7",
    "chapter": null,
    "description": "series/pr/026-migration-completion.md",
    "differs_from_old": [],
@@ -1676,7 +1676,7 @@
    "rules": [],
    "size": {
     "deleted_files": 7357,
-    "other": 1245,
+    "other": 1214,
     "src": 1551,
     "tests": 452
    },

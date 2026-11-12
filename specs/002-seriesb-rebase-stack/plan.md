@@ -1410,4 +1410,9 @@ sources outside the replayed trees.
     discussion of alternatives (#751). Jon is deciding whether to keep 023's Google-style reformat;
     default until then: 023 stays where it is, described as optional.
   - Future syncs: `rerere.enabled` is set globally (Jon, 2026-11-11). Git Town's
-    `sync-feature-strategy = rebase` would avoid the merge pile-up; not set, Jon's call.
+    `sync-feature-strategy = rebase` would avoid the merge pile-up; set in `oolite-dev`'s local
+    config (Jon, 2026-11-12).
+  - Jon, 2026-11-12: `.git-blame-ignore-revs` dropped from 026's Tidy commit (now "Tidy: two C
+    buffers, a moot TODO"), where it first appeared. The conversion changes every file, so blame
+    lands on it with or without the list, and the linear rewrite had left all 14 listed commits
+    missing. Pre-change 026 tip: `refs/seriesb-preblame/seriesb/026-migration-completion`.
