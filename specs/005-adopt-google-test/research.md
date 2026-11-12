@@ -196,6 +196,10 @@ programs. A precompiled header is the standard fix and changes no test.
   JUnit report of the converted build; exits nonzero if a case passed before and does not now
   (FR-013).
 
+A third mode, `parity.py selftest`, runs it on small fixture pairs (a dropped case, a dropped
+site, a changed expression, a fatal check, a moved site, and one exact conversion), so the
+checker is itself tested before any batch relies on it.
+
 Python, run with `-I`, standard library only, balanced-parenthesis scan rather than regex (macro
 arguments span lines). Normalisation collapses whitespace only, so a moved token is a change.
 
