@@ -324,7 +324,7 @@ passes.
   nonzero if any "on" median is more than 5% below its "off" median; it takes the file as an
   optional argument. Add two samples, `specs/008-display-geometry-fov/fps-samples/drop-6.md` and
   `drop-4.md`. **Accept:** the script exits nonzero on `drop-6.md` and zero on `drop-4.md`
-- [ ] T030 Frame rate (FR-014, SC-005) on the reference machine (research R9): 60 s in the smoke
+- [X] T030 Frame rate (FR-014, SC-005) on the reference machine (research R9): 60 s in the smoke
   run's fixed scene, three runs each for matching off, flat 32:9 physical, G9 at 80 cm physical, and
   G9 at custom 120° Panini; medians in `specs/008-display-geometry-fov/baselines.md`. **Accept:**
   `specs/008-display-geometry-fov/check-fps.sh`
@@ -493,3 +493,7 @@ any checkpoint.
   which builds with no errors. A separate directory is used because `mk.sh`'s `--setup-flags` would
   reconfigure one of the existing build types. The one warning, in `OOOpenGLStateManager.cpp:471`,
   is in a file this branch does not change.
+- T030: `baselines.md`. All four settings run at about 237.7 fps, the G9's 240 Hz cap, so the
+  check passes (at most a 0.3% drop) but shows only that the warp stays at the cap on the
+  reference machine, not its cost below it. The window was 5120 x 1440, the system GPU driver was
+  used, and V-Sync was off in the game.
