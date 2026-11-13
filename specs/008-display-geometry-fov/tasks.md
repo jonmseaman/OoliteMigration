@@ -110,7 +110,7 @@ nothing visible changed. ⚠️ No story starts until this phase is done.
   changes yet. **Accept:** `./mk.sh build test`, C5 (`tests/run.sh component -k screen`), and a
   smoke-tier check that `display.geometry.rebuild` appears at most three times in a run (fails if
   it is logged every frame)
-- [ ] T008 In `Universe::drawUniverse` (`src/Core/Universe.cpp:5321-5340`), take the four frustum
+- [X] T008 In `Universe::drawUniverse` (`src/Core/Universe.cpp:5321-5340`), take the four frustum
   extents from `gameView->displayGeometry().flatFrustum()` scaled by the near plane, and compute
   `distanceFactor` from those extents; keep the GUI branch (`displayGUI`, ratio 0.5) as it is.
   **Accept:** C5 still passes (`tests/run.sh component -k screen`) and `tests/run.sh smoke`
@@ -175,7 +175,7 @@ stay round at the edge (G5); menus on a 32:9 window fit the 16:9 area (H2, H3).
   Add `tests/gui/test_g<next>_wide_window_menu_click.py` (style of
   `tests/gui/test_g1_exit_via_mouse.py`): at 3840×1080 windowed, clicking a menu row's centre
   selects it (H2). **Accept:** `tests/run.sh gui` (run alone; H2 new, H4 existing unchanged)
-- [ ] T016 [US1] Add the preferences of `specs/008-display-geometry-fov/data-model.md`
+- [X] T016 [US1] Add the preferences of `specs/008-display-geometry-fov/data-model.md`
   (*Preferences*) read and written with `oo::Defaults::standard()` beside `fov-value`
   (`src/Core/Universe.cpp:342-349`, `src/Core/Entities/PlayerEntityControls.cpp:3995`):
   `screen-matching` (default false), `screen-diagonal-mm`, `screen-aspect`, `screen-curvature-mm`
@@ -407,5 +407,13 @@ any checkpoint.
   clicks such as the charts'. A test needs a horizontal click target in the GUI tier; open.
 - One smoke run at 3840×1080 lost the game during OpenGL set-up (the log stops at
   `display.initGL`); two reruns passed and it did not recur. Recorded, not explained.
+- T008 and T016 landed together in `oolite-dev` `ac04d230c`. C2 also uses a test-only preference,
+  `screen-window-fraction` (both axes), because the window's share of the panel otherwise comes
+  from the desktop mode and the answer would depend on the monitor the test runs on. With
+  matching on, three geometry rebuilds happen at start (first size, preferences, window size),
+  which is the smoke check's limit.
+- T017: Game Options has no free row on Windows (speech rows; one more pushes the first row
+  above the grid), so the screen-matching sub-screen opens from the existing Field Of View row
+  (Enter), which shows the angle in use and "(screen matching)" while matching is on.
 - T007's acceptance counts a log line instead of a unit test because `MyOpenGLView` needs a GL
   context; the per-frame `setFov` push (research R14) is what it guards against.
