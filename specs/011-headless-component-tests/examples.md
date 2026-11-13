@@ -35,7 +35,8 @@ directly.
 
 ### A0. The plain form: real objects, simulate, assert
 
-Jon's sketch of what a test should be (2026-11-13):
+The step style of A1 is the usual one (Jon, 2026-11-13: it is the more realistic). The plain
+form is also available, for a test about one object. Jon's sketch of it:
 
 ```text
 auto universe = new Universe();
@@ -105,8 +106,8 @@ ShipEntity* AddEnemyAdder(Game& game, double metresAhead) {
 
 ### A1. A ported scenario (User Story 1)
 
-A port keeps its original's steps and script expressions, so it reads as the feature file does and
-not as A0 does. The windowed original, `tests/component/features/s1_police_kills_pirate.feature`:
+The usual style. A port keeps its original's steps and script expressions, so it reads as the
+feature file does. The windowed original, `tests/component/features/s1_police_kills_pirate.feature`:
 
 ```gherkin
 Scenario: A police viper engages a lone pirate

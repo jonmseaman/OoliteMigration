@@ -10,10 +10,12 @@ game. It starts the real game with no window and hands the test the game's real 
 test calls the game's own methods on `Universe`, `PlayerEntity` and `ShipEntity` and uses `Game`
 only to create, step and observe.
 
-Two styles of test are supported:
-- **Plain**: add ships, `simulate`, assert on the objects. New tests are written this way.
-- **Ported**: the step helpers below, which run the windowed steps' own script expressions. Only
-  the counterparts of S1–S8 use them.
+Two styles of test are supported, and a test may mix them:
+- **Steps**: the helpers below (`spawn`, `spawnWithin`, `engages`, `simulateUntil`), which run the
+  windowed steps' own script expressions and assert tolerant outcomes. This is the usual style,
+  and the one the counterparts of S1–S8 must use.
+- **Plain**: add a ship, call the game's own methods on it, `simulate`, assert on the objects.
+  For a test about one object's behaviour.
 
 ## Creating a game
 
