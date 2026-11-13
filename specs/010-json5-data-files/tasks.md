@@ -127,7 +127,7 @@ clang++ -std=c++23 -Wall -Wextra -Werror -I src -I tests/unit/oofnd tests/unit/o
   `test_string_sweep` (`pointer_description_is_gnusteps`), which stops `tests/run.sh unit` before
   the `core` suite; `seriesb/027-modern-cpp` fixes it later in `cc94abb6d`. To see the `core`
   suite on this change, the same tree plus that one commit was pushed as `claude/030-ci-check`
-  (a CI-only branch; delete it).
+  (a CI-only branch, deleted from origin after its runs were read).
 
 ## Follow-ups (not in this feature)
 
