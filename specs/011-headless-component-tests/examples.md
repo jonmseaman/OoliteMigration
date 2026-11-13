@@ -676,7 +676,7 @@ class Settings {
 };
 
 // A ship a test added. Use it like a ShipEntity*; ask alive() before using it after the ship
-// could have died. It does not keep the ship alive.
+// could have died. It does not keep the ship alive: inside it is a std::weak_ptr<ShipEntity>.
 class ShipHandle {
  public:
   bool alive() const;                 // still in the universe
@@ -706,8 +706,8 @@ class Game {
   bool engages(std::string_view hunter, std::string_view quarry);
 
   // The world, directly: the game's own objects.
-  Universe* universe();
-  PlayerEntity* player();
+  Universe* universe();    // not owned: the game keeps both for the whole process,
+  PlayerEntity* player();  // as PlayerEntity::sharedPlayer() hands the player out today
   ShipHandle add(const ShipWithKey& what);  // not alive() if it could not be made
   std::shared_ptr<ShipEntity> spawnKey(const std::string& shipKey, HPVector position);
   std::vector<ShipHandle> shipsWithRole(std::string_view role);

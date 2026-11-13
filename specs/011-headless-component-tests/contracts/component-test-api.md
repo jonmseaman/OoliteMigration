@@ -65,6 +65,18 @@ Spans are `std::chrono` durations of game time, so a test writes `5min`, `10s` o
 | `game.shipsWithRole(role)` | the live ships whose primary role is `role` |
 | `game.entityCount()` | everything in the universe |
 
+**Who owns what.** A test owns nothing in the game. The rule is spec 009's (FR-006): shared
+ownership is `std::shared_ptr`, a non-owning reference that must notice expiry is
+`std::weak_ptr`, and exclusive ownership is `std::unique_ptr`.
+- `game.player()` and `game.universe()` return plain pointers, as the game's own
+  `PlayerEntity::sharedPlayer()` does on the modernised branch. The game owns both for the whole
+  process, so there is no expiry to notice. A `unique_ptr` would make the test destroy the
+  player; a `shared_ptr` would make the test a co-owner.
+- A ship can die, so a ship is handed out as a `ShipHandle`, which holds a `std::weak_ptr`.
+- The one owning pointer in the interface is `spawnKey`, which returns the
+  `std::shared_ptr<ShipEntity>` that `Universe::newShipWithName` returns. The census uses it and
+  releases it when it removes the ship.
+
 **Ship handles.** `add`, `spawn` and `shipsWithRole` return `ShipHandle`. `handle->` calls the real
 `ShipEntity`, a handle converts to `ShipEntity*`, and `handle.alive()` says whether the ship is
 still in the universe. A handle never keeps a ship alive, because an owning pointer held by a
