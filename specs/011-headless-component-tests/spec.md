@@ -1,6 +1,6 @@
-# Feature Specification: Headless simulation tests
+# Feature Specification: Headless component tests
 
-**Feature Branch**: `011-headless-sim-tests`
+**Feature Branch**: `011-headless-component-tests`
 
 **Created**: 2026-11-13
 
@@ -418,9 +418,10 @@ they take less real time than one windowed scenario does today.
   sub-parts) are covered with the ship that carries them.
 - **These are C++ tests.** Jon asked for C++. They are written on whichever C++ test harness the
   unit suites use when the work starts: the in-tree one today, Google Test if spec 005 has landed.
-- **Name of the tier.** The glossary's *component tier* is the windowed Python suite, and it
-  stays. The new tier needs its own name and runner argument. The plan picks them; "headless" is
-  the working name here.
+- **They are component tests** (Jon, 2026-11-13). The component tier gains a C++ half that runs
+  headless. The Python scenarios that launch the whole game are its other half and stay. Where
+  this spec says "the tier" or "headless tests" it means the C++ component tests, and "windowed"
+  means the Python ones.
 - **Core content only.** The census covers the game's own data. Expansions are untrusted input
   (hard rule 4) and are out of scope. Running the census over the expansion corpus later is
   separate work.

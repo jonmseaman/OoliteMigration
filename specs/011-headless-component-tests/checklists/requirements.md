@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Headless simulation tests
+# Specification Quality Checklist: Headless component tests
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-11-13
@@ -63,6 +63,6 @@ Things the planner should know:
   hook ran and no branch was created by this command.
 - **Constitution.** `.specify/memory/constitution.md` is still the unfilled template. The project's
   rules were taken from `CLAUDE.md`.
-- **`.specify/feature.json`** now points at `specs/011-headless-sim-tests`. It pointed at
+- **`.specify/feature.json`** now points at `specs/011-headless-component-tests`. It pointed at
   `specs/009-modern-cpp-std`, which is still being implemented. A session working on 009 must name
   its directory explicitly.

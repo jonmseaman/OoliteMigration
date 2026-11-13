@@ -1,4 +1,4 @@
-# Data model: Headless simulation tests
+# Data model: Headless component tests
 
 The feature stores almost nothing. These are the values tests and the game pass to each other, and
 the three files the tier keeps. Names are the plan's working names; the interfaces are in
@@ -77,7 +77,7 @@ A test may name a key by the character it wants (`'n'`) and a layout. The suppor
 up the scancode and modifiers in that layout. Pressing by scancode directly is for the fault
 tests.
 
-## Recorded layout (`tests/sim/layouts/<name>.tsv`)
+## Recorded layout (`tests/component/cpp/layouts/<name>.tsv`)
 
 One row per (scancode, modifiers) pair that produces a key.
 
@@ -133,7 +133,7 @@ longer reports it.
 A `part` is `not-applicable` only if at least one ship that carries it `passed`. Otherwise it is
 `failed` with the reason "no passing parent".
 
-## Expectations file (`tests/sim/census-expectations.tsv`)
+## Expectations file (`tests/component/cpp/census-expectations.tsv`)
 
 | Column | Meaning |
 |---|---|
@@ -148,7 +148,7 @@ Rules, checked by the census:
   taken off the list);
 - an empty `reason` is an error.
 
-## Census report (`<build>/sim/census-report.tsv`)
+## Census report (`<build>/component/census-report.tsv`)
 
 One row per definition: `kind`, `key`, `class`, `outcome`, `seed`, `gameTime`, `evidence`.
 `evidence` is the first error line, or the reason, or empty. Rows are sorted by kind and key, so

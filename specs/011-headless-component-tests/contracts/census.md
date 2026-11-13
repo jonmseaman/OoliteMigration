@@ -1,6 +1,6 @@
-# Contract: `sim_census`
+# Contract: `component_census`
 
-One program in the `sim` suite. It tries every ship definition and every equipment item in the
+One program among the C++ component tests. It tries every ship definition and every equipment item in the
 core data and gives each exactly one outcome. The values are defined in
 [data-model.md](../data-model.md).
 
@@ -12,8 +12,8 @@ core data and gives each exactly one outcome. The values are defined in
 | `--seed <n>` | base seed; default 20260910 |
 | `--only <kind>:<key>` | try one definition in this process and print its row |
 | `--list` | print every definition with its class, try nothing |
-| `--report <path>` | where to write the report; default `<build>/sim/census-report.tsv` |
-| `--expectations <path>` | default `tests/sim/census-expectations.tsv` |
+| `--report <path>` | where to write the report; default `<build>/component/census-report.tsv` |
+| `--expectations <path>` | default `tests/component/cpp/census-expectations.tsv` |
 | `--data-overlay <dir>` | merge one fixture `shipdata.plist` after the core data (see *Proving it can fail*) |
 | `--child --from <index> --progress <path>` | internal: child mode |
 
@@ -40,7 +40,7 @@ in which everything crashes.
 - On standard output: one line per `failed` definition with its evidence, then a summary line:
 
 ```text
-sim_census: 194 ships, 41 equipment: P passed, L left, N not-applicable, F failed, X expected
+component_census: 194 ships, 41 equipment: P passed, L left, N not-applicable, F failed, X expected
 ```
 
 ## Exit codes
@@ -55,12 +55,12 @@ Code 2 is what stops a census from passing while trying nothing (FR-020).
 
 ## Meson
 
-Registered as `test('census', sim_census, suite: 'sim', timeout: 600, is_parallel: true)`.
+Registered as `test('census', component_census, suite: 'component', timeout: 600, is_parallel: true)`.
 
 ## Proving it can fail
 
-`sim_census --data-overlay <dir>` reads one extra `shipdata.plist` from a directory of test
-fixtures under `tests/sim/fixtures/`, merged after the core data. The fixture holds one definition
+`component_census --data-overlay <dir>` reads one extra `shipdata.plist` from a directory of test
+fixtures under `tests/component/cpp/fixtures/`, merged after the core data. The fixture holds one definition
 with a model that does not exist. The acceptance check runs the census with the overlay and
 requires exit 1 with that key, and only that key, reported as an unexpected failure.
 

@@ -1,4 +1,4 @@
-# Research: Headless simulation tests
+# Research: Headless component tests
 
 Three read-only surveys of `oolite-dev` on 2026-11-13, at `seriesb/027-modern-cpp` commit
 `76e4f8627`, plus spot checks. Paths are relative to `oolite-dev`. Line numbers are from that
@@ -289,7 +289,7 @@ worded to match, and the limits go in Story 4's finding.
 
 ## R8 — The census
 
-**Decision:** One program, `sim_census`.
+**Decision:** One program, `component_census`.
 
 - **Enumeration** is from the data at run time: every top-level key of the merged core
   `shipdata.plist`, and every entry of `equipment.plist`.
@@ -307,7 +307,7 @@ worded to match, and the limits go in Story 4's finding.
   neither stops nor changes the rest (FR-021).
 - **Reseeding per definition** from the base seed and the key makes each result independent of
   the order.
-- **Expectations file.** `tests/sim/census-expectations.tsv` lists definitions expected to fail
+- **Expectations file.** `tests/component/cpp/census-expectations.tsv` lists definitions expected to fail
   or to leave by design, each with a reason. A listed definition that passes is an error.
 - The report format and exit codes are in [contracts/census.md](contracts/census.md).
 
@@ -321,13 +321,17 @@ worded to match, and the limits go in Story 4's finding.
 ## R9 — Where the tests live and how they run
 
 **Decision:**
-- A new directory `tests/sim/` and a meson suite `sim`, declared on every platform. Each test
-  program links the game's `['*']` objects and a small support library, `oo_sim`.
+- **They are component tests** (Jon, 2026-11-13). The component tier gets a C++ half: a new
+  directory `tests/component/cpp/` and a meson suite `component`, declared on every platform.
+  The windowed Python scenarios stay where they are, as the tier's other half.
+- Each test program links the game's `['*']` objects and a small support library,
+  `oo_component`.
 - The harness is `oo_test.hpp`, which is portable. If spec 005 lands first, new programs use
   Google Test and existing ones move with 005's batches.
 - **One game per program.** A program may have several cases sharing its game where that is safe
   (the menu walk). A scenario has a program of its own.
-- `tests/run.sh sim [-k name]` runs `meson test --suite sim`. `all` runs it after `unit`.
+- `tests/run.sh component` runs the C++ half and then the windowed half. `--cpp` and
+  `--windowed` pick one. `all` is unchanged in order.
 - Meson runs the programs in parallel. Each creates its own scratch directory under the build
   directory and points every user-directory variable at it before the game starts.
 - Timeouts: 60 s per program, 600 s for the census.
@@ -335,11 +339,12 @@ worded to match, and the limits go in Story 4's finding.
   option, every add-on directory variable points at an empty directory, and a test asserts that
   the resource search path has exactly one entry.
 - The sanitizer run is `meson setup build/meson_asan -Db_sanitize=address,undefined -Db_lto=false`
-  and `meson test -C build/meson_asan --suite sim`.
+  and `meson test -C build/meson_asan --suite component`.
 
 **Rationale:** The unit suites cannot be the home, because they are Windows-only and the spec
-requires three platforms from the start (FR-011). "sim" is short and is not "component", which
-the glossary gives to the Python tier.
+requires three platforms from the start (FR-011). Both halves test the same thing, several
+subsystems of the real game working together, so they share a tier and a name. A first draft of
+this plan called the C++ half `sim`; Jon chose to keep "component".
 
 **Alternatives considered:**
 - **`tests/unit/scenario/`** (003 R12). It would inherit the Windows-only guard.
@@ -350,8 +355,8 @@ the glossary gives to the Python tier.
 
 **Decision:**
 - Development and the first green run are on this Mac. Windows and Linux are proved by CI.
-- CI gets a `sim` step in four places: `unit-tests-windows`, `build-macos`, `build-fedora`, and
-  the Flatpak manifest's Oolite module, which runs `meson test --suite sim` inside the build
+- CI gets a C++ component step in four places: `unit-tests-windows`, `build-macos`, `build-fedora`, and
+  the Flatpak manifest's Oolite module, which runs `meson test --suite component` inside the build
   sandbox when a variable asks for it.
 - The suite skeleton, with one trivial test that boots nothing, goes into CI on all platforms
   before any game code changes. Every later milestone is then cross-platform from its first
@@ -364,13 +369,13 @@ of the feature.
 ## R11 — Branch and worktree
 
 **Decision:**
-- A new worktree `.agent-tmp/wt-sim-tests` of `oolite-dev`, on branch `feature/headless-sim-tests`,
+- A new worktree `.agent-tmp/wt-component-tests` of `oolite-dev`, on branch `feature/headless-component-tests`,
   cut from the tip of the most recent `seriesb` branch when work starts (Jon, 2026-11-13). The
   base commit is written into `tasks.md` when it is cut.
 - The branch is pushed for CI. It is never force-pushed. When its base is rewritten, the new base
   is merged in, and the merge is recorded in `tasks.md`.
 - If a merge of a rewritten base cannot be made cleanly, a fresh branch
-  (`feature/headless-sim-tests-2`) is cut from the new base and the work is cherry-picked onto it.
+  (`feature/headless-component-tests-2`) is cut from the new base and the work is cherry-picked onto it.
   The old branch is left as it is.
 
 **Rationale:** Hard rule 3 forbids force-pushing, and CI needs pushes. `seriesb` branches are

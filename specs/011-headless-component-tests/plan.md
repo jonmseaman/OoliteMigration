@@ -1,19 +1,20 @@
-# Implementation Plan: Headless simulation tests
+# Implementation Plan: Headless component tests
 
 **Branch**:
 - Spec docs: `feature/phase4-polish` (OoliteMigration).
-- Game work: `feature/headless-sim-tests` in a new `oolite-dev` worktree at
-  `.agent-tmp/wt-sim-tests`, cut from the most recent `seriesb` branch when work starts (today
+- Game work: `feature/headless-component-tests` in a new `oolite-dev` worktree at
+  `.agent-tmp/wt-component-tests`, cut from the most recent `seriesb` branch when work starts (today
   `seriesb/027-modern-cpp`).
 
 **Date**: 2026-11-13 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `specs/011-headless-sim-tests/spec.md`
+**Input**: Feature specification from `specs/011-headless-component-tests/spec.md`
 
 ## Summary
 
-A new test tier, `sim`, whose C++ programs create the real game in their own process with no
-window, no GL context and no sound, and step it at a fixed 1/60 s without waiting on the clock.
+C++ component tests: programs under `tests/component/cpp/` that create the real game in their own
+process with no window, no GL context and no sound, and step it at a fixed 1/60 s without waiting
+on the clock. They sit in the component tier beside the windowed Python scenarios.
 
 **How it is built:**
 
@@ -33,7 +34,8 @@ window, no GL context and no sound, and step it at a fixed 1/60 s without waitin
 - **Cross-platform from the first commit.** The suite skeleton goes into CI on Windows, macOS,
   Linux and the Flatpak build before any game code changes.
 
-Decisions and rejected alternatives are in [research.md](research.md).
+Decisions and rejected alternatives are in [research.md](research.md). Code samples for the
+tests, the support library and the game changes are in [examples.md](examples.md).
 
 ## Technical Context
 
@@ -48,13 +50,13 @@ Clang on macOS arm64, Clang or GCC on Linux x64.
 
 **Storage**:
 - per-run scratch directories under the build directory for settings, saves, logs and caches;
-- `tests/sim/census-expectations.tsv` and the census report
+- `tests/component/cpp/census-expectations.tsv` and the census report
   ([contracts/census.md](contracts/census.md));
-- `tests/sim/layouts/*.tsv`, the recorded keyboard layouts.
+- `tests/component/cpp/layouts/*.tsv`, the recorded keyboard layouts.
 
 **Testing**:
-- `oo_test` (`tests/unit/oofnd/oo_test.hpp`) for the new programs, in a new meson suite `sim`;
-- `tests/run.sh sim`, and `tests/run.sh all` as the regression gate;
+- `oo_test` (`tests/unit/oofnd/oo_test.hpp`) for the new programs, in a new meson suite `component`;
+- `tests/run.sh component --cpp`, and `tests/run.sh all` as the regression gate;
 - an address and undefined-behaviour sanitizer build of the suite.
 
 **Target Platform**: Windows x64, macOS arm64, Linux x64, and the Flatpak build sandbox
@@ -94,14 +96,14 @@ rules and `docs/workflow.md`'s definition of done.
 |---|---|---|
 | 1. No test changed to make it pass | Tests are only added. S1–S8 keep their originals. A ported scenario that disagrees with its original stops and is reported (FR-032). The census's expected failures are a listed file with reasons, checked both ways. | pass |
 | 2. No warning silenced | The GL trap is its own translation unit that includes no GL header, so it has no conflicting declarations. It needs LTO off, which the test builds already use in CI. | pass |
-| 3. Never touch `develop`, `master`, `main`; never force-push | Game work is on `feature/headless-sim-tests`. It follows its base by merging (R11). | pass |
+| 3. Never touch `develop`, `master`, `main`; never force-push | Game work is on `feature/headless-component-tests`. It follows its base by merging (R11). | pass |
 | 4. Never read expansion content | Add-ons are off by option, every add-on directory points at an empty scratch directory, and a test asserts the search path has one entry. The *Manage Expansion Packs* screen is opened and left; no row on it is activated. | pass |
 | 5. Tools judge correctness | Each milestone's gate is a command. The key-path observations H1–H7 are written as tests, and a failing one is a finding, not a verdict. | pass |
 | 6. No `libgnustep-base`, no SpiderMonkey | Script access is through upstream's QuickJS-ng binding. | pass |
 | 7. No rewriting C for its own sake | `Math.random` is replaced through the public API. `quickjs.c` is not edited. | pass |
 | 8. Never wait for Jon | Every open choice has a default in research.md and under *Notes* below. | pass |
 | 9. No writes outside the repo | The worktree is under `.agent-tmp/`. Test scratch is under the build directory. | pass |
-| 10. clang-format 22, never on `tests/` | Game files only. New files under `tests/sim` are laid out by hand like their neighbours. | pass |
+| 10. clang-format 22, never on `tests/` | Game files only. New files under `tests/component/cpp` are laid out by hand like their neighbours. | pass |
 | Every task has a failing-then-passing command | New tests supply it. For each GL site it is the trap. | pass |
 | Do it the exemplar's way | New types follow the base branch's ownership as it stands (spec 009 is moving it). Nothing new is shared. | pass |
 
@@ -114,17 +116,18 @@ Tracking*.
 ### Documentation (this feature)
 
 ```text
-specs/011-headless-sim-tests/
+specs/011-headless-component-tests/
 ├── spec.md
 ├── plan.md                    # this file
 ├── research.md                # findings and R1–R12
 ├── data-model.md
 ├── quickstart.md
+├── examples.md                # C++ samples: tests, the support library, the game changes
 ├── contracts/
 │   ├── headless-game.md       # what the game exposes: options, tick, clock, observer
-│   ├── sim-test-api.md        # oo_sim, the interface tests are written against
+│   ├── component-test-api.md        # oo_component, the interface tests are written against
 │   ├── census.md              # program arguments, report, expectations file, exit codes
-│   └── runner.md              # tests/run.sh sim, the meson suite, CI steps
+│   └── runner.md              # tests/run.sh component --cpp, the meson suite, CI steps
 ├── checklists/requirements.md
 └── tasks.md                   # /speckit-tasks
 ```
@@ -151,37 +154,38 @@ src/SDL/
 ├── MyOpenGLView.h / .cpp          # initHeadless(): SDL events + dummy video, no window, no audio
 └── MyOpenGLView+Input.cpp         # key lookup through a member that defaults to SDL's
 
-tests/sim/                         # new tier
-├── meson.build                    # suite 'sim', every platform
-├── oo_sim.hpp / .cpp              # test support (contracts/sim-test-api.md)
+tests/component/cpp/                         # new: the C++ half of the component tier
+├── meson.build                    # suite 'component', every platform
+├── oo_component.hpp / .cpp        # test support (contracts/component-test-api.md)
+├── tutorial_steps.hpp             # StartTutorial(), Progress(): shared by the key tests
 ├── gl_trap_gen.py                 # 100755: nm → gl_trap.cpp (Linux, macOS)
 ├── layouts/us.tsv, fr_azerty.tsv, ru.tsv
 ├── census-expectations.tsv
 ├── fixtures/                      # broken-ship/shipdata.plist, us-n-remapped.tsv
-├── test_sim_skeleton.cpp          # links everything, boots nothing (M0)
-├── test_sim_boot.cpp              # boots headless; search path has one entry (M1)
-├── test_sim_s1_police_pirate.cpp  # US1; exemplar for the tier
-├── test_sim_repeat.cpp            # same seed, same digest
-├── test_sim_s2 … s8_*.cpp         # US5
-├── sim_census.cpp                 # US2
-├── test_sim_menus.cpp             # US3: start screen and options walk
-├── test_sim_tutorial_keys.cpp     # US3: lessons 0 and 1 by `n`, per layout
-├── test_sim_key_faults.cpp        # US4: H1–H5 as tests
+├── test_skeleton.cpp          # links everything, boots nothing (M0)
+├── test_boot.cpp              # boots headless; search path has one entry (M1)
+├── test_s1_police_kills_pirate.cpp  # US1; exemplar for C++ component tests
+├── test_repeat.cpp            # same seed, same digest
+├── test_s2 … s8_*.cpp         # US5
+├── component_census.cpp                 # US2
+├── test_menus.cpp             # US3: start screen and options walk
+├── test_tutorial_keys.cpp     # US3: lessons 0 and 1 by `n`, per layout
+├── test_key_faults.cpp        # US4: H1–H5 as tests
 └── repeat_100.sh                  # 100755: SC-002
 
-tests/run.sh                       # new tier 'sim'; 'all' includes it
-meson.build                        # subdir('tests/sim') on every host
-.github/workflows/build-all.yaml   # sim step in the Windows, macOS and Fedora jobs
-installers/flatpak/…               # optional sim step in the Oolite module
+tests/run.sh                       # component runs the C++ half, then the windowed half
+meson.build                        # subdir('tests/component/cpp') on every host
+.github/workflows/build-all.yaml   # C++ component step in the Windows, macOS, Fedora jobs
+installers/flatpak/…               # optional C++ component step in the Oolite module
 docs/ (OoliteMigration)            # current-state.md, workflow.md, GLOSSARY.md, CLAUDE.md
 ```
 
 **Structure Decision:**
 - The headless entry point lives in `src/Core` beside what it starts, so headless is a mode of
   the real program and not a second build of it.
-- The tier is `tests/sim`, outside `tests/unit`, because the unit suites are declared only on
-  Windows.
-- `oo_sim` is the only thing tests include from the game. It is the place where a later spec 003
+- The C++ tests are in `tests/component/cpp`, inside the component tier and outside `tests/unit`,
+  because the unit suites are declared only on Windows.
+- `oo_component` is the only thing tests include from the game. It is the place where a later spec 003
   swaps what is underneath.
 
 ## Milestones
@@ -191,21 +195,21 @@ all` must give the same results as before at every gate (FR-031).
 
 | # | Milestone | Stories | Gate |
 |---|---|---|---|
-| M0 | **Skeleton on every platform.** Worktree and branch. `tests/sim/meson.build`, `test_sim_skeleton` linking the `['*']` objects, `tests/run.sh sim`, the CI step in the Windows, macOS and Fedora jobs. Three probes written as cases: SDL's dummy driver initialises; a pushed key event comes back from `SDL_PollEvent`; what `SDL_GetKeyFromScancode` returns for `N` with Caps Lock. | — | `tests/run.sh sim` passes locally and the three CI jobs are green. |
-| M1 | **Boots headless, with a hidden GL window.** `OOHeadlessOptions`, `startHeadless`, `tick`, the game clock, seeds, private directories, add-ons off. Start-up time and steps per second measured and written into `tasks.md`. | US1 | `test_sim_boot` passes: universe exists, system empty, player in flight, search path has one entry, 600 steps advance game time by 10 s. |
-| M2 | **No GL at all.** Headless state in the extension manager; the nine sites guarded; textures not decoded; `gl_trap_gen.py` and the trap linked on Linux and macOS; the hidden window removed. Each further site the trap names is its own task. | US1 | `test_sim_boot` passes with no window created and the trap linked. Removing one guard makes it fail and name the GL function. |
-| M3 | **First scenario.** `oo_sim` spawn, find, `eval`, the observer and the error record. S1 ported with the original's seed and expression. `test_sim_repeat` and `repeat_100.sh`. | US1 | `test_sim_s1_police_pirate` passes on three platforms. SC-001 and SC-002 measured. **Main milestone.** |
-| M4 | **Census.** `sim_census` with child restart, per-definition reseeding, the report and the expectations file. Findings recorded in `tasks.md`. | US2 | `sim_census` exits zero with every definition accounted for. A broken definition added to a copy of the data makes it exit nonzero and name that key only. |
-| M5 | **Keys and menus.** `initHeadless` on the view, pushed key events, the key-lookup member, recorded layouts. The start-screen and options walk. The tutorial's lessons 0 and 1. The mutation check. | US3 | `test_sim_menus` and `test_sim_tutorial_keys` pass on three platforms under three layouts. With `n` remapped in one layout table the tutorial test fails and names the press. |
-| M6 | **Sanitizers and Flatpak.** The `sim` suite under address and undefined-behaviour sanitizers. The optional `meson test --suite sim` step in the Flatpak module, run in the Flatpak CI job. | US3, US4 | The sanitizer run is clean. The Flatpak job runs the suite to a result. |
-| M7 | **The `n` report.** `test_sim_key_faults`: one case per observation H1–H5, each stating what a player should see. For each failing case, compare the same code in `upstream/oolite`, then fix it or record why not. The written finding. | US4 | Each case passes, or is recorded in the finding with its evidence. The finding exists in `tasks.md` with the three parts FR-030 requires. |
+| M0 | **Skeleton on every platform.** Worktree and branch. `tests/component/cpp/meson.build`, `test_skeleton` linking the `['*']` objects, `tests/run.sh component --cpp`, the CI step in the Windows, macOS and Fedora jobs. Three probes written as cases: SDL's dummy driver initialises; a pushed key event comes back from `SDL_PollEvent`; what `SDL_GetKeyFromScancode` returns for `N` with Caps Lock. | — | `tests/run.sh component --cpp` passes locally and the three CI jobs are green. |
+| M1 | **Boots headless, with a hidden GL window.** `OOHeadlessOptions`, `startHeadless`, `tick`, the game clock, seeds, private directories, add-ons off. Start-up time and steps per second measured and written into `tasks.md`. | US1 | `test_boot` passes: universe exists, system empty, player in flight, search path has one entry, 600 steps advance game time by 10 s. |
+| M2 | **No GL at all.** Headless state in the extension manager; the nine sites guarded; textures not decoded; `gl_trap_gen.py` and the trap linked on Linux and macOS; the hidden window removed. Each further site the trap names is its own task. | US1 | `test_boot` passes with no window created and the trap linked. Removing one guard makes it fail and name the GL function. |
+| M3 | **First scenario.** `oo_component` spawn, find, `eval`, the observer and the error record. S1 ported with the original's seed and expression. `test_repeat` and `repeat_100.sh`. | US1 | `test_s1_police_kills_pirate` passes on three platforms. SC-001 and SC-002 measured. **Main milestone.** |
+| M4 | **Census.** `component_census` with child restart, per-definition reseeding, the report and the expectations file. Findings recorded in `tasks.md`. | US2 | `component_census` exits zero with every definition accounted for. A broken definition added to a copy of the data makes it exit nonzero and name that key only. |
+| M5 | **Keys and menus.** `initHeadless` on the view, pushed key events, the key-lookup member, recorded layouts. The start-screen and options walk. The tutorial's lessons 0 and 1. The mutation check. | US3 | `test_menus` and `test_tutorial_keys` pass on three platforms under three layouts. With `n` remapped in one layout table the tutorial test fails and names the press. |
+| M6 | **Sanitizers and Flatpak.** The C++ component suite under address and undefined-behaviour sanitizers. The optional `meson test --suite component` step in the Flatpak module, run in the Flatpak CI job. | US3, US4 | The sanitizer run is clean. The Flatpak job runs the suite to a result. |
+| M7 | **The `n` report.** `test_key_faults`: one case per observation H1–H5, each stating what a player should see. For each failing case, compare the same code in `upstream/oolite`, then fix it or record why not. The written finding. | US4 | Each case passes, or is recorded in the finding with its evidence. The finding exists in `tasks.md` with the three parts FR-030 requires. |
 | M8 | **The other seven scenarios.** S2–S8, each with the original's seed, spawns and expressions. | US5 | All eight pass. Their total time is below one windowed scenario's. |
 | M9 | **Docs.** `current-state.md`, `workflow.md`, `GLOSSARY.md`, the commands and exemplar table in `CLAUDE.md`, a one-line note in spec 003. | — | The docs name the tier, its command and its exemplar. |
 
 **Order and parallelism:**
 - M0 → M1 → M2 → M3 are sequential.
 - After M3, three lines can run side by side on separate tasks: M4 (census), M5 (keys), M8
-  (scenarios). They touch different files except `oo_sim`, whose additions are per-area.
+  (scenarios). They touch different files except `oo_component`, whose additions are per-area.
 - M6 needs M5. M7 needs M5 and M6. M9 is last.
 
 ## Complexity Tracking
@@ -221,7 +225,8 @@ all` must give the same results as before at every gate (FR-031).
 
 Also recorded in research.md under the item named.
 
-- **The tier is called `sim`** (R9). "Component" stays the Python tier's name.
+- **They are component tests** (Jon, 2026-11-13). The component tier has a C++ half
+  (`tests/component/cpp/`, headless) and the windowed Python half it already had (R9).
 - **The fixed step is 1/60 s** (R3).
 - **Census spans:** 10 s of game time per ship, 5 s per equipment item (R8).
 - **Layouts:** US QWERTY, French AZERTY, Russian (R7).

@@ -1,28 +1,28 @@
-# Quickstart: checking the headless tier works
+# Quickstart: checking the C++ component tests work
 
 Run these to see the feature working end to end. Each block says what it proves. Interfaces are in
 [contracts/](contracts/); values are in [data-model.md](data-model.md).
 
 ## Prerequisites
 
-- The `oolite-dev` worktree at `.agent-tmp/wt-sim-tests` on `feature/headless-sim-tests`.
+- The `oolite-dev` worktree at `.agent-tmp/wt-component-tests` on `feature/headless-component-tests`.
 - A build: `./mk.sh build test --setup-flags=-Db_lto=false`.
 - On Windows, an MSYS2 UCRT64 shell. On macOS and Linux, the ordinary shell.
 
 All commands are run from the worktree.
 
-## 1. The tier runs (M0)
+## 1. The C++ component tests run (M0)
 
 ```bash
-tests/run.sh sim
+tests/run.sh component --cpp
 ```
 
-Expected: every program in the `sim` suite passes; exit 0.
+Expected: every C++ program in the `component` suite passes; exit 0.
 
 ## 2. A scene with no window (US1)
 
 ```bash
-tests/run.sh sim -k s1_police_pirate
+tests/run.sh component --cpp -k s1_police_kills_pirate
 ```
 
 Expected: passes. No window appears. The output's last line gives game seconds, real seconds and
@@ -31,13 +31,13 @@ their ratio; the ratio is at least 20 and the real time is under 15 s (SC-001).
 To prove it needs no display, on Linux:
 
 ```bash
-env -u DISPLAY -u WAYLAND_DISPLAY tests/run.sh sim -k s1_police_pirate
+env -u DISPLAY -u WAYLAND_DISPLAY tests/run.sh component --cpp -k s1_police_kills_pirate
 ```
 
 ## 3. The same result every time (SC-002)
 
 ```bash
-tests/sim/repeat_100.sh test_sim_s1_police_pirate
+tests/component/cpp/repeat_100.sh test_s1_police_kills_pirate
 ```
 
 Expected: `100 runs, identical`; exit 0.
@@ -47,7 +47,7 @@ Expected: `100 runs, identical`; exit 0.
 Temporarily remove the guard in `OOSunEntity::setSunColor`, rebuild and run:
 
 ```bash
-tests/run.sh sim -k boot
+tests/run.sh component --cpp -k boot
 ```
 
 Expected: fails with `GL call glLightfv while headless`. Restore the guard; it passes.
@@ -55,16 +55,16 @@ Expected: fails with `GL call glLightfv while headless`. Restore the guard; it p
 ## 5. Every ship and equipment item (US2)
 
 ```bash
-tests/run.sh sim -k census
+tests/run.sh component --cpp -k census
 ```
 
 Expected: exit 0 and a summary line counting 194 ships and 41 equipment items (or whatever the
-data then holds). The report is at `build/meson_test/sim/census-report.tsv`.
+data then holds). The report is at `build/meson_test/component/census-report.tsv`.
 
 To prove it can fail:
 
 ```bash
-build/meson_test/tests/sim/sim_census --data-overlay tests/sim/fixtures/broken-ship
+build/meson_test/tests/component/cpp/component_census --data-overlay tests/component/cpp/fixtures/broken-ship
 ```
 
 Expected: exit 1, naming the fixture's one definition.
@@ -72,8 +72,8 @@ Expected: exit 1, naming the fixture's one definition.
 ## 6. Menus and the tutorial by key (US3)
 
 ```bash
-tests/run.sh sim -k menus
-tests/run.sh sim -k tutorial_keys
+tests/run.sh component --cpp -k menus
+tests/run.sh component --cpp -k tutorial_keys
 ```
 
 Expected: both pass, under the `us`, `fr_azerty` and `ru` layouts. Run them on each platform; CI
@@ -82,7 +82,7 @@ does this in the Windows, macOS and Fedora jobs.
 To prove the tutorial test can fail, run it with the mutated layout:
 
 ```bash
-build/meson_test/tests/sim/test_sim_tutorial_keys --layout tests/sim/fixtures/us-n-remapped.tsv
+build/meson_test/tests/component/cpp/test_tutorial_keys --layout tests/component/cpp/fixtures/us-n-remapped.tsv
 ```
 
 Expected: fails with `pressing n had no effect at GUI_SCREEN_MAIN, game time …` (SC-007).
@@ -91,7 +91,7 @@ Expected: fails with `pressing n had no effect at GUI_SCREEN_MAIN, game time …
 
 ```bash
 meson setup build/meson_asan -Db_sanitize=address,undefined -Db_lto=false
-meson test -C build/meson_asan --suite sim --print-errorlogs
+meson test -C build/meson_asan --suite component --print-errorlogs
 ```
 
 Expected: no sanitizer report.
@@ -99,7 +99,7 @@ Expected: no sanitizer report.
 ## 8. The key-fault cases (US4)
 
 ```bash
-tests/run.sh sim -k key_faults
+tests/run.sh component --cpp -k key_faults
 ```
 
 Expected at the end of the feature: each case passes, or the case is named in the finding in
@@ -111,11 +111,11 @@ Expected at the end of the feature: each case passes, or the case is named in th
 tests/run.sh all
 ```
 
-Expected: the same results as on the base commit for unit, component, smoke and gui, plus `sim`
-passing.
+Expected: the same results as on the base commit for unit, the windowed component scenarios, smoke and gui, plus the
+C++ component tests passing.
 
 ## Where the outcome of the `n` report is written
 
-`specs/011-headless-sim-tests/tasks.md`, section *Finding: the Flatpak `n` report*. It holds
+`specs/011-headless-component-tests/tasks.md`, section *Finding: the Flatpak `n` report*. It holds
 either the failing-then-passing test and its fix, or what was covered, what could not be, and the
 manual check.
