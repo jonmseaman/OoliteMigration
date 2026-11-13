@@ -747,9 +747,20 @@ edits.**
   where each site becomes an owner). Decision (default taken): `newVisualEffectWithName` is a virtual
   member the tests override, so it keeps its +1 until T095; the object makers `NewShipObject`/
   `NewVisualEffect` keep theirs (24 test calls) likewise. *Done:* the alias check and both tests pass.
-- [ ] T095 [US2] Entities, step 2: remove `RetainEntity`/`ReleaseEntity`/`AutoreleaseEntity` and
+- [X] T095 [US2] Entities, step 2: remove `RetainEntity`/`ReleaseEntity`/`AutoreleaseEntity` and
   the remaining `Ref`/`WeakRef` uses in `src/Core/Entities` and `src/Core/Universe.cpp`.
   **Accept:** `cd oolite-dev && $C ownership --area entities && ! rg -n '\b(Retain|Release|Autorelease)Entity\b' src`
+  *Done.* Parts: `7cf0125e7`, `0e080ed67`, `a3818c071`, `bb784244b`. A creator's ship is a local
+  `std::shared_ptr`; retained raw lists keep a vector of holds beside them (`oo::HoldIn`);
+  `[[e retain] autorelease]` is `oo::AutoreleaseHold`; deliberate leaks move into never-deleted holders;
+  `Entity` is an `oo::Object` (its weak references are already empty in `willDispose()`, so
+  `dropWeakReferences()` went). A release followed by a further use of the pointer keeps the owner
+  to the end of its scope (`.agent-tmp/resetcheck2.py` lists every added `reset()` read afterwards);
+  three unbalanced releases from the conversion (two adopts of an owner's pointer, one release of
+  one) were found and fixed in part 3. The tests keep their manual references in
+  `tests/unit/core/EntityManualRefs.h` (on the bridge for their own stand-ins; a list of owning
+  references per `oo::Object` entity), until T097/T098. Decision (default taken): a demo ship the
+  universe cannot add is destroyed with its creator's reference instead of leaking.
 - [ ] T096 [US2] Areas `scripting`, `sdl-debug`, `oofnd`: the remaining bridge uses.
   **Accept:** `cd oolite-dev && $C ownership`
 - [ ] T097 [US2] The tests' remaining `oo::Ref`, `oo::WeakRef`, `oo::makeRef`, `retainCount()` and
