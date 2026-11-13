@@ -52,21 +52,22 @@ Spans are `std::chrono` durations of game time, so a test writes `5min`, `10s` o
 
 | Call | Effect |
 |---|---|
-| `game.spawn({.count = N, .role = R})` | the windowed step "I spawn N ship(s) with role R"; returns the ships added |
-| `game.spawn({.count = N, .role = R, .withinKm = K})` | the windowed step "… within K km" |
+| `game.spawn(ShipsWithRole(R).count(N))` | the windowed step "I spawn N ship(s) with role R"; returns the ships added |
+| `game.spawn(ShipsWithRole(R).count(N).withinKm(K))` | the windowed step "… within K km" |
 | `game.countWithRole(role)` | the windowed steps' `system.countShipsWithRole` |
 | `game.engages(hunter, quarry)` | the windowed step "a ship with role H engages a ship with role Q" |
 | `game.universe()`, `game.player()` | the game's real `Universe*` and `PlayerEntity*` |
-| `game.addShip(key, position)` | one ship by definition name, added to the universe; returns the real `ShipEntity*`, or null |
-| `game.aheadOf(entity, metres)` | a position on that entity's nose |
+| `game.add(ShipWithKey(key).aheadOf(entity, metres))` | one ship by definition name, added to the universe; returns the real `ShipEntity*`, or null. Placement is `.at(position)`, `.aheadOf(…)` or `.near(…)` |
 | `game.spawnKey(key, position)` | as `addShip`, returning the owning pointer; the census uses it |
 | `game.remove(ship)` | removes it without an explosion |
 | `game.shipsWithRole(role)` | the live ships whose primary role is `role` |
 | `game.entityCount()` | everything in the universe |
 
-`spawn` takes a `SpawnOptions` struct (`count`, `role`, `withinKm`), written with named fields so a
-call site says what each value is. Every field has a default. Helpers that take more than two
-values follow the same pattern.
+**Fluent descriptions** (Jon, 2026-11-13). `spawn` and `add` each take a small description object
+built by chained calls: `ShipsWithRole(role).count(n).withinKm(k)` and
+`ShipWithKey(key).aheadOf(entity, metres)`. The required value is the constructor's argument and
+the rest are optional, in any order. There is no `build()` step: the call that takes the
+description does the work. Helpers that take more than two values follow the same pattern.
 
 The first four run the same script the windowed step runs, including its pinned ship key per
 role, its bounty for pirates and its AI per role (`tests/component/steps/world_steps.py`). Worked

@@ -57,6 +57,7 @@ The same test as it would be written in this plan. Everything called on `univers
 
 using namespace std::chrono_literals;
 using oo::component::Game;
+using oo::component::ShipWithKey;
 
 OO_TEST(an_enemy_adder_kills_a_player_who_does_nothing) {
   Game game = Game::scenario(20260910);  // the universe and the player, in flight, nothing else
@@ -64,7 +65,7 @@ OO_TEST(an_enemy_adder_kills_a_player_who_does_nothing) {
   PlayerEntity* player = game.player();
 
   // An Adder, 5 km off the player's nose, that has decided to attack.
-  ShipEntity* adder = game.addShip("adder", game.aheadOf(player, 5'000.0));
+  ShipEntity* adder = game.add(ShipWithKey("adder").aheadOf(player, 5'000.0));
   OO_CHECK(adder != nullptr);
   adder->setPrimaryRole("pirate");
   adder->addTarget(player);
@@ -85,7 +86,7 @@ How each line of the sketch maps:
 | Sketch | Here | Why it differs |
 |---|---|---|
 | `new Universe()` + `addPlayerToUniverse(createPlayer())` | `Game::scenario(seed)`, then `game.universe()` and `game.player()` | Today the universe creates its own player while it starts, and there can be one per process. |
-| `addShipToUniverse(createEnemyAdder())` | `game.addShip("adder", position)` | It is `universe->newShipWithName("adder")`, `setPosition`, `universe->addEntity`, in one call that returns the ship. |
+| `addShipToUniverse(createEnemyAdder())` | `game.add(ShipWithKey("adder").aheadOf(player, 5'000.0))` | It is `universe->newShipWithName("adder")`, `setPosition`, `universe->addEntity`, in one call that returns the ship. |
 | `simulateUniverse(universe, 5minutes)` | `game.simulate(5min)` | It also runs what the frame runs besides `Universe::update`: sound, frame callbacks, input. |
 | `assertThat(player->isDead())` | `OO_CHECK(player->status() == OOEntityStatus::kDead)` | The game has no `isDead()`. The check macro is the harness's. |
 
@@ -96,7 +97,7 @@ A test that wants the sketch's helper can have it, in the test file:
 
 ```cpp
 ShipEntity* AddEnemyAdder(Game& game, double metresAhead) {
-  ShipEntity* adder = game.addShip("adder", game.aheadOf(game.player(), metresAhead));
+  ShipEntity* adder = game.add(ShipWithKey("adder").aheadOf(game.player(), metresAhead));
   adder->setPrimaryRole("pirate");
   adder->addTarget(game.player());
   adder->performAttack();
@@ -129,6 +130,7 @@ Its C++ counterpart, `tests/component-cpp/test_s1_police_kills_pirate.cpp`:
 
 using namespace std::chrono_literals;
 using oo::component::Game;
+using oo::component::ShipsWithRole;
 using oo::component::ticks;
 
 OO_TEST(a_police_viper_engages_a_lone_pirate) {
@@ -136,9 +138,9 @@ OO_TEST(a_police_viper_engages_a_lone_pirate) {
   Game game = Game::scenario(20260910);
 
   // When I spawn 1 ship with role "police"
-  OO_CHECK_EQ(game.spawn({.count = 1, .role = "police"}).size(), 1u);
+  OO_CHECK_EQ(game.spawn(ShipsWithRole("police").count(1)).size(), 1u);
   // And I spawn 1 ship with role "pirate" within 10 km
-  OO_CHECK_EQ(game.spawn({.count = 1, .role = "pirate", .withinKm = 10}).size(), 1u);
+  OO_CHECK_EQ(game.spawn(ShipsWithRole("pirate").count(1).withinKm(10)).size(), 1u);
 
   // Then within 900 ticks a ship with role "police" engages a ship with role "pirate"
   OO_CHECK(game.simulateUntil([&] { return game.engages("police", "pirate"); }, ticks(900)));
@@ -172,7 +174,7 @@ Something the windowed tier cannot do, because it can only poll:
 ```cpp
 OO_TEST(a_destroyed_ship_dies_before_it_leaves_the_ship_list) {
   Game game = Game::scenario(20260910);
-  ShipEntity* pirate = game.spawn({.role = "pirate"}).front();
+  ShipEntity* pirate = game.spawn(ShipsWithRole("pirate")).front();
   const auto id = pirate->universalID();
 
   game.eval("system.allShips.filter(function(s){ return s.primaryRole == 'pirate'; })[0]"
@@ -442,13 +444,37 @@ namespace oo::component {
 using GameTime = std::chrono::duration<double>;  // so a test can write 5min, 10s, 250ms
 constexpr GameTime ticks(int n) { return GameTime{n * 0.125}; }
 
-// What to spawn. Named fields, so a call site says what each value is:
-//   game.spawn({.count = 1, .role = "pirate", .withinKm = 10})
-// Every field has a default, and fields are written in this order.
-struct SpawnOptions {
-  int count = 1;
-  std::string_view role = {};      // "police", "pirate", ... as in the windowed steps
-  std::optional<int> withinKm = {};  // of the first ship spawned; unset = around the player
+// What to spawn, said fluently and passed to one call. There is no build() or go(): the call that
+// takes it does the work.
+//   game.spawn(ShipsWithRole("pirate").count(2).withinKm(10))
+//   game.add(ShipWithKey("adder").aheadOf(player, 5'000.0))
+// The required value is the constructor's argument. Everything else is optional, in any order.
+// Each setter returns a copy, so a half-built description can be kept and reused safely.
+class ShipsWithRole {
+ public:
+  explicit ShipsWithRole(std::string_view role) : role_(role) {}  // "police", "pirate", ...
+  ShipsWithRole count(int n) const { auto next = *this; next.count_ = n; return next; }
+  // Of the first ship spawned. Unset: around the player.
+  ShipsWithRole withinKm(int km) const { auto next = *this; next.withinKm_ = km; return next; }
+
+ private:
+  friend class Game;
+  std::string_view role_;
+  int count_ = 1;
+  std::optional<int> withinKm_;
+};
+
+class ShipWithKey {
+ public:
+  explicit ShipWithKey(std::string_view shipKey) : key_(shipKey) {}  // "adder", "cobra3-trader"
+  ShipWithKey at(HPVector position) const;
+  ShipWithKey aheadOf(Entity* entity, double metres) const;  // on that entity's nose
+  ShipWithKey near(Entity* entity, double metres) const;     // anywhere within that distance
+
+ private:
+  friend class Game;
+  std::string_view key_;
+  // ... the placement chosen; default: near the player
 };
 
 class Game {
@@ -465,15 +491,14 @@ class Game {
   double time() const;
 
   // The world, in the vocabulary of tests/component/steps/world_steps.py.
-  std::vector<ShipEntity*> spawn(const SpawnOptions& options);  // the ships it added
+  std::vector<ShipEntity*> spawn(const ShipsWithRole& what);  // the ships it added
   int countWithRole(std::string_view role);
   bool engages(std::string_view hunter, std::string_view quarry);
 
   // The world, directly: the game's own objects.
   Universe* universe();
   PlayerEntity* player();
-  ShipEntity* addShip(const std::string& shipKey, HPVector position);  // null if it cannot be made
-  HPVector aheadOf(Entity* entity, double metres);
+  ShipEntity* add(const ShipWithKey& what);  // null if it cannot be made
   std::shared_ptr<ShipEntity> spawnKey(const std::string& shipKey, HPVector position);
   std::vector<ShipEntity*> shipsWithRole(std::string_view role);
   void remove(ShipEntity* ship);
@@ -522,12 +547,12 @@ class Game {
 ship key, the primary role set back to the scenario's role, the pirate's bounty, the role's AI.
 
 ```cpp
-std::vector<ShipEntity*> Game::spawn(const SpawnOptions& options) {
-  const std::string_view role = options.role;
-  const int count = options.count;
+std::vector<ShipEntity*> Game::spawn(const ShipsWithRole& what) {
+  const std::string_view role = what.role_;
+  const int count = what.count_;
   // "within N km" measures from the first ship spawned; otherwise spawn around the player.
-  const HPVector at = options.withinKm && locus_ ? *locus_ : player()->getPosition();
-  const double radiusMetres = options.withinKm ? *options.withinKm * 1000.0 : kSpawnRadiusMetres;
+  const HPVector at = what.withinKm_ && locus_ ? *locus_ : player()->getPosition();
+  const double radiusMetres = what.withinKm_ ? *what.withinKm_ * 1000.0 : kSpawnRadiusMetres;
 
   const std::string selector = PinnedShipKeyFor(role);  // "[viper]" for "police", as ROLE_SHIP_KEY
   const std::string js = std::format(
