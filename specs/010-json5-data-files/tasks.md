@@ -4,8 +4,9 @@ description: "Tasks for JSON5 data files beside property lists (spec 010)"
 
 # Tasks: JSON5 data files beside property lists
 
-**Input**: [spec.md](spec.md). Work happens in `oolite-dev` on `feature/json5-data-files`
-(worktree `.agent-tmp/wt-json5`). Each task names the command that fails before it and passes after.
+**Input**: [spec.md](spec.md). T001–T005 were done in `oolite-dev` on `feature/json5-data-files`
+(worktree `.agent-tmp/wt-json5`); T006 on are on `seriesb/030-json5-data-files`, which contains
+those commits. Each task names the command that fails before it and passes after.
 
 macOS unit check (D12), from the worktree:
 
@@ -45,6 +46,24 @@ clang++ -std=c++23 -Wall -Wextra -Werror -I src -I tests/unit/oofnd tests/unit/o
   pushed `c492a87a2`; run
   [43168053948](https://github.com/jonmseaman/oolite/actions/runs/43168053948) was in progress.
 
+## Phase 6: Core data in JSON5 (US4)
+
+- [x] T006 [US4] `oo::isJSON5Path`, `oo::existingPListPath`, `oo::parsePListFile` and a direct
+  `.json5` path in `oo::loadPListFile` (`src/oofnd/PListFile.hpp`, FR-010–FR-012), with cases in
+  `test_plist_json5.cpp`; `ResourceManager::pathForFileNamed`, the built-in readers in
+  `ResourceManager`, `Universe` and `OOOXPVerifier`, and `OOScript::scriptsFromFileAtPath` use
+  them. Check: the macOS command above (fails before: no such functions), plus
+  `./mk.sh --native-file=darwin.ini build debug`.
+- [x] T007 [US4] `plist2json5 --parse` (FR-013) and the stale-plist removal in
+  `ShellScripts/common/post_build.sh` (FR-014). Check: `plist2json5 --parse Resources` exits 1
+  with "no .json5 files found" before T008 and 0 after.
+- [x] T008 [US4] `plist2json5 --strings` over `Resources/`, then the 82 converted plists removed
+  (D14, D15); `tools/plist2json5/meson.build` gains `json5_resources_parse` and its `--check`
+  tests take `Resources/`, `DebugOXP/` and `tools/`. Check: `meson test -C build/meson_debug
+  --suite plist2json5` (fails before: no test `json5_resources_parse`), then
+  `BUILD_TYPE=debug tests/run.sh smoke` and
+  `BUILD_TYPE=debug tests/run.sh component --oolite-app="$PWD/build/meson_debug/oolite.app"`.
+
 ## Results (2026-11-12, macOS, Apple clang via `darwin.ini`, debug)
 
 - `test_plist_json5`: 34 tests, 170 checks, 0 failures; the same under ASan and UBSan.
@@ -67,13 +86,50 @@ clang++ -std=c++23 -Wall -Wextra -Werror -I src -I tests/unit/oofnd tests/unit/o
 - Found while converting: the XML reader marks every non-negative `<integer>` unsigned (GNUstep's
   NSNumber), which JSON5 can't express, so `--check` compares integers by value (D13).
 
+## Results, Phase 6 (2026-11-13, macOS, Apple clang via `darwin.ini`, debug)
+
+- `test_plist_json5` by direct compile: 37 tests, 198 checks, 0 failures.
+- `meson test -C build/meson_debug --suite plist2json5`: Ok 4, Fail 0 (`test_plist2json5`, the two
+  `--check` tests over the 21 plists left in `Resources/`, `DebugOXP/` and `tools/`, and
+  `json5_resources_parse` over the 82 core `.json5` files).
+- Each of the 82 committed `.json5` files compared with its plist at `c492a87a2` by
+  `plist2json5::check` (`--strings`, tree `==`): 82 equal, 0 different.
+- `./mk.sh --native-file=darwin.ini build debug`: builds; no warning in a changed file.
+- `BUILD_TYPE=debug tests/run.sh smoke`: passes before the conversion and after it. The two game
+  logs are the same line for line apart from times, temporary paths and one
+  `dataCache.rebuild.datesChanged` line; the JSON5 run has no `plist.parse.failed` and no
+  `plist.json5.shadowed`.
+- `BUILD_TYPE=debug tests/run.sh component --oolite-app="$PWD/build/meson_debug/oolite.app"` on
+  the converted tree: 18 passed, 2 skipped (the two Windows-only tests), 14 min 43 s.
+- Both files present (the plists of `logcontrol`, `shipdata` and `nullAI` copied back beside their
+  `.json5` in the build): the smoke test passes, the JSON5 files are read, and
+  `plist.json5.shadowed` is logged once for each of the three. `logcontrol` is read before the
+  log is configured, and that works.
+- An existing build directory: after the conversion `post_build.sh` leaves 4 plists in the build's
+  resources (`Info-gnustep`, `descriptions`, `whitelist`, the generated `manifest`) and 82 `.json5`.
+- Not run here: the `gui` tier (Windows only) and the meson `oofnd`, `core` and `headers` suites
+  (Windows only; see CI below). GCC.
+- Found on the way: `post_build` runs only when the `oolite` binary is relinked, so a change to
+  `Resources/` alone does not reach an existing build's bundle until
+  `build/meson_<type>/src/.oolite_bundle.stamp` is removed. Not changed here.
+- Found on the way: at the base commit `b692feb4e` the Windows `oofnd` suite fails
+  `test_string_sweep` (`pointer_description_is_gnusteps`), which stops `tests/run.sh unit` before
+  the `core` suite; `seriesb/027-modern-cpp` fixes it later in `cc94abb6d`. To see the `core`
+  suite on this change, the same tree plus that one commit was pushed as `claude/030-ci-check`
+  (a CI-only branch; delete it).
+
 ## Follow-ups (not in this feature)
+
+- An install over an older one keeps the old core plists beside the new `.json5` files: the game
+  reads the JSON5 and logs `plist.json5.shadowed` once per file. The installers (NSIS, Flatpak,
+  AppImage, dmg) were not checked for whether they clear `Resources/` first.
+- `Config/descriptions.plist` and `Config/whitelist.plist` can become JSON5 once
+  `tests/unit/expander` and `tests/unit/sysdesc` read their inputs through `oo::parsePListFile`
+  (a test change, so Jon's call).
 
 - The OXP verifier checks for `equipment.plist`, `requires.plist`, `demoships.plist` and
   `shipdata.plist` by name (`src/Core/OXPVerifier/OOCheck*PListVerifierStage.cpp`), so it doesn't
   verify a JSON5-only expansion.
 - `OOScript.cpp:192,222,251` picks a script kind by the extension `plist`; a `.json5` legacy script
   file named directly is not recognised.
-- Run the game once with a converted `Resources/Config/*.json5` beside its plist (or a test
-  expansion shipping `shipdata-overrides.json5`) and read the log for `plist.json5.shadowed`.
-- 5b.4 (component scenarios over a converted tree), 5b.5 (`EXPANSION_MIGRATION.md`), 5b.6.
+- 5b.5 (`EXPANSION_MIGRATION.md`), and the JSON5 mode of `tools/plist_fuzz.py`.

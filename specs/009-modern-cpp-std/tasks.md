@@ -733,15 +733,20 @@ edits.**
   keeps today's (no context; `bool` back). The finaliser keeps the code's order (`clearJSSelf`, empty
   the slot, delete the holder). Every reader of a C++ slot goes through `OOJSCxxPrivateFromOpaque`.
   `test_ScriptFinalisationRelease` passes locally; CI runs it with T105.
-- [ ] T094 [US2] Entities, step 1: `src/Core/Entities/OOEntityHold.h` per the contract
+- [X] T094 [US2] Entities, step 1: `src/Core/Entities/OOEntityHold.h` per the contract
   (`using EntityHold = std::shared_ptr<Entity>`, `Hold(e)`); entities made with `oo::makeShared`;
   the +1 creators (`newShipWithRole`, `newShipWithName`, …) return `std::shared_ptr`;
   `MadeEntity`/`MadeEntityRetained` in `src/Core/Entities/EntityHelpers.cpp` per the contract.
   **Accept:** `cd oolite-dev && rg -q 'using EntityHold = std::shared_ptr<Entity>' src/Core/Entities/OOEntityHold.h` and CI `test_EntityDisposalReaders`, `test_ScriptFinalisationRelease` pass
-  *In progress.* Part 1 (`76e4f8627`): `EntityHold` is `std::shared_ptr<Entity>`; `oo::Hold`, and for
+  Part 1 (`76e4f8627`): `EntityHold` is `std::shared_ptr<Entity>`; `oo::Hold`, and for
   the bridge's manual references `oo::AdoptHold`/`oo::LeakHold` (removed in T095); `oo::FindHold`/
   `oo::EraseHold`; every raw construction and `emplace_back(raw)` is `oo::Hold` (scans clean). Left:
   the +1 creators and `MadeEntityRetained` return `std::shared_ptr`.
+  Part 2 (`94a39d493`): `MadeEntityRetained` and the `Universe` creators answer `std::shared_ptr`;
+  their 66 callers take the old +1 through the bridge adapter `oo::RetainedEntity` (removed in T095,
+  where each site becomes an owner). Decision (default taken): `newVisualEffectWithName` is a virtual
+  member the tests override, so it keeps its +1 until T095; the object makers `NewShipObject`/
+  `NewVisualEffect` keep theirs (24 test calls) likewise. *Done:* the alias check and both tests pass.
 - [ ] T095 [US2] Entities, step 2: remove `RetainEntity`/`ReleaseEntity`/`AutoreleaseEntity` and
   the remaining `Ref`/`WeakRef` uses in `src/Core/Entities` and `src/Core/Universe.cpp`.
   **Accept:** `cd oolite-dev && $C ownership --area entities && ! rg -n '\b(Retain|Release|Autorelease)Entity\b' src`
