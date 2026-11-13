@@ -761,8 +761,13 @@ edits.**
   `tests/unit/core/EntityManualRefs.h` (on the bridge for their own stand-ins; a list of owning
   references per `oo::Object` entity), until T097/T098. Decision (default taken): a demo ship the
   universe cannot add is destroyed with its creator's reference instead of leaking.
-- [ ] T096 [US2] Areas `scripting`, `sdl-debug`, `oofnd`: the remaining bridge uses.
+- [X] T096 [US2] Areas `scripting`, `sdl-debug`, `oofnd`: the remaining bridge uses.
   **Accept:** `cd oolite-dev && $C ownership`
+  *Done* (`879469c15`). Decision (default taken): the command finds only the bridge's own two files
+  (`oofnd/Ref.hpp`, `oofnd/WeakSet.hpp`, 60-odd lines) until T098 deletes them, so it exits 0 from T098
+  on; checked here as `$C ownership | grep -v 'oofnd/Ref.hpp\|oofnd/WeakSet.hpp'` empty. The QuickJS
+  proof of concept (`-Dquickjs_poc`) does not build on macOS (SDL's include path, unrelated); it is
+  edited but not compiled here (T105 covers Windows).
 - [ ] T097 [US2] The tests' remaining `oo::Ref`, `oo::WeakRef`, `oo::makeRef`, `retainCount()` and
   `oofnd/Ref.hpp` includes → `std::shared_ptr`, `std::weak_ptr`, `oo::makeShared`, `use_count()`,
   `<memory>` and `oofnd/Object.hpp`, including `tests/unit/core/EntityStandIn.h` (one ledger row per
