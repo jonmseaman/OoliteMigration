@@ -183,6 +183,11 @@ one at the root).
    Universe's GUI objects (`Universe.h:318-320`) and the player's `hud` (inferred). Colours, role
    sets, textures, materials, meshes, octrees, scripts, groups, sounds, async tasks and entities
    are genuinely shared.
+   *T091 found three of the listed ones shared after all:* the joystick spline segments are held by
+   a profile and its copies, the route elements by `cheapest[]` and the frontier vectors at once,
+   and the AI's preserved state machines are read while its stack may change. They stay
+   `std::shared_ptr`; the crosshairs and the sky's quad sets are `std::unique_ptr`, the universe a
+   `std::unique_ptr` kept by the game controller.
 
 **The transitional bridge.** Ref and shared ownership cannot coexist on one object, and about 260
 files and 165 test files use `oo::Ref`. So the first step changes the inside, not the callers:

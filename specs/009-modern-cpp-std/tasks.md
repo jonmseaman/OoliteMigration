@@ -682,11 +682,11 @@ edits.**
   std::shared_ptr<T>(oo::makeShared<T>(...));` where others share it, `static auto& s = *new
   T(...);` where nothing does; one `exceptions.md` row each.
   **Accept:** `cd oolite-dev && ! rg -U -n -P 'makeRef<[^>]+>\((?:[^()]|\([^()]*\))*\)\s*\.leakRef\(\)' src --glob '!src/Core/Scripting/poc/**'`
-- [ ] T091 [US2] Leaf types in area `core` (role sets, probability sets, characters, sounds,
+- [X] T091 [US2] Leaf types in area `core` (role sets, probability sets, characters, sounds,
   caches, async tasks, `PList::Object` → `std::shared_ptr<PListForeign>`) off the bridge; exclusive
   owners (research R5.8) → `std::unique_ptr` or values.
   **Accept:** `cd oolite-dev && $C ownership --area core`
-  *In progress.* Part 1 (`fa8db72c2`): the bridge takes `oo::Object` types. Part 2 (`f21d46d5e`):
+  Part 1 (`fa8db72c2`): the bridge takes `oo::Object` types. Part 2 (`f21d46d5e`):
   every `oo::Ref`/`oo::WeakRef`/`makeRef` in `src` (the bridge's own headers aside) and in the tests
   (but `test_ref`, `test_weakset`) is `std::shared_ptr`/`std::weak_ptr`/`oo::makeShared`, ahead of
   T092–T097's renames, because the game's signatures and the tests' stand-ins must agree (168
@@ -710,6 +710,13 @@ edits.**
   `exit(0)`, whose destructors would run after the logger and the GL context have gone: the player's
   sounds, the recent-textures cache, the HUD's encoding converter; nine exceptions rows). Tests that
   asserted `retainCount()` use `weak_from_this().use_count()` (11 ledger rows).
+  Part 4 (`0d62ed6c3`): `adopt(new X)` → `oo::makeShared` (or the same `std::shared_ptr(new X,
+  oo::Dispose{})` inside a class whose factory keeps its constructor private); the `leakRef` +1s in
+  core files held as `std::shared_ptr` or never-deleted holders; `PList::Object` is
+  `std::shared_ptr<PListForeign>`; the crosshairs and sky quad sets are `std::unique_ptr` (research
+  R5.8's correction); four exceptions rows (the encodings' measured strings; `OOCharacter` and
+  `OOEquipmentType` keep the bridge's adopt until T096 moves `oo::PListForeign`). The raw-owner scan
+  also sees constructions through an alias now. *Done:* `$C ownership --area core` exits 0.
 - [ ] T092 [US2] Area `materials` (textures, materials, shaders, meshes) off the bridge.
   **Accept:** `cd oolite-dev && $C ownership --area materials`
 - [X] T093 [US2] The script slot: `OOJSSetCxxPrivate`/`OOJSGetCxxPrivate` and the finaliser in
