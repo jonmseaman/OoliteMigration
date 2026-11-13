@@ -56,10 +56,12 @@ field for field against the state record. A new test pins the verifier's log lin
 2. **Not pushed.** Local `seriesb/027-modern-cpp` and `origin/seriesb/027-modern-cpp` have diverged
    (277 ahead, 530 behind on 2026-11-13), so a push would need a force, which the rules allow only
    through `git town sync`. Jon pushes.
-3. **`seriesb/028-upstream-772-tests`** sits on `seriesb/027-modern-cpp` and needs a
-   `git town sync` to pick these commits up. It is checked out in `.agent-tmp/wt-772`, so it is
-   left for whoever works there.
-
+3. **`seriesb/028-upstream-772-tests`** was restacked onto these commits on 2026-11-13, at Jon's
+   request. Its two commits were rebased onto `seriesb/027-modern-cpp` with
+   `git rebase --onto seriesb/027-modern-cpp 3732f6126` in `.agent-tmp/wt-772`; the old tip was
+   `bc70a6e90`, the new one is `eb9e7d86d`. `git town sync` was not used: with the rebase strategy,
+   it would also have rebased local `seriesb/027-modern-cpp` onto its diverged `origin` copy. On
+   the new tip, the unit run matches 027's: 229 pass, plus the two failures of Notes 4.
 4. **Two tests are already broken on the base**, before any change here, and are not this
    feature's to fix (an edit to make them pass would break hard rule 1):
    - `test_EnumNameFallbacks` does not link (`gDebugFlags` is undefined: it is defined in
