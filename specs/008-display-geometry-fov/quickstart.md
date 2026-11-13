@@ -64,11 +64,12 @@ restart.
 ## M5 — the warp pass
 
 ```bash
-tests/run.sh smoke
+tests/run.sh component -k screen
 ```
 
-With screen-matching on and a curved screen set, the log has the `universe.profile.warp` line;
-with it off the line is absent and C5 passes. Hand check on the reference machine (research R9), Odyssey G9 at 80 cm:
+The warp runs only in flight (the smoke run stops at the start screen, a GUI screen). With
+screen-matching on and a curved screen set, the log has a `display.warp.pass` line ("warp pass
+on"); with it off the line is absent and C5 passes. Hand check on the reference machine (research R9), Odyssey G9 at 80 cm:
 
 1. Game Options → Screen Matching: On; 49", 32:9, Curved 1000R, 80 cm. The rows show 84.0° × 23.8°.
 2. Launch, turn so the station's long edge runs across the whole screen: it looks straight from the

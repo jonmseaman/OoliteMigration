@@ -346,3 +346,6 @@ Decision 1 was the user's choice. The rest were taken as conservative defaults w
    values. The plan can tune them. The tests check the limits that the plan sets.
 7. **Recentring also clears zoom.** The view key puts the view back to its normal state, and the
    normal state is unmagnified. A player who wants to keep the zoom drags it back in.
+8. **Mouse look maps the pointer through the display geometry.** With screen matching on (spec
+   008), a window point is not a flat-projection direction: mouse look and picking must turn
+   window points into directions with `OODisplayGeometry::windowToScene` (spec 008 FR-012).

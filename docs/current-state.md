@@ -77,6 +77,30 @@ The warning gate skips exactly two vendored paths, `src/Core/MiniZip/` and
 
 `oolite-dev/tests/run.sh` runs the first four. How to use them is in [workflow.md](workflow.md).
 
+## Display: screen matching, the warp pass and the HUD area
+
+- **HUD area.** On a window wider than 16:9 the HUD and every GUI screen are laid out in the
+  centred 16:9 rectangle (`OOHudAreaForWindow`), at full height; the space view, the sun's glare
+  and the markers over objects keep the whole window.
+- **Screen matching** (Game Options → Field Of View → Enter; off by default). The player gives the
+  screen's size, aspect, curvature and their viewing distance, or the size is detected from the
+  display (EDID on Windows, Core Graphics on macOS, nothing on Linux; `src/SDL/OODisplaySize*`).
+  `OODisplayGeometry` (`src/Core/OODisplayGeometry.*`, pure maths) works out the horizontal and
+  vertical field of view and the four mappings between window points, eye directions and scene
+  directions. The field of view is "Physical" or a custom horizontal angle; above the physical
+  angle the look is Panini (default), even spacing or classic flat. With matching off nothing
+  changes. The settings are the `screen-*`, `viewer-distance-mm` and `fov-*` preferences.
+- **Warp pass.** A curved screen, or a Panini or even-spacing look, draws the space view into a
+  flat render (in up to three slices, each with its own yaw, for very wide angles) and warps it
+  into the window through a mesh from `OODisplayGeometry::warpMesh`, before the glare and the HUD
+  (`Universe` drawing, `oolite-warp` shaders). Markers over objects are placed with
+  `sceneToWindow`. Without shaders the view falls back to classic flat at the same angle. Mouse
+  picking and a future mouse-look camera must map window points with
+  `OODisplayGeometry::windowToScene`.
+- **Debug reads** (debug builds): `console.__displayProjection()` returns the projection in use,
+  and `console.__setDisplayPreference(key, value)` changes a display setting at once, as the
+  settings screen does; the spec 008 scenarios use both.
+
 ## Known differences from upstream 1.93
 
 - **JavaScript engine.** QuickJS-ng is stricter than SpiderMonkey 1.8.5: legacy generators, `for
