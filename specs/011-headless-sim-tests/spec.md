@@ -45,7 +45,8 @@ What exists on 2026-11-13:
   on macOS or Linux.
 - **The tutorial's "next" is the `n` key.** It is the *activate equipment* control, bound to `n`
   by default. The windowed game receives keys from the platform by physical key position and
-  translates them through the active keyboard layout.
+  translates them through the active keyboard layout. The tutorial has no row of its own on the
+  start screen: it is reached through *Start New Commander* and the scenario screen.
 - **The report.** A player on the Flatpak build could not press `n` in the tutorial. The cause is
   not known. No matching issue was found in OoliteProject/oolite's tracker on 2026-11-13, and
   where it was reported is not recorded here.
@@ -54,8 +55,9 @@ What exists on 2026-11-13:
 - **Spec 003 planned a headless game and has not started.** `specs/003-encapsulate-global-state`
   reaches a headless game by removing every global first. It has a plan and no tasks. Its User
   Story 3 (police against pirate, headless) is the same test as this spec's User Story 1.
-- **Core content.** `Resources/Config/shipdata.plist` holds roughly 430 definitions and
-  `equipment.plist` roughly 40 items. These are rough counts; the census reads the data itself.
+- **Core content.** `Resources/Config/shipdata.plist` holds 194 definitions, 81 of them templates
+  that other definitions copy, and `equipment.plist` holds 41 items. The census reads the data
+  itself, so these counts are context and not part of any test.
 - **Platforms.** The suites are run on Windows. The macOS build runs, and the component runner has
   macOS and Linux paths. CI builds Linux as AppImage, Ubuntu, Fedora and Flatpak packages and runs
   no tests on them.
@@ -166,8 +168,8 @@ the tutorial test fails on that platform and says which key press had no effect.
 3. **Given** the tutorial has started, **When** the test presses `n`, **Then** the tutorial moves
    to its next step, for every step of lessons 0 and 1.
 4. **Given** a key press in a test, **When** it is delivered, **Then** it enters the game as the
-   event the platform would deliver for that physical key, and goes through the same translation
-   and the same key handling as in the windowed game.
+   event the platform layer hands the game for that physical key, and goes through the same key
+   handling as in the windowed game.
 5. **Given** a key held down across several frames, **When** the game reads it, **Then** a
    control that acts once per press acts once, as it does for a player.
 6. **Given** the same tests, **When** they run under each keyboard layout in the test set (US, one
@@ -328,8 +330,9 @@ they take less real time than one windowed scenario does today.
 **Menus and keys**
 
 - **FR-023**: A test MUST be able to press, hold and release a key, and to enter text. A key MUST
-  enter the game as the event the platform delivers for a physical key, and MUST pass through the
-  same translation and key handling as in the windowed game on that platform.
+  enter the game as the event the platform layer hands the game for a physical key (the key's
+  position and the modifier state), through the same event queue, and MUST pass through all of the
+  game's own key handling unchanged.
 - **FR-024**: A test MUST be able to read which screen is showing, which row is selected, and each
   row's text and whether it can be selected.
 - **FR-025**: The menu tests MUST visit every entry on the start screen and on the options screens
@@ -337,7 +340,8 @@ they take less real time than one windowed scenario does today.
 - **FR-026**: A test MUST start the tutorial and advance through every step of lessons 0 and 1
   with the tutorial's own "next" control, checking after each press that the tutorial moved.
 - **FR-027**: The key tests MUST run under each layout in a fixed set: US, one other Latin layout
-  in which letters change position, and one non-Latin layout.
+  in which letters change position, and one non-Latin layout. A layout is supplied to the test as
+  a recording of what a real system gives for each key under that layout.
 - **FR-028**: On Linux the key tests MUST also run inside the environment the Flatpak package is
   built for.
 - **FR-029**: The key tests MUST be shown able to fail: with one key's translation deliberately
@@ -424,6 +428,13 @@ they take less real time than one windowed scenario does today.
   does not play, and anything wrong in the windowing system are not found by headless tests. The
   smoke and GUI tiers remain the check for those.
 - **Keyboard only.** Menu tests press keys. Mouse and joystick input stay with the GUI tier.
+- **How far down a key test reaches** (found in planning, 2026-11-13; see research.md R7). The
+  step that reads the operating system's keyboard layout is inside the platform library's
+  windowing code, and it does not run without a display. A headless test therefore starts at the
+  event that library hands the game, and gets its layouts from recordings. Everything the game
+  does with a key is covered on every platform. The operating system's own layout step, window
+  focus and the Flatpak sandbox's access to input devices are not. They are named in Story 4's
+  finding with a manual check.
 - **Platforms.** Windows x64, macOS arm64 and Linux x64. The existing unit suites are Windows-only
   and use Windows-only stand-ins, so this tier cannot depend on them.
 - **The report's origin.** The Flatpak report is taken to concern a packaged build a player
