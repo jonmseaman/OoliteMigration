@@ -336,7 +336,7 @@ passes.
   `specs/004-mouse-look-camera/spec.md` that mouse-look must use
   `OODisplayGeometry::windowToScene` (FR-012). **Accept:**
   `grep -q OODisplayGeometry docs/current-state.md specs/004-mouse-look-camera/spec.md`
-- [ ] T033 Run `tests/run.sh all` once at the end. **Accept:** exit 0
+- [X] T033 Run `tests/run.sh all` once at the end. **Accept:** exit 0
 
 ---
 
@@ -497,3 +497,7 @@ any checkpoint.
   check passes (at most a 0.3% drop) but shows only that the warp stays at the cap on the
   reference machine, not its cost below it. The window was 5120 x 1440, the system GPU driver was
   used, and V-Sync was off in the game.
+- T033: `tests/run.sh all` exits 0 on `oolite-dev` `0de9ff56a`: unit 40 + 183 + 1, component 37,
+  smoke, GUI 154.
+- T031 is Jon's (labelled design) and is still open: the quickstart M5 hand check, items 1-5, on
+  the G9. Everything it depends on has landed. Its acceptance is Jon's note here.
