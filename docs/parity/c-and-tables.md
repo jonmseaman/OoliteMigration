@@ -13,6 +13,6 @@ Checked with `diff --strip-trailing-cr upstream/oolite/src/<f> src/<f>`.
 | `Core/legacy_random.c` | 4 | ✅ | `sReallyRandomInited` and its assignment wrapped in `#ifndef NDEBUG` (it is only read by `assert`). This silences an unused-variable warning in release builds; behaviour is unchanged (src/Core/legacy_random.c:220-239). |
 | `Core/OOVoxel.m` → `Core/OOVoxel.c` | 1 | ✅ | renamed to `.c`; the only change is `#import "OOMaths.h"` → `#include`. Body identical (197 lines each). |
 | `SDL/EXRSnapshotSupport/OOSaveEXRSnapshot.cpp` | 1 | ✅ | added `#include <cstring>` |
-| `Core/Tables/*.tbl` (11 files) | 0 each | ✅ | identical; same file set on both sides |
+| `Core/Tables/*.tbl` (upstream's 11) | — | ✅ | identical on `develop`. From `seriesb/027-modern-cpp` on there are none: the ten named enums are headers in `Core/Tables` (spec 009), and `OOOpenGLStates.tbl` is the `kStateItems` table in `Core/OOOpenGLStateManager.cpp` (spec 011). They were X-macro lists, not C, so rule 9 does not hold them. |
 
 **Status:** done. No behavioural differences.

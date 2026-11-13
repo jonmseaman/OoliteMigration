@@ -49,6 +49,11 @@ QuickJS-ng is a meson subproject pinned in `oolite-dev/subprojects/quickjs-ng.wr
 - `oo::AutoreleaseScope` / `oo::autorelease` are kept on purpose as the C++ deferred-release pool.
   Removing them changes object lifetimes; it is a separate, deliberate change.
 - Plain C stays plain C. A file or function that is already C is not rewritten.
+- From `seriesb/027-modern-cpp` on there are no `.tbl` X-macro files.
+  - Each named enum is one header in `src/Core/Tables` (`OOScanClass.h`, …) that holds its
+    members, names and pinned numbers.
+  - The OpenGL state manager's tracked items are the `kStateItems` table in
+    `src/Core/OOOpenGLStateManager.cpp`, which a `static_assert` checks against the state record.
 - `OOColor` (`src/Core/OOColor.*`) is the reference for how a converted class looks.
 
 ## Builds

@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Replace the `.tbl` tables
+# Specification Quality Checklist: Replace the last `.tbl` table
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-11-12
@@ -32,15 +32,9 @@
 ## Notes
 
 - This is a source-structure feature: its users are the people who read and change the game's
-  code, and the files, types and include sites it names are the subject of the request, not
+  code, and the file and include sites it names are the subject of the request, not
   implementation choices. On that reading the content-quality items pass, the same reading spec
-  009 uses. How each header is built (the mapping, the derived table, the OpenGL item list's form)
-  is left to the plan, which follows `notes/2026-11-07 Enum Tables from tbl X-Macros.md` and spec
-  009's enum contract.
-- No clarification markers: the three open choices (taking over spec 009's P8, including
-  `OOOpenGLStates.tbl`, leaving the call-site rename to spec 009) have defaults recorded in the
-  spec's *Notes and decisions*, per hard rule 8.
-- Success criteria are measured by file counts, the script API snapshot, a saved-game round trip,
-  the test suites and the corpus; SC-004 needs a recorded trial per kind, which the plan must
-  schedule.
-- Validation iterations: 1, all items pass.
+  009 uses.
+- No clarification markers: the open choices (scope, branch, the display quirk, the corpus) have
+  defaults recorded in the spec's *Notes and decisions*, per hard rule 8.
+- Validation iterations: 2 (re-scoped 2026-11-13 to the OpenGL table), all items pass.
