@@ -738,6 +738,10 @@ edits.**
   the +1 creators (`newShipWithRole`, `newShipWithName`, …) return `std::shared_ptr`;
   `MadeEntity`/`MadeEntityRetained` in `src/Core/Entities/EntityHelpers.cpp` per the contract.
   **Accept:** `cd oolite-dev && rg -q 'using EntityHold = std::shared_ptr<Entity>' src/Core/Entities/OOEntityHold.h` and CI `test_EntityDisposalReaders`, `test_ScriptFinalisationRelease` pass
+  *In progress.* Part 1 (`76e4f8627`): `EntityHold` is `std::shared_ptr<Entity>`; `oo::Hold`, and for
+  the bridge's manual references `oo::AdoptHold`/`oo::LeakHold` (removed in T095); `oo::FindHold`/
+  `oo::EraseHold`; every raw construction and `emplace_back(raw)` is `oo::Hold` (scans clean). Left:
+  the +1 creators and `MadeEntityRetained` return `std::shared_ptr`.
 - [ ] T095 [US2] Entities, step 2: remove `RetainEntity`/`ReleaseEntity`/`AutoreleaseEntity` and
   the remaining `Ref`/`WeakRef` uses in `src/Core/Entities` and `src/Core/Universe.cpp`.
   **Accept:** `cd oolite-dev && $C ownership --area entities && ! rg -n '\b(Retain|Release|Autorelease)Entity\b' src`
