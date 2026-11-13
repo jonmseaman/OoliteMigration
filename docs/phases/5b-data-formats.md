@@ -1,6 +1,7 @@
 # Phase 5b — Data formats: JSON5 beside property lists
 
-**Status:** PROPOSED — awaiting Jon's approval (nothing here is started; no beads exist) ·
+**Status:** IN PROGRESS — reader, lookup, converter and the core data migration are on
+`seriesb/030-json5-data-files`, awaiting Jon's review ([spec 010](../../specs/010-json5-data-files/spec.md)) ·
 **Est.:** 1–2 eng-months · **Depends on:** [Phase 4p](4p-upstream-polish.md) ·
 **Runs in parallel with:** [Phase 5](5-apple-silicon.md) (this work needs no Mac) ·
 **Decision record:** ADR-0065 (proposed)
@@ -127,5 +128,8 @@ None required. If Jon later chooses to migrate the core `Resources/`, it is one 
 
 ## Status log
 
+- 2026-11-13: 5b.1–5b.3, the converter and 5b.6 are implemented on `seriesb/030-json5-data-files`
+  ([spec 010](../../specs/010-json5-data-files/spec.md)): 82 of the 85 core plists are JSON5
+  (`--strings`, so every value is still a string), at Jon's request. Open: 5b.5 and the fuzz mode.
 - 2026-10-27: drafted at Jon's request ("draft another modernization paper … allow me to approve
   it"). Proposed only; no beads generated.

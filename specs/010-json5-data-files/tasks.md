@@ -108,7 +108,16 @@ clang++ -std=c++23 -Wall -Wextra -Werror -I src -I tests/unit/oofnd tests/unit/o
 - An existing build directory: after the conversion `post_build.sh` leaves 4 plists in the build's
   resources (`Info-gnustep`, `descriptions`, `whitelist`, the generated `manifest`) and 82 `.json5`.
 - Not run here: the `gui` tier (Windows only) and the meson `oofnd`, `core` and `headers` suites
-  (Windows only; see CI below). GCC.
+  (Windows only; see CI below). GCC locally (CI's Linux builds use it).
+- CI on `seriesb/030-json5-data-files` at `dca141e57`
+  ([43382544561](https://github.com/jonmseaman/oolite/actions/runs/43382544561)): clang-format,
+  and build plus launch test on Ubuntu, Fedora, Windows, macOS, Flatpak and AppImage all pass;
+  `unit-tests-windows` fails on `test_string_sweep` alone (the base's failure, below), 43 of 44
+  `oofnd` tests passing, `test_plist_json5` among them.
+- CI on `claude/030-ci-check` (the same tree plus `cc94abb6d`,
+  [43382546855](https://github.com/jonmseaman/oolite/actions/runs/43382546855)): every job
+  passes; `tests/run.sh unit` is `oofnd` 44 of 44, `core` 184 of 184 (`test_ResourceManager` with
+  its new JSON5 case), `headers` 1 of 1.
 - Found on the way: `post_build` runs only when the `oolite` binary is relinked, so a change to
   `Resources/` alone does not reach an existing build's bundle until
   `build/meson_<type>/src/.oolite_bundle.stamp` is removed. Not changed here.
@@ -130,6 +139,8 @@ clang++ -std=c++23 -Wall -Wextra -Werror -I src -I tests/unit/oofnd tests/unit/o
 - The OXP verifier checks for `equipment.plist`, `requires.plist`, `demoships.plist` and
   `shipdata.plist` by name (`src/Core/OXPVerifier/OOCheck*PListVerifierStage.cpp`), so it doesn't
   verify a JSON5-only expansion.
-- `OOScript.cpp:192,222,251` picks a script kind by the extension `plist`; a `.json5` legacy script
-  file named directly is not recognised.
+- `OOScript.cpp`: a legacy script found through `world-scripts` is taken in either format (T006),
+  but `script.plist` is still looked for by that name only, and a `.json5` name given where a
+  JavaScript file is wanted gets the "don't know how to load" message, not the "legacy scripts
+  are not supported" one (D19).
 - 5b.5 (`EXPANSION_MIGRATION.md`), and the JSON5 mode of `tools/plist_fuzz.py`.
