@@ -717,8 +717,12 @@ edits.**
   R5.8's correction); four exceptions rows (the encodings' measured strings; `OOCharacter` and
   `OOEquipmentType` keep the bridge's adopt until T096 moves `oo::PListForeign`). The raw-owner scan
   also sees constructions through an alias now. *Done:* `$C ownership --area core` exits 0.
-- [ ] T092 [US2] Area `materials` (textures, materials, shaders, meshes) off the bridge.
+- [X] T092 [US2] Area `materials` (textures, materials, shaders, meshes) off the bridge.
   **Accept:** `cd oolite-dev && $C ownership --area materials`
+  *Done* (`5436ba8b0`). `OOConcreteTexture` keeps the bridge's `adopt` until T096 (its base is
+  `oo::PListForeign`; exceptions row). `test_OOMaterial`'s willDealloc case lost its cleanup
+  `release()` (no manual hold exists): ledger row marked *borderline* for Jon's review; default taken:
+  the line goes, the assertions stay.
 - [X] T093 [US2] The script slot: `OOJSSetCxxPrivate`/`OOJSGetCxxPrivate` and the finaliser in
   `src/Core/Scripting/OOJSPrivateObject.cpp` per the contract (heap `std::shared_ptr<oo::Object>`,
   today's finaliser order); `src/Core/Scripting/OOJSEntityHolder.h` and `ScriptPrivate` hold
