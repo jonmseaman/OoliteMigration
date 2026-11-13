@@ -686,6 +686,23 @@ edits.**
   caches, async tasks, `PList::Object` → `std::shared_ptr<PListForeign>`) off the bridge; exclusive
   owners (research R5.8) → `std::unique_ptr` or values.
   **Accept:** `cd oolite-dev && $C ownership --area core`
+  *In progress.* Part 1 (`fa8db72c2`): the bridge takes `oo::Object` types. Part 2 (`f21d46d5e`):
+  every `oo::Ref`/`oo::WeakRef`/`makeRef` in `src` (the bridge's own headers aside) and in the tests
+  (but `test_ref`, `test_weakset`) is `std::shared_ptr`/`std::weak_ptr`/`oo::makeShared`, ahead of
+  T092–T097's renames, because the game's signatures and the tests' stand-ins must agree (168
+  ledger rows); `.leakRef()` is the bridge function `oo::leakRef(sp)`, weak comparisons are
+  `oo::sameObject`/`oo::isUnset` (Object.hpp). Second owners are checked by two clang-query scans
+  (`.agent-tmp/rawowner.sh`, `.agent-tmp/rawowner_emplace.sh`, the second for emplace/insert and
+  pair/optional/container constructions, whose `shared_ptr` is built inside the standard headers);
+  both are clean over the game and the tests. Locally, a stand-in `process.h` under `.agent-tmp/fakeinc`
+  (only for compile checks, `FAKEINC=1`) lets the Windows-only tests compile; their remaining errors
+  are platform ones (T105 checks them on Windows). Left: the ~50 core classes from `oo::RefCounted` to
+  `oo::Object`, their manual retain/release and `adopt(new …)` sites, `PList::Object`, the exclusive
+  owners, the comments that still say `oo::Ref`, and an exceptions row for `OOTypeEncodings.h`'s
+  measured strings. Not from T091: six `-Wtautological-pointer-compare` warnings
+  (`assert(out != nullptr)` on nonnull parameters in `OOJSVector.cpp`, `OOJSQuaternion.cpp`,
+  `OOOpenGLStateManager.cpp`) and one `sprintf` deprecation in the vendored `stb_image_write.h`
+  were in the build before it; left for their own fix (default: not silenced, not in this task).
 - [ ] T092 [US2] Area `materials` (textures, materials, shaders, meshes) off the bridge.
   **Accept:** `cd oolite-dev && $C ownership --area materials`
 - [ ] T093 [US2] The script slot: `OOJSSetCxxPrivate`/`OOJSGetCxxPrivate` and the finaliser in
