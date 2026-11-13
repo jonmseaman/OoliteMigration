@@ -211,24 +211,24 @@ stay round at the edge (G5); menus on a 32:9 window fit the 16:9 area (H2, H3).
 with a curved screen set, the smoke run shows the warp pass and the hand check on the G9 (T031)
 passes.
 
-- [ ] T018 [US2] Enable Shape = Curved and the Curvature row (800R–4000R in 100R steps) in the
+- [X] T018 [US2] Enable Shape = Curved and the Curvature row (800R–4000R in 100R steps) in the
   sub-screen (files of T017), and add scenario C2 for the G9 (49", 32:9, 1000 mm curvature,
   800 mm ⇒ `fovValue` about 84.0, no restart) to `s9_screen_matching.feature`. **Accept:**
   `tests/run.sh component -k screen`
-- [ ] T019 [P] [US2] Add `Resources/Shaders/oolite-warp.vertex` and `oolite-warp.fragment`
+- [X] T019 [P] [US2] Add `Resources/Shaders/oolite-warp.vertex` and `oolite-warp.fragment`
   (copy `oolite-texture.vertex/.fragment`: position and texture coordinate per vertex, one texture
   lookup, no mapping maths, research R2), and create the program beside `textureProgram`
   (`src/Core/Universe.cpp:11523-11545`). **Accept:** `./mk.sh build test` and `tests/run.sh smoke`
   with a check that the log has no shader link error for `oolite-warp` (fails before the files
   exist, since the program is requested)
-- [ ] T020 [US2] Add the flat-render buffers in `initTargetFramebufferWithViewSize` /
+- [X] T020 [US2] Add the flat-render buffers in `initTargetFramebufferWithViewSize` /
   `resizeTargetFramebufferWithViewSize` (`src/Core/Universe.cpp:11351`, `:11604`): colour and depth
   at `flatRenderWidthPx() × flatRenderHeightPx()` (and an MSAA twin when `msaa()` is on), plus the
   window-sized `warped` RGBA16F buffer; recreate them when `displayGeometryGeneration()` changes.
   When `needsWarp()` is false, use today's target buffer and create nothing new (research R4).
   **Accept:** C5 (matching off, unchanged) and `tests/run.sh smoke` with the G9 preferences set,
   with a check for no "framebuffer not complete" or GL error lines in the log
-- [ ] T021 [US2] Add the `warp` pass to `drawUniverse` between the glare (`:5622`) and the HUD
+- [X] T021 [US2] Add the `warp` pass to `drawUniverse` between the glare (`:5622`) and the HUD
   (research R1): draw the scene and glare into the flat render with its own viewport; resolve MSAA;
   bind `warped`; draw the mesh from `warpMesh()` (VBO rebuilt on generation change) with
   `oolite-warp`; write black where a window point has no eye direction. Then draw the HUD into
@@ -236,7 +236,7 @@ passes.
   (`:11659`) read `warped` instead of `targetTextureID`. Log `universe.profile.warp` once per
   frame when the pass runs. **Accept:** `tests/run.sh smoke` with the G9 preferences set has the
   `universe.profile.warp` line, and with matching off has none and C5 passes
-- [ ] T021a [US2] Object markers through the mapping when `needsWarp()` (research R13; moved from
+- [X] T021a [US2] Object markers through the mapping when `needsWarp()` (research R13; moved from
   T009–T010): `hudDrawReticleOnTarget` and `hudDrawWaypoint` in `src/Core/HeadUpDisplay.cpp` map
   the target's eye-relative direction with `sceneToWindow`, place the marker at that window point
   in the HUD's virtual units (a full-window viewport, so a marker outside the HUD area stays on
@@ -245,7 +245,7 @@ passes.
   `s9_screen_matching.feature` with the debug read's `reticle` field: with the G9 settings, a
   target placed near the right edge has its reticle within 2 px of `sceneToWindow` of its
   direction, and the crosshair at the window centre. **Accept:** `tests/run.sh component -k screen`
-- [ ] T022 [US2] Fall back without shaders (FR-017): `shadersAvailable=false` gives classic flat,
+- [X] T022 [US2] Fall back without shaders (FR-017): `shadersAvailable=false` gives classic flat,
   and the sub-screen shows "Curved drawing needs shaders" when shaders are off and a curved or
   Panini/even setting is chosen; the geometry is rebuilt when the detail level changes. **Accept:**
   `meson test -C build test_OODisplayGeometry` (G11) and a scenario in `s9_screen_matching.feature`
@@ -422,3 +422,26 @@ any checkpoint.
   `isDown`, since `checkKeyPress` wants the exact Shift state.
 - T007's acceptance counts a log line instead of a unit test because `MyOpenGLView` needs a GL
   context; the per-frame `setFov` push (research R14) is what it guards against.
+- T018–T022 (US2) landed in `oolite-dev` `9322cb4fc`. The settings screen had Shape and Curvature working from T017, so T018 is the
+  G9 scenario only (84.03°). The warp differs from T020/T021 as written, more simply: there is no
+  separate `warped` buffer. When `needsWarp()` and shaders are on, the space view is drawn into
+  the flat render (RGBA16F colour, DEPTH32F, plus a 4-sample twin when MSAA is on), made lazily
+  on the first warped frame and remade when its size changes, and then warped into the
+  window-sized target the game already had. The glare, the HUD and
+  `drawTargetTextureIntoDefaultFramebuffer` then run as before. So the glare is drawn after the
+  warp, in window space, an approximation against FR-006d, and the HUD is never warped. The log
+  class is `display.warp.pass`, logged when the pass turns on or off, not per frame, and not
+  `universe.profile.warp`, because `universe.profile` is off in `logcontrol.plist`. There is no
+  black fill, because every window point has a scene direction. The program linking is
+  shown by the warp scenario (`warpsThisFrame` needs the program).
+- T021a: `hudRotateViewpointForVirtualDepth` reads the marker's eye-space position from the
+  modelview. When the frame was warped, it moves the marker, at the same depth, to
+  `sceneToWindow` of its direction, and scales it by `localPixelsPerRadian · 2·tan(h/2) · depth /
+  (width · distance)`. The scanner wedge needed no change: with matching on `fov(true)` is
+  already `tan(h/2)` of the angle in use. C3's expected point comes from the step's own
+  cylinder model, not from `OODisplayGeometry`. The reticle dial needs
+  `EQ_SCANNER_SHOW_MISSILE_TARGET` (`hud.plist`), which the scenario commander lacks, so the step
+  awards it. This is also why earlier scripted snapshots showed no reticle.
+- T022: `Universe::setDetailLevel` rebuilds the geometry when the level changes. The scenario
+  lowers the level through `console.detailLevel` and checks that the last `display.warp.pass`
+  line is "off" and the angle is still 84.0.
