@@ -262,18 +262,18 @@ passes.
 
 **Independent test**: G6 (Story 3 numbers on the G9 at 120°); the looks switch live.
 
-- [ ] T023 [US3] Add the Field of view = Custom row, the Horizontal angle row ("20°–170° in 1°
+- [X] T023 [US3] Add the Field of view = Custom row, the Horizontal angle row ("20°–170° in 1°
   steps"), and the Wide-angle look row (Panini, Even spacing, Classic flat; "shown only when the
   custom angle is above physical") in the files of T017; Physical returns to the worked-out angle
   in one action (FR-008). Add a scenario to `s9_screen_matching.feature`: G9 at 800 mm, custom
   120° ⇒ `fovValue` about 120, look changes need no restart. **Accept:**
   `tests/run.sh component -k screen`
-- [ ] T024 [US3] Use the warp on flat screens too when `needsWarp()` says so (Panini or even
+- [X] T024 [US3] Use the warp on flat screens too when `needsWarp()` says so (Panini or even
   spacing above physical, research R4) — the T020/T021 path keyed on `needsWarp()` alone, not on
   the screen being curved. **Accept:** `meson test -C build test_OODisplayGeometry` (G11) and
   `tests/run.sh smoke` with a flat screen at custom 120° Panini has the `universe.profile.warp`
   line
-- [ ] T025 [US3] In-flight field-of-view control with screen-matching on (research R14, spec edge
+- [X] T025 [US3] In-flight field-of-view control with screen-matching on (research R14, spec edge
   case "Other camera features"): when `OO_FOV_INFLIGHT_CONTROL_ENABLED` is set, the angle the
   player pushes through `setFov` becomes an unsaved custom angle for the session; otherwise
   `setFov` from the player is ignored while matching is on. Code in `src/SDL/MyOpenGLView.cpp` and
@@ -281,7 +281,7 @@ passes.
   with the G9 settings on, `fovValue` stays about 84.0 after 60 ticks of flight (fails if the
   per-frame push overrides it), plus a build with `-DOO_FOV_INFLIGHT_CONTROL_ENABLED=1`
   (`./mk.sh build` with that define) compiling cleanly
-- [ ] T026 [US3] Slices for very wide angles (FR-018, research R6): when `sliceCount() > 1`, draw
+- [X] T026 [US3] Slices for very wide angles (FR-018, research R6): when `sliceCount() > 1`, draw
   each slice into its part of the flat render with the slice's yaw (`sliceYawDeg`) and its frustum
   (`flatFrustum(slice)`), and let `warpMesh()` split cells at slice seams. **Accept:**
   `meson test -C build test_OODisplayGeometry` (G10 with a small `maxTextureSizePx`) and
@@ -298,7 +298,7 @@ passes.
 **Independent test**: G16 plausibility; on Windows with an EDID monitor the size row says
 "(detected)"; C4.
 
-- [ ] T027 [P] [US4] Add `src/Core/OODisplaySize.h` exactly as
+- [X] T027 [P] [US4] Add `src/Core/OODisplaySize.h` exactly as
   `specs/008-display-geometry-fov/contracts/geometry.md` quotes it, with
   `src/SDL/OODisplaySizeWindows.cpp` (EDID via `SetupDiGetClassDevs(GUID_DEVCLASS_MONITOR)` +
   `SetupDiOpenDevRegKey(..., "EDID")`, matched to the SDL display by device name; first
@@ -307,7 +307,7 @@ passes.
   per platform (link `setupapi` on Windows). Log the result once at start-up as
   `display.size.detected`. **Accept:** `./mk.sh build test` on Windows and the macOS CI build, and
   `tests/run.sh smoke` finds the `display.size.detected` line
-- [ ] T028 [US4] When screen matching is turned on and `screen-size-source` is absent or not
+- [X] T028 [US4] When screen matching is turned on and `screen-size-source` is absent or not
   `entered`, fill size and aspect from `OOQueryDisplayPhysicalSize` + `OOPlausibleDisplaySize`,
   store `screen-size-source = detected`, and show "(detected)" or "(enter your size)"; any edit sets
   `entered`, which detection never overwrites (FR-010). Add scenario C4 (both parts) to
@@ -331,7 +331,7 @@ passes.
 - [ ] T031 Hand check on the reference machine, labelled `design`, for Jon: the steps in
   `specs/008-display-geometry-fov/quickstart.md` *M5*, items 1–5. **Accept:** Jon's note in this
   file under *Notes*
-- [ ] T032 [P] Update `docs/current-state.md` with the screen-matching settings, the warp pass and
+- [X] T032 [P] Update `docs/current-state.md` with the screen-matching settings, the warp pass and
   the HUD area (describe the code as it is; no history), and add a line to the notes of
   `specs/004-mouse-look-camera/spec.md` that mouse-look must use
   `OODisplayGeometry::windowToScene` (FR-012). **Accept:**
@@ -445,3 +445,51 @@ any checkpoint.
 - T022: `Universe::setDetailLevel` rebuilds the geometry when the level changes. The scenario
   lowers the level through `console.detailLevel` and checks that the last `display.warp.pass`
   line is "off" and the angle is still 84.0.
+- T023–T028 (US3, US4) landed in `oolite-dev` `0de9ff56a`.
+- T023–T026 (US3). The settings screen already handled the custom-angle, horizontal and look rows
+  from T017. A live change is checked through a debug-only test aid,
+  `console.__setDisplayPreference(key, value)`. It stores the value (as a number when it reads as
+  one) and calls `reloadScreenMatchingPreferences`, the same path the screen's keys take. A key
+  that a scenario changes live must not also be passed on the command line, because the
+  argument domain wins on read. T024 needed no code: the warp was keyed on `needsWarp()` alone
+  from T020. Its check is a component scenario rather than the smoke run, since the smoke run
+  stops at the start screen, where nothing warps. T025: with `OO_FOV_INFLIGHT_CONTROL_ENABLED`, a
+  change in the angle the player pushes (not the steady per-update push) becomes an unsaved custom
+  angle for the session. The player's in-flight angle starts from `fov-value`, not from the
+  matched angle, so the first key press jumps; this is left as it is. T026: the near and far
+  passes run once per slice (`pass = slice * 2 + vdist`). Each slice gets its own viewport, its
+  frustum and the eye turned by its yaw, and `drawCounter` moves on per slice, because an entity
+  is otherwise drawn only once per frame. The near plane uses the widest slice's corner. The
+  scenario turns on `rendering.opengl.error` through the console, since it is off by default.
+- T027–T028 (US4). Windows matches the SDL display to its monitor through the device interface
+  path. `MonitorFromPoint` at the display's centre gives the monitor; `GetMonitorInfo` and
+  `EnumDisplayDevices(EDD_GET_DEVICE_INTERFACE_NAME)` give its path, which is matched against the
+  SetupAPI monitor interfaces, and the EDID is read from the matching one. This avoids matching
+  by name. macOS uses `CGGetDisplaysWithPoint` and `CGDisplayScreenSize`; it is not compiled here,
+  so the macOS CI build is what checks it. The size is asked for once, at the first preference
+  load, and logged (`display.size.detected`, a size or "not detected"); the smoke run checks
+  that there is exactly one such line. The plausibility check compares with the display's
+  desktop-mode pixels, read at the same time; the window is no help, because at the first load it
+  is still its initial 768x768. A test preference, `screen-detected-size-mm` ("WxH" in mm,
+  optionally "@PWxPH" for the display's pixels), stands in for the platform's answer in C4. On the
+  reference machine the G9 reports 1193 x 336 mm.
+  A component scenario that sets preferences runs a private staged `oolite.app` (the smoke run's
+  `stage_app`, with an empty `GNUstep/`), because the game writes its preferences on exit and a
+  live change or a detected size would otherwise stay in the build's saved preferences.
+- Two bugs found by the live-change scenario (T023):
+  - `OOOpenGLExtensionManager` loaded `glDeleteRenderbuffers` as `"glDeleteRenderbuffer"` (no
+    `s`), so the pointer was null on Windows. Upstream 1.93 has the same typo
+    (`OOOpenGLExtensionManager.m:649`). Resizing the flat render was the first code to call it,
+    and the game crashed. The name is fixed; the fix is worth sending upstream.
+  - After the slice passes, the glare and the HUD drew with the last slice's turned viewpoint,
+    which shifted the HUD. The loop now rebuilds the plain flat viewpoint after the passes when
+    there was more than one slice. This was checked by eye on a snapshot; no automated check
+    covers HUD placement with slices.
+- The build's own saved preferences (`build/meson_test/oolite.app/GNUstep/Defaults/oolite.plist`)
+  had picked up `detailLevel = 0` and other display keys from scenario runs made before staging
+  existed, which made later unstaged runs draw without shaders. Those keys were removed by hand.
+- T025's second check: `meson setup build/meson_fovinflight -Ddebug=false -Dstrip_bin=false
+  -Doo_fov_inflight_control_enabled=true --native-file clang.ini`, then `ninja src/oolite.exe`,
+  which builds with no errors. A separate directory is used because `mk.sh`'s `--setup-flags` would
+  reconfigure one of the existing build types. The one warning, in `OOOpenGLStateManager.cpp:471`,
+  is in a file this branch does not change.
