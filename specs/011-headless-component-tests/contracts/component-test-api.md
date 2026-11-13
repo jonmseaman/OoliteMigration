@@ -22,6 +22,7 @@ Two styles of test are supported, and a test may mix them:
 ```text
 oo::component::Game game = oo::component::Game::scenario(seed);     // empty system, player in flight
 oo::component::Game game = oo::component::Game::inFlightWithKeys(seed); // as scenario, plus key presses
+oo::component::Game game = oo::component::Game::docked(seed);           // new commander, docked, keys
 oo::component::Game game = oo::component::Game::atStartScreen(seed); // normal start, input view
 oo::component::Game game = oo::component::Game::current();           // the one an earlier case made
 ```
@@ -92,7 +93,7 @@ does, and returns a number, a string or a boolean.
 
 | Call | Returns |
 |---|---|
-| `game.events()` | the event record ([data-model.md](../data-model.md#event-record)) |
+| `game.events()` | the event record ([data-model.md](../data-model.md#event-record)); `.has(name, ship)`, `.count(name)`, `.firstOf(name, id)` |
 | `game.errors()` | the entries with `isError` |
 | `game.presentation()` | frames and sounds requested |
 | `game.digest()` | the scenario digest for the current step |
@@ -101,7 +102,12 @@ does, and returns a number, a string or a boolean.
 
 ## Keys and screens
 
-Only for a game made with `atStartScreen` or `inFlightWithKeys`.
+Only for a game made with `atStartScreen`, `docked` or `inFlightWithKeys`.
+
+`docked` and `inFlightWithKeys` take an optional `Settings`, a fluent description of the player's
+saved settings written to the test's private settings file before the game starts:
+`Settings().remapKey("key_fire_lasers", "k")`. A remapped key is stored as the keyboard settings
+screen stores it, so the game loads it the way it loads a player's own remapping.
 
 | Call | Effect |
 |---|---|

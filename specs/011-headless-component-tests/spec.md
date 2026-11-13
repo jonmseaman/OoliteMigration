@@ -179,6 +179,14 @@ the tutorial test fails on that platform and says which key press had no effect.
    the key the game's own key settings name for it.
 7. **Given** the tests run, **When** they finish, **Then** the developer's own saved games, key
    settings and preferences are untouched.
+8. **Given** a new commander docked at a station, **When** the test holds the launch key until
+   the launch is over, **Then** the ship has launched exactly once: one launch is reported, the
+   player is in flight, and the launch animation has finished.
+9. **Given** the player has just launched, **When** the test presses the same key again, **Then**
+   no second launch is reported and the launch animation does not play again.
+10. **Given** saved settings in which a control has been moved to another key, **When** the test
+    presses the new key, **Then** the control acts; and when it presses the old key, nothing
+    happens.
 
 ---
 
@@ -382,6 +390,12 @@ shooting ship in the first test: it fails, and says the shot did not land.
 - **FR-029**: The key tests MUST be shown able to fail: with one key's translation deliberately
   altered, the test that depends on that key fails and names the press that had no effect.
 
+- **FR-038**: A test MUST show that the launch key launches a docked ship exactly once, both when
+  the key is held throughout the launch and when it is pressed again afterwards. (An early build
+  of the port replayed the launch animation on the second press.)
+- **FR-039**: A test MUST be able to start a game with chosen saved settings, including a control
+  moved to another key. It MUST show that the new key acts and the old key does not.
+
 **Outcome of the Flatpak report**
 
 - **FR-030**: The feature's notes MUST end with one of: a test that reproduced the report and the
@@ -458,6 +472,8 @@ shooting ship in the first test: it fails, and says the shot did not land.
   time.
 - **SC-011**: Every existing suite (unit, component, smoke, GUI) has the same results after the
   feature as before it, and the smoke run's frame time is within 2% of what it was.
+- **SC-013**: The launch-key test and the remapped-key test pass on Windows, macOS and Linux with
+  no display. In the launch test exactly one launch is counted after two uses of the key.
 - **SC-012**: The four basic behaviour tests pass on Windows, macOS and Linux with no display,
   each in under 15 seconds, and each fails when the weapon it tests is removed.
 

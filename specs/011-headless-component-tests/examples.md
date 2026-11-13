@@ -212,6 +212,88 @@ OO_TEST(the_fire_key_fires_the_players_laser) {
 not keep the ship alive: if a test held an owning pointer, the game's own "my target is gone"
 checks would see a ship that never goes away, and the test would change what it is testing.
 
+### A0.2. Keys operate the ship
+
+Tests that press keys and check that the ship did the right thing, once. Deliverables (spec User
+Story 3, scenarios 8 to 10), in `test_launch_key.cpp` and `test_remapped_key.cpp`. The fire-key
+test in A0.1 belongs with them.
+
+**The launch key launches once.** An early build of the C++ port had a fault where pressing `1`
+again after launching kept replaying the launch animation. How that fault worked is not recorded,
+so the test asserts the symptom both ways it could arise: the key held down right through the
+launch, and the key pressed again afterwards.
+
+```cpp
+OO_TEST(the_launch_key_launches_once) {
+  Game game = Game::docked(20260910);  // a new commander, docked at the main station
+  PlayerEntity* player = game.player();
+  Universe* universe = game.universe();
+  OO_CHECK(player->isDocked());
+
+  // "1" is the launch key while docked (key_launch_ship). Keep it held until the launch is over:
+  // a held key is one press, however many frames it is down for.
+  OO_CHECK(game.hold("1",
+                     [&] {
+                       return player->status() == OOEntityStatus::kInFlight &&
+                              universe->breakPatternOver();
+                     },
+                     30s));
+  OO_CHECK(!player->isDocked());
+  OO_CHECK(universe->viewDirection == OOViewID::kForward);
+  OO_CHECK_EQ(game.events().count("shipWillLaunchFromStation"), 1u);
+  OO_CHECK_EQ(game.events().count("shipLaunchedFromStation"), 1u);
+
+  // In flight the same key is "forward view" (key_view_forward). Pressing it must not launch
+  // again, and must not bring the launch tunnel back.
+  game.press("1");
+  game.simulate(5s);
+
+  OO_CHECK(player->status() == OOEntityStatus::kInFlight);
+  OO_CHECK(universe->breakPatternOver());
+  OO_CHECK(universe->viewDirection == OOViewID::kForward);
+  OO_CHECK_EQ(game.events().count("shipWillLaunchFromStation"), 1u);
+  OO_CHECK_EQ(game.events().count("shipLaunchedFromStation"), 1u);
+  OO_COMPONENT_CHECK_NO_ERRORS(game);
+}
+```
+
+The game facts: docked, the launch key calls `handleUndockControl()` and then
+`launchFromStation()`. The launch raises `shipWillLaunchFromStation` and
+`shipLaunchedFromStation`. `Universe::breakPatternOver()` is true when no launch-tunnel rings are
+left.
+
+**A remapped key does its new job, and the old key does nothing.**
+
+```cpp
+OO_TEST(a_remapped_fire_key_fires_and_the_old_key_does_not) {
+  // Fire moved from "a" to "k", stored the way the keyboard settings screen stores it.
+  Game game = Game::inFlightWithKeys(20260910, Settings().remapKey("key_fire_lasers", "k"));
+  PlayerEntity* player = game.player();
+  OO_CHECK(player->setWeaponMount(OOWeaponFacing::kForward, "EQ_WEAPON_PULSE_LASER"));
+
+  auto target = game.add(ShipWithKey("asteroid").aheadOf(player, 1'000.0));
+  const float energyBefore = target->energy;
+
+  // The old key no longer fires.
+  OO_CHECK(!game.hold("a", [&] { return target->energy < energyBefore; }, 2s));
+  OO_CHECK_EQ(player->laserHeatLevelForward(), 0.0f);
+
+  // The new key does.
+  OO_CHECK(game.hold("k", [&] { return target->energy < energyBefore; }, 5s));
+  OO_CHECK(player->laserHeatLevelForward() > 0.0f);
+}
+```
+
+`Settings` describes the player's saved settings before the game starts. `remapKey` writes one
+entry into `KeyConfigOverrides` in the test's private settings file, in the form
+`PlayerEntity::saveKeySetting` writes, which is where the game reads remapped keys from at
+start-up. The key `k` is a placeholder: the implementation picks a key no control uses by default.
+
+**The Flatpak `n` report.** The test thought out for it is A5 (the tutorial advanced by `n`, on
+every platform, under three layouts, and inside the Flatpak build) together with A6 (one case per
+suspected cause: Caps Lock on, a non-Latin layout, a stray modifier, keys that alias). The
+investigation itself is milestone M7.
+
 ### A1. A ported scenario (User Story 1)
 
 The usual style. A port keeps its original's steps and script expressions, so it reads as the
@@ -584,6 +666,15 @@ class ShipWithKey {
   // ... the placement chosen; default: near the player
 };
 
+// The player's saved settings, described before the game starts.
+//   Settings().remapKey("key_fire_lasers", "k")
+class Settings {
+ public:
+  // One entry in KeyConfigOverrides, as the keyboard settings screen saves it.
+  Settings remapKey(std::string_view control, std::string_view key) const;
+  Settings keyboardCode(std::string_view code) const;  // "default", "gbr", "deu", ...
+};
+
 // A ship a test added. Use it like a ShipEntity*; ask alive() before using it after the ship
 // could have died. It does not keep the ship alive.
 class ShipHandle {
@@ -598,7 +689,8 @@ class Game {
  public:
   // One per process. A second call fails the test.
   static Game scenario(std::uint32_t seed);        // empty system, player in flight, no keys
-  static Game inFlightWithKeys(std::uint32_t seed);  // as scenario, and it takes key presses
+  static Game inFlightWithKeys(std::uint32_t seed, const Settings& settings = {});  // + keys
+  static Game docked(std::uint32_t seed, const Settings& settings = {});  // new commander, docked
   static Game atStartScreen(std::uint32_t seed);   // a normal start, with a windowless view
   static Game current();                           // the game an earlier case created
 
