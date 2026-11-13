@@ -878,6 +878,19 @@ edits.**
   (MSYS `run-clang-tidy`). Not re-run on the Mac: the removals only drop headers with nothing from
   them in the file, so a Mac build can lose nothing it spells; T105/T106's Mac-side checks will
   show it.
+  *Also (Jon, 2026-11-13):* try `import std;` in place of the standard-library `#include`s, for
+  compile speed. Prototype it in a separate build directory (libc++ ships `std.cppm`; Meson's
+  support decides the wiring), measure a clean build of the game and the unit tests against the
+  `#include` build in the same session, and adopt it only if it is faster and builds on all three
+  toolchains (Clang and GCC on MSYS2, Clang on macOS); C headers and macros (`assert`,
+  `INT_MAX`, `<cmath>`'s `M_PI`) stay `#include`s, since modules export no macros. Either way,
+  record the measurement and the decision in this task's notes.
+  *Decided (2026-11-13):* not adopted. Meson 1.12.1 has `cpp_importstd` (experimental, not shown
+  by `meson configure`). Tried on a scratch project (`.agent-tmp/importstd/`): with GCC 16 Meson
+  builds the std module (`bits/std.cc`) and `import std;` works; with Clang 23, the game's default
+  compiler on macOS and MSYS2, Meson accepts the option but builds and passes no std module, so
+  `import std;` fails ("module 'std' not found"). Jon chose to keep the `#include`s where Meson
+  does not support it (2026-11-13). Revisit when Meson's support covers Clang.
   **Accept:** `cd oolite-dev && test "$(/opt/homebrew/opt/llvm@22/bin/run-clang-tidy -p . -quiet -checks='-*,misc-include-cleaner' -config='{CheckOptions: {misc-include-cleaner.MissingIncludes: false}}' '^(?!.*/(MiniZip|EXRSnapshotSupport)/).*/(src|tests/unit)/.*\.cpp$' 2>/dev/null | grep -c 'warning:.*misc-include-cleaner')" -eq 0`
 - [X] T105 On a Windows machine: `tests/run.sh all` on Clang and on GCC
   (`--native-file=gcc.ini`); the unit suites under ASan (`meson setup <dir> -Db_sanitize=address`)
