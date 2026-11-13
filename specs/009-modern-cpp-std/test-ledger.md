@@ -366,3 +366,165 @@ that needs them; `reported` rows record a test this feature cannot edit, for Jon
 | `tests/unit/core/test_OOShaderMaterial.cpp` | 29, 261 | `new T` / `makeRef<T>().leakRef()` of a class now on `oo::Object` → `oo::test::NewRetained<T>()` (the same +1, from the tests' support header) (T096) | unchanged | covered | `879469c15` | |
 | `tests/unit/core/test_OOTexture.cpp` | 27, 49-55, 111, 207, 249, 399-405, 473 | `new T` / `makeRef<T>().leakRef()` of a class now on `oo::Object` → `oo::test::NewRetained<T>()` (the same +1, from the tests' support header); `x->retain()`/`x->release()` (and `oo::retain`/`oo::release`) → `oo::test::Retain(x)`/`oo::test::Release(x)`; the texture stand-ins cache themselves once made (`make()`; a `std::shared_ptr` cannot be shared from its constructor), as the game's `OOConcreteTexture` is cached after it is made (T096) | unchanged | covered | `879469c15` | |
 | `tests/unit/core/test_OOTextureSprite.cpp` | 23, 272, 274, 276-277 | `x->retain()`/`x->release()` (and `oo::retain`/`oo::release`) → `oo::test::Retain(x)`/`oo::test::Release(x)`; `retainCount()` → `weak_from_this().use_count()` (the owners, the manual ones included) (T096) | unchanged | covered | `879469c15` | |
+| `tests/unit/core/EntityHelpersStandIn.h` | 3 lines | manual `retain()`/`release()` → `oo::test::Retain`/`oo::test::Release` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/EntityManualRefs.h` | 35 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `makeRef<T>().leakRef()` / a bare `new` given back by hand → `oo::test::NewRetained<T>()`; `oofnd/Ref.hpp` → `oofnd/Object.hpp` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/EntityStandIn.h` | 1 lines | `oofnd/Ref.hpp` → `oofnd/Object.hpp` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/OOOXPVerifierTestDouble.h` | 1 lines | `oo::adopt(new T(...))` → `std::shared_ptr<T>(new T(...), oo::Dispose{})` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/UniverseStandIn.h` | 1 lines | `oofnd/Ref.hpp` → `oofnd/Object.hpp` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_AI.cpp` | 13 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `makeRef<T>().leakRef()` / a bare `new` given back by hand → `oo::test::NewRetained<T>()`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's; manual `retain()`/`release()` → `oo::test::Retain`/`oo::test::Release` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_CollisionRegion.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_DockEntity.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_DustEntity.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_Entity.cpp` | 8 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_EntityDisposalReaders.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_EntityOOJavaScriptExtensions.cpp` | 8 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_EntityScriptEvents.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_EntityShaderBindings.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_GameController.cpp` | 11 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's; manual `retain()`/`release()` → `oo::test::Retain`/`oo::test::Release` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_GuiDisplayGen.cpp` | 12 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_HeadUpDisplay.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOAIStateMachineVerifierStage.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOALSoundDecoder.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOAsyncWorkManager.cpp` | 8 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOAsyncWorkManagerShutdown.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOBasicMaterial.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOBreakPatternEntity.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOCache.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOCharacter.cpp` | 7 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOCheckDemoShipsPListVerifierStage.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOCheckEquipmentPListVerifierStage.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOCheckJSSyntaxVerifierStage.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOCheckPListSyntaxVerifierStage.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOCheckRequiresPListVerifierStage.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOCheckShipDataPListVerifierStage.cpp` | 5 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `oo::adopt(new T(...))` → `std::shared_ptr<T>(new T(...), oo::Dispose{})` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOCommodities.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOCommodityMarket.cpp` | 6 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOConcreteTexture.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOConstToString.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOCrosshairs.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OODebugMonitor.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OODebugSupport.cpp` | 1 lines | `oo::adopt(new T(...))` → `std::shared_ptr<T>(new T(...), oo::Dispose{})` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OODefaultShaderSynthesizer.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OODrawable.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOECMBlastEntity.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOEncodingConverter.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOEntityCalledByName.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOEntityWithDrawable.cpp` | 6 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOEquipmentType.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOExhaustPlumeEntity.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOFileScannerVerifierStage.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOFlashEffectEntity.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOFlasherEntity.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOFullScreenController.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOGraphicsResetManager.cpp` | 5 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `retainCount()` → `weak_from_this().use_count()` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSCall.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSConsole.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSDock.cpp` | 9 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `makeRef<T>().leakRef()` / a bare `new` given back by hand → `oo::test::NewRetained<T>()`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSEntity.cpp` | 9 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `makeRef<T>().leakRef()` / a bare `new` given back by hand → `oo::test::NewRetained<T>()`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's; `oofnd/Ref.hpp` → `oofnd/Object.hpp` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSEquipmentInfo.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSExhaustPlume.cpp` | 8 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `makeRef<T>().leakRef()` / a bare `new` given back by hand → `oo::test::NewRetained<T>()`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSFlasher.cpp` | 10 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `makeRef<T>().leakRef()` / a bare `new` given back by hand → `oo::test::NewRetained<T>()`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSFrameCallbacks.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSGlobal.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSGuiScreenKeyDefinition.cpp` | 5 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSInterfaceDefinition.cpp` | 5 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSManifest.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSMission.cpp` | 3 lines | stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's; `oofnd/Ref.hpp` → `oofnd/Object.hpp` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSOolite.cpp` | 3 lines | stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's; `oofnd/Ref.hpp` → `oofnd/Object.hpp` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSPlanet.cpp` | 8 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `makeRef<T>().leakRef()` / a bare `new` given back by hand → `oo::test::NewRetained<T>()`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSPlayer.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSPlayerShip.cpp` | 5 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSPopulatorDefinition.cpp` | 7 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSPrivateObject.cpp` | 19 lines | `makeRef<T>().leakRef()` / a bare `new` given back by hand → `oo::test::NewRetained<T>()`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's; manual `retain()`/`release()` → `oo::test::Retain`/`oo::test::Release`; `retainCount()` → `weak_from_this().use_count()`; `oo::adopt(new T(...))` → `std::shared_ptr<T>(new T(...), oo::Dispose{})`; `oofnd/Ref.hpp` → `oofnd/Object.hpp` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSQuaternion.cpp` | 3 lines | `makeRef<T>().leakRef()` / a bare `new` given back by hand → `oo::test::NewRetained<T>()`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSScript.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSShip.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSShipGroup.cpp` | 5 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSSound.cpp` | 5 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's; `oofnd/Ref.hpp` → `oofnd/Object.hpp` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSStation.cpp` | 11 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `makeRef<T>().leakRef()` / a bare `new` given back by hand → `oo::test::NewRetained<T>()`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSSun.cpp` | 7 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `makeRef<T>().leakRef()` / a bare `new` given back by hand → `oo::test::NewRetained<T>()`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSSystem.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSSystemInfo.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSVisualEffect.cpp` | 10 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's; manual `retain()`/`release()` → `oo::test::Retain`/`oo::test::Release` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSWaypoint.cpp` | 8 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `makeRef<T>().leakRef()` / a bare `new` given back by hand → `oo::test::NewRetained<T>()`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJSWormhole.cpp` | 7 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `makeRef<T>().leakRef()` / a bare `new` given back by hand → `oo::test::NewRetained<T>()`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJavaScriptEngine.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJoystickDecoding.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJoystickManager.cpp` | 6 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOJoystickProfile.cpp` | 8 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOLaserShotEntity.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOLightParticleEntity.cpp` | 5 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOMaterial.cpp` | 6 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOMaterialConvenienceCreators.cpp` | 5 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOMesh.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOMeshToOctreeConverter.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOModelVerifierStage.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOMultiTextureMaterial.cpp` | 5 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOMusic.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `oo::adopt(new T(...))` → `std::shared_ptr<T>(new T(...), oo::Dispose{})` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOMusicController.cpp` | 1 lines | `oo::adopt(new T(...))` → `std::shared_ptr<T>(new T(...), oo::Dispose{})` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOOXPVerifier.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOOXPVerifierStage.cpp` | 8 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `oo::adopt(new T(...))` → `std::shared_ptr<T>(new T(...), oo::Dispose{})` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOOXZManager.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOOpenGLExtensionManager.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOOpenGLMatrixManager.cpp` | 10 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOOpenGLStateManager.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOPListSchemaVerifier.cpp` | 9 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's; `retainCount()` → `weak_from_this().use_count()` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOPListScript.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOPNGTextureLoader.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOParticleSystem.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOPlanetDrawable.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOPlanetEntity.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOPlasmaBurstEntity.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOPlasmaShotEntity.cpp` | 5 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOPriorityQueue.cpp` | 2 lines | stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's; `oo::adopt(new T(...))` → `std::shared_ptr<T>(new T(...), oo::Dispose{})` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOProbabilisticTextureManager.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOProbabilitySet.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOProfilingStopwatch.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOQuiriumCascadeEntity.cpp` | 6 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OORegExpMatcher.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `oo::adopt(new T(...))` → `std::shared_ptr<T>(new T(...), oo::Dispose{})` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OORingEffectEntity.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOSDLJoystickManager.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOScript.cpp` | 5 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOScriptTimer.cpp` | 1 lines | `oo::adopt(new T(...))` → `std::shared_ptr<T>(new T(...), oo::Dispose{})` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOShaderMaterial.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `oo::adopt(new T(...))` → `std::shared_ptr<T>(new T(...), oo::Dispose{})` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOShaderProgram.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOShaderUniform.cpp` | 6 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's; `oo::adopt(new T(...))` → `std::shared_ptr<T>(new T(...), oo::Dispose{})` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOShaderUniformMethodType.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOShipGroup.cpp` | 15 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `makeRef<T>().leakRef()` / a bare `new` given back by hand → `oo::test::NewRetained<T>()`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's; manual `retain()`/`release()` → `oo::test::Retain`/`oo::test::Release` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOSingleTextureMaterial.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOSkyDrawable.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOSound.cpp` | 9 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; `oo::adopt(new T(...))` → `std::shared_ptr<T>(new T(...), oo::Dispose{})` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOSoundChannel.cpp` | 12 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOSoundReferencePoint.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOSoundSource.cpp` | 5 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOSoundSourcePool.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOSparkEntity.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOSunEntity.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOSystemDescriptionManager.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOTexture.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOTextureGenerator.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOTextureLoader.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOTextureSprite.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOTextureVerifierStage.cpp` | 8 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOTrumble.cpp` | 15 lines | `oo::makeRef<T>` → `oo::makeShared<T>`; stand-in classes derive from `oo::Object` (was `oo::RefCounted`), as the game's (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOVector.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOVisualEffectEntity.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_OOWaypointEntity.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_Octree.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_PlayerEntity.cpp` | 6 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_PlayerEntityStickProfile.cpp` | 4 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_ProxyPlayerEntity.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_SaveEnumValues.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_ScriptFinalisationRelease.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_ShipEntity.cpp` | 10 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_ShipEntityAI.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_SkyEntity.cpp` | 2 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_StationEntity.cpp` | 3 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_Universe.cpp` | 6 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/core/test_WormholeEntity.cpp` | 6 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/oofnd/test_plist_carrier.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/oofnd/test_plist_description.cpp` | 1 lines | `oo::makeRef<T>` → `oo::makeShared<T>` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/sysdesc/test_sysdesc_tools.cpp` | 1 lines | `oofnd/Ref.hpp` → `oofnd/Object.hpp` (T097) | unchanged | covered | `e434e1342` | |
+| `tests/unit/oofnd/test_ref.cpp` | `leakRefHandsOverThePlusOne` | the bridge's `leakRef()` hands an owner's reference over as a manual +1; with the bridge deleted (T098) there is no manual +1 to hand over | changes | needs sign-off | (T098) | |
+| `tests/unit/oofnd/test_ref.cpp` | `dropWeakReferencesZeroesThemWhileTheObjectLives` | `dropWeakReferences()` empties the weak references to a live object; a `std::weak_ptr` expires only with the last owner (the game no longer calls it, T095) | changes | needs sign-off | (T098) | |
+| `tests/unit/oofnd/test_ref.cpp` | `nullSafeFreeFunctions`, the manual-count halves of `countStartsAtOneAndDeletesAtZero`, `adoptAndMakeRefTakeTheAllocPlusOne`, `retainReleaseAreAtomicAcrossThreads` | the free `oo::retain`/`oo::release` and the manual-hold counter go with the bridge; the owner-count halves port to `use_count()` | changes | needs sign-off | (T098) | |

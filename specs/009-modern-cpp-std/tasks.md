@@ -773,6 +773,15 @@ edits.**
   `<memory>` and `oofnd/Object.hpp`, including `tests/unit/core/EntityStandIn.h` (one ledger row per
   file, *covered*); assertions unchanged.
   **Accept:** `cd oolite-dev && ! rg -n -P '\boo::(Ref|WeakRef)\b|\bmakeRef\b|retainCount\s*\(|oofnd/Ref\.hpp' tests`
+  *In progress* (`e434e1342`): everything but `tests/unit/oofnd/test_ref.cpp` and `test_weakset.cpp`
+  (the bridge's own tests; 159 lines). Those go with T098: `test_weakset` ports to the rebuilt
+  `WeakSet`; `test_ref`'s cases with a standard counterpart port with their meaning (research R11),
+  but `leakRefHandsOverThePlusOne`, `dropWeakReferencesZeroesThemWhileTheObjectLives`,
+  `nullSafeFreeFunctions` (free retain/release) and the manual-count halves of
+  `countStartsAtOneAndDeletesAtZero`, `adoptAndMakeRefTakeTheAllocPlusOne` and
+  `retainReleaseAreAtomicAcrossThreads` assert bridge behaviour with no standard counterpart: ledger
+  rows marked *needs sign-off*. Default taken (rule 8): T098 waits for Jon's ruling on those rows;
+  the other tasks go on.
 - [ ] T098 [US2] Delete the bridge: `src/oofnd/Ref.hpp`, `RefCounted`, `dropWeakReferences`;
   regenerate the JS API snapshot into `.agent-tmp/js-api/m7.json`; if T009 saved a base event log,
   repeat it on a Windows machine into `.agent-tmp/events/m7.log` (US2 AS-5).
