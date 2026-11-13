@@ -703,6 +703,13 @@ edits.**
   (`assert(out != nullptr)` on nonnull parameters in `OOJSVector.cpp`, `OOJSQuaternion.cpp`,
   `OOOpenGLStateManager.cpp`) and one `sprintf` deprecation in the vendored `stb_image_write.h`
   were in the build before it; left for their own fix (default: not silenced, not in this task).
+  Part 3 (`ccab6c723`): the 50 core classes derive from `oo::Object`; their manual holds are
+  standard owners (the universe a `std::unique_ptr` kept by the controller; never-destroyed heap
+  `std::shared_ptr`s for the joystick manager, the OpenAL controller, the sky's texture managers,
+  the trumble sounds and the empty probability set; holders never deleted for statics still set at
+  `exit(0)`, whose destructors would run after the logger and the GL context have gone: the player's
+  sounds, the recent-textures cache, the HUD's encoding converter; nine exceptions rows). Tests that
+  asserted `retainCount()` use `weak_from_this().use_count()` (11 ledger rows).
 - [ ] T092 [US2] Area `materials` (textures, materials, shaders, meshes) off the bridge.
   **Accept:** `cd oolite-dev && $C ownership --area materials`
 - [X] T093 [US2] The script slot: `OOJSSetCxxPrivate`/`OOJSGetCxxPrivate` and the finaliser in
