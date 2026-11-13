@@ -136,9 +136,9 @@ OO_TEST(a_police_viper_engages_a_lone_pirate) {
   Game game = Game::scenario(20260910);
 
   // When I spawn 1 ship with role "police"
-  OO_CHECK_EQ(game.spawn(1, "police"), 1);
+  OO_CHECK_EQ(game.spawn({.count = 1, .role = "police"}).size(), 1u);
   // And I spawn 1 ship with role "pirate" within 10 km
-  OO_CHECK_EQ(game.spawnWithin(1, "pirate", 10), 1);
+  OO_CHECK_EQ(game.spawn({.count = 1, .role = "pirate", .withinKm = 10}).size(), 1u);
 
   // Then within 900 ticks a ship with role "police" engages a ship with role "pirate"
   OO_CHECK(game.simulateUntil([&] { return game.engages("police", "pirate"); }, ticks(900)));
@@ -172,8 +172,7 @@ Something the windowed tier cannot do, because it can only poll:
 ```cpp
 OO_TEST(a_destroyed_ship_dies_before_it_leaves_the_ship_list) {
   Game game = Game::scenario(20260910);
-  OO_CHECK_EQ(game.spawn(1, "pirate"), 1);
-  ShipEntity* pirate = game.shipsWithRole("pirate").front();
+  ShipEntity* pirate = game.spawn({.role = "pirate"}).front();
   const auto id = pirate->universalID();
 
   game.eval("system.allShips.filter(function(s){ return s.primaryRole == 'pirate'; })[0]"
@@ -443,6 +442,15 @@ namespace oo::component {
 using GameTime = std::chrono::duration<double>;  // so a test can write 5min, 10s, 250ms
 constexpr GameTime ticks(int n) { return GameTime{n * 0.125}; }
 
+// What to spawn. Named fields, so a call site says what each value is:
+//   game.spawn({.count = 1, .role = "pirate", .withinKm = 10})
+// Every field has a default, and fields are written in this order.
+struct SpawnOptions {
+  int count = 1;
+  std::string_view role = {};      // "police", "pirate", ... as in the windowed steps
+  std::optional<int> withinKm = {};  // of the first ship spawned; unset = around the player
+};
+
 class Game {
  public:
   // One per process. A second call fails the test.
@@ -457,8 +465,7 @@ class Game {
   double time() const;
 
   // The world, in the vocabulary of tests/component/steps/world_steps.py.
-  int spawn(int count, std::string_view role);
-  int spawnWithin(int count, std::string_view role, int km);
+  std::vector<ShipEntity*> spawn(const SpawnOptions& options);  // the ships it added
   int countWithRole(std::string_view role);
   bool engages(std::string_view hunter, std::string_view quarry);
 
@@ -515,7 +522,13 @@ class Game {
 ship key, the primary role set back to the scenario's role, the pirate's bounty, the role's AI.
 
 ```cpp
-int Game::spawnAt(int count, std::string_view role, HPVector at, double radiusMetres) {
+std::vector<ShipEntity*> Game::spawn(const SpawnOptions& options) {
+  const std::string_view role = options.role;
+  const int count = options.count;
+  // "within N km" measures from the first ship spawned; otherwise spawn around the player.
+  const HPVector at = options.withinKm && locus_ ? *locus_ : player()->getPosition();
+  const double radiusMetres = options.withinKm ? *options.withinKm * 1000.0 : kSpawnRadiusMetres;
+
   const std::string selector = PinnedShipKeyFor(role);  // "[viper]" for "police", as ROLE_SHIP_KEY
   const std::string js = std::format(
       "(function(){{"
@@ -529,8 +542,9 @@ int Game::spawnAt(int count, std::string_view role, HPVector at, double radiusMe
       JsString(selector), count, at.x, at.y, at.z, radiusMetres, JsString(role),
       PerRoleSetup(role));  // bounty for pirates, setAI(...) where ROLE_AI has an entry
   const int added = static_cast<int>(eval(js));
-  if (added > 0 && !locus_) locus_ = FirstSpawnedPosition();  // "within N km" measures from here
-  return added;
+  std::vector<ShipEntity*> ships = NewestShipsWithRole(role, added);
+  if (!ships.empty() && !locus_) locus_ = ships.front()->getPosition();
+  return ships;
 }
 
 bool Game::engages(std::string_view hunter, std::string_view quarry) {

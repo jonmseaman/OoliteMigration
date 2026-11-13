@@ -11,7 +11,7 @@ test calls the game's own methods on `Universe`, `PlayerEntity` and `ShipEntity`
 only to create, step and observe.
 
 Two styles of test are supported, and a test may mix them:
-- **Steps**: the helpers below (`spawn`, `spawnWithin`, `engages`, `simulateUntil`), which run the
+- **Steps**: the helpers below (`spawn`, `engages`, `simulateUntil`), which run the
   windowed steps' own script expressions and assert tolerant outcomes. This is the usual style,
   and the one the counterparts of S1–S8 must use.
 - **Plain**: add a ship, call the game's own methods on it, `simulate`, assert on the objects.
@@ -52,8 +52,8 @@ Spans are `std::chrono` durations of game time, so a test writes `5min`, `10s` o
 
 | Call | Effect |
 |---|---|
-| `game.spawn(count, role)` | the windowed step "I spawn N ship(s) with role R" |
-| `game.spawnWithin(count, role, km)` | the windowed step "… within K km" |
+| `game.spawn({.count = N, .role = R})` | the windowed step "I spawn N ship(s) with role R"; returns the ships added |
+| `game.spawn({.count = N, .role = R, .withinKm = K})` | the windowed step "… within K km" |
 | `game.countWithRole(role)` | the windowed steps' `system.countShipsWithRole` |
 | `game.engages(hunter, quarry)` | the windowed step "a ship with role H engages a ship with role Q" |
 | `game.universe()`, `game.player()` | the game's real `Universe*` and `PlayerEntity*` |
@@ -63,6 +63,10 @@ Spans are `std::chrono` durations of game time, so a test writes `5min`, `10s` o
 | `game.remove(ship)` | removes it without an explosion |
 | `game.shipsWithRole(role)` | the live ships whose primary role is `role` |
 | `game.entityCount()` | everything in the universe |
+
+`spawn` takes a `SpawnOptions` struct (`count`, `role`, `withinKm`), written with named fields so a
+call site says what each value is. Every field has a default. Helpers that take more than two
+values follow the same pattern.
 
 The first four run the same script the windowed step runs, including its pinned ship key per
 role, its bounty for pirates and its AI per role (`tests/component/steps/world_steps.py`). Worked
