@@ -229,19 +229,19 @@ baselines and the FR-016 tests exist and pass on the base.
   add the `exceptions.md` row (category `alloc`, file `src/Core/OODemangle.h`, required by
   `abi::__cxa_demangle` returning `malloc` memory).
   **Accept:** `cd oolite-dev && ! rg -n 'free\s*\(\s*demangled' src`
-- [ ] T015 [P] [US1] (part 1 done, `oolite-dev` `a47133c73`: streamed buffer and the Vorbis leak; the `readCreatingBuffer` interface waits for its borderline ledger row) Sound buffers to `std::vector<char>` in `src/Core/OOALSoundDecoder.cpp:316,351,443`,
+- [ ] T015 [P] [US1] (part 1 done, `oolite-dev` `a47133c73`: streamed buffer and the Vorbis leak; the `readCreatingBuffer` interface's borderline ledger row is signed, Jon 2026-11-12) Sound buffers to `std::vector<char>` in `src/Core/OOALSoundDecoder.cpp:316,351,443`,
   `src/Core/OOALStreamedSound.cpp:35,62` and `src/Core/OOALBufferedSound.cpp:35`; this fixes the
   per-read leak in `OOReadOXZVorbis` (`OOALSoundDecoder.cpp:442`, research R4).
   **Accept:** `cd oolite-dev && ! rg -n -P '(?<![\w:.>])(::|std::)?(malloc|calloc|realloc|free)\s*\(' src/Core/OOALSoundDecoder.cpp src/Core/OOALStreamedSound.cpp src/Core/OOALBufferedSound.cpp`
 - [X] T016 [P] [US1] Zip read buffers to `std::vector<char>` in `src/Core/OODataFromOXZFile.cpp:124,138`.
   **Accept:** `cd oolite-dev && $C alloc --area core | { ! grep -q OODataFromOXZFile; }`
-- [ ] T017 [US1] (waits for the pixel-chain borderline ledger row) The pixel-buffer chain as one unit: an owning buffer (`std::vector<std::uint8_t>`)
+- [ ] T017 [US1] (the pixel-chain borderline ledger row is signed, Jon 2026-11-12) The pixel-buffer chain as one unit: an owning buffer (`std::vector<std::uint8_t>`)
   in `src/Core/Materials/OOPixMap.cpp`/`.h` (`:76,85,110`), and its users
   `src/Core/OOTextureScaling.cpp:283,355-360,1684`, `src/Core/Materials/OOPixMapChannelOperations.cpp:122,125`,
   `src/Core/Materials/OOTextureLoader.cpp:201,349,364,381,398`, `src/Core/Materials/OOConcreteTexture.cpp:137,478,568`,
   `src/Core/Materials/OOPNGTextureLoader.cpp:88,136-160` (libpng fills our rows; GL copies).
   **Accept:** `cd oolite-dev && ! rg -n -P '(?<![\w:.>])(::|std::)?(malloc|calloc|realloc|free)\s*\(' src/Core/Materials/OOPixMap.cpp src/Core/OOTextureScaling.cpp src/Core/Materials/OOPixMapChannelOperations.cpp src/Core/Materials/OOTextureLoader.cpp src/Core/Materials/OOConcreteTexture.cpp src/Core/Materials/OOPNGTextureLoader.cpp`
-- [ ] T018 [US1] (waits for the pixel-chain borderline ledger row) The planet and atmosphere generators: remove the `FREE` macro (`:63/:65`) and its
+- [ ] T018 [US1] (the pixel-chain borderline ledger row is signed, Jon 2026-11-12) The planet and atmosphere generators: remove the `FREE` macro (`:63/:65`) and its
   about 12 `malloc`s in `src/Core/Materials/OOPlanetTextureGenerator.cpp` and
   `src/Core/Materials/OOStandaloneAtmosphereGenerator.cpp`, using T017's buffer where the result
   becomes a pixmap and `std::vector` elsewhere.
@@ -263,7 +263,7 @@ baselines and the FR-016 tests exist and pass on the base.
   `src/Core/OOCrosshairs.cpp:44,89`, `src/Core/HeadUpDisplay.cpp:4470-4533`,
   `src/Core/Materials/OOShaderProgram.cpp:559-580` and `src/Core/Materials/OOShaderMaterial.cpp:301,707`.
   **Accept:** `cd oolite-dev && ! rg -n -P '(?<![\w:.>])(::|std::)?(malloc|calloc|realloc|free)\s*\(' src/Core/OOSkyDrawable.cpp src/Core/OOCrosshairs.cpp src/Core/HeadUpDisplay.cpp src/Core/Materials/OOShaderProgram.cpp src/Core/Materials/OOShaderMaterial.cpp`
-- [ ] T024 [P] [US1] The rest: `std::vector` in `src/Core/OOProbabilitySet.cpp:391-514`,
+- [ ] T024 [P] [US1] (its files done, `oolite-dev` `ea3a3e17a`; the acceptance command is the whole `alloc` category, so it passes with T015, T017 and T018) The rest: `std::vector` in `src/Core/OOProbabilitySet.cpp:391-514`,
   `src/Core/OOProbabilisticTextureManager.cpp:93-169` (four parallel arrays), `src/Core/OOSoundSourcePool.cpp:62,76`,
   `src/Core/Scripting/OOJSFrameCallbacks.cpp:366,377`, `src/Core/Entities/ShipEntity.cpp:13807,13823`
   (`JSValue` argv); `std::unique_ptr` for the handle in `src/Core/Debug/OOTCPStreamDecoder.cpp:72,98`.
