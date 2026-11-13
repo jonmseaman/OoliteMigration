@@ -20,7 +20,7 @@ compiler; the shape is what is being offered for approval.
 `tests/component-cpp/oo_component.hpp`. It is not part of the shipped game.
 
 It wraps the game's real objects and hands them to the test: `game.universe()` is the real
-`Universe*`, `game.player()` the real `PlayerEntity*`, and `game.addShip(...)` returns a real
+`Universe*`, `game.player()` the real `PlayerEntity*`, and `game.add(...)` returns a real
 `ShipEntity*`. It adds what a test needs and the game does not have: starting with no window,
 stepping time, pressing keys, and collecting events and errors.
 

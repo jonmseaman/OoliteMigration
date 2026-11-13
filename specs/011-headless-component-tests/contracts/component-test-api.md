@@ -58,7 +58,7 @@ Spans are `std::chrono` durations of game time, so a test writes `5min`, `10s` o
 | `game.engages(hunter, quarry)` | the windowed step "a ship with role H engages a ship with role Q" |
 | `game.universe()`, `game.player()` | the game's real `Universe*` and `PlayerEntity*` |
 | `game.add(ShipWithKey(key).aheadOf(entity, metres))` | one ship by definition name, added to the universe; returns the real `ShipEntity*`, or null. Placement is `.at(position)`, `.aheadOf(…)` or `.near(…)` |
-| `game.spawnKey(key, position)` | as `addShip`, returning the owning pointer; the census uses it |
+| `game.spawnKey(key, position)` | as `add`, at a plain position and returning the owning pointer; the census uses it |
 | `game.remove(ship)` | removes it without an explosion |
 | `game.shipsWithRole(role)` | the live ships whose primary role is `role` |
 | `game.entityCount()` | everything in the universe |
