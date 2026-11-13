@@ -21,7 +21,8 @@ code. Nothing a player, an expansion author, a script, a shader or a saved game 
 
 ## Context
 
-What the tree is today (`oolite-dev` `develop`, 2026-11-12):
+What the tree is today (`oolite-dev` `seriesb/026-migration-completion`, the base this feature
+branches from, 2026-11-12; "the base" below):
 
 - **The files.** 11 `.tbl` files, 238 lines, `#include`d 40 times from 7 files
   (`OOConstToString.cpp` 15, `OOConstToJSString.cpp` 9, `OOEntityEnums.h` 5,
@@ -46,7 +47,7 @@ What the tree is today (`oolite-dev` `develop`, 2026-11-12):
 - **The design for the ten already exists.** Jon's note of 2026-11-07 (above) works out the header
   shape, the value decision per table, the compatibility constraints and the staging, and spec 009
   (modern C++) adopts it as US5 P8, tasks T060–T063, not yet started. Spec 009's enum-table helper
-  (`src/Core/OOEnumTable.h`, T046, commit `310cd4480`) is written but is not yet on `develop`.
+  (`src/Core/OOEnumTable.h`, T046, commit `310cd4480`) is written but is not yet on the base.
   This feature is that P8 work as a feature of its own, plus the eleventh table, which the note and
   spec 009 keep.
 
@@ -69,7 +70,7 @@ are what the request calls "gross enums".
 
 **Independent Test**: Before: ten enum `.tbl` files exist. After: none do; the unit, component
 and smoke suites pass; every name and number the conversion functions and scripts give is
-unchanged; a game saved on `develop` loads on the branch with every setting intact, the long-range
+unchanged; a game saved on the base loads on the branch with every setting intact, the long-range
 chart colour mode included.
 
 **Acceptance Scenarios**:
@@ -80,11 +81,11 @@ chart colour mode included.
 2. **Given** a name that scripts, property lists or saved games use today (for example
    `CLASS_NEUTRAL`, `STATUS_IN_FLIGHT`, `BEHAVIOUR_ALL_SYSTEMS_REACHABLE`, `"attacked police"`),
    **When** it is converted to its value and back, **Then** the result is the same name and number
-   as on `develop`; an unknown name gives the same default as on `develop`.
+   as on the base; an unknown name gives the same default as on the base.
 3. **Given** `OOViewID`, `OOLongRangeChartMode` and `OOGUIScreenID`, **When** their values are read
    on the branch, **Then** they are the ordinals the program uses today, not the numbers the `.tbl`
    files wrote, and the header states each number so that a change to it fails the build.
-4. **Given** a game saved on `develop` with a non-default long-range chart colour mode, **When** it
+4. **Given** a game saved on the base with a non-default long-range chart colour mode, **When** it
    is loaded on the branch, **Then** the chart shows the same mode.
 5. **Given** a member added to one of the ten enums with no name, **When** the game is built,
    **Then** the build reports it.
@@ -132,17 +133,17 @@ and can be dropped without affecting them.
 **Independent Test**: Before: `OOOpenGLStates.tbl` exists and the state manager includes it five
 times. After: no `.tbl` file exists anywhere in the source tree; the OpenGL state manager's
 characterisation test passes without edits; in a debug build, the state verifier's log output for a
-deliberately mismatched state names the same items as on `develop`.
+deliberately mismatched state names the same items as on the base.
 
 **Acceptance Scenarios**:
 
 1. **Given** the converted tree, **When** the source tree is searched for `.tbl` files, **Then**
    there are none.
 2. **Given** each of the standard OpenGL states, **When** it is set from any other standard state,
-   **Then** every tracked item reads back as on `develop` (the existing characterisation test, run
+   **Then** every tracked item reads back as on the base (the existing characterisation test, run
    unchanged).
 3. **Given** a debug build and a state mismatch, **When** the verifier reports it, **Then** the
-   report lists the same item names in the same order as on `develop`.
+   report lists the same item names in the same order as on the base.
 4. **Given** a new state item to track, **When** a developer adds it, **Then** the item is written
    in one place, and forgetting to say how it is read or set fails the build.
 
@@ -196,7 +197,7 @@ deliberately mismatched state names the same items as on `develop`.
   `.tbl` file MUST be deleted.
 - **FR-002**: Every enum MUST be a scoped enum with an explicit 32-bit signed underlying type and a
   comment saying why it is 32-bit.
-- **FR-003**: Every member's value MUST be the value the program uses on `develop`, read from the
+- **FR-003**: Every member's value MUST be the value the program uses on the base, read from the
   code rather than from the `.tbl` column, and every value that leaves the program (saved games,
   scripts, shaders, the debug console) MUST be pinned in the header so that changing it fails the
   build. The rows of `specs/009-modern-cpp-std/external-values.md` for these ten types are the list.
@@ -213,7 +214,7 @@ deliberately mismatched state names the same items as on `develop`.
   hyperspace behaviours; no new lookup direction is added.
 - **FR-007**: The script engine's name tables (`OOConstToJSString.cpp`) MUST take their names and
   order from the new headers rather than from a list of their own, MUST give scripts the same
-  strings and numbers as on `develop`, and MUST keep their behaviour across engine resets.
+  strings and numbers as on the base, and MUST keep their behaviour across engine resets.
 - **FR-008**: The enum bodies, `#define`/`#undef` scaffolding and `typedef enum` blocks in
   `OOTypes.h`, `OOEntityEnums.h` and `ShipEntity.h` MUST be replaced by includes of the new headers;
   `OOEntityEnums.h` MAY survive as a short umbrella for the files that include it.
@@ -235,7 +236,7 @@ deliberately mismatched state names the same items as on `develop`.
   the write all follow, and which the build checks against the state record field for field; the
   `.tbl` file MUST be deleted. The items, their kinds, their order, the
   standard states' values, the "maybe" rule and the separate blend-function handling MUST be as on
-  `develop`.
+  the base.
 
 **Both**
 
@@ -274,13 +275,13 @@ deliberately mismatched state names the same items as on `develop`.
   type have, and what does an unknown name become" from one file; today that takes the `.tbl` file
   plus two to four including files.
 - **SC-003**: Every external name and number is unchanged: every name and number scripts and the
-  conversion functions give is identical to `develop`'s (a test written and passing before the first
+  conversion functions give is identical to the base's (a test written and passing before the first
   conversion, and the component suite); every row of spec 009's external-values list for these ten types is pinned; a game
-  saved on `develop` loads with every setting identical, the chart colour mode included.
+  saved on the base loads with every setting identical, the chart colour mode included.
 - **SC-004**: A member added to any of the ten enums without a name, or an OpenGL state item added
   without a way to read or set it, is reported by the build in every case tried (at least one trial
   per kind, recorded in the plan's notes).
-- **SC-005**: The unit, component and smoke suites pass on the branch as on `develop`, the OpenGL
+- **SC-005**: The unit, component and smoke suites pass on the branch as on the base, the OpenGL
   state manager's characterisation test among them without edits, and the expansion corpus result
   does not regress.
 - **SC-006**: Exactly one test file is edited, and the ledger lists it.
@@ -294,9 +295,9 @@ deliberately mismatched state names the same items as on `develop`.
   spec 009's enum contract; this spec states what must hold, and the plan follows that design rather
   than drawing a new one.
 - Spec 009's enum-table helper (`src/Core/OOEnumTable.h`, T046) is reused, not rewritten. It is on
-  `origin/feature/json5-data-files` (commit `310cd4480`) and not yet on `develop`; the plan picks the
+  `origin/feature/json5-data-files` (commit `310cd4480`) and not yet on the base; the plan picks the
   base for `feature/replace-tbl-tables` accordingly.
-- The program's behaviour on `develop` is the reference, not upstream's text: where the `.tbl`
+- The program's behaviour on the base is the reference, not upstream's text: where the `.tbl`
   value columns disagree with the program, the program wins (it matches upstream's behaviour,
   since the dropped-value expansion is upstream's own, 2011).
 - The known scanner-grid omission of `VIEW_CUSTOM` (`HeadUpDisplay.cpp`) is left as it is, as spec
@@ -305,8 +306,9 @@ deliberately mismatched state names the same items as on `develop`.
 - Rule 1's third exception covers the `test_OOJSSound.cpp` include, as spec 009's T063 classifies
   it (*covered*); if Jon rules otherwise, that row becomes *reported* and Story 1 stops before
   `OOEntityStatus`.
-- This work lands on `develop` only. It is not added to the upstream PR series (`series/*`,
-  `seriesb/*`), whose tables stay byte-identical to upstream's.
+- This work is a feature branch on `seriesb/026-migration-completion` that Jon merges into
+  `develop`. It is not a step of the upstream PR series (`series/*`, `seriesb/*`), whose tables stay
+  byte-identical to upstream's.
 
 ## Notes and decisions
 
@@ -328,10 +330,14 @@ Decisions taken without Jon, each with its default and reason (hard rule 8):
 4. **Ledger.** This feature keeps its own `test-ledger.md` (one row expected) rather than writing
    into spec 009's.
 5. **Amended after planning (research R2, R3, R6, R9), 2026-11-12.** Scoping the enums breaks 61
-   lines in 8 files that used them as plain numbers (measured on `develop`); Story 2, FR-009 and
-   SC-007 now allow exactly those edits. `develop` builds without `-Werror`, so a missing name is a
+   lines in 8 files that used them as plain numbers (measured on the base); Story 2, FR-009 and
+   SC-007 now allow exactly those edits. The base builds without `-Werror`, so a missing name is a
    warning in the game build and an error in the header check (FR-005, FR-010). A `.clang-tidy` in
    `src/Core/Tables` does not reach headers compiled from elsewhere, so the naming check runs on each
-   header as its own file (FR-010). `develop` has no script-API snapshot tool, so SC-003 is met by a
+   header as its own file (FR-010). The base has no script-API snapshot tool, so SC-003 is met by a
    new before-and-after test plus the component suite. FR-011 says "one table, checked against the
    record" rather than "named once", since the record's designated initialisers keep the field names.
+6. **Base, 2026-11-12 (research R1).** The branch is a Git Town feature branch on
+   `seriesb/026-migration-completion`, as CLAUDE.md requires, not on `origin/develop` (219 commits
+   behind, still on the `ooscript` façade). "The base" in this spec means that step. Research R2's
+   measurement was repeated there with the same result.

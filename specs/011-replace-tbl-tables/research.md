@@ -1,33 +1,40 @@
 # Research: Replace the `.tbl` tables
 
 Phase 0 for [plan.md](plan.md). Each item: the decision, why, and what else was considered.
-Measurements were taken on `origin/develop` `3aa8d65e8` (2026-11-12) in a throwaway worktree
-(`.agent-tmp/tbl-exp`) with a build dir freshly configured there (`meson setup build/exp
---native-file clang.ini`, MSYS2 UCRT64 clang 23.1.4, `-std=c++20 -Wall`). The existing
-`oolite-dev/build/meson_*` directories were configured for a `seriesb` branch and do not match
-`develop`: their compile database fails 231 of `develop`'s files before any change.
+Measurements were taken on the base, `origin/seriesb/026-migration-completion` `a3d651a4d`
+(2026-11-12), in a throwaway worktree with a build dir freshly configured there (`meson setup
+build/exp --native-file clang.ini`, MSYS2 UCRT64 clang 23.1.4, `-std=c++20 -Wall`). They were
+first taken on `origin/develop` `3aa8d65e8` and repeated on the base when R1 changed; both gave
+the same 61 lines in the same 8 files. The existing `oolite-dev/build/meson_*` directories were
+configured for another branch and their compile database does not fit either tree.
 
 ## R1. Base branch and the enum-table helper
 
-**Decision.** `feature/replace-tbl-tables` branches from `origin/develop`. Its first commit adds
+**Decision.** `feature/replace-tbl-tables` is a Git Town feature branch on
+`seriesb/026-migration-completion` (`a3d651a4d`), the step the other current features
+(`feature/double-wide-support`, `feature/visual-studio-build`) build on. It is created in its own
+worktree and given that parent with `git town set-parent` (R10). Its first commit adds
 `src/Core/OOEnumTable.h` with the text of spec 009's T046 version (`310cd4480`, today only on
-`origin/feature/json5-data-files`) unchanged, plus one appended function, `MakeEnumTableInRange`
-(R3). Nothing else from `310cd4480` comes across: `OOEnumFlags.h` and the `OODebugFlags`
-conversion stay spec 009's.
+`origin/feature/json5-data-files`) unchanged, plus `#include <type_traits>` and one appended
+function, `MakeEnumTableInRange` (R3). Nothing else from `310cd4480` comes across: `OOEnumFlags.h`
+and the `OODebugFlags` conversion stay spec 009's.
 
-**Why.** `develop` has neither `OOEnumTable.h` nor `OOEnumFlags.h`. Taking the file verbatim and
-only appending to it means that when spec 009 lands its own copy, the two differ by one addition
-and merge without conflict. `OOEnumFlags.h` would bring flag operators this feature has no use for.
+**Why.** CLAUDE.md puts feature branches on the `seriesb` step they build on; `develop` is not in
+the Git Town tree and is where Jon merges finished features. `origin/develop` (`3aa8d65e8`,
+2026-11-01) is 219 commits behind `seriesb/026` and still has the `ooscript` script façade, so it
+is the wrong reference. `seriesb/027-modern-cpp` (spec 009, in progress) is not used: this feature
+needs nothing from it, and a parent still moving would rebase this branch for no gain.
+`seriesb/026` has neither `OOEnumTable.h` nor `OOEnumFlags.h`. Taking the file verbatim and only
+appending to it means that when spec 009 lands its own copy, the two differ by one addition.
 
-**C++ version.** `develop` builds as C++20 (`src/meson.build:25`); spec 009 moves to C++23 on its
-own branch. So there is no `std::to_underlying`; the headers pin values with
+**C++ version.** `seriesb/026` builds as C++20 (`src/meson.build:25`); spec 009 moves to C++23 on
+its own branch. So there is no `std::to_underlying`; the headers pin values with
 `static_cast<std::int32_t>(…)`. Everything else used (`consteval`, `std::array`,
-`std::string_view`, `std::optional`, designated initialisers) is C++20.
+`std::string_view`, `std::optional`, `std::span`, designated initialisers) is C++20.
 
-**Alternatives.** Basing on `feature/json5-data-files` or `seriesb/027-modern-cpp`: both sit on the
-`seriesb` stack (`seriesb/027-modern-cpp` is 487 commits off `develop` and 59 behind), so the
-feature would not land on `develop` on its own. Cherry-picking all of `310cd4480`: also brings the
-`OODebugFlags` conversion, which is out of scope.
+**Alternatives.** `origin/develop`: see above (this plan's first draft used it; the measurements
+were redone on `seriesb/026`). Cherry-picking all of `310cd4480`: also brings the `OODebugFlags`
+conversion, which is out of scope.
 
 ## R2. Scoping the enums: what it breaks (measured)
 
@@ -37,29 +44,30 @@ conversion to `int`, which aliases cannot give back.
 
 **Experiment.** All ten enums turned into `enum class … : std::int32_t` with an
 `inline constexpr` alias for every old name and typed defaults (the enum-definition files only),
-then every one of the 796 game and test translation units checked with `-fsyntax-only` against an
-unchanged baseline (796 clean, 0 warnings).
+then every one of the base's 820 game and test translation units checked with `-fsyntax-only`
+against an unchanged baseline (820 clean).
 
-**Result.** 91 distinct errors in 10 files; no warnings added; **no test file breaks** (214 test
-TUs, all clean). Besides the two script-engine files (R5), the errors are ordinary implicit
-`int` conversions at 61 lines in 8 files:
+**Result.** 85 distinct errors in 10 files; no warnings added (6 before, the same 6 after); **no
+test file breaks**. Besides the two script-engine files (R5: 9 lines in the `.cpp`, 14 in the
+`.h`), the errors are ordinary implicit `int` conversions at 61 lines in 8 files (line numbers on
+the base):
 
 | file | enum | lines | where |
 |---|---|---:|---|
-| `src/Core/Entities/PlayerEntity.cpp` | `OOScanClass` | 18 | 3622–3747 (`int theirClass = …getScanClass()` and the comparisons that follow) |
-| `src/Core/Entities/PlayerEntity.cpp` | `OOLongRangeChartMode` | 1 | 1622 (`dict.get<int>("chart_colour_mode", OOLRC_MODE_SUNCOLOR)`: the **save-game read**) |
-| `src/Core/Entities/PlayerEntity.cpp` | `OOGUIScreenID` | 3 | 13750, 13792, 13835 (`std::map<int, …>` keyed by a screen) |
-| `src/Core/Entities/PlayerEntityControls.cpp` | `OOGUIScreenID` | 10 | 2077–2124, 3211 (`switch` on an `int`, `int` variables, the same map) |
-| `src/Core/Entities/PlayerEntityControls.cpp` | `OOViewID`, `OOLongRangeChartMode` | 2 | 2122; 2236 (`(OOLongRangeChartMode)(mode + 1)`) |
-| `src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp` | `OOScanClass` | 3 | 2375–2378 |
-| `src/Core/Entities/ShipEntity.cpp` | `OOBehaviour`, `OOEntityStatus` | 4 | 446 (`100 < behaviour && behaviour < 120`); 2327–2329 |
-| `src/Core/GuiDisplayGen.cpp` | `OOEntityStatus` | 2 | 1433, 1435 |
-| `src/Core/HeadUpDisplay.cpp` | `OOScanClass`, `OOViewID` | 12 | 1425–1466; 4659–4683 (the scanner-grid `switch`) |
-| `src/Core/Scripting/OOJSGlobal.cpp` | `OOGUIScreenID` | 2 | 616 (`!gui`), 678 |
-| `src/Core/Universe.cpp` | `OOEntityStatus` | 4 | 5307, 5672–5674 |
+| `src/Core/Entities/PlayerEntity.cpp` | `OOScanClass` | 18 | 3617–3742 (`int theirClass = …getScanClass()` and the comparisons that follow) |
+| `src/Core/Entities/PlayerEntity.cpp` | `OOLongRangeChartMode` | 1 | 1617 (`dict.get<int>("chart_colour_mode", OOLRC_MODE_SUNCOLOR)`: the **save-game read**) |
+| `src/Core/Entities/PlayerEntity.cpp` | `OOGUIScreenID` | 3 | 13743, 13785, 13828 (`std::map<int, …>` keyed by a screen) |
+| `src/Core/Entities/PlayerEntityControls.cpp` | `OOGUIScreenID` | 10 | 2076–2123, 3255 (`switch` on an `int`, `int` variables, the same map) |
+| `src/Core/Entities/PlayerEntityControls.cpp` | `OOViewID`, `OOLongRangeChartMode` | 2 | 2121; 2237 (`(OOLongRangeChartMode)(mode + 1)`) |
+| `src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp` | `OOScanClass` | 3 | 2369–2371 |
+| `src/Core/Entities/ShipEntity.cpp` | `OOBehaviour`, `OOEntityStatus` | 4 | 445 (`100 < behaviour && behaviour < 120`); 2323–2325 |
+| `src/Core/GuiDisplayGen.cpp` | `OOEntityStatus` | 2 | 1434, 1436 |
+| `src/Core/HeadUpDisplay.cpp` | `OOScanClass`, `OOViewID` | 12 | 1427–1468; 4659–4683 (the scanner-grid `switch`) |
+| `src/Core/Scripting/OOJSGlobal.cpp` | `OOGUIScreenID` | 2 | 429 (`!gui`), 511 |
+| `src/Core/Universe.cpp` | `OOEntityStatus` | 4 | 5282, 5647–5649 |
 
 Only the Windows dev configuration was checked; `#if` branches for other platforms, `NDEBUG` and
-the optional features may add a few more. The full build on each CI platform finds them.
+the optional features may add a few more. The GCC build and CI's other platforms find them.
 
 **Decision.** Scope the enums as the spec says (FR-002), and amend the spec: a conversion change
 may also edit the lines where the compiler rejects an implicit conversion of that enum, and only
@@ -88,7 +96,7 @@ forbids. The range scan has no second list: `-Wswitch` ties the switch to the en
 ties the table to the switch. The size `static_assert` catches a member whose value falls outside
 `[Lo, Hi]`.
 
-**Warning, not error.** `develop` builds without `-Werror` (no `werror` in any meson file or
+**Warning, not error.** The base builds without `-Werror` (no `werror` in any meson file or
 native file), so in the game build a member without a case is a `-Wswitch` warning (on in
 `-Wall`, Clang and GCC). FR-013 already makes a new warning a failed change, and
 `tools/check-enum-headers.sh` (R6) also compiles each header on its own with
@@ -133,32 +141,26 @@ rule. A fixed rule leaves nothing to taste and is checkable by reading; nicer sp
 
 ## R5. The script engine's name tables
 
-**Finding.** On `develop` the script layer is still the `ooscript` façade, so the 2026-11-07
-note's `JSAtom` design (written for the `seriesb` stack) does not apply as written. The tables
-hold `{NSInteger value; const char* cString; ooscript::String jsString}`, are filled from the
-`.tbl` files, interned and `qsort`ed at `OOConstToJSStringInit`, and searched by value with a
-hand-written binary search.
+**What it is on the base.** `OOConstToJSString.cpp` uses QuickJS-ng's own API. Each table is
+`{NSInteger value; const char* cString; JSAtom atom}` entries filled from the `.tbl` files;
+`OOConstToJSStringInit` interns an atom per entry with `JS_NewAtom` once per process
+(`sAtomsInterned`: atoms belong to the runtime and survive engine resets) and `qsort`s each table;
+lookups by value use a binary search with signed bounds, and lookups by string compare atoms.
 
-**Decision.** Each `ConstTable` becomes two spans: the enum's rows (value as `std::int32_t`, name)
-read from the header's table, already ascending, and a parallel array of `ooscript::String` that
-`InitTable` fills by interning each name. The names are string literals, so `name.data()` is
-NUL-terminated and can be passed to `ooscript::internString` without a copy (the contract says
-so). `CompareEntries`, `qsort` and the `TABLE` macro go; a `static_assert` that each table is
-ascending replaces the sort. The inline wrappers in `OOConstToJSString.h` (20 of R2's errors)
-convert explicitly to and from the `NSInteger` the private functions take; the private functions'
-signatures do not change.
+**Decision.** This is the 2026-11-07 note's design. Each `ConstTable` becomes two spans: the
+enum's rows (value as `std::int32_t`, name) read from the header's table, already ascending, and a
+parallel mutable array of `JSAtom` that `InitTable` fills with
+`JS_NewAtomLen(context, name.data(), name.size())`. `CompareEntries`, `qsort`, `TableEntry` and
+the `TABLE` macro go; a `static_assert` that each row array is ascending replaces the sort. The
+binary search and the atom scan keep their logic, reading `rows[i].value` and `atoms[i]`. The
+inline wrappers in `OOConstToJSString.h` convert explicitly to and from the `NSInteger` the
+private functions take; the private functions' signatures do not change. Afterwards the only
+mutable state is the 152 atoms in nine small arrays.
 
-**A latent fault, recorded, not fixed.** `OOJSStringFromConstantPRIVATE`'s binary search uses
-unsigned `min`/`max`; for a value below the table's smallest, `max = mid - 1` wraps when `mid` is 0
-and the loop reads far outside the table. No caller passes such a value today (the values come
-from the enums themselves). The search stays as it is, operating on the new rows, so behaviour is
-unchanged; the fault is listed in the plan's notes for Jon. Replacing it with
-`std::lower_bound` would be the fix and is a one-line follow-up.
+**`OOLongRangeChartMode`'s table**, built and interned but never looked up, is carried across with
+a comment.
 
-**`OOLongRangeChartMode`'s table**, built but never looked up, is carried across with a comment.
-
-**Engine resets.** `OOConstToJSStringInit`/`Destroy` are unchanged in shape: the interned strings
-are re-filled at each init, as now.
+**Engine resets.** `sAtomsInterned` and the once-per-process interning are unchanged.
 
 ## R6. Holding the new headers to the naming rule
 
@@ -167,7 +169,7 @@ there when clang-tidy checks a `.cpp` elsewhere that includes it: clang-tidy use
 configuration (a test with a root config of `Checks: "-*"` and a `Tables` config enabling
 `readability-identifier-naming` reported nothing through the `.cpp`, and an error when the header
 itself was the main file). The 2026-11-07 note's per-directory plan therefore does not enforce
-anything on its own. There is also no `./mk.sh tidy` and no clang-tidy step in CI on `develop`.
+anything on its own. There is also no `./mk.sh tidy` and no clang-tidy step in CI on the base.
 
 **Decision.** Add `src/Core/Tables/.clang-tidy` (only `readability-identifier-naming` with
 `ScopedEnumConstantCase: CamelCase`, `ScopedEnumConstantPrefix: k`, in `WarningsAsErrors`) and
@@ -221,7 +223,7 @@ preprocessor contract, just not in a file. Rejected: it is what the request obje
 
 ## R8. The one test edit and the ledger
 
-`tests/unit/core/test_OOJSSound.cpp:37-42` rebuilds `OOEntityStatus` from `OOEntityStatus.tbl` with
+`tests/unit/core/test_OOJSSound.cpp:33-40` rebuilds `OOEntityStatus` from `OOEntityStatus.tbl` with
 its own `ENTRY` because it avoids `Entity.h`. With the `.tbl` gone it includes `OOEntityStatus.h`
 instead (four lines become one); its uses (`_status = STATUS_IN_FLIGHT`, `OOEntityStatus status()`)
 compile unchanged through the aliases, as R2's experiment showed for every test. Rule 1's third
@@ -237,24 +239,37 @@ exception covers it (a header the test names replaced by its equivalent; spec 00
   the test as literals copied from `external-values.md`, through the fifteen
   `cxx_OOStringFrom…`/`…FromString` functions (both directions where both exist), and every
   fallback (`UNDEFINED`, `** BEHAVIOUR UNKNOWN **`, the `BEHAVIOR_` spelling, each default). It uses
-  only functions that exist before and after the change, so it is written and passing on `develop`
+  only functions that exist before and after the change, so it is written and passing on the base
   **before** the first conversion and is the before-and-after check. It links the same sources as
-  `test_OOConstToString` (`tests/unit/core/meson.build:95`) with its own copy of that test's stubs;
+  `test_OOConstToString` (`tests/unit/core/meson.build:99`) with its own copy of that test's stubs;
   the existing test file is not touched (adding a test is allowed; the `meson.build` entry is a
   build file, not a test).
 - **Saved games**: a unit test cannot load a save without the game. The save path reads and writes
   `chart_colour_mode` as an `int`, so the pinned ordinals are what keeps old saves loading; the
-  quickstart adds a by-hand check (save on `develop` with the chart in economy mode, load on the
+  quickstart adds a by-hand check (save on the base with the chart in economy mode, load on the
   branch).
 - **Scripts**: the component suite exercises `status`, `scanClass`, `guiScreen`,
   `viewDirection` and `compassMode` through the debug console; it must pass unchanged. There is no
-  script-API snapshot tool on `develop` (spec 009 T013 restores one on its branch); SC-003's
+  script-API snapshot tool on the base (spec 009 T013 restores one on its branch); SC-003's
   snapshot clause is met by the component suite plus `test_EnumTables` until then.
 
 ## R10. Where the work happens
 
 `oolite-dev`'s checkout is in use by another session (`feature/double-wide-support`, untracked
-files). Implementation therefore runs in its own worktree under `.agent-tmp/` (for example
-`git -C oolite-dev worktree add .agent-tmp/wt-tbl -b feature/replace-tbl-tables origin/develop`),
-with its own `build/` configured there. Remove it afterwards with `git worktree remove`, never
-`git worktree prune` (prune drops other sessions' live worktrees).
+files), and `seriesb/026` may be checked out elsewhere, so `git town append` (which needs the
+parent checked out) is not usable. From the planning repo's root:
+
+```bash
+git -C oolite-dev worktree add ../.agent-tmp/wt-tbl -b feature/replace-tbl-tables origin/seriesb/026-migration-completion
+```
+
+```bash
+git -C .agent-tmp/wt-tbl town set-parent seriesb/026-migration-completion
+```
+
+The second command records the parent, as CLAUDE.md requires; `git town branch` then shows the
+branch under `seriesb/026`. The worktree gets its own `build/` (copy
+`oolite-dev/subprojects/quickjs-0.17.0` into it to avoid a download). Push with
+`git push -u origin feature/replace-tbl-tables`; later syncs use
+`git town sync --stack --detached`. Remove the worktree at the end with `git worktree remove`,
+never `git worktree prune` (prune drops other sessions' live worktrees).

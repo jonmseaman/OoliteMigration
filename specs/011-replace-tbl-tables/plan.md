@@ -1,6 +1,6 @@
 # Implementation Plan: Replace the `.tbl` tables
 
-**Branch**: `feature/replace-tbl-tables` (in `oolite-dev`, from `origin/develop`) | **Date**: 2026-11-12 | **Spec**: [spec.md](spec.md)
+**Branch**: `feature/replace-tbl-tables` (in `oolite-dev`, Git Town parent `seriesb/026-migration-completion`) | **Date**: 2026-11-12 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `specs/011-replace-tbl-tables/spec.md`
 
@@ -14,7 +14,7 @@ so that call sites keep compiling. The conversion functions and the script engin
 read those headers instead of re-expanding the tables. `OOOpenGLStates.tbl` becomes a `constexpr`
 item table in the state manager, checked field for field against the state record.
 
-Planning measured what the scoping costs (research R2): on `develop`, the aliases keep every test
+Planning measured what the scoping costs (research R2): on the base, the aliases keep every test
 and almost every call site compiling; 61 lines in 8 files used these enums as plain numbers and
 need an explicit type or conversion. The spec was amended to allow exactly those edits.
 
@@ -24,14 +24,14 @@ need an explicit type or conversion. The spec was amended to allow exactly those
 23.1.4 locally) and GCC (`--native-file=gcc.ini`); clang-format 22 for formatting.
 
 **Primary Dependencies**: none new. `src/Core/OOEnumTable.h` comes from spec 009's T046 with one
-function appended (research R1, R3). The script layer on `develop` is the `ooscript` façade.
+function appended (research R1, R3). The script layer on the base is QuickJS-ng's own API (`JSAtom` tables).
 
 **Storage**: saved games store `chart_colour_mode` (`OOLongRangeChartMode`, ordinals 0–4) and
 behaviour numbers; plists and scripts use the names. All unchanged (pinned).
 
 **Testing**: `tests/run.sh unit` (meson suites, Windows), `component`, `smoke`, `all`; a new
 `test_OOConstToStringEnums` written before the first conversion (research R9);
-`test_OOOpenGLStateManager` unchanged; `tools/check-enum-headers.sh` (new, research R6);
+`test_OOOpenGLStateManager` unchanged; a new `test_OOOpenGLStateVerifier` that captures the debug verifier's log lines, also written before the change; `tools/check-enum-headers.sh` (new, research R6);
 `-Wall` clean on Clang and GCC; the expansion corpus at the end.
 
 **Target Platform**: Windows x64 for the suites; macOS arm64 and Linux x64 CI builds must also
@@ -46,7 +46,7 @@ write loops over 30 items per state change.
 code untouched; one test edit.
 
 **Scale/Scope**: 11 files (238 lines) deleted; 10 headers and 1 helper added; 7 including files
-reworked; 61 call-site lines in 8 files; 1 test line block; 1 new test; 1 check script; 2 docs.
+reworked; 61 call-site lines in 8 files; 1 test line block; 2 new tests; 1 check script; 2 docs.
 
 ## Constitution Check
 
@@ -57,9 +57,9 @@ rules, as in specs 003 and 009.
 
 | Gate | Plan | Status |
 |---|---|---|
-| 1. No test changed to make it pass | One edit, `test_OOJSSound.cpp:37-42`, under rule 1's third exception (a header the test names replaced), in `test-ledger.md` in the same commit. One test added. R2 measured that no other test needs a change. | pass |
+| 1. No test changed to make it pass | One edit, `test_OOJSSound.cpp:33-40`, under rule 1's third exception (a header the test names replaced), in `test-ledger.md` in the same commit. Two tests added (`test_OOConstToStringEnums`, `test_OOOpenGLStateVerifier`). R2 measured that no other test needs a change. | pass |
 | 2. No warning silenced | None. Missing names surface as `-Wswitch`; `-Werror=switch` is used only inside the check script, not added to the build. | pass |
-| 3. Never touch `develop`/`master`/`main` | Work on `feature/replace-tbl-tables` in a worktree; pushed fast-forward; Jon merges. Spec docs commit on the planning repo's current branch. | pass |
+| 3. Never touch `develop`/`master`/`main`/`upstream-master` | Work on `feature/replace-tbl-tables` (Git Town parent `seriesb/026-migration-completion`) in a worktree; pushed, later synced with `git town sync --stack --detached`; Jon merges. Spec docs commit on the planning repo's current branch. | pass |
 | 4. Never read expansion content | Corpus results only, through `tools/corpus.sh`. | pass |
 | 5. Tools judge correctness | `static_assert`s, `test_OOConstToStringEnums` before and after, the suites, the check script, `-Wall` on two compilers. | pass |
 | 6. No `libgnustep-base` or SpiderMonkey | Nothing added. | pass |
@@ -121,7 +121,7 @@ except the new test's entry. `OOEnumTable.h` goes in `src/Core/` where spec 009 
 ## Order of work
 
 1. **G0 — groundwork.** `OOEnumTable.h`; `src/Core/Tables/.clang-tidy`; `tools/check-enum-headers.sh`
-   (passes vacuously: no headers yet); `test_OOConstToStringEnums` passing on the unconverted tree.
+   (passes vacuously: no headers yet); `test_OOConstToStringEnums` and `test_OOOpenGLStateVerifier` passing on the unconverted tree.
 2. **G1–G4** (data-model.md), each one change: write the headers, rework the consumers (the first
    group moves `OOConstToJSString.*` to the new shape), fix that group's R2 lines, delete the `.tbl`
    files; then the quickstart checks. G1 carries the test edit and creates `test-ledger.md`. Order
@@ -141,18 +141,19 @@ except the new test's entry. `OOEnumTable.h` goes in `src/Core/` where spec 009 
 
 Defaults taken without Jon (hard rule 8). Each is also in research.md with its reasons.
 
-1. **Base and helper (R1).** Branch from `origin/develop`; take only `OOEnumTable.h` from
+1. **Base and helper (R1).** A Git Town feature branch on `seriesb/026-migration-completion`
+   (not `origin/develop`, which is 219 commits behind and still on the `ooscript` façade); take only `OOEnumTable.h` from
    `310cd4480`, verbatim plus one appended function.
 2. **Scoped, with explicit conversions at 61 lines (R2).** The spec was amended (Notes item 5).
    Rejected: unscoped-with-underlying-type, which defers the point of the change.
 3. **Mechanical member names (R4)**, giving `kOxzmanager`, `kSuncolor`; nicer spellings are spec
    009's naming sweep.
-4. **Script tables keep their binary search (R5)**, including a latent unsigned-wrap fault for a
-   value below a table's smallest, which no caller triggers. **For Jon:** replacing it with
-   `std::lower_bound` is a one-line follow-up that changes nothing for valid values.
+4. **Script tables (R5)** take the 2026-11-07 note's `JSAtom` design: rows from the headers, a
+   parallel atom array interned once per process, no `qsort`. The base's search already uses signed
+   bounds, so the underflow the `develop`-era code had is not present.
 5. **The verifier's display quirk is kept (R7):** special items are logged through
    `OOGLFlagToString` whatever the `.tbl` named. **For Jon:** fixing it changes debug log text only.
-6. **No script-API snapshot on `develop` (R9):** SC-003 rests on `test_OOConstToStringEnums`, the
+6. **No script-API snapshot on the base (R9):** SC-003 rests on `test_OOConstToStringEnums`, the
    component suite and the pinned numbers, plus one by-hand save check.
 7. **Worktree (R10):** `oolite-dev`'s own checkout is in use by another session.
 

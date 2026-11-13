@@ -11,7 +11,7 @@ The things the plan moves around, their fields and the rules that hold for them.
 | type name | upstream's (`OOScanClass`), unchanged |
 | underlying type | `std::int32_t` |
 | members | the `.tbl` rows in order, named by research R4's rule |
-| value per member | the program's value on `develop` (`external-values.md`), never a fictional `.tbl` column |
+| value per member | the program's value on the base (`external-values.md`), never a fictional `.tbl` column |
 | name per member | today's string, byte for byte |
 | default | today's `kOO<Type>Default`, typed; none for `OOBehaviour` |
 | range | research R3's `[Lo, Hi]`, covering every value |
@@ -68,6 +68,6 @@ Same columns as `specs/009-modern-cpp-std/test-ledger.md`:
 | test file | lines | forced by | assertions | coverage | commit | signed |
 |---|---|---|---|---|---|---|
 
-Expected content: one row, `tests/unit/core/test_OOJSSound.cpp`, lines 37–42, forced by
+Expected content: one row, `tests/unit/core/test_OOJSSound.cpp`, lines 33–40, forced by
 `OOEntityStatus.tbl` → `OOEntityStatus.h`, assertions unchanged, coverage *covered* (rule 1's third
 exception). Any other row stops the work that needs it and is reported.

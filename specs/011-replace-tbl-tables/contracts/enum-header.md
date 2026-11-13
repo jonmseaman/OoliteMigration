@@ -151,4 +151,4 @@ it.)
 | `OOConstToString.cpp` | `switch` / `if` chains from `#include …tbl` | value-to-name: `name = kOO<Type>Table.name(value)`, `""` → the function's own fallback; name-to-value: `kOO<Type>Table.value(string).value_or(kOO<Type>Default)`; the `BEHAVIOR_` retry kept verbatim; the 9 + 6 signatures unchanged; the `ENTRY`/`GALACTIC_HYPERSPACE_ENTRY`/`DIFF_STRING_ENTRY` macros go |
 | `OOConstToJSString.cpp`, `.h` | see [js-const-tables.md](js-const-tables.md) | |
 | the ~61 lines research R2 lists | implicit `int` conversion | the variable, parameter or key takes the enum's type, or one explicit `static_cast` where a number is meant; meaning unchanged |
-| `tests/unit/core/test_OOJSSound.cpp:37-42` | rebuilds `OOEntityStatus` from the `.tbl` | `#include "OOEntityStatus.h"` (ledger row) |
+| `tests/unit/core/test_OOJSSound.cpp:33-40` | rebuilds `OOEntityStatus` from the `.tbl` | `#include "OOEntityStatus.h"` (ledger row) |
