@@ -472,10 +472,10 @@ shooting ship in the first test: it fails, and says the shot did not land.
   time.
 - **SC-011**: Every existing suite (unit, component, smoke, GUI) has the same results after the
   feature as before it, and the smoke run's frame time is within 2% of what it was.
-- **SC-013**: The launch-key test and the remapped-key test pass on Windows, macOS and Linux with
-  no display. In the launch test exactly one launch is counted after two uses of the key.
 - **SC-012**: The four basic behaviour tests pass on Windows, macOS and Linux with no display,
   each in under 15 seconds, and each fails when the weapon it tests is removed.
+- **SC-013**: The launch-key test and the remapped-key test pass on Windows, macOS and Linux with
+  no display. In the launch test exactly one launch is counted after two uses of the key.
 
 ## Assumptions
 
