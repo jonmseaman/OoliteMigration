@@ -96,7 +96,7 @@ rules and `docs/workflow.md`'s definition of done.
 | 8. Never wait for Jon | Every open choice has a default, recorded in research.md and in *Notes* below. | pass |
 | 9. No writes outside the repo | Scratch goes in `.agent-tmp/`. | pass |
 | Every bead has a failing-then-passing command | The inventory check and the ratchet (R10) provide one for conversion beads. New tests provide one for feature beads. | pass |
-| Ownership is `oo::Ref` | Services are `oo::Ref<oo::RefCounted>`. There is no `shared_ptr` and no DI library. | pass |
+| Ownership is standard (`std::shared_ptr`/`std::weak_ptr`/`std::unique_ptr`, spec 009) | Services are `std::shared_ptr<oo::Object>`, made by `oo::makeShared`. There is no DI library. | pass |
 
 **Re-check after Phase 1:** pass. The design adds one global during the migration, the
 current-context pointer. It is justified under *Complexity Tracking* and is an inventory row

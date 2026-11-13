@@ -16,7 +16,7 @@ The newer layers (`oofnd/*.hpp`, `Core/Scripting/ooscript/`) are mostly idiomati
 
 Scope, from the inline comments above:
 - **In:** 1.1, 1.2, 1.3, 1.4 (all), 2.2 (all: no `malloc`/`calloc`/`realloc`/`free`; `unique_ptr`/`shared_ptr`/std containers), 2.3 (most: no C strings; address out-parameters; leave `goto` unless the refactor is simple; leave the control-state globals in `PlayerEntityControls.cpp` because they match upstream), 2.4 (use the standard library wherever possible), 2.5 (bugs), 2.6 (tooling).
-- **Out:** 2.1 (class design stays close to upstream to keep merges easy). Also out: `EntityFilterPredicate` (the `void*` callback). Everything else Jon named stays in, including `UNIVERSE`/`PLAYER`, `oo::Ref`, `OOCache`.
+- **Out:** 2.1 (class design stays close to upstream to keep merges easy). Also out: `EntityFilterPredicate` (the `void*` callback). Everything else Jon named stays in, including `UNIVERSE`/`PLAYER`, `oo::Ref` (since replaced by the standard smart pointers, spec 009), `OOCache`.
 - **Self-containment:** `oolite-dev` must not reference the planning repo. Tests run through `./mk.sh test test` and `tests/run.sh`. The outer desktop-lock lookup is **dropped** from `oolite-dev` tests (not replaced).
 - **Structure:** two epics. Epic A (Phase 4p): self-containment, the 2.5 bugs, tooling, warnings already at zero hits. Epic B (Phase 6, gated on the 4p exit): the sweeps and structural work.
 - **Bead size:** no per-bead file or line caps (dropped globally the same day). A bead is one tick's work, sized by pattern (tree-wide, tool-driven) or by area. About 126 beads in total; the list is in the epics outline.
@@ -63,7 +63,7 @@ Scope, from the inline comments above:
   - `OOStringExpander.h` has a 62-argument preprocessor `MAP` (78 macros), used 135 times. It stringifies variable names into dictionary keys, so it needs a small design decision rather than a mechanical swap.
   - `OOFunctionAttributes.h:13-21` redefines the reserved names `__has_feature`, `__has_attribute` and `__has_extension`.
 - Attributes are barely used: `[[nodiscard]]` 4, `[[noreturn]]` 2, `[[maybe_unused]]` 1 (vs 20 `GCC_ATTR((unused))`), `[[fallthrough]]` 0, `[[deprecated]]` 0.
-- Keep: the 11 X-macro `.tbl` tables are a defensible pattern.
+- The 11 X-macro `.tbl` tables became `enum class` tables with name lookups (spec 009, US5; `notes/2026-11-07 Enum Tables from tbl X-Macros.md`).
 - **Fix:** `inline constexpr` in namespaces; `enum class` for row-id and key tables; inline functions for `UNIVERSE`/`PLAYER`; `std::min/max/clamp/abs`; standard attributes.
 
 ### 1.3 Platform-specific macros
@@ -216,10 +216,10 @@ Ordered by value over risk, and now organised as two epics ([[2026-10-28 Idiom E
 5. **Enums:** convert `typedef enum` and unscoped enums to `enum class`, starting with bitmask enums (`OODebugFlags`, `OOWeaponFacing`, `ALERT_FLAG_*`, `OOTextureFlags`), and add one shared bitmask operator template. The `OOJS*.cpp` `enum : std::uint8_t` blocks come last.
 6. **Platform layer:** introduce `platform::` with Windows and Linux source files, move the in-body `#if`s out (start with `GameController.cpp`, `OOCPUInfo.cpp`, `OOLogHeader.cpp`, `PlayerEntityKeyMapper.cpp`, `ResourceManager.cpp`), generate a `config.hpp` for the feature switches, and delete dead Mac and SpiderMonkey branches.
 7. **oofnd retirement of Objective-C shape:** replace `NSUInteger`/`NSInteger`/`NSPoint` etc. with standard and project types; drop the `cxx_` prefix and the `StdLib.hpp` umbrella; migrate `oo::str::format` to `std::format`; make `oo::Exception` derive from `std::runtime_error`; swap `Expected.hpp` for `std::expected` once on C++23.
-8. **Structural, last and largest:** `OOCache`/`OOPriorityQueue` → std containers; `malloc`/`realloc` arrays → `std::vector`; `Ref` over `std::shared_ptr`. **Dropped by decision (2026-10-28):** replacing the `UNIVERSE`/`PLAYER` macros (they stay global, as upstream), `initWith*` → constructors, the `EntityFilterPredicate` + `void*` callback, splitting `PlayerEntity`/`ShipEntity`/`Universe`, and the test-seam virtuals (all §2.1 or upstream-merge risk).
+8. **Structural, last and largest:** `OOCache`/`OOPriorityQueue` → std containers; `malloc`/`realloc` arrays → `std::vector`; ownership by `std::shared_ptr`/`std::weak_ptr` directly, not `Ref` names over them (spec 009 decision 2, which replaced this step's "`Ref` over `std::shared_ptr`"). **Dropped by decision (2026-10-28):** replacing the `UNIVERSE`/`PLAYER` macros (they stay global, as upstream), `initWith*` → constructors, the `EntityFilterPredicate` + `void*` callback, splitting `PlayerEntity`/`ShipEntity`/`Universe`, and the test-seam virtuals (all §2.1 or upstream-merge risk).
 
 ## 4. What not to change
-- `legacy_random` (save-game compatibility), the `.tbl` X-macro tables, libpng's `setjmp`, and the C-API glue in `JSEngine_quickjs.cpp` (void* and C casts there are legitimate).
+- `legacy_random` (save-game compatibility), libpng's `setjmp`, and the C-API glue in `JSEngine_quickjs.cpp` (void* and C casts there are legitimate).
 - `oofnd`'s PList, XML/old-style parsers, `Encoding.hpp` and `Defaults.hpp` are genuinely new library code, not Objective-C emulation.
 
 ## 5. Caveats

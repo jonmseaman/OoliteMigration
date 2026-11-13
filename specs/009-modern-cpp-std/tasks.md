@@ -268,7 +268,7 @@ baselines and the FR-016 tests exist and pass on the base.
   `src/Core/Scripting/OOJSFrameCallbacks.cpp:366,377`, `src/Core/Entities/ShipEntity.cpp:13807,13823`
   (`JSValue` argv); `std::unique_ptr` for the handle in `src/Core/Debug/OOTCPStreamDecoder.cpp:72,98`.
   **Accept:** `cd oolite-dev && $C alloc`
-- [ ] T025 [US1] Make `cppcoreguidelines-no-malloc` fatal (`WarningsAsErrors` in
+- [X] T025 [US1] Make `cppcoreguidelines-no-malloc` fatal (`WarningsAsErrors` in
   `oolite-dev/.clang-tidy`); run the ASan smoke run (quickstart M1) and `leaks --atExit` and
   record them as `asan-smoke@M1` and `leaks@M1` in `baselines.md`; mark `alloc` `fatal` in
   data-model.md.
@@ -808,7 +808,7 @@ edits.**
   **Accept:** `cd oolite-dev && $C naming` (fails before: the 20 types' enumerators are not `kPascalCase`)
 - [X] T102 Make `readability-identifier-naming` fatal in `oolite-dev/.clang-tidy`.
   **Accept:** `cd oolite-dev && ./mk.sh tidy` and the check is in `WarningsAsErrors`
-- [ ] T103 [P] Docs (FR-023): `docs/phases/4p-upstream-polish.md` (the "Out of scope here (Phase
+- [X] T103 [P] Docs (FR-023): `docs/phases/4p-upstream-polish.md` (the "Out of scope here (Phase
   6)" paragraph), `docs/phases/6-modernise.md` (exit-gate items this feature did),
   `notes/2026-10-28 Modern C++ Idiom Review.md` (the `.tbl` "keep" lines at `:66` and `:222`, and
   the `Ref` decision), `notes/2026-11-07 Enum Tables from tbl X-Macros.md` (stale gates), and

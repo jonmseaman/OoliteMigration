@@ -53,7 +53,8 @@ Specs live in `specs/`, the templates and constitution in `.specify/`; see
 - Every task needs a command that exits nonzero before and zero after. If a task is unverifiable,
   stop and say which part fails. Do not stretch.
 - **Do it the way the exemplar does it.** Style comes from the exemplar, not from your preferences.
-  Ownership is `oo::Ref<T>`, not `shared_ptr`; no redesign unless the spec asks for it.
+  Ownership is `std::shared_ptr`/`std::weak_ptr`/`std::unique_ptr`, objects made by
+  `oo::makeShared`; no redesign unless the spec asks for it.
 - Decisions and state that must outlive the session belong in the spec, plan or tasks file. Your own
   session memory is a convenience.
 - **Never end a session with a question.** Record what you could not decide, with the default you

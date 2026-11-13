@@ -49,6 +49,8 @@ Median and spread (max − min) of five runs, except where noted. Scripts and ra
 | tsan-smoke@M2 | 5 | 1 | lower |
 | quit@M2-base | 0.0765 | 0.0557 | lower |
 | quit@M2 | 0.0766 | 0.0556 | lower |
+| asan-smoke@M1 | 0 | 0 | lower |
+| leaks@M1 | 287 | 2 | lower |
 
 - **start**: seconds from launching the deployment build until it answers the debug console.
 - **frame**: CPU milliseconds per frame (`ps -o cputime` over frames counted by a JS frame
@@ -68,6 +70,12 @@ Median and spread (max − min) of five runs, except where noted. Scripts and ra
   (`OOStandaloneAtmosphereGenerator.cpp:233`) and `RanrotWithSeed` (`legacy_random.cpp:91`).
 - **leaks**: leaks reported by `leaks --atExit` over a smoke run of the test build; three runs
   gave 288, 286, 288 (18,816 bytes in the median run).
+- **asan-smoke@M1, leaks@M1** (T025, 2026-11-13, `oolite-dev` `b8c564c6d`): one ASan smoke
+  run, 0 reports; three `leaks --atExit` smoke runs gave 287, 287, 289 (18,656 bytes in the median
+  run). The never-deleted singleton holders keep a static pointer to themselves, so `leaks` finds
+  them reachable; before that change the same runs gave 303 (each holder whose only reference was
+  the raw object pointer counted as a leak). Under `leaks` the harness now reports no snapshot
+  (the game ran and quit; the leak summary is read as before).
 
 ## Same-session comparison, 2026-11-12
 

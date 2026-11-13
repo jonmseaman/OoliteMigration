@@ -45,14 +45,14 @@ names as text (research R7); they are data and are not changed.
 
 | id | before | now (T009) | guard | fatal at |
 |---|---:|---|---|---|
-| alloc | 135 lines | 135 | `cppcoreguidelines-no-malloc` | M1 |
+| alloc | 135 lines | 135 | `cppcoreguidelines-no-malloc` | M1: **fatal** (T025, 2026-11-13) |
 | ownership | 2,007 lines (search lines, `oofnd`'s own definitions included; the spec's "about 1,900" counts uses) | 2007 | definition deleted | M7 |
 | thread | 7 lines (5 calls, 2 definitions) | 7 | definition deleted | M2 |
 | oofnd | 1,505 lines (including `oofnd`'s own definitions) | 1505 | definition deleted | M3 |
 | enum | 179 lines | 179 | `cppcoreguidelines-use-enum-class` | M4 |
 | macro-set | about 10 sets (listed below) | not counted | none (FR-021, research R3); one search per set, run by hand | M4 (converted, not fatal) |
 | tbl | 11 files | 10 | none (FR-021, research R3); file count, run by hand | M4 (converted, not fatal) |
-| naming | 0 converted | 66 lines (clang-tidy, existing `enum class`) | `readability-identifier-naming` | M8 |
+| naming | 0 converted | 66 lines (clang-tidy, existing `enum class`) | `readability-identifier-naming` | M8: **fatal** (T102, 2026-11-13) |
 | cast | the `google-readability-casting` count in M0's `./mk.sh tidy` (regex: about 690 lines) | 1205 | `google-readability-casting`; `-Wold-style-cast` | M5 |
 | cstring | 66 call lines by the search (2026-11-11); 815 `const char*` and `char[N]` lines tracked | 66 | `bugprone-unsafe-functions.CustomFunctions` | M6 |
 

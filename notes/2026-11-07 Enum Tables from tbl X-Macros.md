@@ -1,11 +1,13 @@
 # Replace the `.tbl` X-macro tables with Google-style `enum class` + compile-time tables
 
-**Status:** proposed, not started · **Written:** 2026-11-07 · **Target:**
-[Phase 6](../docs/phases/6-modernise.md) step 5 ("Enums")
+**Status:** done, by [spec 009](../specs/009-modern-cpp-std/spec.md) User Story 5 on
+`seriesb/027-modern-cpp` · **Written:** 2026-11-07
 
-A plan for later adoption, not current work. Nothing in `oolite-dev` has changed. Adopting it means
-turning the work order below into a Spec Kit feature (`/speckit-specify`) and filing the two
-prerequisites — the rule 1 rewording and the `.clang-tidy` naming entry — as their own steps.
+This plan was adopted as spec 009's US5; the tables are `enum class` headers with name lookups, and
+only `OOOpenGLStates.tbl` remains (its own pattern, not an enumeration). The gates in the work
+order below name `tests/idiom_check.py` and `tools/check-test-changes.py`, which do not exist (the
+first was retired 2026-11-10): spec 009's `check.sh tbl` and `check.sh naming`, and its test-change
+ledger, took their place. Read the work order as the record of the approach.
 
 **Decisions this plan records (Jon, 2026-11-07):** de-macro *and* scope the enums in one piece of
 work; Google-style `kPascalCase` enumerators enforced by clang-tidy; land it in Phase 6 rather than
