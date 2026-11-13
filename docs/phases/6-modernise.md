@@ -27,8 +27,13 @@ Per sub-project; each is its own mini-phase with the test suites as the gate:
 
 - Renderer → GL 3.3 Core (or SDL3 GPU). See ADR-0004.
 - Value semantics for leaf *classes* (`OOColor`, `OORoleSet`, …; the math types are already C
-  structs, ADR-0012); `unique_ptr` for exclusive ownership;
-  shrink `Ref` usage to the entity graph where it belongs.
+  structs, ADR-0012).
+- Done on `seriesb/027-modern-cpp` by [spec 009](../../specs/009-modern-cpp-std/spec.md)
+  (`009-modern-cpp-std`), ahead of this phase: no C allocation (containers, `std::unique_ptr`,
+  `OOPixelBuffer`); ownership by `std::shared_ptr`/`std::weak_ptr`/`std::unique_ptr` with objects
+  from `oo::makeShared`; `std::thread`; `std::expected` for `oo::Expected`; `oofnd` cut to what the
+  standard library lacks; scoped enums for the `typedef enum`s, macro sets and `.tbl` tables;
+  C++ casts; `std::string`/`std::string_view` for C strings.
 - Break up `Universe`: separate scene graph, simulation, and presentation. Gated on extracting
   `IUniverse`/`IGameView` first, and on the 968-name by-name surface
   ([6-solid-review.md §8](6-solid-review.md#8-work-items-for-phase-6) items 3 and 6).
@@ -36,7 +41,8 @@ Per sub-project; each is its own mini-phase with the test suites as the gate:
   fields become private behind inline accessors; the three parallel type-discrimination mechanisms
   collapse to one; `Entity`'s 49-member interface is segregated
   ([6-solid-review.md §8](6-solid-review.md#8-work-items-for-phase-6) items 1, 2, 4, 7).
-- `std::expected` error paths replacing out-parameter + `BOOL` returns.
+- `std::expected` error paths replacing out-parameter + `BOOL` returns (the type is in use, spec
+  009; the out-parameter APIs remain).
 - `std::jthread` + a proper job system for `OOAsyncWorkManager`.
 - Revisit C++20 modules.
 

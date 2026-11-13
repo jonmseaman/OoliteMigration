@@ -497,6 +497,18 @@ numbers because other documents cite them.*
   game and tests use; where `std::from_chars` differs (leading spaces, `+`, overflow, the platform
   width of `long`), the parse keeps an `oofnd` helper that reproduces today's answer.
 
+**Names and includes (added 2026-11-12, Jon)**
+
+- **FR-029**: No identifier in the game or its tests MAY carry the `cxx_` prefix the migration gave
+  the C++ form of a function, constant or member (`cxx_kGuiShipyardHeadingColor` is upstream's
+  `kGuiShipyardHeadingColor`). Where the bare name is taken in the same scope, the C++ form takes
+  upstream's name if upstream has one and the bare name otherwise, and the clash is resolved by
+  the compiler, never by a second prefix. Strings, saved data and anything outside C++ keep their
+  text.
+- **FR-030**: No file of the game or its tests MAY include a header it does not use directly, as
+  clang-tidy's `misc-include-cleaner` (the check behind clangd's "Included header … is not used
+  directly") reports it; vendored code (MiniZip, EXRSnapshotSupport) is left as it is.
+
 **Guards and records**
 
 - **FR-021**: Each of these converted categories MUST be guarded by a check that fails when it

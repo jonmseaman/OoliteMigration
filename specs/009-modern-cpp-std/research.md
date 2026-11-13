@@ -183,6 +183,11 @@ one at the root).
    Universe's GUI objects (`Universe.h:318-320`) and the player's `hud` (inferred). Colours, role
    sets, textures, materials, meshes, octrees, scripts, groups, sounds, async tasks and entities
    are genuinely shared.
+   *T091 found three of the listed ones shared after all:* the joystick spline segments are held by
+   a profile and its copies, the route elements by `cheapest[]` and the frontier vectors at once,
+   and the AI's preserved state machines are read while its stack may change. They stay
+   `std::shared_ptr`; the crosshairs and the sky's quad sets are `std::unique_ptr`, the universe a
+   `std::unique_ptr` kept by the game controller.
 
 **The transitional bridge.** Ref and shared ownership cannot coexist on one object, and about 260
 files and 165 test files use `oo::Ref`. So the first step changes the inside, not the callers:
@@ -209,6 +214,8 @@ same names") as a waypoint, not the end state.
   identity pointer next to the `weak_ptr` in that field. Not yet checked: whether any script event
   is sent from `willDispose()`; if one is, a script reading `this` would see an invalid entity.
   D2 answers it. **Spec change** to FR-007 (R15).
+
+D2 answer: yes, one: `ShipEntity::shipWillDealloc` sends the ship's `entityDestroyed` event from `willDispose()` (`ShipEntity.cpp:354`), and through `PlayerEntity::doScriptEvent` the world scripts' too for the player. It runs after the ship's weak references are dropped (`Entity.cpp:114`), deliberately (Ahruman's note at `ShipEntity.cpp:344`: the JS ship is invalid before the event, so no script can strong-reference it), so a script already sees an invalid `this`; with `std::weak_ptr` the references are expired at the same point, and nothing changes. No other script call is reachable from the disposal path. The weak-reference readers are in data-model.md *Disposal reader* (T084).
 - **Stack and static instances.** `shared_from_this` on an object that no `shared_ptr` owns throws
   `std::bad_weak_ptr`, and `weak_from_this` is empty. None exist in `src`. Tests have them:
   `test_OOShaderMaterial.cpp:309,501,588` (a stack `TestTarget : Entity` bound to a weak
@@ -401,6 +408,52 @@ explicit strings before its rename.
 say "maintained by hand"; `switch (v_dir)` is now `HeadUpDisplay.cpp:4658` and `mode + 1` is now
 `PlayerEntityControls.cpp:2237`.
 
+**Design step D5 (T064, 2026-11-12), the int-natured groups.** One decision per group, taking R8's
+default where it gives one; T065–T068 carry them out. A group decided as typed constants has an
+`exceptions.md` row (category `enum`).
+
+- **D5: JS property IDs** (the 27 `kShip_*`-style enums) → `enum class … : std::int16_t`, the type
+  of QuickJS's `magic`; the `OOJS_PROPERTY_*` macros cast with `oo::ToUnderlying`, and each getter's
+  `switch` reads the enumerators through `using enum` inside the function. The numbers never leave
+  the program (QuickJS hands `magic` back unchanged), so nothing is pinned beyond `kShip_*` starting
+  at -128 (the comment there says why).
+- **D5: GUI rows** (`GUI_ROW_*OPTIONS_*`, `PlayerEntity.h`) → typed constants: they are row numbers
+  added to and compared with GUI row positions, not a set of choices. Each group's rows become
+  `inline constexpr int` constants, `GUI_FIRST_ROW()`/`GUI_ROW()` become `constexpr` functions, and
+  the two `#if GUI_FIRST_ROW() < 0` checks (always false, R14) become `static_assert`s that hold.
+- **D5: `AXIS_*`/`BUTTON_*`** (`OOJoystickManager.h`) → typed constants (revised in T067 from
+  `enum class`: the manager's API passes one `int` "function" number that can be an axis or a
+  button, read from the stick mapper's plists and stored in `int8_t` maps, so an enum would need a
+  cast at nearly every call and a second API for the numbers). They keep their names as
+  `inline constexpr int`, each one more than the one before it, `AXIS_end`/`BUTTON_end` stay `int`
+  counts, and the state arrays are `std::array`. Their numbers are the keys of the stick mappings
+  saved in the defaults (`ENUMKEY`, `OOJoystickManager.cpp:280-300`), so each is
+  `static_assert`ed in both `OO_FOV_INFLIGHT_CONTROL_ENABLED` configurations.
+- **D5: `STICKPROFILE_TYPE_*`** (`OOJoystickProfile.h:61-62`, two `#define`s nothing reads) →
+  typed constants (`inline constexpr int`, values 1 and 2 kept): upstream's numbers for a stick
+  profile's type, with no code to give an enum a job, and not deleted (rule 7: no rewrite for its
+  own sake).
+- **D5: `GameViewKeys`** (`MyOpenGLView.h:93`) → typed constants (R8's default): the key codes
+  share one code space with characters and `OOKeyCode` and are compared and stored as those, so an
+  `enum class` would need a cast at every comparison. They become `inline constexpr int` constants
+  with today's names and values.
+- **D5: `OOPixMapFormat`** (`OOPixMap.h:57-62`) → typed constants (R8's default): a format's value
+  is its component count, multiplied into row and buffer sizes. `OOPixMapFormat` becomes an alias
+  of `int` and the four formats `inline constexpr OOPixMapFormat` constants keeping their `kOOPixMap`
+  names (the prefix is their namespace); `OOTextureDataFormat` and the `kOOTextureData*` constants
+  (T056) follow unchanged.
+- **D5: the debug TCP protocol numbers** (`OODebugTCPConsoleProtocol.h:311-321`) → typed constants:
+  they are bit masks and a packed version number on the wire, not choices, and the Python console
+  (`tests/component/console.py`) reads only the wire. They become `inline constexpr std::uint32_t`
+  constants, the `OOTCP_*VERSION*` macros `constexpr` functions, and `kOOTCPProtocolVersion_1_1_0`
+  is `static_assert`ed as `0x00010100`.
+
+**Uniform types (T068, as D5).** `OOShaderUniformType` became typed constants with its names, an
+alias of `int`, not an `enum class`: the tag is stored as `uint8_t`, indexes the template table and
+starts `OOJSCall`'s method-type numbers (`kMethodTypeObjectObject` follows `kObject`), so it is an
+int-natured group like D5's. `OOSystemConcealment` (T067) is the same: planetinfo.plist's number,
+compared with thresholds.
+
 ## R9. Tests and the ledger (FR-015)
 
 **Decision:** two files in this spec's directory, `exceptions.md` and `test-ledger.md`
@@ -488,6 +541,11 @@ short.
 - `OOALSoundDecoder.cpp:442`: a buffer leak on every OXZ Vorbis read (fixed by US1).
 - `PlayerEntity.h:165,199`: `#if GUI_FIRST_ROW() < 0` is always false (fixed by P9, no behaviour
   change).
+- `OODebugTCPConsoleProtocol.h` `OOTCP_ENCODE_VERSION`: shifts the format, not the major number, into
+  the major byte; harmless while both are 1. Kept (T068) in `OOTCPEncodeVersion`, `static_assert`ed.
+- `HeadUpDisplay.cpp` `drawScannerGrid`: the view-line switch has no custom-view case, so the
+  scanner grid draws no view lines in a custom view (upstream's behaviour). Kept as it is (T062):
+  the switch now names `OOViewID::kCustom` with an empty case, which `-Wswitch` required.
 
 ## R15. Changes this research makes to the spec
 
@@ -535,6 +593,12 @@ spec required without changing behaviour:
   `WarningsAsErrors` once at zero; `-Wold-style-cast` added to the game's warning flags in
   `src/meson.build` in the same commit (GCC and Clang both have it), so it adds no warnings.
 - Tests are not first-party C++ for this story and are not touched.
+- **Third-party and vendored code (T076).** Every third-party dependency is a system include for
+  the game (`include_type: 'system'`), so a cast in a QuickJS, ICU, SDL or vorbis macro is not the
+  game's; none needed an exceptions row. The vendored sources (MiniZip, the stb_image_write and
+  tinyexr implementations, miniz on Windows) keep their upstream text (rule 7) and build as
+  `liboolite_vendored` with meson's warning level but not `oolite_cpp_args`. This is not silencing:
+  no warning the game's own code produces is hidden, and no `-Wno-*` or pragma is used.
 
 **Alternatives:** `cppcoreguidelines-pro-type-cstyle-cast` (flags only casts that act as
 `reinterpret_cast`, `const_cast` or a downcast, so most arithmetic casts would remain); converting

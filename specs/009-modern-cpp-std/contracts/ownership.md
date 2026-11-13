@@ -22,7 +22,8 @@ class Object : public std::enable_shared_from_this<Object> {
   Object() noexcept = default;
   // Copying gives a new, unowned object (as RefCounted's copy did); assignment
   // leaves ownership alone.
-  Object(const Object&) noexcept : std::enable_shared_from_this<Object>() {}
+  Object(const Object& other) noexcept
+      : std::enable_shared_from_this<Object>(other) {}
   Object& operator=(const Object&) noexcept { return *this; }
 
   // Called once, by the deleter, after the last owner has released the object
@@ -174,3 +175,19 @@ manual hold. D1 writes these rules into `test_ref`'s ported cases before any cal
 
 The bridge commit is the one where `test_ref.cpp:514` changes meaning; it waits for Jon's
 sign-off (plan.md *Notes*).
+
+### What D1 added to the bridge (T088)
+
+- `AutoreleaseScope` keeps today's `pendingCount()`, `current()` and `leakedWithoutScope()`, which
+  the tests read.
+- `oo::Ref<T>` gives the standard type back (`shared()`, `takeShared()`, `Ref::fromShared()`) for
+  code moving to it; `Ref.hpp` adds `makeShared` and `share` overloads constrained to
+  `oo::RefCounted` types, which go through the bridge (`Object.hpp`'s versions would give a
+  RefCounted object a second owner).
+- `oo::WeakRef<T>` holds a `std::weak_ptr` to the object and one to a small per-object token: the
+  token keeps a weak reference's identity and hash past the object's death, lets comparison create
+  nothing, and keeps `dropWeakReferences()` working on a live object (the end state drops it).
+- `Object`'s copy constructor calls `enable_shared_from_this`'s copy constructor (which leaves the
+  copy's weak reference empty), not its default one, for `bugprone-copy-constructor-init`.
+- `oo::WeakSet` keeps its API over the bridge's `Ref` and `WeakRef` until the callers move; its
+  members are `std::weak_ptr`s inside them.

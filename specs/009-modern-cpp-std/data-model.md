@@ -45,14 +45,14 @@ names as text (research R7); they are data and are not changed.
 
 | id | before | now (T009) | guard | fatal at |
 |---|---:|---|---|---|
-| alloc | 135 lines | 135 | `cppcoreguidelines-no-malloc` | M1 |
+| alloc | 135 lines | 135 | `cppcoreguidelines-no-malloc` | M1: **fatal** (T025, 2026-11-13) |
 | ownership | 2,007 lines (search lines, `oofnd`'s own definitions included; the spec's "about 1,900" counts uses) | 2007 | definition deleted | M7 |
 | thread | 7 lines (5 calls, 2 definitions) | 7 | definition deleted | M2 |
 | oofnd | 1,505 lines (including `oofnd`'s own definitions) | 1505 | definition deleted | M3 |
 | enum | 179 lines | 179 | `cppcoreguidelines-use-enum-class` | M4 |
 | macro-set | about 10 sets (listed below) | not counted | none (FR-021, research R3); one search per set, run by hand | M4 (converted, not fatal) |
 | tbl | 11 files | 10 | none (FR-021, research R3); file count, run by hand | M4 (converted, not fatal) |
-| naming | 0 converted | 66 lines (clang-tidy, existing `enum class`) | `readability-identifier-naming` | M8 |
+| naming | 0 converted | 66 lines (clang-tidy, existing `enum class`) | `readability-identifier-naming` | M8: **fatal** (T102, 2026-11-13) |
 | cast | the `google-readability-casting` count in M0's `./mk.sh tidy` (regex: about 690 lines) | 1205 | `google-readability-casting`; `-Wold-style-cast` | M5 |
 | cstring | 66 call lines by the search (2026-11-11); 815 `const char*` and `char[N]` lines tracked | 66 | `bugprone-unsafe-functions.CustomFunctions` | M6 |
 
@@ -148,3 +148,31 @@ Known before D2: `ensureEntityReallyRemoved` → `clearBeacon` (`firstBeacon() =
 Player, Station and Dock `willDealloc` paths (`Entity.cpp:96-137`, including the two
 `dropWeakReferences()` calls at `:111,136`). Open: whether any script event is sent from
 `willDispose()`.
+
+The inventory (T084, 2026-11-12) is from clang's call graph over the compile database
+(`debug.DumpCallGraph` for every game translation unit; the scripts are `.agent-tmp/d2/callgraph.py`
+and `reach.py`), with a virtual call widened to every entity class's method of that name. A
+ship's weak references are dropped at `Entity.cpp:114`, after the Player, Station and Dock
+`willDealloc` parts and before `shipWillDealloc` and `ensureEntityReallyRemoved`, so the paths on
+which a weak reference to the dying entity is still live are those `willDealloc` parts (42
+functions reachable) and, for an entity that is not a ship, everything up to the last
+`dropWeakReferences()` (304 functions). A reader is a reachable function that reads a weak
+reference (`get`, `expired`, a comparison, `oo::LiveEntity`), not one that only assigns or resets
+it. `DockEntity::clearIdLocks` is reached (from `DockEntity::willDealloc`) but is called with
+`nullptr`, which short-circuits its read, so it is not a reader. The Player and Station `willDealloc` parts only assign or clear
+weak references (`WeakRef::operator=`, `WeakSet::removeAll`), so they are not readers either.
+The two rows are reachable in the call graph but not, today, at run time: `doRemoveEntity` calls
+`clearBeacon` only for an entity still in `Universe::entities`, which owns its entities
+(`oo::EntityHold`), so an entity that reaches disposal has already left the list and its beacon
+list was fixed at removal. T085 pins exactly that: the list after a beacon is removed, and again
+after its disposal (the universe's dead list keeps a removed entity until the update ends).
+**Fix (T087): `before release`, already the code's.** The head and tail move in
+`doRemoveEntity`, while the entity is still owned, and the disposal path reaches `clearBeacon`'s
+branch only for an entity still in `Universe::entities`, which cannot be disposed; so no code
+changes, and the bridge's expired `std::weak_ptr` cannot be read there.
+
+| function | reached from | reads | test | fix |
+|---|---|---|---|---|
+| `Universe::clearBeacon`, the head | `Entity::willDispose` → `Universe::ensureEntityReallyRemoved` → `doRemoveEntity` → `clearBeacon`, for a beacon that is not a ship (`OOWaypointEntity`, `OOVisualEffectEntity`) disposed while still in the universe | `firstBeacon() == beacon`: the Universe's weak reference to the first beacon, compared with the dying beacon; when it matches, the head moves to the next beacon | `test_EntityDisposalReaders` (40f3f3aad, 82099e613) | `before release` |
+| `Universe::clearBeacon`, the tail | as above | `lastBeacon() == beacon`, the same for the last beacon. With both comparisons false the `else` arm relinks the neighbours but leaves the head or tail on the dead beacon, which then reads null and loses the list | `test_EntityDisposalReaders` (40f3f3aad, 82099e613) | `before release` |
+

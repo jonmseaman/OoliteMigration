@@ -64,9 +64,11 @@ two open lists measured on 2026-11-07: `notes/2026-11-07 Parity Fixes.md` and
    [expansions/](../expansions/README.md) current; it ships with the write-up.
 8. **The write-up.** Finish `notes/Phase 4 Writeup.md` (Jon's motivation paragraph, final numbers).
 
-Out of scope here (Phase 6): the mechanical modernisation sweeps of the idiom review §3 steps 3–8
-(`nullptr`, `enum class`, `constexpr` constants, platform layer, structural splits). Do them after
-upstream has seen the faithful version, so reviewers can still compare it line for line.
+The mechanical modernisation sweeps of the idiom review §3 are done on their own branch at the top
+of the series, `seriesb/027-modern-cpp` ([spec 009](../../specs/009-modern-cpp-std/spec.md)): C
+allocation, ownership, threads, `oofnd`'s replaced types, scoped enums, casts and C strings. The
+branches before it stay the faithful version, so reviewers can still compare them line for line.
+Out of scope here (Phase 6): the platform layer and the structural splits.
 
 ## Status log
 

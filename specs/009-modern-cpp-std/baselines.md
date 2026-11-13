@@ -49,6 +49,8 @@ Median and spread (max − min) of five runs, except where noted. Scripts and ra
 | tsan-smoke@M2 | 5 | 1 | lower |
 | quit@M2-base | 0.0765 | 0.0557 | lower |
 | quit@M2 | 0.0766 | 0.0556 | lower |
+| asan-smoke@M1 | 0 | 0 | lower |
+| leaks@M1 | 287 | 2 | lower |
 
 - **start**: seconds from launching the deployment build until it answers the debug console.
 - **frame**: CPU milliseconds per frame (`ps -o cputime` over frames counted by a JS frame
@@ -68,6 +70,12 @@ Median and spread (max − min) of five runs, except where noted. Scripts and ra
   (`OOStandaloneAtmosphereGenerator.cpp:233`) and `RanrotWithSeed` (`legacy_random.cpp:91`).
 - **leaks**: leaks reported by `leaks --atExit` over a smoke run of the test build; three runs
   gave 288, 286, 288 (18,816 bytes in the median run).
+- **asan-smoke@M1, leaks@M1** (T025, 2026-11-13, `oolite-dev` `b8c564c6d`): one ASan smoke
+  run, 0 reports; three `leaks --atExit` smoke runs gave 287, 287, 289 (18,656 bytes in the median
+  run). The never-deleted singleton holders keep a static pointer to themselves, so `leaks` finds
+  them reachable; before that change the same runs gave 303 (each holder whose only reference was
+  the raw object pointer counted as a leak). Under `leaks` the harness now reports no snapshot
+  (the game ran and quit; the leak summary is read as before).
 
 ## Same-session comparison, 2026-11-12
 
@@ -146,7 +154,21 @@ the same way at the C++20 base, so none is a spec 009 regression; they are repor
 | `tests/unit/oofnd/test_plist_get.cpp` | 149 checks | not investigated |
 | `tests/unit/oofnd/test_string.cpp` | 4 checks | not investigated |
 | `tests/unit/oofnd/test_foundation_types.cpp` | the `long long` assertion | not investigated |
+| `tests/unit/oofnd/test_resourcepaths.cpp` | `windowsHomeIsHomepathWhenItHasADrive`, `windowsHomeGetsHomedrivePrefixedWhenHomepathHasNoDrive` | Windows home-directory rules; not investigated (found in T075) |
 | `tests/unit/core/test_OOJSOolite.cpp` | `toneMappers` (lines 581-591) | HDR output and the HDR tone mapper exist only under `OOLITE_WINDOWS` |
+| `tests/unit/core/test_ShipEntity.cpp` | aborts in `setUpShipFromDictionaryNPC`: `createMainThreadContext` asserts that the main-thread JS context already exists | not investigated |
+| `tests/unit/core/test_ShipEntityAI.cpp` | aborts in `slice1AcceptDistressMessage`, the same assertion | not investigated |
+| `tests/unit/core/test_OOSunEntity.cpp` | segmentation fault, no case named | not investigated |
+| `tests/unit/core/test_ProxyPlayerEntity.cpp` | aborts in `initDefaults` | not investigated |
+| `tests/unit/core/test_StationEntity.cpp` | aborts in `initAndSetUpFromDictionary` | not investigated |
+| `tests/unit/core/test_DockEntity.cpp` | aborts in `initAndSetUp` | not investigated |
+| `tests/unit/core/test_OOProbabilitySet.cpp` | `objectElements` (line 212, the element node's object) | not investigated (found in T072) |
+| `tests/unit/core/test_OOShipRegistry.cpp` | four cases, all at line 214 (`actual == expected`) | not investigated (found in T072) |
+| `tests/unit/core/test_OOOpenGLExtensionManager.cpp` | `readsTheDriver` (line 147, `major >= 3`) | the OpenGL major version this Mac's test context reports is below 3; why not investigated |
+
+`test_OOBasicMaterial` and `test_OOSingleTextureMaterial` do not build on macOS: they define
+`glActiveTextureARB` and `glClientActiveTextureARB` as variables, which macOS's GL headers declare
+as functions.
 
 Tests that include `process.h` or `winsock2.h` (`test_OOMesh`, `test_OOSoundMixer`,
 `test_HeadUpDisplay`, `test_OODebugTCPConsoleClient` and others) do not build on macOS at all.

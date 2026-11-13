@@ -211,6 +211,14 @@ Also recorded in research.md under the R item named.
 - **Performance** is measured with the frame-rate note's method, not a new tier (R10).
 - **This branch is not added to spec 002's series manifest** (R12); Jon decides.
 - **`oo::str::format` conversion is by hand**, never by script (R7). Data formats stay printf.
+- **The owning pixel buffer (T017/T018)** is `OOPixelBuffer`, a
+  `std::shared_ptr<std::vector<std::uint8_t>>`, held by `OOPixMap::buffer` (the pixmap stays a
+  value; its copies share the buffer, as they shared the `malloc` pointer) and by the loader's
+  `_data` and the texture's `_bytes`. A plain `std::vector` member would make every by-value pixmap
+  a deep copy of the pixels. `OOFreePixMap` lets go of the pixmap's share; `OOPixMapOwnedBuffer`
+  hands a pixmap's buffer to a loader or texture (copying a view that owns nothing). Default taken
+  without a code sample from Jon (rule 8); a `std::unique_ptr` owner was the alternative, with
+  moves at every hand-over.
 
 ## Risks
 
