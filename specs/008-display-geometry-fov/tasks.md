@@ -186,7 +186,7 @@ stay round at the edge (G5); menus on a 32:9 window fit the 16:9 area (H2, H3).
   the player (research R14); `oolite.gameSettings.fovValue` (`src/Core/Universe.cpp:4980`) returns
   `scriptFovValue()`. Add scenario C2 for the flat case (27" 16:9 at 600 mm ⇒ `fovValue` about
   53.0, no restart). **Accept:** `tests/run.sh component -k screen`
-- [ ] T017 [US1] Add the "Screen Matching: Off/On" row under the Field Of View row and the
+- [X] T017 [US1] Add the "Screen Matching: Off/On" row under the Field Of View row and the
   sub-screen rows Screen size, Aspect, Shape (Flat only usable until US2), Viewing distance, Units,
   Field of view (Physical), Horizontal and Vertical angle (read-only), Back, per
   `specs/008-display-geometry-fov/contracts/settings.md`, in `src/Core/Entities/PlayerEntity.h`
@@ -412,8 +412,13 @@ any checkpoint.
   from the desktop mode and the answer would depend on the monitor the test runs on. With
   matching on, three geometry rebuilds happen at start (first size, preferences, window size),
   which is the smoke check's limit.
-- T017: Game Options has no free row on Windows (speech rows; one more pushes the first row
-  above the grid), so the screen-matching sub-screen opens from the existing Field Of View row
-  (Enter), which shows the angle in use and "(screen matching)" while matching is on.
+- T017 landed in `oolite-dev` `abc08a442`. Game Options on Windows has one free row (speech
+  rows take the rest), not enough for the "Screen Matching" row plus a gap, so the sub-screen
+  opens from the existing Field Of View row (Enter) instead; that row shows the angle in use and
+  "(screen matching)" while matching is on, and its arrows do nothing then. The sub-screen has a
+  Shape, Curvature, Field of view, Horizontal, Look and a shaders-off notice row from the start,
+  so US2 and US3 add behaviour, not rows. G12 sends arrows with `GameWindow.press_key` (pyautogui
+  arrives as keypad keys) and selects rows with a double click; Shift-steps are read with
+  `isDown`, since `checkKeyPress` wants the exact Shift state.
 - T007's acceptance counts a log line instead of a unit test because `MyOpenGLView` needs a GL
   context; the per-frame `setFov` push (research R14) is what it guards against.
