@@ -672,7 +672,7 @@ edits.**
 - [X] T089 [US2] Exemplar: `src/Core/OOColor.cpp`/`.h` and its holders off the bridge onto
   `std::shared_ptr<OOColor>`/`oo::makeShared`/`oo::share`.
   **Accept:** `cd oolite-dev && ! rg -n 'oo::(Ref|WeakRef)<\s*OOColor\b|makeRef<\s*OOColor\b' src`
-- [ ] T090 [US2] The never-destroyed singletons (`makeRef(...).leakRef()` in
+- [X] T090 [US2] The never-destroyed singletons (`makeRef(...).leakRef()` in
   `src/Core/GameController.cpp`, `OOCacheManager.cpp`, `OOShipRegistry.cpp`, `OOOXZManager.cpp`,
   `OOMusicController.cpp`, `OOGraphicsResetManager.cpp`, `OOALSoundMixer.cpp`, `OOALMusic.cpp`,
   `OOSoundSourcePool.cpp`, `OOTrumble.cpp`, `OOOpenGLExtensionManager.cpp`, `HeadUpDisplay.cpp`,
