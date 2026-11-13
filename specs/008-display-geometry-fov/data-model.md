@@ -65,7 +65,6 @@ current one and compare its generation number to know when to rebuild the warp m
 | `fov-mode` | string `physical`/`custom` | |
 | `fov-custom-horizontal` | real | degrees |
 | `fov-wide-look` | string `panini`/`even`/`classic` | |
-
 | `screen-window-fraction` | real | test aid: the share of the panel the window covers, both axes; when absent it is worked out from the desktop mode |
 
 `fov-value` keeps its meaning and range (30–80°) and is used only when `screen-matching` is false
