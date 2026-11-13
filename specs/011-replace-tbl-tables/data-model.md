@@ -15,7 +15,7 @@ The things the plan moves around, their fields and the rules that hold for them.
 | name per member | today's string, byte for byte |
 | default | today's `kOO<Type>Default`, typed; none for `OOBehaviour` |
 | range | research R3's `[Lo, Hi]`, covering every value |
-| directions | value → name for all ten; name → value only for the six that have it today |
+| directions | in `OOConstToString.cpp`: value → name for nine (not `OOViewID`), name → value for six (not `OOBehaviour`, `OOShipDamageType`, `OOLegalStatusReason`, `OOViewID`); in the script engine: both ways for nine (not `OOBehaviour`). None added |
 | fallback (value → name) | `** BEHAVIOUR UNKNOWN **` for `OOBehaviour`, `UNDEFINED` for the rest |
 
 Rules: every member has exactly one name (`-Wswitch`, and `-Werror=switch` in

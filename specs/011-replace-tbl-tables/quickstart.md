@@ -23,14 +23,15 @@ then work in `.agent-tmp/wt-tbl` (copy `oolite-dev/subprojects/quickjs-0.17.0` i
 ./mk.sh build test
 ```
 
-Then add `tests/unit/core/test_OOConstToStringEnums.cpp` (research R9) and check it passes on the
+Then add `tests/unit/core/test_OOConstToStringEnums.cpp` and
+`tests/unit/core/test_OOConstToJSStringEnums.cpp` (research R9) and check they pass on the
 unconverted tree:
 
 ```bash
 tests/run.sh unit
 ```
 
-It must pass here, before any table changes; it is the before-and-after check for every group.
+They must pass here, before any table changes; they are the before-and-after check for every group.
 
 ## After each group (G1–G4)
 
@@ -86,8 +87,9 @@ tests/run.sh unit -k OOOpenGLStateManager
   passes unchanged. Only if T005 recorded that the log cannot be captured in a unit test: run a
   debug build with `rendering.opengl.state` logging on, once on the base and once on the branch,
   with T005's mismatch, and compare the lines by hand.
-- **SC-004 trial:** add a field to `OOOpenGLState` with no item: the build fails at the field-count
-  `static_assert`; revert.
+- **SC-004 trials:** add a field to `OOOpenGLState` with no item: the build fails at the
+  field-count `static_assert`; revert. Drop the setter argument from `SHADE_MODEL`'s builder call:
+  the build fails at that call; revert.
 
 ## At the end
 

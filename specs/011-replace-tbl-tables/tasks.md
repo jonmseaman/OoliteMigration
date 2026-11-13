@@ -13,7 +13,7 @@ description: "Tasks for replacing the .tbl tables (spec 011)"
 [contracts/gl-state-items.md](contracts/gl-state-items.md), [quickstart.md](quickstart.md)
 
 **Tests**: Included. CLAUDE.md requires every task to have a command that exits nonzero before it
-and zero after. Two new tests (T004, T005) are written and passing on the base **before** any
+and zero after. Three new tests (T004, T005) are written and passing on the base **before** any
 conversion; they are the before-and-after checks for US1 and US3. Each task ends with its
 **Accept:** command.
 
@@ -22,6 +22,20 @@ conversion; they are the before-and-after checks for US1 and US3. Each task ends
 commit in the planning repo. In the commands below, `$W` is `.agent-tmp/wt-tbl` relative to the
 planning repo's root, and `UNIT` is
 `meson test -C build/meson_test --print-errorlogs`, run from `$W`.
+
+`WARN` (FR-013) builds the tree from scratch in its own directory with one compiler and prints its
+warnings with line and column numbers stripped, one per line, sorted. `./mk.sh` cannot do this:
+it always uses `build/meson_test` and would reconfigure the Clang directory for GCC. Define it
+once per shell, in `$W`:
+
+```bash
+WARN() { rm -rf build/warn-$1 && meson setup build/warn-$1 -Ddebug=false -Dstrip_bin=true -Db_lto=true --native-file $1.ini >/dev/null && meson compile -C build/warn-$1 >build/warn-$1.log 2>&1 && touch build/warn-$1/ok && { grep -E ': warning:' build/warn-$1.log | sed -E 's/:[0-9]+:[0-9]+: warning:/: warning:/' | sort -u; true; }; }
+```
+
+The options are the ones `./mk.sh build test` passes. A warning is new if
+`comm -13 ../tbl-warn-base-$1.txt <(WARN $1)` prints it; that command must print nothing, and
+`build/warn-$1/ok` must exist afterwards (it is written only when the build succeeded, since a
+failed build prints no warnings either).
 
 **Commits**: one commit per task in `$W`, message starting with the task id (`T007: …`). Format
 changed `src/` files with clang-format 22 only; never `tests/`. Push the branch after each phase
@@ -44,8 +58,11 @@ with `git push -u origin feature/replace-tbl-tables`.
   `oolite-dev/subprojects/quickjs-0.17.0` to `.agent-tmp/wt-tbl/subprojects/`.
   **Accept:** `test "$(git -C oolite-dev config git-town-branch.feature/replace-tbl-tables.parent)" = seriesb/026-migration-completion && git -C .agent-tmp/wt-tbl rev-parse --abbrev-ref HEAD | grep -qx feature/replace-tbl-tables`
 - [ ] T002 Build the base in `$W` and run the unit suites; record any test that fails on the
-  untouched base in plan.md *Notes* (those are not this feature's to fix).
-  **Accept:** `cd $W && ./mk.sh build test && tests/run.sh unit`
+  untouched base in plan.md *Notes* (those are not this feature's to fix). Record the base's
+  warnings for FR-013 before anything changes: `WARN clang > ../tbl-warn-base-clang.txt` and
+  `WARN gcc > ../tbl-warn-base-gcc.txt` (both in `.agent-tmp/`, not committed); note each file's
+  line count in plan.md *Notes*.
+  **Accept:** `cd $W && ./mk.sh build test && tests/run.sh unit && test -f build/warn-clang/ok && test -f build/warn-gcc/ok && test -f ../tbl-warn-base-clang.txt && test -f ../tbl-warn-base-gcc.txt`
 
 ---
 
@@ -58,16 +75,27 @@ file changes in this phase.
   unchanged, plus `#include <type_traits>` and `oo::MakeEnumTableInRange<E, Lo, Hi>()` appended
   exactly as [contracts/enum-header.md](contracts/enum-header.md) gives it.
   **Accept:** `cd $W && rg -q 'consteval auto MakeEnumTableInRange' src/Core/OOEnumTable.h && ! git diff --no-index <(git show 310cd4480:src/Core/OOEnumTable.h) src/Core/OOEnumTable.h | grep -q '^-[^-]'`
-- [ ] T004 [P] Add `tests/unit/core/test_OOConstToStringEnums.cpp` and its entry in
-  `tests/unit/core/meson.build` (same sources as `test_OOConstToString`, line 99, with its own copy
-  of that test's stubs; `test_OOConstToString.cpp` is not touched). It checks, as literals copied
-  from `specs/009-modern-cpp-std/external-values.md`: all 152 (value, name) pairs of the ten types
-  through the nine `cxx_OOStringFrom…` functions, and back through the six `…FromString` functions
-  for the types that have them; the fallbacks (`cxx_OOStringFromBehaviour` of an unnamed value is
-  `** BEHAVIOUR UNKNOWN **`, the other eight `UNDEFINED`); each `…FromString` default for an unknown
-  name; `BEHAVIOR_ALL_SYSTEMS_REACHABLE` read as `BEHAVIOUR_ALL_SYSTEMS_REACHABLE`. It names only
-  the old member spellings, so it compiles before and after. It must pass on the base.
-  **Accept:** `cd $W && ./mk.sh build test && $UNIT test_OOConstToStringEnums`
+- [ ] T004 [P] Add two tests and their entries in `tests/unit/core/meson.build`. Both check
+  literals copied from `specs/009-modern-cpp-std/external-values.md`, name only the old member
+  spellings (so they compile before and after), and must pass on the base.
+  - `tests/unit/core/test_OOConstToStringEnums.cpp` (same sources as `test_OOConstToString`, line 99,
+    with its own copy of that test's stubs; `test_OOConstToString.cpp` is not touched): the 144
+    (value, name) pairs of the nine types other than `OOViewID` through the nine `cxx_OOStringFrom…`
+    functions (the base has no `cxx_OOStringFromViewID`), and back through the six `…FromString`
+    functions for the types that have them; the fallbacks (`cxx_OOStringFromBehaviour` of an
+    unnamed value is `** BEHAVIOUR UNKNOWN **`, the other eight `UNDEFINED`); each `…FromString`
+    default for an unknown name; `BEHAVIOR_ALL_SYSTEMS_REACHABLE` read as
+    `BEHAVIOUR_ALL_SYSTEMS_REACHABLE`.
+  - `tests/unit/core/test_OOConstToJSStringEnums.cpp` (sources: `Core/Scripting/OOConstToJSString.cpp`
+    plus the fewest of `test_OOJSGlobal`'s, line 119, that link; context set up as that test's
+    `SetUpContext` does, `JS_NewRuntime`, `JS_NewContext`, `OOConstToJSStringInit`): for each of the
+    nine types with a script table (all but `OOBehaviour`), every (value, name) pair through
+    `OOJSValueFrom<Type>` and back through `<Type>FromJSValue`, `OOViewID`'s 8 among them; a value
+    with no row gives `"UNDEFINED"`; an unknown string and a non-string give `kOO<Type>Default`.
+    Then an engine reset as the game does it (FR-007: `OOConstToJSStringDestroy()`,
+    `JS_FreeContext`, a new `JS_NewContext` on the same runtime, `OOConstToJSStringInit`), and the
+    same checks again on the new context.
+  **Accept:** `cd $W && ./mk.sh build test && $UNIT test_OOConstToStringEnums && $UNIT test_OOConstToJSStringEnums`
 - [ ] T005 [P] Add `tests/unit/core/test_OOOpenGLStateVerifier.cpp` and its entry in
   `tests/unit/core/meson.build` (same sources and GL context as `test_OOOpenGLStateManager`; that
   file is not touched). With a debug build (`OO_GL_STATE_VERIFICATION` 1), it captures
@@ -83,10 +111,14 @@ file changes in this phase.
 - [ ] T006 [P] Add `src/Core/Tables/.clang-tidy` (only `readability-identifier-naming`, with
   `ScopedEnumConstantCase: CamelCase`, `ScopedEnumConstantPrefix: k`, in `WarningsAsErrors`) and
   `tools/check-enum-headers.sh` (`#!/usr/bin/env bash`, committed `100755`): for each argument,
-  or every `src/Core/Tables/*.h` if none, run `clang-tidy <h> -- -x c++ -std=c++20 -Isrc/Core -Isrc/Core/Tables`
+  or every `src/Core/Tables/*.h` if none, run
+  `clang-tidy --config-file=src/Core/Tables/.clang-tidy <h> -- -x c++ -std=c++20 -Isrc/Core -Isrc/Core/Tables`
   and `clang++ -x c++ -std=c++20 -fsyntax-only -Wall -Wextra -Werror=switch -Isrc/Core -Isrc/Core/Tables <h>`;
-  exit 1 if any fails. With no headers yet it exits 0. Check it against a scratch header `.agent-tmp/bad-enum.h` (planning repo; `../bad-enum.h`
-  from `$W`) holding `enum class E : int { kGood, BAD_ONE };`.
+  exit 1 if any fails. The `--config-file` is required: without it clang-tidy takes the config from
+  the header's own folder and its parents, so a header outside `src/Core/Tables` (the scratch one
+  below) would get no naming check at all. With no headers yet it exits 0. Check it against a
+  scratch header `.agent-tmp/bad-enum.h` (planning repo; `../bad-enum.h` from `$W`) holding
+  `enum class E : int { kGood, BAD_ONE };`.
   **Accept:** `cd $W && git ls-files -s tools/check-enum-headers.sh | grep -q '^100755' && tools/check-enum-headers.sh && ! tools/check-enum-headers.sh ../bad-enum.h`
 
 **Checkpoint**: helper, check script and both new tests are in, all passing on unconverted code.
@@ -120,7 +152,7 @@ file changes.
   `.tbl` through a temporary array (`ENTRY(label, value)` → `{static_cast<std::int32_t>(label), "label"}`:
   the label's own value, never the column), sorted at compile time with `std::sort` (constexpr in
   C++20) and `static_assert`ed ascending. Make the header's inline wrappers convert explicitly.
-  **Accept:** `cd $W && ! rg -n 'qsort|CompareEntries|TableEntry' src/Core/Scripting/OOConstToJSString.cpp && ./mk.sh build test && tests/run.sh unit && tests/run.sh component`
+  **Accept:** `cd $W && ! rg -n 'qsort|CompareEntries|TableEntry' src/Core/Scripting/OOConstToJSString.cpp && ./mk.sh build test && $UNIT test_OOConstToJSStringEnums && tests/run.sh unit && tests/run.sh component`
 - [ ] T008 [US1] G1: `src/Core/Tables/OOScanClass.h`, `OOEntityStatus.h`, `OOShipDamageType.h`
   (ranges `-1, 999`; `-10, 999`; `0, 6`); bodies out of `src/Core/OOEntityEnums.h`; R2 lines for
   `OOScanClass` (`PlayerEntity.cpp`, `PlayerEntityLegacyScriptEngine.cpp`, `HeadUpDisplay.cpp`) and
@@ -151,10 +183,11 @@ file changes.
   unused `ENTRY`/`DIFF_STRING_ENTRY`/`GALACTIC_HYPERSPACE_ENTRY` macros and the temporary row
   arrays.
   **Accept:** `cd $W && test "$(ls src/Core/Tables/*.tbl | wc -l)" -eq 1 && ! rg -n '#define (ENTRY|DIFF_STRING_ENTRY|GALACTIC_HYPERSPACE_ENTRY)\b' src tests && tools/check-enum-headers.sh && ./mk.sh build test && tests/run.sh unit`
-- [ ] T012 [US1] Build with GCC (`./mk.sh build test --native-file=gcc.ini` into its own build
-  dir) and fix any further R2-style lines it reports, same rule; then run the component and smoke
+- [ ] T012 [US1] Build from scratch with GCC and with Clang through `WARN`. Fix any further
+  R2-style lines GCC rejects, by the same rule, and add each to plan.md *Notes*. Fix any warning
+  that is not in the base's list, and never by silencing it. Then run the component and smoke
   suites.
-  **Accept:** `cd $W && ./mk.sh build test --native-file=gcc.ini && tests/run.sh component && tests/run.sh smoke`
+  **Accept:** `cd $W && test -z "$(comm -13 ../tbl-warn-base-gcc.txt <(WARN gcc))" && test -f build/warn-gcc/ok && test -z "$(comm -13 ../tbl-warn-base-clang.txt <(WARN clang))" && test -f build/warn-clang/ok && tests/run.sh component && tests/run.sh smoke`
 - [ ] T013 [US1] SC-003 and SC-004 by hand, results recorded in plan.md *Notes* (planning repo):
   save on a base build with the long-range chart in economy mode and load it on the branch (same
   mode; `chart_colour_mode` 2 in both saves); add a member with no `case` to `OOViewID.h`, confirm
@@ -179,9 +212,12 @@ compatibility block says it is temporary.
   `src/Core/Entities/ShipEntity.h`, `src/Core/OOConstToString.cpp`,
   `src/Core/Scripting/OOConstToJSString.{cpp,h}`, research R2's files, files T012 added (each line
   listed in plan.md *Notes*), `src/Core/OOOpenGLStateManager.cpp` (after US3), `tools/check-enum-headers.sh`,
-  `tests/unit/core/meson.build`, the two new tests and `tests/unit/core/test_OOJSSound.cpp`.
-  Record the per-change line counts (SC-007, about 400 each at most) in plan.md *Notes*.
-  **Accept:** `cd $W && test "$(rg -l "Compatibility: today's names" src/Core/Tables/*.h | wc -l)" -eq 10 && test "$(git diff --name-only seriesb/026-migration-completion -- tests | grep -v -e 'meson.build$' -e 'test_OOConstToStringEnums.cpp$' -e 'test_OOOpenGLStateVerifier.cpp$' | wc -l)" -eq 1`
+  `tests/unit/core/meson.build`, the three new tests and `tests/unit/core/test_OOJSSound.cpp`.
+  The pattern below is that list; a file T012 added goes into it, with its line in plan.md *Notes*.
+  Anything else, `Resources/`, `src/Core/MiniZip` and `src/SDL/EXRSnapshotSupport` included
+  (FR-014), fails the check. Record the per-change line counts (SC-007, about 400 each at most) in
+  plan.md *Notes*.
+  **Accept:** `cd $W && test "$(rg -l "Compatibility: today's names" src/Core/Tables/*.h | wc -l)" -eq 10 && test -z "$(git diff --name-only seriesb/026-migration-completion | grep -vxE 'src/Core/OOEnumTable\.h|src/Core/Tables/[^/]+|src/Core/(OOTypes|OOEntityEnums)\.h|src/Core/Entities/ShipEntity\.h|src/Core/OOConstToString\.cpp|src/Core/Scripting/OOConstToJSString\.(cpp|h)|src/Core/Entities/(PlayerEntity|PlayerEntityControls|PlayerEntityLegacyScriptEngine|ShipEntity)\.cpp|src/Core/(GuiDisplayGen|HeadUpDisplay|Universe)\.cpp|src/Core/Scripting/OOJSGlobal\.cpp|src/Core/OOOpenGLStateManager\.cpp|tools/check-enum-headers\.sh|tests/unit/core/(meson\.build|test_OOConstToStringEnums\.cpp|test_OOConstToJSStringEnums\.cpp|test_OOOpenGLStateVerifier\.cpp|test_OOJSSound\.cpp)')" && test "$(git diff --name-only seriesb/026-migration-completion -- tests | grep -v -e 'meson.build$' -e 'test_OOConstToStringEnums.cpp$' -e 'test_OOConstToJSStringEnums.cpp$' -e 'test_OOOpenGLStateVerifier.cpp$' | wc -l)" -eq 1`
 
 **Checkpoint**: US1 and US2 done.
 
@@ -204,9 +240,12 @@ Phases 3–4 apart from T005; may run before them. Droppable (spec Notes 2).
   `OOGLFlagToString`, the blend function outside the table and rewritten when the source `BLEND` is
   `kStateFalse`); rewrite the design-notes comment; delete `src/Core/Tables/OOOpenGLStates.tbl`.
   **Accept:** `cd $W && test -z "$(ls src/Core/Tables/*.tbl 2>/dev/null)" && ! rg -n '\.tbl"' src tests && ./mk.sh build test && $UNIT test_OOOpenGLStateManager && $UNIT test_OOOpenGLStateVerifier`
-- [ ] T016 [US3] SC-004 trial: add a field to `OOOpenGLState` with no item, confirm the build fails
-  at the field-count `static_assert`, revert; record the result in plan.md *Notes*.
-  **Accept:** `grep -q 'OpenGL record field without an item — result: [a-z]' specs/011-replace-tbl-tables/plan.md`
+- [ ] T016 [US3] SC-004 trials, two, each reverted afterwards and recorded in plan.md *Notes*:
+  (a) add a field to `OOOpenGLState` with no item, and confirm the build fails at the field-count
+  `static_assert`; (b) the case SC-004 and US3 acceptance 4 name, an item with no way to set it:
+  drop the setter argument from one integer item's builder call (`SHADE_MODEL`), and confirm the
+  build fails at that call.
+  **Accept:** `grep -q 'OpenGL record field without an item — result: [a-z]' specs/011-replace-tbl-tables/plan.md && grep -q 'OpenGL item without a setter — result: [a-z]' specs/011-replace-tbl-tables/plan.md`
 
 **Checkpoint**: all three stories done; SC-001 holds.
 
@@ -220,8 +259,9 @@ Phases 3–4 apart from T005; may run before them. Droppable (spec Notes 2).
   **Accept:** `! grep -q 'Core/Tables/\*.tbl` (11 files)' docs/parity/c-and-tables.md && grep -q 'check-enum-headers' docs/current-state.md`
 - [ ] T018 Run everything once more, then the expansion corpus from the planning repo
   (`bash tools/corpus.sh tier1`) and compare it with the base's result; record both in plan.md
-  *Notes*. Push the branch; remove nothing (Jon merges).
-  **Accept:** `cd $W && tests/run.sh all && git status --porcelain | wc -l | grep -qx 0 && git rev-parse @{u} >/dev/null`
+  *Notes*. Repeat T012's warning check, since US3 landed after it (FR-013). Push the branch;
+  remove nothing (Jon merges).
+  **Accept:** `cd $W && tests/run.sh all && test -z "$(comm -13 ../tbl-warn-base-clang.txt <(WARN clang))" && test -f build/warn-clang/ok && test -z "$(comm -13 ../tbl-warn-base-gcc.txt <(WARN gcc))" && test -f build/warn-gcc/ok && git status --porcelain | wc -l | grep -qx 0 && git rev-parse @{u} >/dev/null`
 - [ ] T019 Remove the worktree with `git -C oolite-dev worktree remove ../.agent-tmp/wt-tbl` (never
   `prune`), after T018's push.
   **Accept:** `! git -C oolite-dev worktree list | grep -q 'wt-tbl' && git -C oolite-dev ls-remote --exit-code origin feature/replace-tbl-tables`

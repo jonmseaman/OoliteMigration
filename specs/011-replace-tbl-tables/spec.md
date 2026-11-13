@@ -32,8 +32,9 @@ branches from, 2026-11-12; "the base" below):
 - **Ten are enums with names.** `OOBehaviour`, `OOCompassMode`, `OOEntityStatus`,
   `OOGalacticHyperspaceBehaviour`, `OOGUIScreenID`, `OOLegalStatusReason`, `OOLongRangeChartMode`,
   `OOScanClass`, `OOShipDamageType`, `OOViewID`: 152 rows in all. Each table is expanded into an enum
-  body, a value-to-name `switch`, a name-to-value `if` chain, and a script-engine name table, and
-  the last of these is a separate list the compiler never checks against the others.
+  body and, depending on the table, a value-to-name `switch` (nine of the ten), a name-to-value `if`
+  chain (six) and a script-engine name table (nine), and the last of these is a separate list the
+  compiler never checks against the others.
 - **The value column is fiction in three of them.** `ENTRY(label, value)` has two expansions in the
   tree, one that honours the value and one that drops it. `OOViewID`, `OOLongRangeChartMode` and
   `OOGUIScreenID` use the second, so their real values are ordinals (`VIEW_CUSTOM` is 4, not the 7
@@ -166,8 +167,10 @@ deliberately mismatched state names the same items as on the base.
 - **Prefix pasting.** `OOGalacticHyperspaceBehaviour`'s names are `BEHAVIOUR_*` while its members are
   `GALACTIC_HYPERSPACE_BEHAVIOUR_*`; both survive, and the American `BEHAVIOR_` spelling is still
   accepted on input.
-- **One-way tables.** Three enums (`OOBehaviour`, `OOShipDamageType`, `OOLegalStatusReason`) have no
-  name-to-value lookup today; none is added.
+- **One-way tables.** Four enums (`OOBehaviour`, `OOShipDamageType`, `OOLegalStatusReason`,
+  `OOViewID`) have no name-to-value conversion function today, and `OOViewID` has no value-to-name
+  function either: its names reach scripts only through the script engine's table, which converts
+  both ways. `OOBehaviour` has no script-engine table. None of these is added.
 - **Different fallbacks.** An unnamed behaviour reads as `** BEHAVIOUR UNKNOWN **`; every other
   unnamed value reads as `UNDEFINED`. Each keeps its own.
 - **Commented-out rows.** `GUI_SCREEN_CONTRACTS` and `kOOLegalStatusReasonThereCanBeOnlyOne` are
@@ -341,3 +344,13 @@ Decisions taken without Jon, each with its default and reason (hard rule 8):
    `seriesb/026-migration-completion`, as CLAUDE.md requires, not on `origin/develop` (219 commits
    behind, still on the `ooscript` façade). "The base" in this spec means that step. Research R2's
    measurement was repeated there with the same result.
+7. **After `/speckit-analyze`, 2026-11-13.** Four corrections:
+   - **Lookup counts.** The base has no `cxx_OOStringFromViewID`, so *One-way tables* now lists four
+     enums. `OOViewID`'s names, and the engine reset (FR-007), are checked by a second new test,
+     `test_OOConstToJSStringEnums`, through the script tables.
+   - **Header check.** The script names its clang-tidy config explicitly, so that its own negative
+     check applies.
+   - **Warnings.** FR-013 is checked against the base's Clang and GCC warning lists, which are
+     recorded before the first change.
+   - **Allowed files and trials.** The allowed-files check (FR-014, Story 2) is a command, and
+     SC-004 has a second OpenGL trial, an item with no setter.

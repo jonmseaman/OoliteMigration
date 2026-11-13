@@ -174,7 +174,11 @@ anything on its own. There is also no `./mk.sh tidy` and no clang-tidy step in C
 **Decision.** Add `src/Core/Tables/.clang-tidy` (only `readability-identifier-naming` with
 `ScopedEnumConstantCase: CamelCase`, `ScopedEnumConstantPrefix: k`, in `WarningsAsErrors`) and
 `tools/check-enum-headers.sh` (mode `100755`), which for each `src/Core/Tables/*.h` runs clang-tidy
-with the header as its own main file (`-x c++ -std=c++20 -Isrc/Core -Isrc/Core/Tables`) and
+with the header as its own main file and that config named explicitly
+(`--config-file=src/Core/Tables/.clang-tidy`, then `-- -x c++ -std=c++20 -Isrc/Core -Isrc/Core/Tables`;
+without `--config-file`, clang-tidy takes the config from the file's own folder and its parents, so
+a header given from anywhere else, such as the script's own negative check, is not held to the
+rule) and
 compiles it alone with `clang++ -fsyntax-only -Wall -Wextra -Werror=switch`, and exits nonzero on
 any finding. The headers include only standard headers and `OOEnumTable.h`, so
 they need no other flags. The root `.clang-tidy` is not changed (enabling the check there would
@@ -235,15 +239,21 @@ exception covers it (a header the test names replaced by its equivalent; spec 00
 - **Numbers**: every one of the 152 `external-values.md` rows for these types becomes a
   `static_assert` in its header (FR-003); `chart_colour_mode` in particular is pinned 0…4.
 - **Names**: each name in the switch is a literal; a new unit test,
-  `tests/unit/core/test_OOConstToStringEnums.cpp`, checks all 152 (value, name) pairs, written into
-  the test as literals copied from `external-values.md`, through the fifteen
+  `tests/unit/core/test_OOConstToStringEnums.cpp`, checks the 144 (value, name) pairs of the nine
+  types that `OOConstToString.cpp` converts (all but `OOViewID`, which has no conversion function
+  there), written into the test as literals copied from `external-values.md`, through the fifteen
   `cxx_OOStringFrom…`/`…FromString` functions (both directions where both exist), and every
-  fallback (`UNDEFINED`, `** BEHAVIOUR UNKNOWN **`, the `BEHAVIOR_` spelling, each default). It uses
-  only functions that exist before and after the change, so it is written and passing on the base
-  **before** the first conversion and is the before-and-after check. It links the same sources as
-  `test_OOConstToString` (`tests/unit/core/meson.build:99`) with its own copy of that test's stubs;
-  the existing test file is not touched (adding a test is allowed; the `meson.build` entry is a
-  build file, not a test).
+  fallback (`UNDEFINED`, `** BEHAVIOUR UNKNOWN **`, the `BEHAVIOR_` spelling, each default). It links
+  the same sources as `test_OOConstToString` (`tests/unit/core/meson.build:99`) with its own copy of
+  that test's stubs; the existing test file is not touched (adding a test is allowed; the
+  `meson.build` entry is a build file, not a test). A second new test,
+  `tests/unit/core/test_OOConstToJSStringEnums.cpp`, checks the nine script-engine tables (all but
+  `OOBehaviour`, which has none) both ways through `OOJSValueFrom<Type>` / `<Type>FromJSValue`, so
+  `OOViewID`'s names are covered too, with the `"UNDEFINED"` and default fallbacks, before and after
+  an engine reset (`OOConstToJSStringDestroy`, a new context on the same runtime,
+  `OOConstToJSStringInit`; FR-007). Both use only functions that exist before and after the change,
+  so they are written and passing on the base **before** the first conversion and are the
+  before-and-after check.
 - **Saved games**: a unit test cannot load a save without the game. The save path reads and writes
   `chart_colour_mode` as an `int`, so the pinned ordinals are what keeps old saves loading; the
   quickstart adds a by-hand check (save on the base with the chart in economy mode, load on the
@@ -251,7 +261,7 @@ exception covers it (a header the test names replaced by its equivalent; spec 00
 - **Scripts**: the component suite exercises `status`, `scanClass`, `guiScreen`,
   `viewDirection` and `compassMode` through the debug console; it must pass unchanged. There is no
   script-API snapshot tool on the base (spec 009 T013 restores one on its branch); SC-003's
-  snapshot clause is met by the component suite plus `test_EnumTables` until then.
+  snapshot clause is met by the component suite plus the two tests above until then.
 
 ## R10. Where the work happens
 

@@ -29,8 +29,9 @@ function appended (research R1, R3). The script layer on the base is QuickJS-ng'
 **Storage**: saved games store `chart_colour_mode` (`OOLongRangeChartMode`, ordinals 0–4) and
 behaviour numbers; plists and scripts use the names. All unchanged (pinned).
 
-**Testing**: `tests/run.sh unit` (meson suites, Windows), `component`, `smoke`, `all`; a new
-`test_OOConstToStringEnums` written before the first conversion (research R9);
+**Testing**: `tests/run.sh unit` (meson suites, Windows), `component`, `smoke`, `all`; new
+`test_OOConstToStringEnums` and `test_OOConstToJSStringEnums` (the script tables, an engine reset
+included) written before the first conversion (research R9);
 `test_OOOpenGLStateManager` unchanged; a new `test_OOOpenGLStateVerifier` that captures the debug verifier's log lines, also written before the change; `tools/check-enum-headers.sh` (new, research R6);
 `-Wall` clean on Clang and GCC; the expansion corpus at the end.
 
@@ -46,7 +47,7 @@ write loops over 30 items per state change.
 code untouched; one test edit.
 
 **Scale/Scope**: 11 files (238 lines) deleted; 10 headers and 1 helper added; 7 including files
-reworked; 61 call-site lines in 8 files; 1 test line block; 2 new tests; 1 check script; 2 docs.
+reworked; 61 call-site lines in 8 files; 1 test line block; 3 new tests; 1 check script; 2 docs.
 
 ## Constitution Check
 
@@ -109,6 +110,8 @@ src/Core/Entities/{PlayerEntity,PlayerEntityControls,PlayerEntityLegacyScriptEng
 src/Core/{GuiDisplayGen,HeadUpDisplay,Universe}.cpp, src/Core/Scripting/OOJSGlobal.cpp   # R2 lines
 tools/check-enum-headers.sh               # NEW, 100755
 tests/unit/core/test_OOConstToStringEnums.cpp   # NEW (+ its tests/unit/core/meson.build entry)
+tests/unit/core/test_OOConstToJSStringEnums.cpp # NEW (+ its entry)
+tests/unit/core/test_OOOpenGLStateVerifier.cpp  # NEW (+ its entry)
 tests/unit/core/test_OOJSSound.cpp        # the one edit
 ```
 
@@ -121,7 +124,8 @@ except the new test's entry. `OOEnumTable.h` goes in `src/Core/` where spec 009 
 ## Order of work
 
 1. **G0 — groundwork.** `OOEnumTable.h`; `src/Core/Tables/.clang-tidy`; `tools/check-enum-headers.sh`
-   (passes vacuously: no headers yet); `test_OOConstToStringEnums` and `test_OOOpenGLStateVerifier` passing on the unconverted tree.
+   (passes vacuously: no headers yet); `test_OOConstToStringEnums`, `test_OOConstToJSStringEnums`
+   and `test_OOOpenGLStateVerifier` passing on the unconverted tree; the base's warning lists.
 2. **G1–G4** (data-model.md), each one change: write the headers, rework the consumers (the first
    group moves `OOConstToJSString.*` to the new shape), fix that group's R2 lines, delete the `.tbl`
    files; then the quickstart checks. G1 carries the test edit and creates `test-ledger.md`. Order
@@ -158,4 +162,4 @@ Defaults taken without Jon (hard rule 8). Each is also in research.md with its r
 7. **Worktree (R10):** `oolite-dev`'s own checkout is in use by another session.
 
 **SC-004 trials** (filled in by the implementation): enum member without a case — result: _;
-OpenGL record field without an item — result: _.
+OpenGL record field without an item — result: _; OpenGL item without a setter — result: _.
