@@ -2,137 +2,45 @@
 
 <!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-Step 9 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/011-leaf-conversions`.
+Step 9/28. Replays `series/011-leaf-conversions`.
 
 ## What this changes
 
-This step has two parts. The scripting layer is #768's QuickJS-ng binding before and after it.
-
-The first part finishes removing Foundation:
-- The game compiles with `oofnd`'s Objective-C flags, so every `@"..."` literal is an
-  `OOConstantString`, and `main()` installs the runtime floor (`OOObjCInstallFloor()`) before the
-  first message to a literal.
-- `gnustep-base` comes off the Windows link line and out of `ShellScripts/Windows/install_deps.sh`,
-  leaving libobjc2. `post_build.sh` and `run_oolite.sh` treat `GNUstep.conf` as optional.
-- `OOFoundation.h` includes `<string.h>`, which `Foundation.h` used to bring into every file. On
-  Windows `<windows.h>` still provides it; elsewhere `memcpy` and `strcmp` would be undeclared.
-- The last boundary headers (`OOFoundationBridge.h`, `OOStringBridge.h`, `OOPListView.h`,
-  `OOObjectGNUstepBridge`) and `OOCollectionExtractors` are deleted, and so is `OOMusic.mm`, a
-  stub that was not in the build.
-- #768's `poc/` harness moves off GNUstep: it builds against `oofnd`, libobjc2 and the game's
-  QuickJS-ng, so it now builds and runs on Windows (the "Linux only" error is gone). A new harness
-  script, `poc/tests/primitive_property.js`, pins #768's QuickJS-ng patch that lets strict code
-  set a property on a primitive without a TypeError.
-
-The second part starts converting classes from Objective-C to C++20. Files with no class get a plain
-suffix: `OOVoxel` becomes `.c`, and `OOQuaternion`, `OOIsNumberLiteral` and `OOMouseInteractionMode`
-become `.cpp`. The first classes become C++ classes that derive from `oo::RefCounted`, held by
-`oo::Ref<T>`:
-- maths: `OOVector`, `Octree`, `CollisionRegion`;
-- leaf utilities: `OOColor`, `OOCache`, `OORoleSet`, `OOProbabilitySet`, `OOPriorityQueue`,
-  `OOCommodities`, `OOEquipmentType`, `OOCharacter`, `OOWeakReference`, `OOWeakSet` and others;
-- the OXP verifier's stage hierarchy;
-- the roots of the Materials hierarchy (`OODrawable`, `OOMaterial`), with #756's
-  `OO_DEBUG_MONITOR_ENABLED` guards on their debug members;
-- `OOSDLJoystickManager`, on #742's layout: the SDL decoders stay in the SDL subclass and take
-  SDL's event types. They stay Objective-C for now, in a category of its bridge, because they use
-  `OOJoystickManager`'s state;
-- the first files of #768's binding: `OOJSVector`, `OOJSQuaternion`, `OOJSFunction`, `OOJSTimer`.
-  As in #768, `OOJSVector` and `OOJSQuaternion` keep no conversion statistics. `cxx::OOJSTimer`
-  keeps #768's `willNotFireAgain()`: the finalizer does not warn about a one-shot timer freed by
-  its own callback. #768's
-  native-wrapper macros (`OOJS_NATIVE_ENTER`/`EXIT` and the profiling pairs) become a C++ `try`, a
-  `catch (...)` and scope guards; the handler is in the new `OOJSEngineNativeWrappers.mm`.
-
-While unconverted code still messages a class, the C++ class is `cxx::X`. A thin Objective-C bridge
-with the old name (`X+ObjCBridge.h/.mm`, 34 pairs here) forwards each method to it.
-`oo::ObjCPeers` (`oofnd/objc/OOObjCPeer.h`, tested by the new `tests/unit/oofnd/test_objc_peer.mm`)
-keeps one bridge object per C++ object, so identity and equality still hold.
-
-`OOProfilingStopwatch`'s Windows `timeGetTime` path now takes a signed 32-bit difference.
-
-A new meson suite, `core` (`tests/unit/core`), has 57 test files: one per converted class, plus
-`test_OOOpenGLOnly` (#748's `OOOpenGLOnly.h`) and `test_OoliteEquipmentControlScript`, which runs
-`oolite-equipment-control.js` on QuickJS-ng's own API and pins #369's fix. Like `oofnd`, the suite
-is built only when `deployment_release` is off, and only on Windows.
+- Removes gnustep-base: `@"..."` literals are `OOConstantString`; Windows links only libobjc2;
+  the last bridge headers are deleted. `poc/` now builds on Windows (new
+  `poc/tests/primitive_property.js`).
+- Converts the maths, ~20 leaf utilities, the OXP verifier stages, the Materials roots and four
+  JS binding files to C++ (`oo::Ref`), each behind an `X+ObjCBridge` forwarder (34 pairs);
+  `oo::ObjCPeers` keeps one bridge per object.
+- New meson suite `core`: 57 tests, one per converted class, plus `test_OoliteEquipmentControlScript`
+  (pins #369's fix). Built on Windows, non-release only.
 
 ## Why
 
-The first part ends the Foundation removal that steps 6–8 prepared. Once gnustep-base is gone, the
-only Objective-C left is the language and the libobjc2 runtime. The harness moves with it because
-it linked gnustep-base too.
-
-The class conversion starts with the leaves because nothing they depend on is still Objective-C,
-so each can convert on its own behind a bridge. `OOColor` and the verifier stages set the house
-style (names, `Ref` ownership, the bridge and its test) that steps 10–13 follow. The maths files and
-`OXPVerifier` have few dependants and their own test data, which makes them the safest place to
-settle that style.
-
-The stopwatch fix is needed by the new `test_OOProfilingStopwatch`: on #768's code, subtracting two
-unsigned `DWORD`s turned a reversed interval into about 49.7 days.
+Finishes the Foundation removal (steps 6-8) and sets the conversion style steps 10-13 follow.
 
 ## Behaviour changes
 
-- A C++ exception thrown inside a JavaScript native is reported to the script as
-  `Native exception: <what()>`. Before, the Objective-C `@catch (id)` could not catch it and the
-  process terminated. Objective-C exceptions are reported as before. Pinned by
-  `tests/unit/core/test_OOJSVector.mm` (`nativeCxxExceptions`), with matching checks in
-  `test_OOJSQuaternion.mm` and `test_OOJSClock.mm`.
-- On Windows, `OOHighResTimeDeltaInSeconds(end, start)` with `end` before `start` is negative. It
-  used to wrap to about 49.7 days. Pinned by `tests/unit/core/test_OOProfilingStopwatch.mm`
-  (`deltaInSeconds`).
-- In description-string expansion, a replacement of `"\x7F"` eats the character after it. At the
-  very end of a string there is no such character. Upstream's expander then failed an assertion and
-  raised out of `OOExpandDescriptionString`; now it eats nothing. Pinned by the `\x7F` regression
-  block in `tests/unit/expander/test_string_expander.mm`, which meson does not build, so
-  `tests/run.sh` does not run it.
-- The warning for a string-expansion override that is neither a string nor a number, and the error
-  for such a value in `descriptions.plist`, print the value itself, where they printed
-  `<ClassName 0x...>` of its Foundation object. This is log text only; not pinned by a test.
+- A C++ exception in a JS native is a script error (was a process abort). Pinned by
+  `test_OOJSVector.mm`, `test_OOJSQuaternion.mm`, `test_OOJSClock.mm`.
+- Windows: a reversed `OOHighResTimeDeltaInSeconds` is negative (was ~49.7 days). Pinned by
+  `test_OOProfilingStopwatch.mm`.
+- `"\x7F"` at the end of a string no longer asserts. Pinned by `test_string_expander.mm` (not
+  built by meson).
+- A bad expansion-override warning prints the value, not `<Class 0x…>`. Not pinned.
 
 ## How to review
 
-For the first part:
+Start with `OOColor.*`, `OOColor+ObjCBridge.*` and `test_OOColor.mm`. Rule: bodies verbatim
+except message syntax (`[x foo:a]` -> `x->foo(a)`, alloc/init -> `oo::makeRef`, `BOOL` -> `bool`,
+nil messages -> null-guarded). Spot-check a class against its `@implementation` on
+`seriesb/008-selector-families`.
 
-```
-git diff seriesb/008-selector-families seriesb/009-leaf-conversions -- src/meson.build \
-    src/meson/windows/meson.build src/SDL/main.mm meson.build src/Core/Scripting/poc
-```
+Test edits:
+- `test_objc_description.mm`: drops cases for deleted code.
+- `tests/gui` g2/g6/g8/g9: guards also accept the C++ spelling.
+- expander/sysdesc: local copies of deleted conversions; plist digests re-captured (#747).
 
-The rest of it is deletions; `git grep` for the deleted headers' names on
-`seriesb/009-leaf-conversions` finds only comments. `tests/unit/oofnd/test_objc_floor.mm` (from
-step 4) covers the floor that `main()` now installs.
+## Verified
 
-For the conversions, start with the house-style exemplar: `src/Core/OOColor.h` / `OOColor.mm` (the
-C++ class), `OOColor+ObjCBridge.h/.mm` (the bridge) and `tests/unit/core/test_OOColor.mm`. The rule
-is "bodies verbatim but for message syntax":
-- `[x foo:a bar:b]` becomes `x->foo(a, b)`;
-- `[[X alloc] init]` becomes `oo::makeRef<X>()`;
-- `BOOL`/`YES`/`NO` become `bool`/`true`/`false`;
-- a message that may go to nil becomes a null-guarded call that returns what nil did.
-
-To spot-check another class, compare its old `@implementation` on `seriesb/008-selector-families`
-with its C++ member functions here, method by method. Check that its bridge is a one-line forwarder
-per method of the old `@interface`, then read its `tests/unit/core/test_X.mm`. Other exemplars:
-- `src/Core/OXPVerifier/OOOXPVerifierStage.*`: a class hierarchy with Objective-C subclasses;
-- `src/Core/Materials/OOMaterial.*` and `src/Core/OODrawable.*`: a module of hierarchies;
-- `src/Core/Scripting/OOJSVector.*`: a binding file, keeping #768's natives, class registry and
-  `JSValue` ownership;
-- `src/Core/Scripting/OOJavaScriptEngine.h` and `OOJSEngineNativeWrappers.mm`: the wrapper macros.
-
-The binding tests make a QuickJS-ng runtime and context and use #768's API directly
-(`JS_NewRuntime`, `JS_Eval`, `JS_FreeValue`).
-
-Edits to existing tests:
-- `tests/unit/oofnd/test_objc_description.mm` loses its cases for the forwarding to legacy id-typed
-  `-description` overrides and for the foreign-root fallback, together with the code they tested.
-- `tests/gui` (`test_g2`, `test_g6`, `test_g8`, `test_g9`): source-text guards accept either the
-  Objective-C spelling of a line or the C++ spelling it now has. The value each guard checks is
-  unchanged.
-- `tests/unit/expander` and `tests/unit/sysdesc` (not built by meson) get local copies of the
-  deleted bridge conversions. `test_string_expander.mm`'s two `descriptions.plist` digests are
-  re-captured after #747 changed that file.
-
-## Verified **(gen)**
-
-Not verified at this branch's tip (`cd191bf28f`) yet; the last record (2026-11-02) is for an earlier build.
+Not verified at `cd191bf28f`.

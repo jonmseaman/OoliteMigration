@@ -39,8 +39,8 @@ class DescriptionStateTest(unittest.TestCase):
         from tools.series import series
         m = copy.deepcopy(test_replay.DescribeReplayTest.M)
         text = series.render_description_replay(m, m["steps"][0], {}, tip="d" * 40)
-        verified = text.split("## Verified **(gen)**")[1]
-        self.assertIn("Not verified at this branch's tip", verified)
+        verified = text.split("## Verified")[1]
+        self.assertIn(f"Not verified at `{'d' * 10}`", verified)
         self.assertNotIn("| build_clang | pass |", verified)
         current = series.render_description_replay(m, m["steps"][0], {}, tip="c" * 40)
         self.assertIn("| build_clang | pass |", current)
@@ -62,7 +62,7 @@ class DescriptionStateTest(unittest.TestCase):
         self.assertNotIn("specs/x", text)
         self.assertNotIn("Switch:", text)
         none = series.render_description_replay(m, m["steps"][1], {}, tests_changed=[])
-        self.assertIn("No existing test file changes", none)
+        self.assertNotIn("## Test changes", none)
 
 
 if __name__ == "__main__":

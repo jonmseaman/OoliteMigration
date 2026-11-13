@@ -2,126 +2,72 @@
 
 <!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-Step 7 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/009-foundation-wave-2`.
+Step 7/28. Replays `series/009-foundation-wave-2`.
 
 ## What this changes
 
-This step finishes the per-file Foundation sweep over the large files (`PlayerEntity`, `ShipEntity`,
-`Universe`, `GameController`, the OXZ manager) and #768's binding files, and fills the gaps it found.
-It adds 15 more bridges for the large classes (`Entity+FoundationBridge` is a header only) and
-deletes 5 whose callers have all moved, leaving 35. The Foundation categories
-(`NSStringOOExtensions`, `NSDictionaryOOExtensions`, `NSMutableDictionaryOOExtensions`,
-`NSScannerOOExtensions`, `NSNumberOOExtensions`, `NSDataOOExtensions`), `OOExcludeObjectEnumerator`
-and `OldSchoolPropertyListWriting` are deleted, their callers moved to `oo::str` and the
-`oo::PList` writers. `oofnd` gains the remaining Foundation replacements, each written against
-gnustep-base's observed behaviour:
-- `oo::str::Scanner` and `CharacterSet` (`NSScanner`, `NSCharacterSet`);
-- `oo::log::FileWriter` (the Latest.log writer behind `OOLogOutputHandler`);
-- `oo::http::Download` (the OXZ manager's `NSURLConnection`, over WinHTTP on Windows);
-- `OOAssert` and friends (`NSAssert`, `NSParameterAssert` and their C forms);
-- `oo::str::localizedCompare` (`-localizedCompare:`, over ICU), for the OXZ list and the saved
-  commanders.
-
-Two more Foundation services get game-side replacements:
-- `OOScheduleDeferredCall()` (`GameController.h`) replaces `-performSelector:withObject:afterDelay:`
-  for most callers, including #768's `quitGame()`;
-- the JavaScript engine posts its reset notifications only on `oo::NotificationCenter`; it posted
-  them on `NSNotificationCenter` as well, and the last observer there (`OOJSFunction`) moves over.
-
-The swept files' remaining `oo_*ForKey:` calls move to `PListView`, booleans as
-`get<bool>`/`at<bool>`. In `OOJavaScriptEngine.mm`'s now `std::string`-based error reporting,
-#768's two fixes are kept: a stack frame's location starts at its first `(` (`frame.find('(')`),
-so a path such as `Program Files (x86)` parses, and only warnings are dropped when their log
-class is off; errors and exceptions always reach the debug monitor.
-
-A transitional `NSUserDefaults+OODefaultsBridge` points the game's standard `NSUserDefaults` at
-`oo::Defaults`, so both APIs share one preferences store while callers move over.
-
-Build changes:
-- QuickJS-ng is built at `-O2` with `NDEBUG`: the `default_options` of #768's
-  `dependency('quickjs-ng')` in `src/meson/meson.build` now set `buildtype=debugoptimized`,
-  `optimization=2` and `b_ndebug=true`. Before, its own `buildtype=release` gave `-O3`.
-- On Windows, the `threads` dependency is overridden with the same `-pthread` compile flag and no
-  link flag (`src/meson/meson.build`). The MinGW Clang driver ignores `-pthread` when linking and
-  warned about it on every link that pulls in QuickJS-ng. From this step the Clang build prints only
-  QuickJS-ng's 4 `-Wpedantic` warnings, down from 7.
-- The game links `winhttp`, and `oofnd` links ICU (`icu-uc`, `icu-i18n`; gnustep-base already
-  links the same ICU). `ShellScripts/Windows/install_deps.sh` installs it.
-- A new meson option `deployment_unit_tests` builds the oofnd suite under the deployment flavour's
-  macros, and a new `game-unit` suite (`tests/unit/game`, Windows, not in deployment) holds the
-  preferences bridge's test.
+- Finishes the sweep over the large files (`PlayerEntity`, `ShipEntity`, `Universe`,
+  `GameController`, the OXZ manager) and #768's binding files; remaining `oo_*ForKey:` →
+  `PListView` (`get<bool>`/`at<bool>`). 15 bridges added (`Entity+FoundationBridge` header only),
+  5 deleted, 35 left.
+- Deleted: the six `NS*OOExtensions` categories (String, Dictionary, MutableDictionary, Scanner,
+  Number, Data), `OOExcludeObjectEnumerator`, `OldSchoolPropertyListWriting`; callers use `oo::str`
+  and the `oo::PList` writers.
+- New `oofnd`: `oo::str::Scanner`/`CharacterSet`, `oo::log::FileWriter`, `oo::http::Download`
+  (WinHTTP), `OOAssert`, `oo::str::localizedCompare` (ICU). Game side: `OOScheduleDeferredCall()`
+  replaces most `-performSelector:withObject:afterDelay:` (incl. #768's `quitGame()`);
+  `NSUserDefaults+OODefaultsBridge` shares one store with `oo::Defaults`; JS reset notifications
+  post only on `oo::NotificationCenter`. #768's two error-report fixes are kept (frame location
+  from the first `(`; only warnings dropped when their log class is off).
+- Build: QuickJS-ng `optimization=2`, `b_ndebug=true`; Windows `threads` drops the link-time
+  `-pthread` (Clang warnings 7 → 4); links `winhttp` and ICU; option `deployment_unit_tests`; new
+  suite `game-unit` (`tests/unit/game`, Windows, not deployment).
 
 ## Why
 
-These are the files and Foundation families that step 6's recipe couldn't handle with a type swap:
-they needed new `oofnd` components first (scanning, the log file, HTTP, assertions, deferred calls)
-or were too big to convert in one change. Step 8 can only delete the bridges and retire the shared
-selectors after every class has its C++ API, and that's done here.
+Step 8 deletes the bridges, which needs every class's C++ API and these new `oofnd` components.
 
 ## Behaviour changes
 
-- OXZ manager downloads go through `oo::http::Download`. On Windows it uses WinHTTP and delivers the
-  same callbacks `NSURLConnection` did. A few malformed-URL cases now fail at once where
-  `NSURLConnection` never called back, and a relative redirect is followed. Pinned by
-  `tests/unit/oofnd/test_http.cpp`, which replays the captured exchanges against a loopback server.
-  On other platforms every http(s) download fails with an error until a non-Windows backend exists
-  (`file:` URLs work). That path is not built or verified here.
-- A failed assertion logs one line in message class `gnustep` without `NSLog`'s date and process
-  prefix, then raises `OOInternalInconsistencyException` with Foundation's reason text. Pinned by
-  `tests/unit/oofnd/test_objc_assert.mm`. `OOAssert` stays live in every flavour, deployment
-  (`NDEBUG`) included, as Foundation's assertions were: upstream's `NS_BLOCK_ASSERTIONS` came too
-  late to block them, and `PlayerEntity`'s `-deferredInit` relies on the side effect inside its
-  assertion. Pinned by `tests/unit/oofnd/test_objc_assert_ndebug.mm`, which compiles the header with
-  `NDEBUG` and fails against a header that compiles assertions out.
-- The system-description localisation tools (`--export-sysdesc`, `--compile-sysdesc`, in
-  `OOConvertSystemDescriptions.mm`) now visit dictionaries in key order, where Foundation used hash
-  order. That decides the slot an unknown key gets, the order of the "Assigning key" log lines and
-  the key order of the dictionaries they write. Not pinned by a test that runs:
-  `tests/unit/sysdesc/test_sysdesc_tools.mm` records the new output (its digests come from the
-  ported tool, not from the original), but it is not registered in meson, and the script its header
-  names is not in the tree, so nothing builds or runs it.
-- QuickJS-ng's code is compiled at `-O2` instead of `-O3`, with `NDEBUG` as before. Not pinned by a
-  test.
-
-`OOScheduleDeferredCall()` is meant to fire calls as the run loop did (in the order scheduled, at
-most two per frame, main thread only); no test pins that.
+- OXZ downloads use `oo::http::Download` with `NSURLConnection`'s callbacks; some malformed URLs
+  fail at once (never called back) and relative redirects are followed. Pinned by
+  `tests/unit/oofnd/test_http.cpp` (loopback replay).
+- Non-Windows: every http(s) download fails (`file:` works) until a backend exists. Not built or
+  verified here.
+- A failed assertion logs one `gnustep`-class line without `NSLog`'s date/process prefix, then
+  raises `OOInternalInconsistencyException` with Foundation's reason. Pinned by `test_objc_assert.mm`.
+- `OOAssert` stays live under `NDEBUG`, as Foundation's did (`-deferredInit` relies on an
+  assertion's side effect). Pinned by `test_objc_assert_ndebug.mm`.
+- `--export-sysdesc`/`--compile-sysdesc` visit dictionaries in key order (was hash order): unknown
+  keys' slots, "Assigning key" log order, output key order. Not pinned:
+  `tests/unit/sysdesc/test_sysdesc_tools.mm` records the new output but is not in meson and its
+  build script is not in the tree.
+- QuickJS-ng compiles at `-O2` (was `-O3`), `NDEBUG` as before. Not pinned.
+- `OOScheduleDeferredCall()` fires in scheduled order, at most two per frame, main thread only
+  (was the run loop). Not pinned.
 
 ## How to review
 
-Start with the new `oofnd` headers, because the callers only make sense against them. Each header
-opens with a table mapping Foundation to its replacement and lists what was captured from
-gnustep-base:
-- `src/oofnd/Scanner.hpp`, pinned by `tests/unit/oofnd/test_scanner.cpp`;
-- `src/oofnd/LogFile.hpp`, pinned by `test_logfile.cpp`;
-- `src/oofnd/Http.hpp`, pinned by `test_http.cpp`;
-- `src/oofnd/objc/OOAssert.h`, pinned by `test_objc_assert.mm` and `test_objc_assert_ndebug.mm`;
-- `oo::str::localizedCompare` in `src/oofnd/String.hpp`, pinned by `test_localized_compare.cpp`
-  against a table captured from gnustep-base.
+Start with the new headers (`Scanner.hpp`, `LogFile.hpp`, `Http.hpp`, `objc/OOAssert.h`,
+`localizedCompare` in `String.hpp`), each opening with a Foundation → replacement table, next to
+its `tests/unit/oofnd/` test (`test_scanner`, `test_logfile`, `test_http`, `test_objc_assert*`;
+`test_localized_compare` checks against a table captured from gnustep-base). Then `OOScheduleDeferredCall()` in `GameController.mm` and
+`NSUserDefaults+OODefaultsBridge.h` (`tests/unit/game/test_defaults_bridge.mm`), both deleted in
+step 8. `Debug/OOTCPStreamDecoderFormat.hpp` is the console formatter, moved out for
+`test_tcp_stream_format.cpp`.
 
-Then read `OOScheduleDeferredCall()` in `src/Core/GameController.h/.mm`, and
-`src/Core/NSUserDefaults+OODefaultsBridge.h`. The bridge's header comment explains how one store
-serves both APIs, and `tests/unit/game/test_defaults_bridge.mm` tests it. Both are deleted in
-step 8. `src/Core/Debug/OOTCPStreamDecoderFormat.hpp` is the debug console decoder's formatter,
-moved into a header so `test_tcp_stream_format.cpp` can test it.
+Rule: step 6's recipe, caller hunks only conversions; a deleted category's selectors `git grep` to
+nothing outside comments.
 
-The file sweeps follow step 6's recipe. Spot-check them the same way: compare a file with
-`git diff seriesb/006-foundation-wave-1 seriesb/007-foundation-wave-2 -- <file>` and check that the
-caller hunks are conversions at the call. The deleted Foundation categories have no callers left:
-`git grep` for any selector they declared should find nothing outside comments.
-`src/Core/OODataFromOXZFile.mm` is the one function of `NSDataOOExtensions.mm` that survives,
-renamed. The two-line change in `tools/fonttexgen` follows `StringFromEncoding`, which now returns
-a C string.
+    git diff seriesb/006-foundation-wave-1 seriesb/007-foundation-wave-2 -- <file>
 
-Upstream guards are kept where the swept code has them: #756's `OO_DEBUG_MONITOR_ENABLED` (not
-`NDEBUG`) around the debug console client and its wait in `GameController.mm`, and around
+Upstream guards kept: #756's `OO_DEBUG_MONITOR_ENABLED` around the console client and
 `Universe+FoundationBridge`'s `-entityList`; #766's `keymappings_mac.plist` under
-`OOLITE_MAC_COCOA_UI` in `PlayerEntityKeyMapper.mm`. The deployment flavour compiles.
+`OOLITE_MAC_COCOA_UI`. Deployment compiles.
 
-`tests/unit/expander/test_string_expander.mm` is a differential test: its digests were recorded
-from the original Foundation `OOStringExpander.mm`, with stubs for the game classes, and the swept
-engine must reproduce them. Like the sysdesc test it is not registered in meson and its build script
-is not in the tree, so in practice it does not pin the expander either.
+Trap: `tests/unit/expander/test_string_expander.mm` (digests from the original expander) is not in
+meson and has no build script in the tree, so it does not pin the expander.
 
-## Verified **(gen)**
+## Verified
 
-Not verified at this branch's tip (`65c6efa3b5`) yet; the last record (2026-11-02) is for an earlier build.
+Not verified at `65c6efa3b5`.

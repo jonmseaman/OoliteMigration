@@ -2,91 +2,51 @@
 
 <!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-Step 14 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/016-facade-deletions`.
+Step 14/28. Replays `series/016-facade-deletions`.
 
 ## What this changes
 
-The step has two parts.
-
-First, the last Objective-C in the large classes becomes C++: the rest of `PlayerEntity.mm`, the
-player's category files (`PlayerEntityContracts`, `Controls`, `KeyMapper`, `LegacyScriptEngine`,
-`LoadSave`, `ScriptMethods`, `Sound`, `StickMapper`, `StickProfile`), `DockEntity` and
-`ProxyPlayerEntity` (plain Objective-C classes until now), the rest of `OOJSShip.mm`, and the last
-Objective-C class syntax in `Universe.mm`.
-
-Then the Objective-C bridges whose last Objective-C caller is gone are deleted: the
-`X+ObjCBridge.*` files of 64 classes (121 files) and `ShipEntity+ObjCAdapter.h`. Among them are
-`ShipEntity`, `StationEntity`, `PlayerEntity`, `HeadUpDisplay`, `GuiDisplayGen`, `OOColor`,
-`OOScript`, `OOJSScript`, `OOScriptTimer`, the planet, sun, sky, wormhole and waypoint, the
-drawables, the sounds and the visual effects. Each deletion moves `cxx::X` to the global namespace
-as `X` and turns the remaining `[x foo]` sends into C++ calls. 24 bridges remain (`Entity`,
-`Universe`, `GameController`, `MyOpenGLView`, the JS engine, `AI`, the texture and material roots
-and a few more). Step 15 deletes all of them but `OOWeakReference`'s, which goes in step 16.
-
-The scripting layer is #768's QuickJS-ng binding, and its files are converted with the classes
-they bind. The C++ objects that the binding keeps in a JS object's private slot (script, timer,
-ship group, system info, equipment info, sound, sound source) use `OOJSCxxObjectWrapperFinalize`
-and class-specific converters. The engine's own `OOJSObjectWrapperFinalize` and
-`OOJSBasicPrivateObjectConverter` keep #768's Objective-C form until step 16 converts the engine.
-
-Upstream changes kept in the converted code:
-
-- #740: a new game reads the last save name back from the `last_savename` default. The new case
-  `lastsaveNameIsRememberedInTheDefaults` in `tests/unit/core/test_PlayerEntity.mm` pins it.
-- #749/#751 (clang-format): the GUI screens' `a | b | c | d` key reads become
-  `AnyKeyPressed({ a, b, c, d })` in `PlayerEntityControls.mm`. It still reads every key, as the
-  bitwise OR did, without the `|` between bools that Clang flags once the operators are spaced.
-- #756: the converted debug-monitor code stays under `OO_DEBUG_MONITOR_ENABLED`, and the entity
-  shader-binding table, which moves into `Entity+ObjCBridge.mm`, keeps the guard of
-  `OOShaderUniformMethodType.h` (`OO_SHADERS || defined(OO_DEBUG_MONITOR_ENABLED)`).
-- #783: the GUI screens read the joystick's GUI buttons (`joyButtonState[BUTTON_GUI...]`) beside
-  their keys, in `PlayerEntityControls`, `KeyMapper`, `LoadSave` and `StickMapper`. No test
-  pins these reads.
-- #786: the stick mapper's hardware names come from the descriptions (`stickmapper-axis` and so
-  on). `stickMapperHardwareAndGuiDicts` in `tests/unit/core/test_PlayerEntity.mm` supplies the
-  three entries and checks that `hwToString()` answers them.
-
-New tests: `test_DockEntity`, `test_OOJSShip` and `test_ProxyPlayerEntity`.
+- Converts the last Objective-C in the large classes: the rest of `PlayerEntity.mm` and its nine
+  category files, `DockEntity`, `ProxyPlayerEntity`, the rest of `OOJSShip.mm`, and `Universe.mm`'s
+  last class syntax. New tests: `test_DockEntity`, `test_OOJSShip`, `test_ProxyPlayerEntity`.
+- Deletes the bridges of 64 classes (121 files) and `ShipEntity+ObjCAdapter.h`; `cxx::X` becomes
+  `X`. 24 bridges remain: step 15 deletes all but `OOWeakReference`'s (step 16).
+- #768 private-slot C++ objects (script, timer, ship group, system and equipment info, sound,
+  sound source) use `OOJSCxxObjectWrapperFinalize`; the engine's own finalizer and converter stay
+  Objective-C until step 16.
+- Keeps #740 (last save name from `last_savename`), #749/#751 (`AnyKeyPressed({ ... })` for
+  `a | b | c`), #756 guards (incl. the shader-binding table's), #783 GUI joystick buttons, #786
+  stick-mapper names from descriptions.
 
 ## Why
 
-A bridge can go only when nothing sends Objective-C messages to its class any more. For the entity
-classes that happened only once the player, the universe and the JS ship binding, their heaviest
-callers, were C++. So this step comes straight after the last slices. The deletions run from the
-leaves to the roots: the subclasses' bridges go here, and `Entity`'s own bridge, with the other
-roots, waits for step 15.
+A bridge can go only when nothing messages its class; for entities that needed steps 12-13 first.
 
 ## Behaviour changes
 
-None. The step keeps two behaviours that the deletions could easily lose, and tests pin both:
-
-- The player and the proxy player stay visible to scripts: `playerAndProxyAreVisibleToScripts` in
-  `tests/unit/core/test_ProxyPlayerEntity.mm`.
-- A station keeps its `Station` JS class: `stationAnswersTheStationJSClass` in
-  `tests/unit/core/test_StationEntity.mm`.
+None. Upstream behaviour kept and pinned:
+- #740 last save name. Pinned by `lastsaveNameIsRememberedInTheDefaults` (`test_PlayerEntity.mm`).
+- #786 hardware names. Pinned by `stickMapperHardwareAndGuiDicts` (`test_PlayerEntity.mm`).
+- #783 GUI-button reads in the GUI screens. Not pinned.
+- Player and proxy stay visible to scripts. Pinned by `playerAndProxyAreVisibleToScripts`
+  (`test_ProxyPlayerEntity.mm`).
+- A station keeps its `Station` JS class. Pinned by `stationAnswersTheStationJSClass`
+  (`test_StationEntity.mm`).
 
 ## How to review
 
-Read it in two parts. The conversions come first: `src/Core/Entities/PlayerEntity.h` and
-`PlayerEntity.mm`, then the category files. As in step 12, the bodies are the Objective-C ones
-with the message syntax rewritten. For a spot-check, use
+Conversions first: `PlayerEntity.h`/`.mm`, then the categories; rule as step 12:
 `git diff --word-diff -w seriesb/013-universe-player-slices seriesb/014-facade-deletions -- src/Core/Entities/PlayerEntity.mm`.
+Deletions: `git diff --stat --diff-filter=D seriesb/013-universe-player-slices seriesb/014-facade-deletions`.
+Per class: bridge gone from `meson.build`, `namespace cxx` gone, callers only rewrite sends and
+drop `oo::ToObjC`/`oo::ToCxx`. `Entity+ObjCBridge.mm` grows ~6,700 lines: methods still called by
+selector name move into `Entity (...SelectorsCalledByName)` forwarding categories (C++ tables in
+step 15).
 
-The deletions are mechanical:
-`git diff --stat --diff-filter=D seriesb/013-universe-player-slices seriesb/014-facade-deletions`
-lists the removed files. For any one class, check three things: its `X+ObjCBridge.*` entries are
-gone from its directory's `meson.build`, `namespace cxx` is gone from `X.h`, and the callers'
-hunks only turn `[x foo:y]` into `x->foo(y)` and drop `oo::ToObjC` / `oo::ToCxx` crossings.
+Test edits:
+- Cases that tested a bridge itself (forwarding, one bridge per object): removed.
+- Objective-C stand-ins become C++; other cases re-spelled for the C++ API.
 
-The tests change the same way. Cases that tested a bridge itself (forwarding, one bridge per
-object) are removed, the tests' Objective-C stand-ins become C++, and the other cases are
-re-spelled for the C++ API.
+## Verified
 
-`Entity+ObjCBridge.mm` grows by about 6,700 lines. The subclasses' methods that AI scripts, shader
-bindings and the JS glue still call by selector name move there, as
-`Entity (...SelectorsCalledByName)` categories that forward to the C++ ship, player, station, dock
-or visual effect. Step 15 turns them into C++ tables.
-
-## Verified **(gen)**
-
-Not verified at this branch's tip (`1acb43182f`) yet; the last record (2026-11-03) is for an earlier build.
+Not verified at `1acb43182f`.

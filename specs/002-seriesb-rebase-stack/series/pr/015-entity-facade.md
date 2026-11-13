@@ -2,93 +2,48 @@
 
 <!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-Step 15 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/017-entity-facade`.
+Step 15/28. Replays `series/017-entity-facade`.
 
 ## What this changes
 
-The root `Entity` bridge goes, and with it the last Objective-C objects in the entity graph.
-`cxx::Entity` becomes `Entity`, an `oo::RefCounted` C++ object that owns itself. The universe and
-the entities' own lists (sub-entities, cargo, collisions, the player's missiles) hold entities
-through `oo::EntityHold` (`src/Core/Entities/OOEntityHold.h`), and ships' and stations' weak sets
-become `oo::WeakSet`. An entity's JS object holds an `OOJSEntityHolder` in its private slot.
-
-The methods that AI scripts and shader bindings call by name, and the names JS `callObjC()`
-accepts for an entity, are now C++ tables instead of selector look-ups:
-`src/Core/Entities/OOEntityCalledByNameTable.h` (3,024 lines) with its dispatcher
-`OOEntityCalledByName.mm`, and `src/Core/Scripting/OOJSCallEntityMethods.h` (1,062 lines).
-
-The other 22 remaining bridges go too: `Universe`, `GameController`, `MyOpenGLView`, the JS engine,
-`OOJSCall`, `AI`, the debug monitor, debug support and console client, the OpenGL extension
-manager, the texture, texture loader, texture generator and material roots, the cache, resource,
-ship-registry and async-work managers, the two joystick managers, `OOStringExpander` and the
-Quirium cascade. With `Entity`'s, 23 bridges (45 files) go; only `OOWeakReference`'s is left, for
-step 16. With the joystick bridges gone, the SDL manager derives from `OOJoystickManager` and its
-button decoder reads #783's GUI-button map as its own member.
-
-#768's binding is converted with them. The entity classes register `OOJSCxxObjectWrapperFinalize`
-and `OOJSEntityObjectConverter`. `global.quitGame()` is still deferred, as #768 has it, now through
-a `std::function` deferred call. The engine's `OOJSObjectWrapperFinalize` and
-`OOJSBasicPrivateObjectConverter` keep #768's Objective-C form until step 16.
-
-Upstream's #756 guards are kept on the code this step converts: the entity counters, the debug
-virtual members and the by-name rows (`drawDebugStuff` among them) are under
-`OO_DEBUG_MONITOR_ENABLED`.
-
-New tests: `test_OOEntityCalledByName`, `test_OOJSCallEntityMethods` and `test_OOFastArithmetic`.
-The last one pins `OORoundUpToPowerOf2_32/_64`'s answers for 0, 1 and values above the high bit,
-which step 10 fixed.
+- Deletes the root `Entity` bridge: `cxx::Entity` becomes `Entity`, a self-owning `oo::RefCounted`.
+  Entity lists hold entities through `oo::EntityHold` (`src/Core/Entities/OOEntityHold.h`), weak
+  sets become `oo::WeakSet`, and an entity's JS object holds an `OOJSEntityHolder`.
+- By-name calls (AI, shaders) and JS `callObjC()` names become C++ tables:
+  `OOEntityCalledByNameTable.h` (dispatcher `OOEntityCalledByName.mm`) and `OOJSCallEntityMethods.h`.
+- Deletes the other 22 bridges (23 in all, 45 files); only `OOWeakReference`'s is left, for step 16.
+  The SDL joystick manager derives from `OOJoystickManager` and owns #783's GUI-button map.
+- Converts #768's entity binding (`OOJSCxxObjectWrapperFinalize`, `OOJSEntityObjectConverter`;
+  `quitGame()` still deferred, via `std::function`); the engine's finalizer and converter stay
+  Objective-C until step 16. #756's `OO_DEBUG_MONITOR_ENABLED` guards are kept.
+- New tests: `test_OOEntityCalledByName`, `test_OOJSCallEntityMethods`, `test_OOFastArithmetic`
+  (pins step 10's `OORoundUpToPowerOf2_32/_64` fix).
 
 ## Why
 
-`Entity` is the root of every in-game object, so its bridge could only go after every entity
-subclass and every caller of entities was C++ (steps 12 to 14). Once it is gone, nothing in the
-game needs an Objective-C object for an entity. That is what makes step 16, removing the
-Objective-C runtime, possible.
+Prerequisite for step 16: afterwards nothing needs an Objective-C object for an entity.
 
 ## Behaviour changes
 
-- `OOTextureScaling`'s vertical stretch copied its last output row from one row past the last
-  source row. When the height more than doubles, that read past the buffer. The horizontal
-  stretch (one and two channels) read one pixel past the row, with zero weight. The last row is
-  now the last source row, and the look-ahead is clamped to the row. The bug is in upstream too.
-  Pinned by `stretchesVerticallyAndKeepsTheEdges` in `tests/unit/core/test_OOTextureScaling.mm`.
-- Loading a saved game at launch no longer reads the save path after the add-on reset has cleared
-  it (a use-after-free in the converted `GameController::loadPlayerIfRequired()`). Pinned by
-  `playerFileToLoadFromItsOwnValue` in `tests/unit/core/test_GameController.mm`.
-
-Not a change: a property read on a `Waypoint` object with no entity (a stale one, or the
-prototype) fails, as it does in #768, where the waypoint type check already rejects a nil entity.
-The `undefined` answer after that check could not be reached and is removed from
-`OOJSWaypoint.mm`. `otherObjects` in `tests/unit/core/test_OOJSWaypoint.mm` pins the failure
-(`Waypoint.prototype.size`), unchanged by this step.
+- `OOTextureScaling` stretches stay inside the source row and buffer (was an over-read when the height more than doubles; upstream has it too). Pinned by `stretchesVerticallyAndKeepsTheEdges` in `test_OOTextureScaling.mm`.
+- Loading a save at launch reads its own copy of the path (was a use-after-free in `loadPlayerIfRequired()`). Pinned by `playerFileToLoadFromItsOwnValue` in `test_GameController.mm`.
+- Not a change: a property read on an entity-less `Waypoint` fails as in #768; the unreachable `undefined` branch is removed. Pinned by `otherObjects` in `test_OOJSWaypoint.mm`.
 
 ## How to review
 
-Start with `src/Core/Entities/Entity.h` (the class now global and reference-counted, with
-`hasObject()`), then `OOEntityHold.h` and `EntityVirtualMembers.h`. The entity's last release now
-runs what the bridge's `-dealloc` ran, and an `oo::EntityHold` counts as the bridge's retain did.
-`OOEntityHold.h`'s header comment explains the mapping.
+Start with `Entity.h` (global, ref-counted, `hasObject()`), `OOEntityHold.h` (its header maps a hold
+to the bridge's retain and the last release to `-dealloc`) and `EntityVirtualMembers.h`.
 
-The two tables were generated by a script that is not part of this tree, so review them as data.
-Each by-name row is one method of the `Entity (...SelectorsCalledByName)` categories that step 14
-put in `Entity+ObjCBridge.mm`, which this step deletes. A row keeps the method's name, its `#if`
-condition and its body, verbatim, with the entity in place of `self`. Compare a sample of rows with
-the deleted category methods in the same diff. The `callObjC()` table lists the deleted bridge's
-selectors and by-name rows that `callObjC()` can call (no argument or one string argument).
+Rule: each by-name row is one deleted `Entity (...SelectorsCalledByName)` method of
+`Entity+ObjCBridge.mm`, with name, `#if` and body verbatim and the entity for `self`. The tables
+were generated by a script not in this tree (their headers still name it, a known gap): review them
+as data against the deleted methods in the same diff. `test_OOEntityCalledByName.mm` and
+`test_OOJSCallEntityMethods.mm` (`everyNameIsAnsweredByTheCxxEntity`) check them. Deleted bridges:
+`git diff --stat --diff-filter=D seriesb/014-facade-deletions seriesb/015-entity-facade`.
 
-Two tests check the tables against the code: `tests/unit/core/test_OOEntityCalledByName.mm`
-(names, types and the applies-to flags) and `tests/unit/core/test_OOJSCallEntityMethods.mm`
-(`everyNameIsAnsweredByTheCxxEntity`). The header comments of both tables still name the
-generator script; that is a known gap.
+Test edits:
+- Bridge-only cases removed (`facadeContract` and others); Objective-C stand-ins rewritten as C++.
 
-The rest is mechanical: deleting `Entity+ObjCBridge.*` and the other bridges
-(`git diff --stat --diff-filter=D seriesb/014-facade-deletions seriesb/015-entity-facade`), and
-callers changing from an Objective-C entity pointer and `oo::ToCxx`/`oo::ToObjC` crossings to the
-C++ entity. The tests change as in step 14: cases that tested a bridge are removed (the
-`facadeContract` cases, among others), and Objective-C stand-ins are rewritten as C++. The two
-fixes above are small and stand alone: `OOTextureScaling.mm` and `GameController.mm`'s
-`loadPlayerIfRequired`.
+## Verified
 
-## Verified **(gen)**
-
-Not verified at this branch's tip (`cd157d105f`) yet; the last record (2026-11-03) is for an earlier build.
+Not verified at `cd157d105f`.

@@ -2,56 +2,38 @@
 
 <!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-Step 19 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/022-source-hygiene`.
+Step 19/28. Replays `series/022-source-hygiene`.
 
 ## What this changes
 
-- **Comments describe the code as it is.** References to the migration's tracker ids, decision
-  records, phases and slices are removed from comments in `src/`, `tests/` and `meson.build`, and
-  comments that only recorded how the code got here are deleted. Comments that described the C++
-  by the Objective-C it replaced (selectors, the bridging façade, `-description`, the golden
-  harness) describe the C++ itself. `Http.hpp`'s and `test_http.cpp`'s header comments, which
-  hold a two-column table, are kept from clang-format's reflow.
-- **`#pragma once`.** 131 headers gain it, in place of their include guards (#768's
-  `OOJSShipGroup.h` had none).
-- **Tests.** Assertions in the GUI tier that looked for a tracker id in a failure message look for
-  the message's text instead. Ten test cases named a decision record in a suffix: nine, the cases
-  that pin where oofnd differs from GNUstep on purpose, take the suffix `_GnustepDiffers`
-  instead, and `missingArgumentsPrintAsNil` loses its suffix.
-- **Small source tidies.** Duplicate includes and one duplicate forward declaration are removed.
-- **Test setup on Windows.** `meson.build` adds a default test setup that puts the compiler's own
-  `bin` directory first on `PATH`, so tests load the toolchain's `libstdc++` and `libwinpthread`
-  and not older copies found earlier on `PATH` (Git for Windows ships some).
-- **Layout.** Many files the step touches take the fork's 80-column wrapping, of code as well as
-  comments, with includes grouped (the file's own header, standard headers, then the rest) and
-  sorted. Upstream's WebKit style accepts either wrapping. A last commit runs clang-format 22 over
-  the seven files it would still change (comment closers, two statements sharing a line, one
-  brace), so upstream's clang-format check passes; step 23 (`seriesb/023-google-style-format`)
-  reformats every file.
+- Comments in `src/`, `tests/` and `meson.build` lose tracker ids, decision records, phases and
+  history, and describe the C++ rather than the Objective-C it replaced.
+- 131 headers swap include guards for `#pragma once`; duplicate includes and one duplicate forward
+  declaration go.
+- `meson.build` adds a default Windows test setup that puts the compiler's `bin` first on `PATH`.
+- Many touched files take 80-column wrapping and grouped, sorted includes (`Http.hpp`'s and
+  `test_http.cpp`'s tables are kept from reflow); a last commit runs clang-format 22 over seven files.
 
 ## Why
 
-The ids point into a tracker and documents that are not part of this repository, so they mean
-nothing to a reader here. `#pragma once` is what upstream's newer headers use. The `PATH` setup
-lets `meson test` run from a shell whose `PATH` has another toolchain's runtime ahead of MSYS2's;
-such a test fails to start (exit `0xc0000139`) rather than failing an assertion.
+The ids point at documents outside this repository; the `PATH` setup stops tests failing to start
+(`0xc0000139`) when another toolchain's runtime is earlier on `PATH`.
 
 ## Behaviour changes
 
-None in the game: comments, include guards, duplicate includes and layout only. Test names change
-as listed above; each test checks the same things. The only change outside the source is the
-Windows test environment's `PATH`, described above.
+None in the game. Windows tests load the toolchain's own `libstdc++`/`libwinpthread` (was whichever came first on `PATH`, e.g. Git for Windows'). Not pinned.
 
 ## How to review
 
-Large but repetitive: 721 files, most hunks deleting a parenthesised reference or a history
-comment, or rewrapping. `git diff -w --word-diff` is the easiest way to read it. The one non-comment
-change to read in full is the `add_test_setup` block in `meson.build`.
+721 files, mostly deleted references or rewraps: read with `git diff -w --word-diff`. Read the
+`add_test_setup` block in `meson.build` in full. GUI and component comments still name the fork's
+`docs/phases/…`, `docs/stories/…` and outside helper scripts; not removed here.
 
-Comments in the GUI and component tiers still name the fork's planning documents
-(`docs/phases/…`, `docs/stories/…`) and helper scripts kept outside this repository; this step
-does not remove those.
+Test edits:
+- GUI tier: assertions match a failure message's text, not a tracker id.
+- Ten case names: nine decision-record suffixes become `_GnustepDiffers` (oofnd differs from
+  GNUstep on purpose); `missingArgumentsPrintAsNil` loses its suffix. Each checks the same things.
 
-## Verified **(gen)**
+## Verified
 
-Not verified at this branch's tip (`f60dc7c70b`) yet; the last record (2026-11-03) is for an earlier build.
+Not verified at `f60dc7c70b`.

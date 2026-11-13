@@ -2,53 +2,41 @@
 
 <!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-Step 23 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/026-google-style-format`.
+Step 23/28. Replays `series/026-google-style-format`.
 
 ## What this changes
 
-Formatting only. `.clang-format` becomes Google style (with a section that keeps headers holding
-fenced Mac code from being formatted as Objective-C), and clang-format 22, the version upstream's
-CI pins, is run over `src/` and part of `tests/`: 570 files change, 515 of them in `src/` and 52
-test sources. `./mk.sh format` reformats `src/` in place and `./mk.sh format-check` reports what
-the CI check would reject, warning when the local clang-format's major version is not CI's; the
-`README` says so.
-
-Reproduce: take `.clang-format` from this step, then run clang-format 22 with `-i` over every
-`.h`, `.hpp`, `.c`, `.cpp`, `.m` and `.mm` under `src/` until it changes nothing (two passes:
-one leaves some comment reflows). Every file in `src/` then equals this step's, apart from the
-two hand edits below. The step's later format commits (`OOFoundation.h`'s `OOSortFunction`
-comment, 20 files in a second run, and 7 more files) are the same command over code that came in
-from earlier steps after the first run, so every file passes upstream's clang-format check. In `tests/`, 84 C and C++ files
-that clang-format 22 would change are left as they are.
-
-Two hand edits, both because Google style sorts includes:
-
-- `OOProfilingStopwatch.h`: sorting put `<timeapi.h>` ahead of `<windef.h>` and broke the Windows
-  build. A comment line between the two keeps clang-format from sorting them.
-- `OOMatrix.cpp`: sorting put `<SDL3/SDL_opengl.h>` above `OOOpenGLOnly.h`, so SDL's header was
-  read before `GL_GLEXT_PROTOTYPES` was defined and `glUniformMatrix3fvARB` was not declared. The
-  include is removed; `OOOpenGLOnly.h` includes it in the right order.
+- `.clang-format` becomes Google style, with a section that keeps headers holding fenced Mac code
+  from being formatted as Objective-C.
+- clang-format 22 (upstream CI's version) reformats 570 files: 515 in `src/`, 52 test sources.
+  84 C/C++ files in `tests/` that it would change are left as they are. Later format commits
+  (20 files, then 7) are the same command over code from earlier steps.
+- `./mk.sh format` reformats `src/`; `./mk.sh format-check` reports what CI would reject and warns
+  on a non-22 major version (`README` says so).
+- Two hand edits, both from include sorting: `OOProfilingStopwatch.h` keeps `<windef.h>` before
+  `<timeapi.h>` with a comment line (else Windows breaks); `OOMatrix.cpp` drops
+  `<SDL3/SDL_opengl.h>` (sorted above `OOOpenGLOnly.h`, it hid `glUniformMatrix3fvARB`;
+  `OOOpenGLOnly.h` includes it in order).
 
 ## Why
 
-Optional. This is the style the fork prefers. The steps before it keep upstream's style and pass
-upstream's clang-format check with upstream's `.clang-format`, so the series can be taken without
-this step; step 024 is written in this step's style.
+Optional: the fork's preferred style; earlier steps pass upstream's check with upstream's
+`.clang-format`, so the series works without this step (step 024 is written in this style).
 
 ## Behaviour changes
 
-None: formatting only. Code tokens are the same before and after in every file, include lines
-compared as a set; the exceptions are two Objective-C `@"..."` literals in fenced Mac code that
-clang-format splits, and `OOMatrix.cpp`'s `<SDL3/SDL_opengl.h>` include, which goes (the header
-still reaches the file through `OOOpenGLOnly.h`).
+None (formatting only). Code tokens match in every file (includes compared as a set), except two
+`@"..."` literals in fenced Mac code that clang-format splits and `OOMatrix.cpp`'s dropped
+`<SDL3/SDL_opengl.h>`, which still arrives through `OOOpenGLOnly.h`.
 
 ## How to review
 
-Run the command above on `seriesb/022-upstream-28ceaaba0-ports` and compare with this branch;
-there is nothing to read line by line. Decide on the style, not the diff. Use clang-format 22:
-CI is the authority, and clang-format 23 formats some wrapped enum initialisers differently (for
-example in `PlayerEntity.h`), so `./mk.sh format-check` with 23 reports files that CI accepts.
+Decide on the style, not the diff. Reproduce on `seriesb/022-upstream-28ceaaba0-ports`: take this
+step's `.clang-format`, run clang-format 22 `-i` over every `.h .hpp .c .cpp .m .mm` under `src/`
+until nothing changes (two passes); every `src/` file then matches apart from the two hand edits.
+Trap: use 22, not 23; 23 wraps some enum initialisers differently (`PlayerEntity.h`), so
+`./mk.sh format-check` with 23 flags files CI accepts.
 
-## Verified **(gen)**
+## Verified
 
-Not verified at this branch's tip (`248fc953ba`) yet; the last record (2026-11-03) is for an earlier build.
+Not verified at `248fc953ba`.

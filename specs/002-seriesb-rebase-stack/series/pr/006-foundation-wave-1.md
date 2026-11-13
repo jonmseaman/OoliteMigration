@@ -2,91 +2,64 @@
 
 <!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-Step 6 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/008-foundation-wave-1`.
+Step 6/28. Replays `series/008-foundation-wave-1`.
 
 ## What this changes
 
-This is the first half of moving the game's own code off Foundation and onto `oofnd`, the C++20
-library added in step 4. File by file, the `NSString`, `NSArray`, `NSDictionary`, `NSSet`,
-`NSNumber` and `NSData` values inside a class become `std::string`, `std::vector`, `std::map`,
-`std::optional`, `oo::PList` and `oo::Data`. The classes themselves are still Objective-C. A
-selector that only one class declares takes and returns the C++ types, and its callers change at the
-call expression only. A selector that several classes declare (a "shared" selector) keeps `id` at its
-boundary for now and converts on the inside. #768's binding files are swept the same way as the rest.
-The `oo_*ForKey:` calls these files still had move to `PListView` as in step 5, booleans included:
-those read `get<bool>`/`at<bool>`.
-
-Where a class has too many callers to adapt in the same change, it gets a `cxx_`-prefixed C++ API,
-and a transitional `X+FoundationBridge.h/.mm` category (a bridge) keeps its old Foundation-typed
-selectors working by forwarding to that API. This step adds 25 bridges; step 7 deletes 5 of them and
-step 8 the rest. `Core/OOFoundationException.h` lets a handler catch both the game's `OOException`
-and the `NSException`s gnustep-base itself still raises.
-
-`oofnd` gains what the sweep needed:
-- `oo::str` (`String.hpp`): path components, GNUstep's `%p` text, run-time format strings with `%@`
-  and positional arguments, Unicode file decoding;
-- `oo::PList` can carry live objects and single-precision reals;
-- `oo::AutoreleaseScope` now drains newest first (see Behaviour changes).
+- First half of the per-file move off Foundation: values inside classes become `std::string`,
+  `std::vector`, `std::map`, `std::optional`, `oo::PList`, `oo::Data`. Classes stay Objective-C;
+  #768's binding files included.
+- Unique selectors take and return C++ types (callers change at the call only); shared selectors
+  keep `id` at the boundary. Remaining `oo_*ForKey:` calls move to `PListView` (`get<bool>`/`at<bool>`).
+- 25 `X+FoundationBridge.h/.mm` bridges forward old selectors to new `cxx_` APIs (step 7 deletes
+  5, step 8 the rest). `Core/OOFoundationException.h` catches both `OOException` and the
+  `NSException`s gnustep-base still raises.
+- `oofnd`: `oo::str` gains path, `%@`/positional format and Unicode file helpers; `oo::PList`
+  carries live objects and `float`s; `oo::AutoreleaseScope` drains newest first.
 
 ## Why
 
-Foundation (gnustep-base) can't be unlinked while game code still names its types, and the classes
-can't become C++ (steps 9–13) while their interfaces are Foundation-typed. Changing the types first,
-inside Objective-C, keeps each change small enough to check against the game's behaviour. The order
-follows dependencies: maths and Core leaf utilities, then Materials, the OXP verifier, scripting,
-entities and `Universe`. This step comes right after step 5, because many of these files had to stop
-using the `oo_*ForKey:` extractors before their collections could become `oo::PList`.
+gnustep-base can't be unlinked, nor classes become C++ (steps 9–13), while interfaces name
+Foundation types.
 
 ## Behaviour changes
 
-None in the game. Every new `oo::str` and `oo::PList` helper reproduces gnustep-base 1.31.1's
-answers, captured from the real library and pinned in `tests/unit/oofnd/test_string_sweep.cpp`,
-`test_string_format_runtime.cpp`, `test_unicode_file.cpp`, `test_unicode_file_decode.cpp` and
-`test_plist_carrier.cpp`.
-
-- `oo::AutoreleaseScope` (oofnd) releases its objects last-in-first-out, as libobjc2's pool (the
-  game's real autorelease pool) does, where it used insertion order. No game code uses the scope yet.
-  Pinned by `tests/unit/oofnd/test_objc_floor.mm` (`autoreleaseScopeDrainsInTheRuntimePoolsOrder`,
-  new) and by `tests/unit/oofnd/test_ref.cpp` (`autoreleaseScopesNest`,
-  `drainReleasesInOrderAndKeepsTheScopeOpen`, `drainingCascades`), whose expected orders this step
-  changes from insertion order to LIFO.
-- macOS only, not built or verified here: `+builtInPath` is kept (as `+cxx_builtInPath` plus its
-  bridge), but it now goes through `oo::ResourcePaths`, which has no `OOLITE_MAC_COCOA_UI` branch.
-  A Cocoa build no longer takes the resource path from the main bundle. Not pinned by a test.
+- New `oo::str`/`oo::PList` helpers give gnustep-base 1.31.1's answers; none in the game changes.
+  Pinned by `tests/unit/oofnd/test_string_sweep.cpp`, `test_string_format_runtime.cpp`,
+  `test_unicode_file.cpp`, `test_unicode_file_decode.cpp`, `test_plist_carrier.cpp`.
+- `oo::AutoreleaseScope` releases LIFO like libobjc2's pool (was insertion order); no game code
+  uses it yet. Pinned by `test_objc_floor.mm` (`autoreleaseScopeDrainsInTheRuntimePoolsOrder`, new)
+  and `test_ref.cpp` (`autoreleaseScopesNest`, `drainReleasesInOrderAndKeepsTheScopeOpen`,
+  `drainingCascades`).
+- macOS only, not built or verified: `+builtInPath` (now `+cxx_builtInPath` plus bridge) goes
+  through `oo::ResourcePaths`, with no `OOLITE_MAC_COCOA_UI` branch (was the main bundle's resource
+  path). Not pinned.
 
 ## How to review
 
-Start with `src/oofnd/README.md`, section "Migrating Foundation usage". Its type table (which C++
-type replaces which Foundation type, and why a method never returns a bare `std::string` to a
-possibly-nil receiver) is the rule every file follows. Then read one example per kind:
-`src/Core/OOMesh.h/.mm` (instance variables and unique selectors: `std::optional` where nil and an
-empty string differ, `oo::PList` for mixed configurations), `src/Core/Entities/OOPlanetEntity.h/.mm`
-(shared selectors that keep `id` at the boundary) and `src/Core/OOColor.h` with
-`OOColor+FoundationBridge.h/.mm` (the `cxx_` API and its bridge).
+Start with "Migrating Foundation usage" in `src/oofnd/README.md`: its type table is the rule
+(no bare `std::string` to a possibly-nil receiver). Examples: `OOMesh.mm` (unique selectors),
+`OOPlanetEntity.mm` (shared), `OOColor+FoundationBridge.mm` (bridge). Caller hunks should be only
+conversions (`oo::StdString(s)`, `oo::NSStringOrNil(...)`):
 
-The rest is the same pattern, file by file. To spot-check a file, compare it on both branches
-(`git diff seriesb/005-typed-accessors seriesb/006-foundation-wave-1 -- <file>`): each NS type
-should map to the table's C++ type, and each caller hunk should be just a conversion at the call
-(`oo::StdString(s)`, `oo::NSStringOrNil(...)`). Things to look for:
+    git diff seriesb/005-typed-accessors seriesb/006-foundation-wave-1 -- <file>
 
-- a test against nil that became a test against an empty string where the two behaved differently
-  (the README says to use `std::optional` there);
-- a loop over a former `NSDictionary` or `NSSet` that now runs in `std::map` key order or in
-  insertion order, where the order matters (first match wins, a random pick, text output);
-- formatted strings that are no longer byte-identical;
-- upstream's guards kept where the swept code has them: #756's `OO_DEBUG_MONITOR_ENABLED` (not
-  `NDEBUG`) around `AI.mm`'s `debugContext` and the texture bridge's `+cachedTexturesByAge` and
-  `+allTextures`, and `Universe.mm` importing `OOFoundationBridge.h` in every flavour. With these
-  the deployment flavour (`./mk.sh build deployment`) compiles.
+Watch for:
+- nil tests turned into empty-string tests where the two differed;
+- loops over a former `NSDictionary`/`NSSet` now in key or insertion order where order matters
+  (first match, random pick, text output);
+- formatted strings no longer byte-identical;
+- #756's `OO_DEBUG_MONITOR_ENABLED` (not `NDEBUG`) around `AI.mm`'s `debugContext` and the texture
+  bridge's `+cachedTexturesByAge`/`+allTextures`, and `Universe.mm` importing `OOFoundationBridge.h`
+  in every flavour; `./mk.sh build deployment` compiles.
 
-The bridge files are boilerplate and forward one line per method. The new `oofnd` code is in
-`src/oofnd/String.hpp`, `PList.hpp` and `PListWriting.hpp`. `tests/source_paths.py` and the
-`tests/gui` edits let the source-text guards find a file by its stem whatever its suffix
-(`.m`, `.mm`, `.cpp`), so later renames don't break them. `tests/component/steps/world_steps.py`
-spawns a fixed hull for each role so the component scenarios don't depend on a random ship draw.
-`tests/unit/oofnd/test_thread.cpp` now waits for its detached thread without a time limit: the
-bounded wait could return while the thread still used the test's stack frame.
+Test edits:
+- `tests/unit/oofnd/test_ref.cpp`: the three tests above expect LIFO (was insertion order).
+- `tests/source_paths.py`, `tests/gui`: source-text guards find a file by stem, any suffix.
+- `tests/component/steps/world_steps.py`: a fixed hull per role, not a random ship draw.
+- `tests/unit/oofnd/test_thread.cpp`: waits unbounded for its detached thread (the bounded wait
+  could return while the thread used the test's stack frame).
 
-## Verified **(gen)**
+## Verified
 
-Not verified at this branch's tip (`d9c3adfe40`) yet; the last record (2026-11-02) is for an earlier build.
+Not verified at `d9c3adfe40`.

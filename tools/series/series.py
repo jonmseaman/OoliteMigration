@@ -1221,13 +1221,13 @@ def _on_open_prs(m):
 
 
 def _header_replay(m, step):
-    """The one line under the title: the step's place in the stack, what it needs first, and where it
-    comes from. GitHub shows the base branch and the diff's size, so the line does not."""
+    """The one line under the title: the step's place in the stack and where it comes from. Step 1 also
+    names the open upstream PRs it stacks on; later steps' bases are earlier steps. GitHub shows the base
+    branch and the diff's size, so the line does not."""
     src = step["source"]
-    line = f"Step {step['n']} of {len(m['steps'])}"
-    if _on_open_prs(m):
-        line += f", stacked on {_root_pr(m)}, so not independent of #767 and #768"
-    line += "."
+    line = f"Step {step['n']}/{len(m['steps'])}."
+    if step["n"] == 1 and _on_open_prs(m):
+        line += f" Stacked on {_root_pr(m)}; needs #767 and #768 merged first."
     if src.get("type") != "target":
         folded = f" ({_old_range(step)})" if src.get("old_steps") else ""
         line += f" Replays `{src['old_branch']}`{folded}."
@@ -1247,31 +1247,24 @@ def render_description_replay(m, step, kept, tip=None, tests_changed=None):
         lines += [f"## {h}", "", kept.get(h) or TODO, ""]
     differs = step.get("differs_from_old") or []
     ledger = os.path.basename(src.get("test_ledger") or "") or "the test ledger"
-    if switch:
-        lines += ["## Test changes", ""]
-        if tests_changed:
-            lines.append(f"Existing test files this step changes (test ledger: `{ledger}`):")
-            lines.append("")
-            lines += [f"- `{p}`" for p in tests_changed[:TESTS_LISTED]]
-            if len(tests_changed) > TESTS_LISTED:
-                lines.append(f"- ... and {len(tests_changed) - TESTS_LISTED} more: `git diff --name-only "
-                             f"--diff-filter=MD {step['parent']} {step['branch']} -- tests/`")
-        else:
-            lines.append(f"No existing test file changes (the test ledger is `{ledger}`).")
+    if switch and tests_changed:
+        lines += ["## Test changes", "", f"Existing test files changed (ledger `{ledger}`):", ""]
+        lines += [f"- `{p}`" for p in tests_changed[:TESTS_LISTED]]
+        if len(tests_changed) > TESTS_LISTED:
+            lines.append(f"- ... and {len(tests_changed) - TESTS_LISTED} more: `git diff --name-only "
+                         f"--diff-filter=MD {step['parent']} {step['branch']} -- tests/`")
         lines.append("")
-    elif differs:
-        lines += ["## Differences from the old step", "",
-                  f"Where this step's change differs from `{src['old_branch']}`'s, and why:", ""]
+    elif differs and not switch:
+        lines += ["## Differences from the old step", ""]
         for d in differs[:40]:
             lines.append(f"- `{d['path']}`: {d['reason']}")
         if len(differs) > 40:
             lines.append(f"- ... and {len(differs) - 40} more (the manifest lists them all)")
         lines.append("")
-    lines += ["## Verified **(gen)**", ""]
+    lines += ["## Verified", ""]
     v = step.get("verification")
     if v and tip and v.get("commit") != tip:
-        lines += [f"Not verified at this branch's tip (`{tip[:10]}`) yet; the last record "
-                  f"({v.get('date', '')}) is for an earlier build.", ""]
+        lines += [f"Not verified at `{tip[:10]}`.", ""]
     elif v:
         checks = sorted((v.get("checks") or {}).items())
         ran = [(k, r) for k, r in checks if not str(r).startswith("n/a")]

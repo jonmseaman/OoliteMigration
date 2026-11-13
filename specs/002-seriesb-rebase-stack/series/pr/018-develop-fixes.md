@@ -2,66 +2,42 @@
 
 <!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-Step 18 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/021-develop-fixes`.
+Step 18/28. Replays `series/021-develop-fixes`.
 
 ## What this changes
 
-- **Self-contained maths headers, in #748's form.** `OOMathsBase.h` (new) holds what `OOMaths.h`
-  used to define before its sub-headers: the standard includes, the OpenGL types, `OOScalar` and
-  `OOHPScalar`, the `M_*` constants and `MIN`/`MAX`/`ABS`. `OOVector.h`, `OOFastArithmetic.h`,
-  `OOHPVector.h`, `OOQuaternion.h`, `OOMatrix.h`, `OOBoundingBox.h`, `OOTriangle.h` and `OOVoxel.h`
-  each include it and the maths headers they use, and gain `#pragma once` where they had none.
-  `OOMaths.h` now just includes them all. `tests/unit/core/test_OOMathsHeaders.cpp` includes three
-  of them without `OOMaths.h` and uses their inline functions.
-- **Other headers include what they use.** `EntityHelpers.h` includes `Entity.h`;
-  `OOPointMaths.h` includes `oofnd/objc/OOFoundationTypes.h` for `NSPoint`;
-  `OOJSEngineNativeWrappers.h` (#768's) declares `OOJSPauseTimeLimiter` and
-  `OOJSResumeTimeLimiter`, which its `OOJSFullNativeScope` calls.
-- **A `headers` test suite.** `tests/check_headers_standalone.py` compiles every header the build
-  uses on its own, with the compile command of a source file that includes it
-  (`meson test --suite headers`; Windows only, like the unit suites, and not in a
-  `deployment_release` build).
-- **Paths.** READMEs, comments and the GUI tier's build lookup (`tests/gui/conftest.py`,
-  `tests/source_paths.py`) that assumed the game's checkout sat at `upstream/oolite/` inside a
-  larger workspace now assume `oolite-dev/`.
-- **`test_objc_assert.cpp`** takes the 80-column layout, with its two one-line helpers that record
-  `__LINE__` kept on one line under `clang-format off`, so the line they record stays the
-  assertion's.
-- **macOS packaging.** `darwin.ini` adds Homebrew's keg-only `icu4c` to `pkg_config_path` and
-  `ShellScripts/macOS/install_packages.sh` installs it, because oofnd needs `icu-uc` and
-  `icu-i18n`. `ShellScripts/common/post_build.sh` keeps `Resources/Info-gnustep.plist` in the app
-  bundle, since the game reads its version from it.
+- New `src/Core/OOMathsBase.h` holds `OOMaths.h`'s shared definitions; the 8 maths sub-headers
+  include it and what they use, gain `#pragma once`, and `OOMaths.h` just includes them (#748's
+  form). New `test_OOMathsHeaders.cpp` uses three of them without `OOMaths.h`.
+- Three other headers include or declare what they use: `EntityHelpers.h`, `OOPointMaths.h`, and
+  #768's `OOJSEngineNativeWrappers.h` (`OOJSPauseTimeLimiter`, `OOJSResumeTimeLimiter`).
+- New `headers` suite: `tests/check_headers_standalone.py` compiles each header on its own
+  (Windows only, like the unit suites; not in a `deployment_release` build).
+- Paths assuming `upstream/oolite/` now assume `oolite-dev/` (READMEs, comments,
+  `tests/gui/conftest.py`, `tests/source_paths.py`).
+- macOS: `darwin.ini` and `install_packages.sh` add keg-only `icu4c`; `post_build.sh` keeps
+  `Resources/Info-gnustep.plist` in the bundle.
 
 ## Why
 
-A header that compiles only after its includer has included something else breaks as soon as a
-formatter sorts includes, which step 23 (`seriesb/023-google-style-format`) does. The headers suite
-finds such headers and keeps them fixed; the `OOJSEngineNativeWrappers.h` declarations are what it
-found in #768's code. For the maths headers the step follows #748, which made them includable on
-their own, and adds `OOMathsBase.h` so that each one gets the shared definitions without going
-through `OOMaths.h`. The macOS packaging lines are what a fresh macOS configure and app bundle
-need once oofnd and the converted version lookup are in.
+Prerequisite for step 23's include sorting, which breaks any header that is not standalone.
 
 ## Behaviour changes
 
-- The macOS app bundle keeps `Resources/Info-gnustep.plist`. Without it the version is null,
-  every resource directory is refused as incompatible and the game exits for want of
-  `descriptions.plist`. No test pins it; macOS is not verified by this series.
-
-Otherwise none. The other changes are to includes and declarations, tests and comments; the game's
-code is the same. `test_OOMathsHeaders` pins the standalone maths headers, the `headers` suite the
-rest.
+- The macOS bundle keeps `Info-gnustep.plist` (was dropped: null version, every resource directory refused, game exits). Not pinned; macOS is not verified by this series.
+- Otherwise none. Standalone maths headers pinned by `test_OOMathsHeaders`; the rest by the `headers` suite.
 
 ## How to review
 
-Start with `src/Core/OOMathsBase.h` against the lines `OOMaths.h` loses (a move), then the include
-lines at the top of each maths header. The other header changes are one or three lines each.
-`tests/check_headers_standalone.py` is new; its `FRAGMENTS` table lists the few headers that are
-not standalone by design, each with the reason. The path changes in READMEs and the GUI and
-component tiers are mechanical. `test_objc_assert.cpp`'s diff is layout (rewrapped comments,
-braces, include order) apart from the `clang-format off`/`on` pair; its checks are unchanged. The
-macOS packaging is one line each in `darwin.ini`, `install_packages.sh` and `post_build.sh`.
+Start with `OOMathsBase.h` against the lines `OOMaths.h` loses (a move), then each maths header's
+includes. Check each entry of `check_headers_standalone.py`'s `FRAGMENTS` table (not standalone by
+design) gives its reason. Run `meson test --suite headers`.
 
-## Verified **(gen)**
+Test edits:
+- `test_objc_assert.cpp`: 80-column layout only; its two `__LINE__` helpers stay on one line under
+  `clang-format off`, so recorded lines and checks are unchanged.
+- GUI and component tiers: path changes only.
 
-Not verified at this branch's tip (`e40ed2d9fd`) yet; the last record (2026-11-03) is for an earlier build.
+## Verified
+
+Not verified at `e40ed2d9fd`.

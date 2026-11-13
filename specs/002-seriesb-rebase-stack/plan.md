@@ -1435,3 +1435,23 @@ sources outside the replayed trees.
     changed tests missing from spec 009's ledger as the tool parses it. `build` replaces a step
     whose tip is its `build_commit` with one commit; since the linearisation that covers every
     multi-commit step, 027 and 028 included, so the stack is not rebuilt with it.
+- **Jon, 2026-11-13: very terse descriptions; four tool-test edits signed off.**
+  - Generated parts: `Step N/M.`; only step 1 names #767/#768 ("needs #767 and #768 merged
+    first", until `parents --retire`); no `**(gen)**` on any heading; a target step's Test changes
+    section only when it changes existing tests; a stale record reads `Not verified at <tip>.`; the
+    Differences section loses its intro line.
+  - Jon signed off (in chat, after being told hard rule 1 needed it) on editing the tool tests that
+    pinned the removed text. Each keeps what it checks and follows the new wording:
+    - `test_describe_seriesb.DescriptionStateTest.test_a_record_for_another_commit_is_not_shown_as_verified`:
+      splits on `## Verified`; expects `Not verified at `dddddddddd``.
+    - `…test_the_last_step_lists_the_existing_tests_it_changes`: with no changed tests, expects no
+      `## Test changes` section instead of the "No existing test file changes" line.
+    - `test_replay.DescribeReplayTest.test_description_names_the_old_step_and_its_differences`:
+      step 2 no longer names #768; step 1 names it and "#767 and #768 merged first".
+    - `test_replay.DescribeReplayTest.test_the_switch_step_is_described_as_the_switch`: passes one
+      changed test so the ledger name is shown.
+  - The 28 drafts went from 20,293 words to 9,643. Hand-written sections rewritten to about
+    150–400 words each (004–007 stay longest: their behaviour-change lists are kept whole): bullets with counts,
+    one-line Why, every behaviour change kept as one line with its pinning test, How to review cut
+    to the start point, the rule and the test edits. Dropped rationale and file-level detail was
+    not moved into commit messages (that would rewrite the series' branches).

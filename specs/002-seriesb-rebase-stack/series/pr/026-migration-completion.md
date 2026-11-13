@@ -2,112 +2,66 @@
 
 <!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-Step 26 of 28, stacked on upstream #768's branch, so not independent of #767 and #768.
+Step 26/28.
 
 ## What this changes
 
-- **GNUstep leaves the build, launchers and packaging.** The game links no GNUstep, so nothing
-  sets up its runtime any more:
-  - Linux: `build_gnustep.sh` and its `dep_location_fn.sh` helper go; `run_oolite.sh` no longer
-    writes a `GNUstep.conf` or creates `$GAME_DATA/.GNUstep` (`OO_GNUSTEPDIR` goes from its help).
-    It still computes `OO_GNUSTEPDEFAULTSDIR`, where the preferences live.
-  - `post_build.sh` no longer copies `GNUstep.conf` or GNUstep libraries, and loses its
-    `gnustep_folder` argument, with `meson.build`'s empty value and `src/meson.build`'s use of it:
-    `stamp_file` is now `${11}` and `build_docs` `${12}`.
-  - Windows: `install_deps.sh` no longer downloads and installs libobjc2 and gnustep-make;
-    `main.cpp` and `RunOolite.bat` stop setting `GNUSTEP_*`.
-  - Flatpak: the libobjc2, robin-map, gnustep-make and gnustep-base modules go, and so does the
-    FreeDesktop `GNUstep.conf.template`.
-  - `.travis.yml` (Xcode 7, a project that no longer exists) and the `debian/` packaging go;
-    `README.md` drops the GNUstep build step.
-- **The Objective-C tools.** `tools/icosmesh`, which generates `src/Core/OOPlanetData.{cpp,h}`,
-  is one C++20 file with no dependencies (`tools/icosmesh/icosmesh.cpp`), built by default by
-  `tools/icosmesh/meson.build` with `-ffp-contract=off`; its GNUmakefile, Xcode project and
-  `generatemesh.c` go. JSErrorMunger, which turned SpiderMonkey's `js.msg` into
-  `javascript-errors.plist`, goes with SpiderMonkey. The fonttexgen Cocoa app goes; its source
-  assets stay, with a README, and `OOEncodingConverter` loses the guard that existed only for it.
-  `tools/distancemap` is plain C (current libpng typedefs) with a README build line instead of an
-  Xcode project.
-- **Dead Objective-C in the C++ sources.** Code under conditions that are always false held
-  Objective-C that could not compile if the condition were set. It goes: the `OOLITE_MAC_OS_X`
-  blocks (the Cocoa log filter, crash-reporter info, Time Machine exclusion and `~/Library` log
-  folder, the AppleScript iTunes control, the Mac cache file name, the Mac-only
-  `OO_RESOLUTION_OPTION` and command-key branches), `OO_SALVAGE_SUPPORT`, `OOShipRegistry`'s
-  `PRELOAD`, the CoreFoundation branch of the TCP stream decoder's abstraction layer, Objective-C
-  in `#if 0` and comment blocks, and `OOFoundation.h`'s Objective-C macros (`OOSortFunction`,
-  `IBOutlet`/`IBAction`, `OOLITE_PROPERTY_SYNTAX`, `OOLITE_OPTIONAL`, and others). The planet and
-  atmosphere generators' `DEBUG_DUMP` blocks call `MyOpenGLView`'s C++ dump methods, and the
-  texture scaler's dump IDs use `std::atomic` instead of `OSAtomicAdd32`, so those debug
-  switches build. Comments that named `.mm` files name the `.cpp` files, and the hand-kept
-  by-name tables lose their compiler/ARC and salvage rows.
-- **Small tidies.** The EXR snapshot builds its signature in a `std::string` instead of `strcat`
-  into a 255-byte buffer, and frees `custom_attributes`, which it leaked. macOS's
-  `GetSysCtlString` uses a `std::string` buffer instead of `alloca`. The Windows manifest's
-  comment says the Windows 10 ID also covers Windows 11.
-- **Version header.** `OO_VERSION_FULL`, `OO_BUILD_DATE` and `OO_BUILDER` move from `-D` flags on
-  every compile into a generated `OOVersion.h` (`src/Core`'s build directory), included by the
-  five files that print them. `main.cpp`'s `"Undefined"` fallback goes.
-- **ccache.** `./mk.sh` compiles through ccache when it is installed: it writes a copy of the
-  native file whose `c` and `cpp` are `['ccache', <compiler>]`, since meson wraps a compiler only
-  when it detects it itself. `--ccache` insists on it, `--no-ccache` turns it off.
-- **CI (`.github/workflows/build-all.yaml`).** The Linux jobs no longer build libobjc2,
-  tools-make and libs-base. A new `unit-tests-windows` job builds the test flavour without LTO
-  and runs `tests/run.sh unit`, with Mesa's llvmpipe `opengl32.dll` beside the core tests (the
-  runner has no GPU). Builds compile through ccache, and the ccache store and downloaded
-  packages (pacman, apt, dnf) are cached; every job has a timeout; the token is read-only by
-  default; `release` runs only for pushes to `master` and `develop`; a pull request from this
-  repository no longer runs the jobs its push already ran; `actions/cache` is v6.
-- **Licences.** `LICENSE.md` carries the QuickJS-ng, libcurl and ICU notices, and names the wrap
-  and the patches applied to QuickJS-ng; `Doc/SpidermonkeyChanges.txt` goes.
-- **Tests.** New: `test_OOMatrix`, `test_OOQuaternion` and `test_OOHPVector` (identities,
-  inverses, rotations keeping lengths, translation and scale, double precision far from the
-  origin, the description texts). `test_OOShaderProgram` accepts either driver's answer for
-  deleting program 0. Removed: the `headers_standalone` test (`tests/check_headers_standalone.py`),
-  `tests/idiom_check.py` (`check_debug_monitor_guards.py` carries its own copy of the scanning
-  helpers it used), and `tests/source_paths.py` with its `test_source_paths.py`;
-  `test_double_click_timing.py` opens `src/<path>.cpp` directly.
+- GNUstep leaves build, launchers and packaging (`build_gnustep.sh`, Flatpak modules,
+  `.travis.yml`, `debian/`). `run_oolite.sh` still computes `OO_GNUSTEPDEFAULTSDIR` for
+  preferences. `post_build.sh` loses `gnustep_folder`: `stamp_file` is now `${11}`, `build_docs`
+  `${12}`.
+- Objective-C tools: `tools/icosmesh` is one C++20 file (`icosmesh.cpp`, `-ffp-contract=off`);
+  JSErrorMunger and the fonttexgen app go; `tools/distancemap` is plain C.
+- Dead Objective-C under always-false conditions goes (`OOLITE_MAC_OS_X`, `OO_SALVAGE_SUPPORT`,
+  CoreFoundation branches, `OOFoundation.h`'s Objective-C macros); `DEBUG_DUMP` switches now
+  build.
+- Build and CI: a generated `OOVersion.h` replaces the version `-D` flags; `./mk.sh` uses ccache
+  when installed (`--ccache`, `--no-ccache`). CI drops the GNUstep builds, adds
+  `unit-tests-windows` (llvmpipe `opengl32.dll`), caches ccache and packages, and runs `release`
+  only on `master`/`develop` pushes. `LICENSE.md` adds the QuickJS-ng, libcurl and ICU notices.
+- Tests: new `test_OOMatrix`, `test_OOQuaternion`, `test_OOHPVector`; removed `headers_standalone`,
+  `idiom_check.py`, `source_paths.py`.
 
 ## Why
 
-The conversion left GNUstep's build, runtime set-up and packaging in place with nothing using
-them, and Objective-C in tools and in code no build compiles. Removing them leaves a tree that
-builds with a C++ compiler and the libraries `meson.build` names. The version header and ccache
-let a rebuild reuse unchanged objects; the CI changes run the unit suites on Windows and keep
-the jobs' time down. The licence notices are required for the libraries the Windows package
-ships.
+Nothing used the GNUstep set-up or the remaining Objective-C, and the version header, ccache and
+CI changes cut rebuild and job time.
 
 ## Behaviour changes
 
-- None in the game's logic: the removed code was never compiled.
-- The Linux launcher no longer creates `$GAME_DATA/.GNUstep` or a temporary `GNUstep.conf`, and
-  the Windows launcher and `main.cpp` no longer set `GNUSTEP_*`. Not pinned by a test.
-- An EXR snapshot no longer leaks its attribute array, and its signature is not cut at 255
-  bytes. Not pinned by a test.
-- `test_OOShaderProgram`'s four failed-initialiser checks accept `GL_INVALID_VALUE` or no error
-  from the teardown's `glDeleteObjectARB(0)`: NVIDIA reports the error, Mesa does not. The game
-  code is unchanged; the checks still require nothing else to be left behind.
-- The new maths tests pin current behaviour. Writing them found that `OOMatrixForRotation`
-  (`src/Core/OOMatrix.cpp`) is not a rotation for an axis with x ≠ 0 and y ≠ z: its third row
-  starts `t*x*y + s*y` where it should be `t*x*z + s*y`. Upstream has the same code; this step
-  does not change it, and `test_OOMatrix` uses the unaffected axis (0, 1, 1). Upstream may want
-  to fix it.
-- `OOPlanetData.cpp` is regenerated by the C++ `icosmesh` with the same data; only its header
-  comment's file name changes.
+- Game logic: none; the removed code was never compiled.
+- The Linux launcher no longer creates `$GAME_DATA/.GNUstep` or a temporary `GNUstep.conf`, and the
+  Windows launcher and `main.cpp` no longer set `GNUSTEP_*`. Not pinned.
+- An EXR snapshot frees its attribute array and keeps its full signature (was leaked; cut at 255
+  bytes). Not pinned.
+- `test_OOShaderProgram`'s four failed-initialiser checks accept `GL_INVALID_VALUE` or no error from
+  `glDeleteObjectARB(0)` (NVIDIA reports it, Mesa does not); they still require nothing else left
+  behind. Game code unchanged.
+- Found, not fixed: `OOMatrixForRotation`'s third row starts `t*x*y + s*y`, should be
+  `t*x*z + s*y` (wrong for x ≠ 0, y ≠ z; upstream too). `test_OOMatrix` pins current behaviour on
+  axis (0, 1, 1). Upstream may want to fix it.
+- `OOPlanetData.cpp` is regenerated with the same data; only its header comment's file name
+  changes.
 
 ## How to review
 
-Read it by commit; each says what it removes or adds. Most of the 217 files are deletions
-(`debian/`, the Xcode projects, the fonttexgen nib, the Objective-C icosmesh). Read by hand:
-`tools/icosmesh/icosmesh.cpp` against the deleted `main.m` and `JAIcos*.m`, `post_build.sh` and
-`src/meson.build` (the argument positions), `meson.build` and `src/Core/meson.build` for
-`OOVersion.h`, `mk.sh`'s ccache block, and the CI workflow. The `OOFoundation.h`,
-`OOLogOutputHandler.cpp` and `OOTCPStreamDecoderAbstractionLayer.h` hunks are deletions of
-`OOLITE_MAC_OS_X` and CoreFoundation branches. macOS and Linux builds of this step are not
+Read by commit. Most of the 217 files are deletions (`debian/`, Xcode projects, fonttexgen nib,
+Objective-C icosmesh). Read by hand: `icosmesh.cpp` against the deleted `main.m`/`JAIcos*.m`;
+`post_build.sh` and `src/meson.build` (argument positions); `meson.build` and `src/Core/meson.build`
+for `OOVersion.h`; `mk.sh`'s ccache block; the CI workflow. macOS and Linux builds are not
 verified by this series.
+
+Test edits:
+- `test_OOShaderProgram.cpp`: accepts either driver's answer for deleting program 0.
+- `check_headers_standalone.py`: removed with the `headers_standalone` test.
+- `tests/unit/core/meson.build`: adds `test_OOMatrix`, `test_OOQuaternion`, `test_OOHPVector`.
+- `idiom_check.py` removed; `check_debug_monitor_guards.py` carries its own scanning helpers.
+- `source_paths.py`, `gui/test_source_paths.py` removed; `test_double_click_timing.py` opens
+  `src/<path>.cpp` directly.
 
 ## Test changes
 
-Existing test files this step changes (test ledger: `test-changes.md`):
+Existing test files changed (ledger `test-changes.md`):
 
 - `tests/check_debug_monitor_guards.py`
 - `tests/check_headers_standalone.py`
@@ -118,6 +72,6 @@ Existing test files this step changes (test ledger: `test-changes.md`):
 - `tests/unit/core/meson.build`
 - `tests/unit/core/test_OOShaderProgram.cpp`
 
-## Verified **(gen)**
+## Verified
 
 Not verified yet.

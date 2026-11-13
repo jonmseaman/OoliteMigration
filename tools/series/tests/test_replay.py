@@ -308,8 +308,10 @@ class DescribeReplayTest(unittest.TestCase):
         self.assertIn("series/005-b", text)
         self.assertIn("old 3, 4, 5", text)
         self.assertIn("src/js.c", text)
-        self.assertIn("#768", text)
-        self.assertIn("not independent", text)
+        self.assertNotIn("#768", text)
+        first = series.render_description_replay(self.M, self.M["steps"][0], {})
+        self.assertIn("#768", first)
+        self.assertIn("#767 and #768 merged first", first)
 
     def test_the_switch_step_is_described_as_the_switch(self):
         import copy
@@ -320,7 +322,7 @@ class DescribeReplayTest(unittest.TestCase):
                            "source": {"type": "target", "ref": "feature/upstream-quickjs-binding", "commit": "d" * 40,
                                       "test_ledger": "specs/x/series/test-changes.md"},
                            "differs_from_old": [], "size": None, "verification": None})
-        text = series.render_description_replay(m, m["steps"][2], {})
+        text = series.render_description_replay(m, m["steps"][2], {}, tests_changed=["tests/t.cpp"])
         self.assertIn("feature/upstream-quickjs-binding", text)
         self.assertIn("test-changes.md", text)
         self.assertNotIn("Replays:", text)

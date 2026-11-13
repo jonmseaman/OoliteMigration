@@ -2,76 +2,52 @@
 
 <!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-Step 2 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/002-safety-net`.
+Step 2/28. Replays `series/002-safety-net`.
 
 ## What this changes
 
-This step adds tests and the few game hooks those tests need, before any production code moves.
-
-- `tests/gui/` is a PyAutoGUI tier (G1–G11) that drives the real game window with OS-level mouse
-  and keyboard input. It runs on Windows; elsewhere its fixtures skip.
-- `tests/component/` is a pytest-bdd tier (S1–S8) that launches the game, talks to it over the
-  debug console's TCP protocol, spawns ships and asserts tolerant outcomes such as "no pirate
-  remains within 900 ticks". Each scenario starts the game with `OO_RANDOM_SEED` (step 1).
-- `tests/launch_snapshot.py` is reworked so several copies can run at once, each with its own
-  console port and its own staged copy of `oolite.app`.
-- On the game side: `ship.speed` becomes writable from scripts, and debug builds get an opt-in
-  shuffle of `NSDictionary`/`NSSet` enumeration order (`OOEnumerationShuffle`), which
-  `GameController` initialises at start-up so its seed is logged first.
+- `tests/gui/`: PyAutoGUI tier G1–G11 driving the real window with OS-level input. Windows only;
+  elsewhere its fixtures skip.
+- `tests/component/`: pytest-bdd tier S1–S8 over the debug console's TCP protocol, asserting
+  tolerant outcomes ("no pirate remains within 900 ticks"). Each launch sets `OO_RANDOM_SEED`.
+- `tests/launch_snapshot.py`: several copies can run at once, each with its own console port and
+  staged `oolite.app`.
+- Game hooks: writable `ship.speed`, and a debug-only seeded shuffle of `NSDictionary`/`NSSet`
+  enumeration (`OOEnumerationShuffle`), initialised in `GameController` so its seed logs first.
 
 ## Why
 
-Every later step in the series rewrites code that has no tests of its own: the Foundation layer,
-the Objective-C classes, #768's JavaScript binding. These tests are written against the unmodified
-Objective-C game, so they record what it does now, and each later step is checked against them.
-They come first because a test added after a rewrite can only tell you what the new code does.
-
-The game-side hooks make those runs repeatable or controllable. A writable `ship.speed` lets a
-script hold a ship at a known speed, which writing `ship.velocity` cannot do (the engine rebuilds
-the velocity from the flight speed on the next frame). The enumeration shuffle catches code that
-silently relies on GNUstep's hash order, which the C++ containers in later steps will not reproduce.
+Later steps rewrite untested code, so these tests first record what the unmodified game does.
 
 ## Behaviour changes
 
-- **`ship.speed` is writable for non-player ships** (`OOJSShip.m`). The setter calls `-setSpeed:`,
-  refuses negative values and NaN with a script error, has no upper clamp, and stays read-only on
-  the player ship. Not pinned by a test in this step; `setterNumbers` in
-  `tests/unit/core/test_OOJSShip` checks it from step 14 on.
-- **Debug builds only: `OO_SHUFFLE_ENUMERATION=<seed>`** makes `foreach`/`foreachkey` walk
-  dictionaries and sets in a seeded, reproducible order. When `OO_DEBUG` is 0 (deployment, test and
-  dev builds) the macros are exactly upstream's and `OOEnumerationShuffle.m` compiles to nothing.
-  The order logic is tested by `tests/unit/test_enumeration_shuffle.c`, which is not in the meson
-  build: its header gives the one-line `cc` command that builds it. Unset, nothing changes.
+- `ship.speed` is writable on non-player ships via `-setSpeed:`; negative or NaN is a script
+  error, no upper clamp, still read-only on the player (was read-only). Not pinned here;
+  `setterNumbers` in `tests/unit/core/test_OOJSShip` checks it from step 14.
+- Debug builds: `OO_SHUFFLE_ENUMERATION=<seed>` gives `foreach`/`foreachkey` a seeded, reproducible
+  order (was hash order); unset, nothing changes. With `OO_DEBUG` 0 the macros are upstream's and
+  `OOEnumerationShuffle.m` compiles to nothing. Pinned by `tests/unit/test_enumeration_shuffle.c`
+  (not in meson; its header gives the `cc` command).
 
 ## How to review
 
-Start with the game side, which is small:
+Rule: production code changes only for these hooks. Start with the game side:
 
-- `src/Core/OOFoundation.h`: the `foreach` macros. `OO_DEBUG` moves to the top of the file because
-  the macros now test it; its meaning is unchanged.
-- `src/Core/OOEnumerationShuffle.{h,m}`, `OOEnumerationShufflePRNG.h`, and the call in
-  `src/Core/GameController.m`.
-- The `kShip_speed` setter in `src/Core/Scripting/OOJSShip.m`, written in #768's idiom.
-- `src/Core/meson.build`, which adds `OOEnumerationShuffle.m` to the sources. The top-level
-  `meson.build` is unchanged.
+- `src/Core/OOFoundation.h`: the `foreach` macros; `OO_DEBUG` moves to the top, meaning unchanged.
+- `src/Core/OOEnumerationShuffle.{h,m}`, `OOEnumerationShufflePRNG.h`, the call in
+  `GameController.m`, and `src/Core/meson.build` (top-level `meson.build` unchanged).
+- The `kShip_speed` setter in `src/Core/Scripting/OOJSShip.m`, in #768's idiom.
 
-Everything else, about 13.6k lines, is under `tests/`. For the component tier, read
-`tests/component/README.md` (the step catalogue), then `console.py`, `steps/world_steps.py` and one
-feature. For the GUI tier, `tests/gui/test_g1_exit_via_mouse.py` is the pattern the other G-tests
-follow; most of the size is `tests/gui/conftest.py`. S2–S8 are labelled smoke tests in their
-headers: they check that the setup runs cleanly, not the full behaviour their titles name.
-
-Some comments and READMEs in the new tiers refer to documents and helper scripts kept outside this
-repository. The fixtures do not need them: where one would use such a helper, it looks for it at
-run time and carries on without it.
+The other ~13.6k lines are `tests/`: read `tests/component/README.md`, `console.py`,
+`steps/world_steps.py` and one feature; `tests/gui/test_g1_exit_via_mouse.py` is the G-test
+pattern. S2–S8 are smoke tests: they check the setup runs, not the behaviour their titles name.
+Some comments name helpers outside this repo; the fixtures carry on without them.
 
 ## Differences from the old step
 
-Where this step's change differs from `series/002-safety-net`'s, and why:
-
 - `src/Core/Scripting/OOJSShip.m`: conflict resolved (stored): #768 rewrote OOJSShip.m for QuickJS-ng (its property table as OOJS_PROPERTY_* macros, setters returning JSValue); the old step made ship.speed read/write for the safety net's tests. Kept #768's file with speed as OOJS_PROPERTY_RW and the old step's setter case in #768's idiom (JS_ToFloat64, JS_UNDEFINED, OOJSNativeFailure).
 
-## Verified **(gen)**
+## Verified
 
 Windows x64, `12eca88f7f`, 2026-11-11. macOS and Linux are not verified.
 

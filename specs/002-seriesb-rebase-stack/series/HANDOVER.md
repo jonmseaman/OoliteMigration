@@ -60,7 +60,7 @@ What the series keeps from upstream's PRs and `develop` does not have:
 | 24 | `seriesb/024-post-conversion-fixes` | `feature/upstream-quickjs-poc-cxx` (the switch) | `seriesb/023-google-style-format` | Small fixes after the conversion; Mozilla polyfills for expansions | 3.1k / 94 / 99 | 8 pass, 2 n/a (2026-11-03) |
 | 25 | `seriesb/025-libcurl-http` | written on its own branch | `seriesb/024-post-conversion-fixes` | Fetch http(s) with libcurl on every platform | 411 / 77 / 9 | not verified |
 | 26 | `seriesb/026-migration-completion` | written on its own branch | `seriesb/025-libcurl-http` | Drop GNUstep and the last Objective-C; cache builds in CI | 1.6k / 452 / 1.2k | not verified |
-| 27 | `seriesb/027-modern-cpp` | written on its own branch | `seriesb/026-migration-completion` | Use C++23 and the standard library directly | 32.8k / 3.6k / 70 | not verified |
+| 27 | `seriesb/027-modern-cpp` | written on its own branch | `seriesb/026-migration-completion` | Use C++23 and the standard library directly | 33.2k / 3.8k / 70 | not verified |
 | 28 | `seriesb/028-upstream-772-tests` | written on its own branch | `seriesb/027-modern-cpp` | Add upstream #772's JavaScript tests; reject non-dictionary arguments as 1.93 did | 51 / 1.7k / 3.7k | not verified |
 
 ## Keeping it current

@@ -2,86 +2,54 @@
 
 <!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-Step 3 of 28, stacked on upstream #768's branch, so not independent of #767 and #768. Replays `series/005-quickjs-switch` (old 3, 4, 5).
+Step 3/28. Replays `series/005-quickjs-switch` (old 3, 4, 5).
 
 ## What this changes
 
-The game compiles as Objective-C++. Every Objective-C source file in `src/` is renamed from `.m`
-to `.mm` (247 renames, including #768's `poc/` harness), and the build declares the `objcpp`
-language (`meson.build`, `clang.ini`). `src/meson/meson.build` gives Objective-C++ the same
-exception flags as Objective-C and, for Clang off macOS, the same GNUstep-runtime flags. Every
-`meson.build` source list names the `.mm` files. 288 files change, +1738/−1334; no file is added
-or deleted.
-
-131 renames are byte-identical. The other 116, and 29 headers, get the edits that C++ requires:
-
-- identifiers that are C++ keywords are renamed: `this` → `thisObj` in #768's binding (the
-  `OOJS_GETTER_ARGS`/`OOJS_SETTER_ARGS` macros and every callback), `class` → `klass`, `new` →
-  `newValue`, `export`, `mutable`, `template`, `private` and `operator` likewise;
-- explicit casts where C converts implicitly: `void *` results (`malloc`, `alloca`, `dlsym`,
-  `-bytes`, `JS_GetOpaque`, `pointerValue`) and integers assigned to enums;
-- variable-length arrays become `std::vector`;
-- `extern "C"` guards in the headers that declare C functions;
-- a few C-only constructs get C++ equivalents: `OO_CAST_PARAMETER` in `OOStringExpander.h` picks
-  its helper by overloading, where C uses `__builtin_choose_expr`; `OOOpenGLStateManager.mm`'s
-  state table moves above its first use and lists its entries and fields in declaration order;
-  declarations that a `goto` or `case` would jump over get their own block or lose their
-  initialiser to a separate assignment; `OOJSPropID.h`'s `OOJSID` macro puts a space between
-  `""` and its argument;
-- `OOFoundation.h` adds `OOSortFunction()`, used at the `sortedArrayUsingFunction:` and
-  `sortUsingFunction:` call sites. With Apple's Foundation it casts the sort function to the
-  `NSInteger` signature the SDK declares; with GNUstep, whose declaration already takes
-  `NSComparisonResult`, it passes the function as it is. `OONSOperation.h`'s priority names become
-  typed constants, and `OOMaths.h` includes `<tgmath.h>` before its `extern "C"` block, because
-  libc++ declares templates there.
-
-#768's QuickJS-ng binding stays the scripting layer, here and in every later step; only the edits
-above touch it. `oolite-quickjs-compat.js`, the QuickJS-ng wrap and its patch, and upstream's
-`tools/js-parity/` and `tools/oxp-upgrade/` are unchanged.
-
-`ShellScripts/common/post_build.sh` now copies the Windows DLLs that the game's DLLs depend on as
-well as the game's own: it runs `ldd` over each newly copied DLL until no new one appears
-(`staged_dlls`). For example, `libtre-5.dll` needs `libsystre-0.dll`, which the game does not
-link directly.
+- Every Objective-C source in `src/` goes `.m` → `.mm` (247 renames, incl. #768's `poc/`); the
+  build declares `objcpp` (`meson.build`, `clang.ini`), and `src/meson/meson.build` gives it
+  Objective-C's exception flags and, for Clang off macOS, GNUstep-runtime flags. 288 files,
+  +1738/−1334, none added or deleted.
+- 131 renames are byte-identical; 116 and 29 headers get the edits C++ requires: keyword
+  identifiers renamed (`this` → `thisObj` across #768's binding, `class` → `klass`, `new` →
+  `newValue`, …), explicit `void *` and enum casts, VLAs → `std::vector`, `extern "C"` guards,
+  declarations a `goto`/`case` would jump scoped or split.
+- C-only constructs replaced: `OO_CAST_PARAMETER` (`OOStringExpander.h`) by overloads;
+  `OOOpenGLStateManager.mm`'s table moved above first use; `OOSortFunction()` (`OOFoundation.h`)
+  at the `sort…UsingFunction:` sites; `OOMaths.h` includes `<tgmath.h>` before `extern "C"`.
+- `ShellScripts/common/post_build.sh` stages transitive Windows DLLs (`ldd` until none new,
+  `staged_dlls`), e.g. `libsystre-0.dll` for `libtre-5.dll`.
+- #768's QuickJS-ng binding stays the scripting layer; `oolite-quickjs-compat.js`, the wrap and
+  patch, `tools/js-parity/` and `tools/oxp-upgrade/` are unchanged.
 
 ## Why
 
-Step 4 adds `oofnd`, a C++20 library that the game's Objective-C files include, and later steps
-put C++ types inside Objective-C classes before converting each class to C++. All of that needs
-Objective-C++. Renaming every file in one step keeps the later diffs to real changes. Each edit
-here is the smallest one the compiler requires, made on upstream's code, so upstream's recent
-changes (#742, #748, #749, #780 among them) stay as they are.
+Step 4's C++20 `oofnd` and later C++-in-class steps need Objective-C++; one rename step keeps
+later diffs to real changes.
 
 ## Behaviour changes
 
-None. The edits are renames, casts and declarations. The arrays that became `std::vector` are
-now zero-initialised and on the heap rather than the stack. `OOOpenGLStateManager.mm`'s state
-table has the same five states with the same values. The step-2 component and GUI tiers run
-against this step unchanged.
+- Former VLAs are zero-initialised `std::vector`s on the heap (were stack arrays). Not pinned.
+
+Otherwise none: `OOOpenGLStateManager.mm`'s table keeps the same five states and values, and the
+step-2 component and GUI tiers run unchanged.
 
 ## How to review
 
-1. See only the files whose content changed (116 edited renames, 41 modified files):
+Rule: each edit is the smallest the compiler requires, on upstream's code. Content changes only,
+then without re-indentation:
 
-       git diff -M --name-status seriesb/002-safety-net seriesb/003-objcpp-switch | grep -v '^R100'
+    git diff -M --name-status seriesb/002-safety-net seriesb/003-objcpp-switch | grep -v '^R100'
+    git diff -M -w seriesb/002-safety-net seriesb/003-objcpp-switch -- src ':!*meson.build'
 
-2. Read the edits without the re-indentation that the new blocks cause:
+Real reads: `OOStringExpander.h` (overloads must classify each type as the C branch does), the
+moved table in `OOOpenGLStateManager.mm`, the new blocks in `OOPlanetTextureGenerator.mm` and
+`OOStandaloneAtmosphereGenerator.mm`, then the build files above. Upstream kept: `--diff-filter=AD
+--name-only` over the same range prints nothing; the joystick files (#742, #749) are `R100`;
+`src/Core/OOOpenGLOnly.h` (#748) is unchanged; `git grep -n playerWillSaveGame
+seriesb/003-objcpp-switch -- src` still shows #780's `doScriptEvent:` calls.
 
-       git diff -M -w seriesb/002-safety-net seriesb/003-objcpp-switch -- src ':!*meson.build'
-
-   Most hunks are one of the kinds listed above. The ones that need a real read are
-   `OOStringExpander.h` (the overloads must classify each type as the C branch does), the moved
-   state table in `OOOpenGLStateManager.mm`, and the new blocks in
-   `OOPlanetTextureGenerator.mm` and `OOStandaloneAtmosphereGenerator.mm`.
-3. Check the build files: `meson.build`, `clang.ini`, `src/meson/meson.build`, and
-   `ShellScripts/common/post_build.sh`.
-4. Check that upstream's code is kept: `git diff -M --diff-filter=AD --name-only
-   seriesb/002-safety-net seriesb/003-objcpp-switch` prints nothing; the joystick files
-   (#742, #749) are `R100`; `src/Core/OOOpenGLOnly.h` (#748) is unchanged; and
-   `git grep -n playerWillSaveGame seriesb/003-objcpp-switch -- src` still shows #780's
-   `doScriptEvent:` calls.
-
-## Verified **(gen)**
+## Verified
 
 Windows x64, `e8b7c8d6d9`, 2026-11-11. macOS and Linux are not verified.
 

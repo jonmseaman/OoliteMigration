@@ -2,7 +2,7 @@
 
 <!-- Written by tools/series/series.py --series seriesb describe. A rerun keeps the four hand-written sections and rewrites the rest. -->
 
-Step 28 of 28, stacked on upstream #768's branch, so not independent of #767 and #768.
+Step 28/28.
 
 ## What this changes
 
@@ -13,20 +13,18 @@ Step 28 of 28, stacked on upstream #768's branch, so not independent of #767 and
   OXP downloader is left out.
 - Fixes what the probe found: `mission.markSystem()`, `mission.unmarkSystem()`,
   `Ship.setMaterials()` and `Ship.setShaders()` (and `VisualEffect`'s) raise when a script passes
-  an array or a string where 1.93 expected a dictionary. The C++ build read it as an empty
-  dictionary and returned normally.
+  an array or a string where 1.93 expected a dictionary.
 
 ## Why
 
-#772's tests drive the real game through the debug console and the scripting API, so they run
-unchanged against the C++ build, and their stored outputs come from upstream's Objective-C build. A
-difference points at the Objective-C to C++ translation.
+#772's tests run unchanged against the C++ build with outputs stored from upstream's Objective-C
+build, so a difference points at the translation.
 
 ## Behaviour changes
 
-- A script that passes a non-dictionary to those methods gets a script error, as in 1.93. Pinned
-  by `tests/component/test_dictionary_arguments_reject_arrays.py` (3 of its 4 tests fail without
-  the fix).
+- A non-dictionary passed to those methods is a script error, as in 1.93 (was read as an empty
+  dictionary). Pinned by `tests/component/test_dictionary_arguments_reject_arrays.py` (3 of 4 fail
+  without the fix).
 - Otherwise none: the rest is tests and tooling.
 
 ## How to review
@@ -36,10 +34,6 @@ The import is #772's files as upstream has them; read the fix commit (`OOJSMissi
 `tests/run_js_tests.py --path <built game>`. It sometimes stops at "Could not start the hyperspace
 countdown" because the player dies in flight; that happens without the fix too.
 
-## Test changes
-
-No existing test file changes (the test ledger is `adaptations.md`).
-
-## Verified **(gen)**
+## Verified
 
 Not verified yet.

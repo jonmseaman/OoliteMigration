@@ -1707,10 +1707,10 @@
    "resolutions": [],
    "rules": [],
    "size": {
-    "deleted_files": 1441,
+    "deleted_files": 1501,
     "other": 70,
-    "src": 32766,
-    "tests": 3594
+    "src": 33223,
+    "tests": 3798
    },
    "source": {
     "commit": "3732f6126bee22fa4666da29ff2bbe6630c4a88e",
