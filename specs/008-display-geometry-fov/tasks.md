@@ -509,3 +509,12 @@ any checkpoint.
   version passed against the broken mapping too. With the old whole-window mapping put back,
   G13 fails (system 154 against 129); with the code as it is, it passes. A chart click must hold
   the button across frames, since a `pyautogui.click` can fall inside one frame and never be seen.
+- Jon's hand check (2026-11-13, in flight, paused): no distortion seen. One bug: Back on the
+  Screen Matching screen did not leave it from the keyboard. Back switches to Game Options with
+  Field Of View selected, and the same Enter, still down on Game Options' first frame, reopened
+  the screen. Fixed in `oolite-dev` `001213d3c` by clearing the keys before the switch. The test
+  is G14 (`tests/gui/test_g14_screen_matching_back_with_enter.py`): it fails without the fix and
+  passes with it, and G12 and G13 still pass. G14 runs from the start screen; paused in flight
+  goes through the same handler (`pollGuiArrowKeyControls`, the paused branch of
+  `pollFlightControls`), so no separate in-flight test was added. T031 stays open for Jon's
+  sign-off.
