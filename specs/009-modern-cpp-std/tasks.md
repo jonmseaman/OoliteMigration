@@ -669,7 +669,7 @@ edits.**
   `tests/unit/oofnd/test_ref.cpp` and `tests/unit/oofnd/test_weakset.cpp` and make the
   construction-form edits (ledger rows from T002, now signed).
   **Accept:** `cd oolite-dev && rg -q 'class Object : public std::enable_shared_from_this<Object>' src/oofnd/Object.hpp` and CI `test_ref`, `test_weakset` and the whole `core` suite pass
-- [ ] T089 [US2] Exemplar: `src/Core/OOColor.cpp`/`.h` and its holders off the bridge onto
+- [X] T089 [US2] Exemplar: `src/Core/OOColor.cpp`/`.h` and its holders off the bridge onto
   `std::shared_ptr<OOColor>`/`oo::makeShared`/`oo::share`.
   **Accept:** `cd oolite-dev && ! rg -n 'oo::(Ref|WeakRef)<\s*OOColor\b|makeRef<\s*OOColor\b' src`
 - [ ] T090 [US2] The never-destroyed singletons (`makeRef(...).leakRef()` in
