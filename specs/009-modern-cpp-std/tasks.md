@@ -229,7 +229,7 @@ baselines and the FR-016 tests exist and pass on the base.
   add the `exceptions.md` row (category `alloc`, file `src/Core/OODemangle.h`, required by
   `abi::__cxa_demangle` returning `malloc` memory).
   **Accept:** `cd oolite-dev && ! rg -n 'free\s*\(\s*demangled' src`
-- [ ] T015 [P] [US1] (part 1 done, `oolite-dev` `a47133c73`: streamed buffer and the Vorbis leak; the `readCreatingBuffer` interface's borderline ledger row is signed, Jon 2026-11-12) Sound buffers to `std::vector<char>` in `src/Core/OOALSoundDecoder.cpp:316,351,443`,
+- [X] T015 [P] [US1] (part 1 done, `oolite-dev` `a47133c73`: streamed buffer and the Vorbis leak; the `readCreatingBuffer` interface's borderline ledger row is signed, Jon 2026-11-12) Sound buffers to `std::vector<char>` in `src/Core/OOALSoundDecoder.cpp:316,351,443`,
   `src/Core/OOALStreamedSound.cpp:35,62` and `src/Core/OOALBufferedSound.cpp:35`; this fixes the
   per-read leak in `OOReadOXZVorbis` (`OOALSoundDecoder.cpp:442`, research R4).
   **Accept:** `cd oolite-dev && ! rg -n -P '(?<![\w:.>])(::|std::)?(malloc|calloc|realloc|free)\s*\(' src/Core/OOALSoundDecoder.cpp src/Core/OOALStreamedSound.cpp src/Core/OOALBufferedSound.cpp`
