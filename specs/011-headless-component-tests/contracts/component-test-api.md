@@ -44,6 +44,7 @@ oo::component::Game game = oo::component::Game::current();           // the one 
 | `game.step(n)` | `n` steps of 1/60 s: poll input if there is a view, then `tick` |
 | `game.simulate(span)` | advances that much game time, rounded up to whole steps: `game.simulate(5min)` |
 | `game.simulateUntil(predicate, atMost)` | steps until the predicate is true; returns whether it became true |
+| `game.simulateAtMost(span)` | the windowed step "the simulation runs for at most N ticks": steps for that span, stopping early once every spawned role except `police` has no ship left |
 | `game.time()` | game time in seconds |
 
 Spans are `std::chrono` durations of game time, so a test writes `5min`, `10s` or `ticks(900)`.
