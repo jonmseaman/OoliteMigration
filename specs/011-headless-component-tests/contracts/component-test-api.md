@@ -21,6 +21,7 @@ Two styles of test are supported, and a test may mix them:
 
 ```text
 oo::component::Game game = oo::component::Game::scenario(seed);     // empty system, player in flight
+oo::component::Game game = oo::component::Game::inFlightWithKeys(seed); // as scenario, plus key presses
 oo::component::Game game = oo::component::Game::atStartScreen(seed); // normal start, input view
 oo::component::Game game = oo::component::Game::current();           // the one an earlier case made
 ```
@@ -57,11 +58,16 @@ Spans are `std::chrono` durations of game time, so a test writes `5min`, `10s` o
 | `game.countWithRole(role)` | the windowed steps' `system.countShipsWithRole` |
 | `game.engages(hunter, quarry)` | the windowed step "a ship with role H engages a ship with role Q" |
 | `game.universe()`, `game.player()` | the game's real `Universe*` and `PlayerEntity*` |
-| `game.add(ShipWithKey(key).aheadOf(entity, metres))` | one ship by definition name, added to the universe; returns the real `ShipEntity*`, or null. Placement is `.at(position)`, `.aheadOf(…)` or `.near(…)` |
+| `game.add(ShipWithKey(key).aheadOf(entity, metres))` | one ship by definition name, added to the universe; returns a `ShipHandle`. Placement is `.at(position)`, `.aheadOf(…)` or `.near(…)` |
 | `game.spawnKey(key, position)` | as `add`, at a plain position and returning the owning pointer; the census uses it |
 | `game.remove(ship)` | removes it without an explosion |
 | `game.shipsWithRole(role)` | the live ships whose primary role is `role` |
 | `game.entityCount()` | everything in the universe |
+
+**Ship handles.** `add`, `spawn` and `shipsWithRole` return `ShipHandle`. `handle->` calls the real
+`ShipEntity`, a handle converts to `ShipEntity*`, and `handle.alive()` says whether the ship is
+still in the universe. A handle never keeps a ship alive, because an owning pointer held by a
+test would stop the game from seeing that ship go.
 
 **Fluent descriptions** (Jon, 2026-11-13). `spawn` and `add` each take a small description object
 built by chained calls: `ShipsWithRole(role).count(n).withinKm(k)` and
@@ -95,7 +101,7 @@ does, and returns a number, a string or a boolean.
 
 ## Keys and screens
 
-Only for a game made with `atStartScreen`.
+Only for a game made with `atStartScreen` or `inFlightWithKeys`.
 
 | Call | Effect |
 |---|---|

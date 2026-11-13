@@ -20,8 +20,8 @@ compiler; the shape is what is being offered for approval.
 `tests/component-cpp/oo_component.hpp`. It is not part of the shipped game.
 
 It wraps the game's real objects and hands them to the test: `game.universe()` is the real
-`Universe*`, `game.player()` the real `PlayerEntity*`, and `game.add(...)` returns a real
-`ShipEntity*`. It adds what a test needs and the game does not have: starting with no window,
+`Universe*`, `game.player()` the real `PlayerEntity*`, and `game.add(...)` returns a handle to a
+real `ShipEntity`. It adds what a test needs and the game does not have: starting with no window,
 stepping time, pressing keys, and collecting events and errors.
 
 It exists because a universe cannot yet be made by itself. `Universe::newUniverse` starts the
@@ -65,8 +65,8 @@ OO_TEST(an_enemy_adder_kills_a_player_who_does_nothing) {
   PlayerEntity* player = game.player();
 
   // An Adder, 5 km off the player's nose, that has decided to attack.
-  ShipEntity* adder = game.add(ShipWithKey("adder").aheadOf(player, 5'000.0));
-  OO_CHECK(adder != nullptr);
+  auto adder = game.add(ShipWithKey("adder").aheadOf(player, 5'000.0));
+  OO_CHECK(adder.alive());
   adder->setPrimaryRole("pirate");
   adder->addTarget(player);
   adder->performAttack();
@@ -96,14 +96,118 @@ has been run.
 A test that wants the sketch's helper can have it, in the test file:
 
 ```cpp
-ShipEntity* AddEnemyAdder(Game& game, double metresAhead) {
-  ShipEntity* adder = game.add(ShipWithKey("adder").aheadOf(game.player(), metresAhead));
+oo::component::ShipHandle AddEnemyAdder(Game& game, double metresAhead) {
+  auto adder = game.add(ShipWithKey("adder").aheadOf(game.player(), metresAhead));
   adder->setPrimaryRole("pirate");
   adder->addTarget(game.player());
   adder->performAttack();
   return adder;
 }
 ```
+
+### A0.1. Basic tests: one ship, one behaviour
+
+Small tests of one thing a ship does. Each creates what it needs, runs a short time and asserts
+on the real objects. The game facts they rely on were read from the code on 2026-11-13 and are
+given under each test; none has been run.
+They share A0's includes and `using` lines.
+
+**A ship's gun fires and hits what is in front of it.**
+
+```cpp
+OO_TEST(a_ship_fires_its_forward_laser_and_hits_what_is_ahead) {
+  Game game = Game::scenario(20260910);
+
+  auto shooter = game.add(ShipWithKey("adder").near(game.player(), 20'000.0));
+  shooter->setAITo("nullAI.plist");  // it sits still: this test is about the gun, not the pilot
+  OO_CHECK(shooter->setWeaponMount(OOWeaponFacing::kForward, "EQ_WEAPON_PULSE_LASER"));
+
+  auto target = game.add(ShipWithKey("asteroid").aheadOf(shooter, 1'000.0));
+  const float energyBefore = target->energy;
+
+  shooter->addTarget(target);
+  OO_CHECK(shooter->fireMainWeapon(1'000.0));  // the game's own "fire the forward weapon"
+  game.simulate(1s);
+
+  OO_CHECK(shooter->laserHeatLevelForward() > 0.0f);                    // the gun was used
+  OO_CHECK(target->energy < energyBefore);                              // the shot landed
+  OO_CHECK(game.events().has("shipBeingAttacked", target));             // and the game said so
+  OO_CHECK(game.events().has("shipAttackedOther", shooter));
+  OO_COMPONENT_CHECK_NO_ERRORS(game);
+}
+```
+
+**A ship told to attack opens fire by itself.** The same thing with the pilot in charge.
+
+```cpp
+OO_TEST(a_ship_told_to_attack_opens_fire) {
+  Game game = Game::scenario(20260910);
+
+  auto target = game.add(ShipWithKey("cobra3-trader").near(game.player(), 20'000.0));
+  target->setAITo("nullAI.plist");
+  auto hunter = game.add(ShipWithKey("adder").near(target, 5'000.0));
+  OO_CHECK(hunter->setWeaponMount(OOWeaponFacing::kForward, "EQ_WEAPON_PULSE_LASER"));
+
+  hunter->addTarget(target);
+  hunter->performAttack();
+
+  // It has to turn, close the range and line up, so give it time; assert that it happened.
+  OO_CHECK(game.simulateUntil([&] { return game.events().has("shipBeingAttacked", target); }, 60s));
+  OO_CHECK(target->energy < target->maxEnergy);
+}
+```
+
+**A mining laser breaks an asteroid into boulders.**
+
+```cpp
+OO_TEST(a_mining_laser_breaks_an_asteroid_into_boulders) {
+  Game game = Game::scenario(20260910);
+
+  auto asteroid = game.add(ShipWithKey("asteroid").near(game.player(), 20'000.0));
+  auto miner = game.add(ShipWithKey("adder").near(asteroid, 2'000.0));
+  OO_CHECK(miner->setWeaponMount(OOWeaponFacing::kForward, "EQ_WEAPON_MINING_LASER"));
+  OO_CHECK_EQ(game.shipsWithRole("boulder").size(), 0u);
+
+  miner->addTarget(asteroid);
+  miner->performMining();
+  OO_CHECK(miner->isMining());
+
+  OO_CHECK(game.simulateUntil([&] { return !asteroid.alive(); }, 2min));
+
+  // A mined asteroid always leaves at least two boulders. One destroyed any other way leaves
+  // them only one time in five.
+  OO_CHECK(game.shipsWithRole("boulder").size() >= 2u);
+  OO_CHECK(game.events().has("shipDied", asteroid));
+  OO_COMPONENT_CHECK_NO_ERRORS(game);
+}
+```
+
+The game facts: `isMining()` is true for a ship in the mining behaviour with a mining laser
+forward. A rock that dies while being mined throws out `2 + random(0..likely_cargo)` rocks of its
+debris role, which for an asteroid is `boulder`.
+
+**The player fires with the fire key.** The same gun test, from the keyboard.
+
+```cpp
+OO_TEST(the_fire_key_fires_the_players_laser) {
+  Game game = Game::inFlightWithKeys(20260910);  // a scenario game that also takes key presses
+  PlayerEntity* player = game.player();
+  OO_CHECK(player->setWeaponMount(OOWeaponFacing::kForward, "EQ_WEAPON_PULSE_LASER"));
+
+  auto target = game.add(ShipWithKey("asteroid").aheadOf(player, 1'000.0));
+  const float energyBefore = target->energy;
+
+  // "a" is the default fire key (key_fire_lasers). Held until the shot lands.
+  OO_CHECK(game.hold("a", [&] { return target->energy < energyBefore; }, 5s));
+  OO_CHECK(player->laserHeatLevelForward() > 0.0f);
+}
+```
+
+**What `auto` is here.** `game.add` returns an `oo::component::ShipHandle`, not a bare pointer.
+`handle->` calls the real `ShipEntity`, and a handle can be passed wherever the game takes a
+`ShipEntity*`. `handle.alive()` says whether the ship is still in the universe. The handle does
+not keep the ship alive: if a test held an owning pointer, the game's own "my target is gone"
+checks would see a ship that never goes away, and the test would change what it is testing.
 
 ### A1. A ported scenario (User Story 1)
 
@@ -174,8 +278,8 @@ Something the windowed tier cannot do, because it can only poll:
 ```cpp
 OO_TEST(a_destroyed_ship_dies_before_it_leaves_the_ship_list) {
   Game game = Game::scenario(20260910);
-  ShipEntity* pirate = game.spawn(ShipsWithRole("pirate")).front();
-  const auto id = pirate->universalID();
+  auto pirate = game.spawn(ShipsWithRole("pirate")).front();
+  const auto id = pirate->universalID;
 
   game.eval("system.allShips.filter(function(s){ return s.primaryRole == 'pirate'; })[0]"
             ".explode()");
@@ -477,10 +581,21 @@ class ShipWithKey {
   // ... the placement chosen; default: near the player
 };
 
+// A ship a test added. Use it like a ShipEntity*; ask alive() before using it after the ship
+// could have died. It does not keep the ship alive.
+class ShipHandle {
+ public:
+  bool alive() const;                 // still in the universe
+  OOUniversalID id() const;           // kept after the ship is gone, so events can still be matched
+  ShipEntity* operator->() const;     // fails the test, by name, if the ship is gone
+  operator ShipEntity*() const;       // null if the ship is gone
+};
+
 class Game {
  public:
   // One per process. A second call fails the test.
   static Game scenario(std::uint32_t seed);        // empty system, player in flight, no keys
+  static Game inFlightWithKeys(std::uint32_t seed);  // as scenario, and it takes key presses
   static Game atStartScreen(std::uint32_t seed);   // a normal start, with a windowless view
   static Game current();                           // the game an earlier case created
 
@@ -491,16 +606,16 @@ class Game {
   double time() const;
 
   // The world, in the vocabulary of tests/component/steps/world_steps.py.
-  std::vector<ShipEntity*> spawn(const ShipsWithRole& what);  // the ships it added
+  std::vector<ShipHandle> spawn(const ShipsWithRole& what);  // the ships it added
   int countWithRole(std::string_view role);
   bool engages(std::string_view hunter, std::string_view quarry);
 
   // The world, directly: the game's own objects.
   Universe* universe();
   PlayerEntity* player();
-  ShipEntity* add(const ShipWithKey& what);  // null if it cannot be made
+  ShipHandle add(const ShipWithKey& what);  // not alive() if it could not be made
   std::shared_ptr<ShipEntity> spawnKey(const std::string& shipKey, HPVector position);
-  std::vector<ShipEntity*> shipsWithRole(std::string_view role);
+  std::vector<ShipHandle> shipsWithRole(std::string_view role);
   void remove(ShipEntity* ship);
   std::size_t entityCount() const;
 
@@ -547,7 +662,7 @@ class Game {
 ship key, the primary role set back to the scenario's role, the pirate's bounty, the role's AI.
 
 ```cpp
-std::vector<ShipEntity*> Game::spawn(const ShipsWithRole& what) {
+std::vector<ShipHandle> Game::spawn(const ShipsWithRole& what) {
   const std::string_view role = what.role_;
   const int count = what.count_;
   // "within N km" measures from the first ship spawned; otherwise spawn around the player.
@@ -567,7 +682,7 @@ std::vector<ShipEntity*> Game::spawn(const ShipsWithRole& what) {
       JsString(selector), count, at.x, at.y, at.z, radiusMetres, JsString(role),
       PerRoleSetup(role));  // bounty for pirates, setAI(...) where ROLE_AI has an entry
   const int added = static_cast<int>(eval(js));
-  std::vector<ShipEntity*> ships = NewestShipsWithRole(role, added);
+  std::vector<ShipHandle> ships = NewestShipsWithRole(role, added);
   if (!ships.empty() && !locus_) locus_ = ships.front()->getPosition();
   return ships;
 }
