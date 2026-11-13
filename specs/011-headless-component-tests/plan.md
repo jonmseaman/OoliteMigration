@@ -2,9 +2,8 @@
 
 **Branch**:
 - Spec docs: `feature/phase4-polish` (OoliteMigration).
-- Game work: `feature/headless-component-tests` in a new `oolite-dev` worktree at
-  `.agent-tmp/wt-component-tests`, cut from the most recent `seriesb` branch when work starts (today
-  `seriesb/027-modern-cpp`).
+- Game work: `seriesb/029-component-tests` in a new `oolite-dev` worktree at
+  `.agent-tmp/wt-component-tests`, based on `seriesb/027-modern-cpp` (Jon, 2026-11-13).
 
 **Date**: 2026-11-13 | **Spec**: [spec.md](spec.md)
 
@@ -97,7 +96,7 @@ rules and `docs/workflow.md`'s definition of done.
 |---|---|---|
 | 1. No test changed to make it pass | Tests are only added. S1–S8 keep their originals. A ported scenario that disagrees with its original stops and is reported (FR-032). The census's expected failures are a listed file with reasons, checked both ways. | pass |
 | 2. No warning silenced | The GL trap is its own translation unit that includes no GL header, so it has no conflicting declarations. It needs LTO off, which the test builds already use in CI. | pass |
-| 3. Never touch `develop`, `master`, `main`; never force-push | Game work is on `feature/headless-component-tests`. It follows its base by merging (R11). | pass |
+| 3. Never touch `develop`, `master`, `main`; never force-push | Game work is on `seriesb/029-component-tests`. It follows its base by a local `rebase --onto`; any force-push that needs is left to Jon (R11). | pass |
 | 4. Never read expansion content | Add-ons are off by option, every add-on directory points at an empty scratch directory, and a test asserts the search path has one entry. The *Manage Expansion Packs* screen is opened and left; no row on it is activated. | pass |
 | 5. Tools judge correctness | Each milestone's gate is a command. The key-path observations H1–H7 are written as tests, and a failing one is a finding, not a verdict. | pass |
 | 6. No `libgnustep-base`, no SpiderMonkey | Script access is through upstream's QuickJS-ng binding. | pass |
@@ -244,7 +243,9 @@ Also recorded in research.md under the item named.
   FR-027 were reworded on 2026-11-13 to say what is covered, and the spec's Context was corrected
   for the data counts and the tutorial's path.
 - **The GL trap is on Linux and macOS only** (R2).
-- **The branch is pushed and follows its base by merging** (R11).
+- **The game branch is `seriesb/029-component-tests`, based on `seriesb/027-modern-cpp`** (Jon,
+  2026-11-13). Every task is done on it. It follows a rewritten base by a local `rebase --onto`,
+  and an agent never force-pushes it (R11).
 - **Development is on the Mac; CI proves Windows and Linux** (R10).
 - **Bugs found in the key path are fixed here if the fix is small** and the same code in
   `upstream/oolite` shows the same fault or the port introduced it. Anything else is recorded

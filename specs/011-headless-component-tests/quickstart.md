@@ -5,7 +5,7 @@ Run these to see the feature working end to end. Each block says what it proves.
 
 ## Prerequisites
 
-- The `oolite-dev` worktree at `.agent-tmp/wt-component-tests` on `feature/headless-component-tests`.
+- The `oolite-dev` worktree at `.agent-tmp/wt-component-tests` on `seriesb/029-component-tests`.
 - A build: `./mk.sh build test --setup-flags=-Db_lto=false`.
 - On Windows, an MSYS2 UCRT64 shell. On macOS and Linux, the ordinary shell.
 

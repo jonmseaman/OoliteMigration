@@ -368,18 +368,29 @@ of the feature.
 
 ## R11 — Branch and worktree
 
-**Decision:**
-- A new worktree `.agent-tmp/wt-component-tests` of `oolite-dev`, on branch `feature/headless-component-tests`,
-  cut from the tip of the most recent `seriesb` branch when work starts (Jon, 2026-11-13). The
-  base commit is written into `tasks.md` when it is cut.
-- The branch is pushed for CI. It is never force-pushed. When its base is rewritten, the new base
-  is merged in, and the merge is recorded in `tasks.md`.
-- If a merge of a rewritten base cannot be made cleanly, a fresh branch
-  (`feature/headless-component-tests-2`) is cut from the new base and the work is cherry-picked onto it.
-  The old branch is left as it is.
+**Decision** (Jon, 2026-11-13):
+- All game work is on a new branch, **`seriesb/029-component-tests`**, based on
+  `seriesb/027-modern-cpp`. 028 is Jon's branch for other JavaScript tests; 029 is the number for
+  these tests.
+- It is checked out in a new worktree, `.agent-tmp/wt-component-tests`. The main `oolite-dev`
+  checkout has another feature's uncommitted work and is left alone.
+- The base commit is written into `tasks.md` when the branch is cut.
+- The branch is pushed so that CI runs. An agent never force-pushes it (hard rule 3).
+- **When 027 is rewritten** (its owner rebases and force-pushes it), 029 follows the way the
+  `seriesb` stack does: `git rebase --onto <new 027> <saved old base>`, done locally. That rewrite
+  cannot be pushed by an agent once the branch has been pushed. The rebased branch is then left
+  local, `tasks.md` records that the remote copy is stale and needs Jon's force-push, and work
+  carries on against the local build. The stale local parents are never synced.
 
-**Rationale:** Hard rule 3 forbids force-pushing, and CI needs pushes. `seriesb` branches are
-rebased by their owner, so a pushed child cannot follow by rebasing.
+**Rationale:** The branch is part of the `seriesb` stack, which is a line of rebased branches, so
+merging the base in would be wrong for it. Hard rule 3 leaves the force-push to Jon. Jon's
+standing preference is that the local build is enough to keep going.
+
+**Alternatives considered:**
+- **A `feature/` branch that merges its base in.** The first draft of this plan. It does not fit
+  a stack whose branches are rebased.
+- **Not pushing at all until the end.** CI on four platforms is how Windows, Linux and the
+  Flatpak build are proved (R10).
 
 ## R12 — Speed targets
 

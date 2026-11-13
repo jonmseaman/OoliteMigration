@@ -484,6 +484,8 @@ shooting ship in the first test: it fails, and says the shot did not land.
   sub-parts) are covered with the ship that carries them.
 - **These are C++ tests.** Jon asked for C++. They are written on whichever C++ test harness the
   unit suites use when the work starts: the in-tree one today, Google Test if spec 005 has landed.
+- **`game.player()` stays a plain pointer for now** (Jon, 2026-11-13), as the game's own
+  `PlayerEntity::sharedPlayer()` returns one.
 - **They are component tests** (Jon, 2026-11-13). The component tier gains a C++ half that runs
   headless. The Python scenarios that launch the whole game are its other half and stay. Where
   this spec says "the tier" or "headless tests" it means the C++ component tests, and "windowed"
@@ -528,13 +530,14 @@ Its requirements are not rewritten.
 
 ### Where the work happens
 
-- Jon's instruction (2026-11-13): implementation is done in a **new worktree of `oolite-dev`, cut
-  from the most recent `seriesb` branch** at the time the work starts. On 2026-11-13 that is
-  `seriesb/027-modern-cpp`.
-- The worktree goes under `.agent-tmp/`, beside the existing ones, on its own feature branch. The
-  main `oolite-dev` checkout holds another feature's uncommitted work and is left alone.
-- `seriesb` branches are rebased and force-pushed by their owner. This feature's branch is never
-  force-pushed (hard rule 3). If its base moves, the plan says how it follows.
+Jon's instructions (2026-11-13):
+
+- All the tasks are done on a new branch, **`seriesb/029-component-tests`**, based on
+  `seriesb/027-modern-cpp`. 028 is taken by a branch for other JavaScript tests.
+- The branch is checked out in a new worktree of `oolite-dev` under `.agent-tmp/`. The main
+  `oolite-dev` checkout holds another feature's uncommitted work and is left alone.
+- `seriesb` branches are rebased and force-pushed by their owner. An agent never force-pushes
+  this one (hard rule 3). The plan (research R11) says how it follows a rewritten base.
 
 ### Decisions taken by default
 
