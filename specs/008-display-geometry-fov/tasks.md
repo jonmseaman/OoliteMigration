@@ -319,7 +319,7 @@ passes.
 
 ## Phase 7: Polish and cross-cutting concerns
 
-- [ ] T029 Write `specs/008-display-geometry-fov/check-fps.sh` (committed `100755` with a shebang):
+- [X] T029 Write `specs/008-display-geometry-fov/check-fps.sh` (committed `100755` with a shebang):
   reads the frame-rate medians recorded in `specs/008-display-geometry-fov/baselines.md` and exits
   nonzero if any "on" median is more than 5% below its "off" median; it takes the file as an
   optional argument. Add two samples, `specs/008-display-geometry-fov/fps-samples/drop-6.md` and
