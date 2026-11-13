@@ -256,7 +256,7 @@ baselines and the FR-016 tests exist and pass on the base.
 - [X] T021 [P] [US1] Static tables in `src/Core/Scripting/OOJSClasses.cpp:71,122-123` to
   `std::array`/`std::vector` with static lifetime (QuickJS keeps the pointer and never frees it).
   **Accept:** `cd oolite-dev && ! rg -n -P '\b(malloc|calloc|realloc)\s*\(' src/Core/Scripting/OOJSClasses.cpp`
-- [ ] T022 [P] [US1] Growable arrays to `std::vector` in `src/Core/Octree.cpp:84,113,809-917`,
+- [X] T022 [P] [US1] Growable arrays to `std::vector` in `src/Core/Octree.cpp:84,113,809-917`,
   `src/Core/CollisionRegion.cpp:67,98,202` and `src/Core/OOPolygonSprite.cpp:187-622`.
   **Accept:** `cd oolite-dev && ! rg -n -P '(?<![\w:.>])(::|std::)?(malloc|calloc|realloc|free)\s*\(' src/Core/Octree.cpp src/Core/CollisionRegion.cpp src/Core/OOPolygonSprite.cpp`
 - [ ] T023 [P] [US1] Growable arrays to `std::vector` in `src/Core/OOSkyDrawable.cpp:522-608`,
