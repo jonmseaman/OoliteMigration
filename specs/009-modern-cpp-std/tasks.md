@@ -817,7 +817,7 @@ edits.**
 - [X] T104 [P] If Jon has ruled on `test_stdlib` (T002 row), act on it: delete `src/oofnd/StdLib.hpp`
   only if he approved retiring the test; otherwise leave both and note it in the checklist.
   **Accept:** `row=$(grep 'test_stdlib' specs/009-modern-cpp-std/test-ledger.md); echo "$row" | grep -qE '[0-9]{4}-[0-9]{2}-[0-9]{2}' && if echo "$row" | grep -q 'retire'; then test ! -e oolite-dev/src/oofnd/StdLib.hpp; else test -e oolite-dev/src/oofnd/StdLib.hpp; fi`
-- [ ] T107 (FR-029, Jon 2026-11-12) Remove the `cxx_` prefix from every identifier that has it
+- [X] T107 (FR-029, Jon 2026-11-12) Remove the `cxx_` prefix from every identifier that has it
   (functions, types, constants and enumerators alike; the most used are functions such as
   `cxx_OOStringFromJSValue`, 290 uses): 3,306 references to 384 names (2026-11-12), about 2,310 in
   175 `src` files and 996 in 91 test files. Do it after US6 and US7 (T070–T083), which
@@ -830,6 +830,16 @@ edits.**
   and settle it at that site, writing each choice in this task's notes. Tests name the new
   identifiers (ledger, *covered*: a name the test uses, renamed, assertions unchanged).
   **Accept:** `cd oolite-dev && ! rg -n '\bcxx_\w+' src tests --glob '!src/Core/MiniZip/**' --glob '!src/SDL/EXRSnapshotSupport/**'`
+  *Notes (2026-11-13):* of the 384 names, 276 appear in code and 108 only in comments and strings.
+  Only three bare names were already in use in code (`descriptionComponents`,
+  `shortDescriptionComponents`, `oo_jsClassName`), all as members of test stand-ins derived from
+  `oo::Object`, which has neither; no upstream-name lookup was needed. The by-name, `callObjC()`
+  and object-name tables' strings take the bare names, which are upstream's selectors; the
+  `description` row leaves the `callObjC()` table and the facade rows (upstream's `callObjC()`
+  excludes that root-protocol name, as `test_OOJSCallEntityMethods` pins; before the rename no row
+  answered `description` either). Comments that named the Objective-C runtime's
+  `.cxx_construct`/`.cxx_destruct` say "C++ construction and destruction methods". One commit,
+  not one per area: a rename split by area leaves the build broken between commits.
 - [ ] T108 (FR-030, Jon 2026-11-12) Remove every unused include from the game and its tests: run
   `run-clang-tidy -checks='-*,misc-include-cleaner' -fix` over `src` and `tests/unit` (not the
   vendored directories), keep only its removals (it also suggests adding headers; those are
