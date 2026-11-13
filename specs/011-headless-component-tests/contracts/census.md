@@ -13,7 +13,7 @@ core data and gives each exactly one outcome. The values are defined in
 | `--only <kind>:<key>` | try one definition in this process and print its row |
 | `--list` | print every definition with its class, try nothing |
 | `--report <path>` | where to write the report; default `<build>/component/census-report.tsv` |
-| `--expectations <path>` | default `tests/component/cpp/census-expectations.tsv` |
+| `--expectations <path>` | default `tests/component-cpp/census-expectations.tsv` |
 | `--data-overlay <dir>` | merge one fixture `shipdata.plist` after the core data (see *Proving it can fail*) |
 | `--child --from <index> --progress <path>` | internal: child mode |
 
@@ -60,7 +60,7 @@ Registered as `test('census', component_census, suite: 'component', timeout: 600
 ## Proving it can fail
 
 `component_census --data-overlay <dir>` reads one extra `shipdata.plist` from a directory of test
-fixtures under `tests/component/cpp/fixtures/`, merged after the core data. The fixture holds one definition
+fixtures under `tests/component-cpp/fixtures/`, merged after the core data. The fixture holds one definition
 with a model that does not exist. The acceptance check runs the census with the overlay and
 requires exit 1 with that key, and only that key, reported as an unexpected failure.
 

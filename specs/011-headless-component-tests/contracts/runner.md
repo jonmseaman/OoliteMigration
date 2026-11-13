@@ -4,7 +4,7 @@ The component tier has two halves after this feature:
 
 | Half | Where | What it needs |
 |---|---|---|
-| **C++ (headless)** | `tests/component/cpp/` | nothing: no display, no desktop, any platform |
+| **C++ (headless)** | `tests/component-cpp/` | nothing: no display, no desktop, any platform |
 | **Windowed (Python)** | `tests/component/*.py`, `features/`, `steps/` | the real game window; one at a time |
 
 Both are "component tests". The words *headless* and *windowed* tell them apart where it matters.
@@ -30,19 +30,20 @@ Both are "component tests". The words *headless* and *windowed* tell them apart 
 
 ## Meson
 
-- `tests/component/cpp/meson.build` is included from the top-level `meson.build` on every host,
+- `tests/component-cpp/meson.build` is included from the top-level `meson.build` on every host,
   with no platform guard.
 - Each program is `executable(name, source, oo_component sources, objects:
   oolite_bin.extract_objects(all game sources except src/SDL/main.cpp), …)` with the game's
   include directories, dependencies and options, as `tests/unit/core/meson.build` does for
   `['*']`.
 - On Linux and macOS each program also compiles `gl_trap.cpp`, a `custom_target` output of
-  `tests/component/cpp/gl_trap_gen.py` run over the game's objects.
+  `tests/component-cpp/gl_trap_gen.py` run over the game's objects.
 - `test(name, exe, suite: 'component', timeout: 60, workdir: <built application directory>,
   env: …)`. The environment carries the source root, for the layouts and fixtures, and the build
   root, for scratch.
 - A C++ scenario has the same base name as its windowed original:
-  `cpp/test_s1_police_kills_pirate.cpp` beside `test_s1_police_kills_pirate.py`.
+  `tests/component-cpp/test_s1_police_kills_pirate.cpp` and
+  `tests/component/test_s1_police_kills_pirate.py`.
 - Programs run in parallel. None declares `is_parallel: false`.
 - A program that registers no cases exits 2, by the harness's own rule.
 
@@ -53,7 +54,7 @@ after a failure, removed after a pass.
 
 ## The GL trap generator
 
-`tests/component/cpp/gl_trap_gen.py <objects…> -o gl_trap.cpp`
+`tests/component-cpp/gl_trap_gen.py <objects…> -o gl_trap.cpp`
 
 - Runs the toolchain's `nm` on the objects, collects every undefined symbol that is a GL
   function, and writes one definition per symbol that prints `GL call <name> while headless` and
@@ -64,7 +65,7 @@ after a failure, removed after a pass.
 
 ## Repeat check
 
-`tests/component/cpp/repeat_100.sh <program>` runs the program 100 times with `--digest-out`,
+`tests/component-cpp/repeat_100.sh <program>` runs the program 100 times with `--digest-out`,
 compares the digest files and exits nonzero at the first difference, printing the run number and
 the step. Committed `100755`. It is run at milestone M3 and before the feature is finished. It is
 not part of `tests/run.sh component`, because it takes 100 start-ups.

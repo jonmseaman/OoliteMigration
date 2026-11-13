@@ -12,7 +12,7 @@
 
 ## Summary
 
-C++ component tests: programs under `tests/component/cpp/` that create the real game in their own
+C++ component tests: programs under `tests/component-cpp/` that create the real game in their own
 process with no window, no GL context and no sound, and step it at a fixed 1/60 s without waiting
 on the clock. They sit in the component tier beside the windowed Python scenarios.
 
@@ -50,9 +50,9 @@ Clang on macOS arm64, Clang or GCC on Linux x64.
 
 **Storage**:
 - per-run scratch directories under the build directory for settings, saves, logs and caches;
-- `tests/component/cpp/census-expectations.tsv` and the census report
+- `tests/component-cpp/census-expectations.tsv` and the census report
   ([contracts/census.md](contracts/census.md));
-- `tests/component/cpp/layouts/*.tsv`, the recorded keyboard layouts.
+- `tests/component-cpp/layouts/*.tsv`, the recorded keyboard layouts.
 
 **Testing**:
 - `oo_test` (`tests/unit/oofnd/oo_test.hpp`) for the new programs, in a new meson suite `component`;
@@ -103,7 +103,7 @@ rules and `docs/workflow.md`'s definition of done.
 | 7. No rewriting C for its own sake | `Math.random` is replaced through the public API. `quickjs.c` is not edited. | pass |
 | 8. Never wait for Jon | Every open choice has a default in research.md and under *Notes* below. | pass |
 | 9. No writes outside the repo | The worktree is under `.agent-tmp/`. Test scratch is under the build directory. | pass |
-| 10. clang-format 22, never on `tests/` | Game files only. New files under `tests/component/cpp` are laid out by hand like their neighbours. | pass |
+| 10. clang-format 22, never on `tests/` | Game files only. New files under `tests/component-cpp` are laid out by hand like their neighbours. | pass |
 | Every task has a failing-then-passing command | New tests supply it. For each GL site it is the trap. | pass |
 | Do it the exemplar's way | New types follow the base branch's ownership as it stands (spec 009 is moving it). Nothing new is shared. | pass |
 
@@ -154,7 +154,7 @@ src/SDL/
 ├── MyOpenGLView.h / .cpp          # initHeadless(): SDL events + dummy video, no window, no audio
 └── MyOpenGLView+Input.cpp         # key lookup through a member that defaults to SDL's
 
-tests/component/cpp/                         # new: the C++ half of the component tier
+tests/component-cpp/                         # new: the C++ half of the component tier
 ├── meson.build                    # suite 'component', every platform
 ├── oo_component.hpp / .cpp        # test support (contracts/component-test-api.md)
 ├── tutorial_steps.hpp             # StartTutorial(), Progress(): shared by the key tests
@@ -174,7 +174,7 @@ tests/component/cpp/                         # new: the C++ half of the componen
 └── repeat_100.sh                  # 100755: SC-002
 
 tests/run.sh                       # component runs the C++ half, then the windowed half
-meson.build                        # subdir('tests/component/cpp') on every host
+meson.build                        # subdir('tests/component-cpp') on every host
 .github/workflows/build-all.yaml   # C++ component step in the Windows, macOS, Fedora jobs
 installers/flatpak/…               # optional C++ component step in the Oolite module
 docs/ (OoliteMigration)            # current-state.md, workflow.md, GLOSSARY.md, CLAUDE.md
@@ -183,7 +183,7 @@ docs/ (OoliteMigration)            # current-state.md, workflow.md, GLOSSARY.md,
 **Structure Decision:**
 - The headless entry point lives in `src/Core` beside what it starts, so headless is a mode of
   the real program and not a second build of it.
-- The C++ tests are in `tests/component/cpp`, inside the component tier and outside `tests/unit`,
+- The C++ tests are in `tests/component-cpp`, beside `tests/component` and outside `tests/unit`,
   because the unit suites are declared only on Windows.
 - `oo_component` is the only thing tests include from the game. It is the place where a later spec 003
   swaps what is underneath.
@@ -195,7 +195,7 @@ all` must give the same results as before at every gate (FR-031).
 
 | # | Milestone | Stories | Gate |
 |---|---|---|---|
-| M0 | **Skeleton on every platform.** Worktree and branch. `tests/component/cpp/meson.build`, `test_skeleton` linking the `['*']` objects, `tests/run.sh component --cpp`, the CI step in the Windows, macOS and Fedora jobs. Three probes written as cases: SDL's dummy driver initialises; a pushed key event comes back from `SDL_PollEvent`; what `SDL_GetKeyFromScancode` returns for `N` with Caps Lock. | — | `tests/run.sh component --cpp` passes locally and the three CI jobs are green. |
+| M0 | **Skeleton on every platform.** Worktree and branch. `tests/component-cpp/meson.build`, `test_skeleton` linking the `['*']` objects, `tests/run.sh component --cpp`, the CI step in the Windows, macOS and Fedora jobs. Three probes written as cases: SDL's dummy driver initialises; a pushed key event comes back from `SDL_PollEvent`; what `SDL_GetKeyFromScancode` returns for `N` with Caps Lock. | — | `tests/run.sh component --cpp` passes locally and the three CI jobs are green. |
 | M1 | **Boots headless, with a hidden GL window.** `OOHeadlessOptions`, `startHeadless`, `tick`, the game clock, seeds, private directories, add-ons off. Start-up time and steps per second measured and written into `tasks.md`. | US1 | `test_boot` passes: universe exists, system empty, player in flight, search path has one entry, 600 steps advance game time by 10 s. |
 | M2 | **No GL at all.** Headless state in the extension manager; the nine sites guarded; textures not decoded; `gl_trap_gen.py` and the trap linked on Linux and macOS; the hidden window removed. Each further site the trap names is its own task. | US1 | `test_boot` passes with no window created and the trap linked. Removing one guard makes it fail and name the GL function. |
 | M3 | **First scenario.** `oo_component` spawn, find, `eval`, the observer and the error record. S1 ported with the original's seed and expression. `test_repeat` and `repeat_100.sh`. | US1 | `test_s1_police_kills_pirate` passes on three platforms. SC-001 and SC-002 measured. **Main milestone.** |
@@ -226,7 +226,10 @@ all` must give the same results as before at every gate (FR-031).
 Also recorded in research.md under the item named.
 
 - **They are component tests** (Jon, 2026-11-13). The component tier has a C++ half
-  (`tests/component/cpp/`, headless) and the windowed Python half it already had (R9).
+  (`tests/component-cpp/`, headless) and the windowed Python half it already had (R9).
+- **`tests/component-cpp/` is where they live for now** (Jon, 2026-11-13). It is a sibling of
+  `tests/component/`, so pytest never sees it. If the two halves are merged into one directory
+  later, only `meson.build`'s `subdir` and `run.sh` change.
 - **The fixed step is 1/60 s** (R3).
 - **Census spans:** 10 s of game time per ship, 5 s per equipment item (R8).
 - **Layouts:** US QWERTY, French AZERTY, Russian (R7).

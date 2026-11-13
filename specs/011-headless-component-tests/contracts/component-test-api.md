@@ -1,7 +1,19 @@
 # Contract: `oo_component`, the C++ component-test interface
 
-`tests/component/cpp/oo_component.hpp` and `.cpp`. The C++ component tests include this and nothing else from the
+`tests/component-cpp/oo_component.hpp` and `.cpp`. The C++ component tests include this and nothing else from the
 game unless they need a specific class. Names are indicative. The behaviour is the contract.
+
+## What it is
+
+`oo::component::Game` is a test class. It does not exist today and is not part of the shipped
+game. It starts the real game with no window and hands the test the game's real objects, so a
+test calls the game's own methods on `Universe`, `PlayerEntity` and `ShipEntity` and uses `Game`
+only to create, step and observe.
+
+Two styles of test are supported:
+- **Plain**: add ships, `simulate`, assert on the objects. New tests are written this way.
+- **Ported**: the step helpers below, which run the windowed steps' own script expressions. Only
+  the counterparts of S1–S8 use them.
 
 ## Creating a game
 
@@ -26,12 +38,13 @@ oo::component::Game game = oo::component::Game::current();           // the one 
 | Call | Effect |
 |---|---|
 | `game.step(n)` | `n` steps of 1/60 s: poll input if there is a view, then `tick` |
-| `game.runFor(seconds)` | rounds up to whole steps |
-| `game.runUntil(predicate, maxSeconds)` | steps until the predicate is true; returns whether it became true |
+| `game.simulate(span)` | advances that much game time, rounded up to whole steps: `game.simulate(5min)` |
+| `game.simulateUntil(predicate, atMost)` | steps until the predicate is true; returns whether it became true |
 | `game.time()` | game time in seconds |
 
-`runUntil` is how a test says "within N ticks". The component tier's tick is 0.125 s, so its
-"within 900 ticks" is `runUntil(…, 112.5)`.
+Spans are `std::chrono` durations of game time, so a test writes `5min`, `10s` or `ticks(900)`.
+`simulateUntil` is how a test says "within N ticks". The windowed tier's tick is 0.125 s, so its
+"within 900 ticks" is `simulateUntil(…, ticks(900))`.
 
 ## Entities
 
@@ -41,11 +54,13 @@ oo::component::Game game = oo::component::Game::current();           // the one 
 | `game.spawnWithin(count, role, km)` | the windowed step "… within K km" |
 | `game.countWithRole(role)` | the windowed steps' `system.countShipsWithRole` |
 | `game.engages(hunter, quarry)` | the windowed step "a ship with role H engages a ship with role Q" |
-| `game.spawnKey(key, position)` | one ship by definition name; returns it or null |
+| `game.universe()`, `game.player()` | the game's real `Universe*` and `PlayerEntity*` |
+| `game.addShip(key, position)` | one ship by definition name, added to the universe; returns the real `ShipEntity*`, or null |
+| `game.aheadOf(entity, metres)` | a position on that entity's nose |
+| `game.spawnKey(key, position)` | as `addShip`, returning the owning pointer; the census uses it |
 | `game.remove(ship)` | removes it without an explosion |
 | `game.shipsWithRole(role)` | the live ships whose primary role is `role` |
 | `game.entityCount()` | everything in the universe |
-| `game.player()` | the player's ship |
 
 The first four run the same script the windowed step runs, including its pinned ship key per
 role, its bounty for pirates and its AI per role (`tests/component/steps/world_steps.py`). Worked
@@ -77,9 +92,9 @@ Only for a game made with `atStartScreen`.
 
 | Call | Effect |
 |---|---|
-| `game.useLayout(name)` | install a recorded layout from `tests/component/cpp/layouts/` |
+| `game.useLayout(name)` | install a recorded layout from `tests/component-cpp/layouts/` |
 | `game.press(key)` | key down, steps until the game has sampled it, key up, steps until sampled |
-| `game.hold(key, predicate, maxSeconds)` | key down, `runUntil`, key up |
+| `game.hold(key, predicate, atMost)` | key down, `simulateUntil`, key up |
 | `game.pressScancode(scancode, mods)` | by physical key, for fault tests |
 | `game.type(text)` | one press per character |
 | `game.screen()` | the showing screen id |

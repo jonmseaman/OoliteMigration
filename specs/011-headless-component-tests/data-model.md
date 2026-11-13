@@ -77,7 +77,7 @@ A test may name a key by the character it wants (`'n'`) and a layout. The suppor
 up the scancode and modifiers in that layout. Pressing by scancode directly is for the fault
 tests.
 
-## Recorded layout (`tests/component/cpp/layouts/<name>.tsv`)
+## Recorded layout (`tests/component-cpp/layouts/<name>.tsv`)
 
 One row per (scancode, modifiers) pair that produces a key.
 
@@ -133,7 +133,7 @@ longer reports it.
 A `part` is `not-applicable` only if at least one ship that carries it `passed`. Otherwise it is
 `failed` with the reason "no passing parent".
 
-## Expectations file (`tests/component/cpp/census-expectations.tsv`)
+## Expectations file (`tests/component-cpp/census-expectations.tsv`)
 
 | Column | Meaning |
 |---|---|

@@ -37,7 +37,7 @@ env -u DISPLAY -u WAYLAND_DISPLAY tests/run.sh component --cpp -k s1_police_kill
 ## 3. The same result every time (SC-002)
 
 ```bash
-tests/component/cpp/repeat_100.sh test_s1_police_kills_pirate
+tests/component-cpp/repeat_100.sh test_s1_police_kills_pirate
 ```
 
 Expected: `100 runs, identical`; exit 0.
@@ -64,7 +64,7 @@ data then holds). The report is at `build/meson_test/component/census-report.tsv
 To prove it can fail:
 
 ```bash
-build/meson_test/tests/component/cpp/component_census --data-overlay tests/component/cpp/fixtures/broken-ship
+build/meson_test/tests/component-cpp/component_census --data-overlay tests/component-cpp/fixtures/broken-ship
 ```
 
 Expected: exit 1, naming the fixture's one definition.
@@ -82,7 +82,7 @@ does this in the Windows, macOS and Fedora jobs.
 To prove the tutorial test can fail, run it with the mutated layout:
 
 ```bash
-build/meson_test/tests/component/cpp/test_tutorial_keys --layout tests/component/cpp/fixtures/us-n-remapped.tsv
+build/meson_test/tests/component-cpp/test_tutorial_keys --layout tests/component-cpp/fixtures/us-n-remapped.tsv
 ```
 
 Expected: fails with `pressing n had no effect at GUI_SCREEN_MAIN, game time …` (SC-007).

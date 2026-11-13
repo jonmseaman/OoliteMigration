@@ -14,11 +14,99 @@ compiler; the shape is what is being offered for approval.
 
 ---
 
+## What `Game` is
+
+`oo::component::Game` does not exist today. It is a **test class**, new in this feature, in
+`tests/component-cpp/oo_component.hpp`. It is not part of the shipped game.
+
+It wraps the game's real objects and hands them to the test: `game.universe()` is the real
+`Universe*`, `game.player()` the real `PlayerEntity*`, and `game.addShip(...)` returns a real
+`ShipEntity*`. It adds what a test needs and the game does not have: starting with no window,
+stepping time, pressing keys, and collecting events and errors.
+
+It exists because a universe cannot yet be made by itself. `Universe::newUniverse` starts the
+whole game (player, scripts, system) and only one can exist in a process. `Game` does that start
+once. Spec 003 is the work that would let a test write `new Universe()` and add a player to it
+directly.
+
+---
+
 ## A. What a test looks like
 
-### A1. A combat scenario (User Story 1)
+### A0. The plain form: real objects, simulate, assert
 
-The windowed original, `tests/component/features/s1_police_kills_pirate.feature`:
+Jon's sketch of what a test should be (2026-11-13):
+
+```text
+auto universe = new Universe();
+addPlayerToUniverse(createPlayer());
+addShipToUniverse(createEnemyAdder());
+
+simulateUniverse(universe, ticks = 5minutes);
+
+assertThat(player->isDead())
+```
+
+The same test as it would be written in this plan. Everything called on `universe`, `player` and
+`adder` is a method the game has today.
+
+```cpp
+#include "oo_component.hpp"
+#include "oo_test.hpp"
+
+using namespace std::chrono_literals;
+using oo::component::Game;
+
+OO_TEST(an_enemy_adder_kills_a_player_who_does_nothing) {
+  Game game = Game::scenario(20260910);  // the universe and the player, in flight, nothing else
+  Universe* universe = game.universe();
+  PlayerEntity* player = game.player();
+
+  // An Adder, 5 km off the player's nose, that has decided to attack.
+  ShipEntity* adder = game.addShip("adder", game.aheadOf(player, 5'000.0));
+  OO_CHECK(adder != nullptr);
+  adder->setPrimaryRole("pirate");
+  adder->addTarget(player);
+  adder->performAttack();
+
+  game.simulate(5min);
+
+  OO_CHECK(player->status() == OOEntityStatus::kDead);
+  OO_CHECK(universe->getTime() >= 300.0);
+  OO_COMPONENT_CHECK_NO_ERRORS(game);
+}
+
+OO_TEST_MAIN()
+```
+
+How each line of the sketch maps:
+
+| Sketch | Here | Why it differs |
+|---|---|---|
+| `new Universe()` + `addPlayerToUniverse(createPlayer())` | `Game::scenario(seed)`, then `game.universe()` and `game.player()` | Today the universe creates its own player while it starts, and there can be one per process. |
+| `addShipToUniverse(createEnemyAdder())` | `game.addShip("adder", position)` | It is `universe->newShipWithName("adder")`, `setPosition`, `universe->addEntity`, in one call that returns the ship. |
+| `simulateUniverse(universe, 5minutes)` | `game.simulate(5min)` | It also runs what the frame runs besides `Universe::update`: sound, frame callbacks, input. |
+| `assertThat(player->isDead())` | `OO_CHECK(player->status() == OOEntityStatus::kDead)` | The game has no `isDead()`. The check macro is the harness's. |
+
+Whether one Adder does kill an idle Cobra in five minutes is for the test to say. Nothing here
+has been run.
+
+A test that wants the sketch's helper can have it, in the test file:
+
+```cpp
+ShipEntity* AddEnemyAdder(Game& game, double metresAhead) {
+  ShipEntity* adder = game.addShip("adder", game.aheadOf(game.player(), metresAhead));
+  adder->setPrimaryRole("pirate");
+  adder->addTarget(game.player());
+  adder->performAttack();
+  return adder;
+}
+```
+
+### A1. A ported scenario (User Story 1)
+
+A port keeps its original's steps and script expressions, so it reads as the feature file does and
+not as A0 does. The windowed original, `tests/component/features/s1_police_kills_pirate.feature`:
 
 ```gherkin
 Scenario: A police viper engages a lone pirate
@@ -29,7 +117,7 @@ Scenario: A police viper engages a lone pirate
   And a ship with role "police" survives
 ```
 
-Its C++ counterpart, `tests/component/cpp/test_s1_police_kills_pirate.cpp`:
+Its C++ counterpart, `tests/component-cpp/test_s1_police_kills_pirate.cpp`:
 
 ```cpp
 // The headless counterpart of features/s1_police_kills_pirate.feature: same seed, same spawns,
@@ -38,6 +126,7 @@ Its C++ counterpart, `tests/component/cpp/test_s1_police_kills_pirate.cpp`:
 #include "oo_component.hpp"
 #include "oo_test.hpp"
 
+using namespace std::chrono_literals;
 using oo::component::Game;
 using oo::component::ticks;
 
@@ -51,7 +140,7 @@ OO_TEST(a_police_viper_engages_a_lone_pirate) {
   OO_CHECK_EQ(game.spawnWithin(1, "pirate", 10), 1);
 
   // Then within 900 ticks a ship with role "police" engages a ship with role "pirate"
-  OO_CHECK(game.runUntil([&] { return game.engages("police", "pirate"); }, ticks(900)));
+  OO_CHECK(game.simulateUntil([&] { return game.engages("police", "pirate"); }, ticks(900)));
   // And a ship with role "police" survives
   OO_CHECK(game.countWithRole("police") > 0);
 
@@ -64,7 +153,7 @@ OO_TEST_MAIN()
 What it prints when the engagement never happens:
 
 ```text
-FAIL tests/component/cpp/test_s1_police_kills_pirate.cpp:22 [a_police_viper_engages_a_lone_pirate]: game.runUntil([&] { return game.engages("police", "pirate"); }, ticks(900))
+FAIL tests/component-cpp/test_s1_police_kills_pirate.cpp:22 [a_police_viper_engages_a_lone_pirate]: game.simulateUntil([&] { return game.engages("police", "pirate"); }, ticks(900))
   seed 20260910, game time 112.500 s, screen kMain
   last events:
     17.117 shipEvent  shipSpawned         viper#412
@@ -72,7 +161,7 @@ FAIL tests/component/cpp/test_s1_police_kills_pirate.cpp:22 [a_police_viper_enga
     ...
   rerun: tests/run.sh component --cpp -k s1_police_kills_pirate
 FAIL a_police_viper_engages_a_lone_pirate
-oo_test: tests/component/cpp/test_s1_police_kills_pirate.cpp: 1 tests, 5 checks, 1 failures
+oo_test: tests/component-cpp/test_s1_police_kills_pirate.cpp: 1 tests, 5 checks, 1 failures
 ```
 
 ### A2. A scenario that asserts order of events
@@ -88,7 +177,7 @@ OO_TEST(a_destroyed_ship_dies_before_it_leaves_the_ship_list) {
 
   game.eval("system.allShips.filter(function(s){ return s.primaryRole == 'pirate'; })[0]"
             ".explode()");
-  game.runFor(2.0);
+  game.simulate(2s);
 
   const auto died = game.events().firstOf("shipDied", id);
   OO_CHECK(died.has_value());
@@ -100,7 +189,7 @@ OO_TEST(a_destroyed_ship_dies_before_it_leaves_the_ship_list) {
 ### A3. The census, used as a test (User Story 2)
 
 The census is a program, not a test file a developer edits. This is its core, in
-`tests/component/cpp/component_census.cpp`:
+`tests/component-cpp/component_census.cpp`:
 
 ```cpp
 // One ship definition: spawn it, run it, check it, remove it. The result must not depend on which
@@ -115,7 +204,7 @@ Outcome TryShip(Game& game, const std::string& key, std::uint32_t baseSeed) {
     return Outcome::failed(key, "spawn returned null", game.errorsSince(mark));
   }
 
-  game.runFor(10.0);
+  game.simulate(10s);
 
   if (!game.contains(ship.get())) {
     return Outcome::left(key, game.time());  // the expectations file says whether that is allowed
@@ -163,7 +252,7 @@ component_census: 194 ships, 41 equipment: 108 passed, 4 left, 85 not-applicable
 
 ### A4. Menus (User Story 3)
 
-`tests/component/cpp/test_menus.cpp`:
+`tests/component-cpp/test_menus.cpp`:
 
 ```cpp
 #include "oo_component.hpp"
@@ -224,7 +313,7 @@ OO_TEST_MAIN()
 
 ### A5. The tutorial by `n`, under a keyboard layout (User Story 3)
 
-`tests/component/cpp/test_tutorial_keys.cpp`. The meson file registers it three times, with
+`tests/component-cpp/test_tutorial_keys.cpp`. The meson file registers it three times, with
 `--layout us`, `--layout fr_azerty` and `--layout ru`.
 
 ```cpp
@@ -281,19 +370,19 @@ inline void StartTutorial(oo::component::Game& game) {
   game.selectRowWithText("Tutorial");
   OO_COMPONENT_PRESS_EXPECT(game, "enter", game.screen() == OOGUIScreenID::kMission);
   OO_COMPONENT_PRESS_EXPECT(game, "enter", game.screen() != OOGUIScreenID::kMission);
-  OO_CHECK(game.runUntil(
+  OO_CHECK(game.simulateUntil(
       [&] {
         return game.player()->status() == OOEntityStatus::kInFlight &&
                game.screen() == OOGUIScreenID::kMain;
       },
-      60.0));
+      60s));
 }
 ```
 
 When a key does nothing, the message is the one SC-007 asks for:
 
 ```text
-FAIL tests/component/cpp/test_tutorial_keys.cpp:21 [n_advances_every_step_of_lessons_0_and_1]: pressing n had no effect
+FAIL tests/component-cpp/test_tutorial_keys.cpp:21 [n_advances_every_step_of_lessons_0_and_1]: pressing n had no effect
   layout ru: n -> scancode 17 (N), no modifiers -> key 0x442
   seed 20260910, game time 31.350 s, screen kMain, tutorial at lesson 0 step 2
   rerun: tests/run.sh component --cpp -k tutorial_keys_ru
@@ -301,7 +390,7 @@ FAIL tests/component/cpp/test_tutorial_keys.cpp:21 [n_advances_every_step_of_les
 
 ### A6. A key-fault case (User Story 4)
 
-`tests/component/cpp/test_key_faults.cpp`. Each case says what a player should see. If the
+`tests/component-cpp/test_key_faults.cpp`. Each case says what a player should see. If the
 observation in research.md is right, the case fails today, and that failure is the finding.
 
 ```cpp
@@ -312,7 +401,7 @@ OO_TEST(n_works_with_caps_lock_on) {
   const Stage before = Progress(game);
 
   game.pressScancode(SDL_SCANCODE_N, SDL_KMOD_CAPS);  // by physical key: no layout involved
-  game.runFor(1.0);
+  game.simulate(1s);
 
   OO_CHECK(Progress(game) != before);
 }
@@ -342,7 +431,7 @@ OO_TEST(every_scancode_can_be_pressed_and_released) {
 
 ---
 
-## B. The support library (`tests/component/cpp/oo_component.hpp`)
+## B. The support library (`tests/component-cpp/oo_component.hpp`)
 
 ### B1. The interface
 
@@ -350,7 +439,8 @@ OO_TEST(every_scancode_can_be_pressed_and_released) {
 namespace oo::component {
 
 // The windowed tier's "tick" is one AI think interval, 0.125 s (tests/component/README.md).
-constexpr double ticks(int n) { return n * 0.125; }
+using GameTime = std::chrono::duration<double>;  // so a test can write 5min, 10s, 250ms
+constexpr GameTime ticks(int n) { return GameTime{n * 0.125}; }
 
 class Game {
  public:
@@ -361,8 +451,8 @@ class Game {
 
   // Time. Nothing here waits on the real clock.
   void step(int steps = 1);                        // each step is 1/60 s
-  void runFor(double gameSeconds);
-  bool runUntil(const std::function<bool()>& done, double maxGameSeconds);
+  void simulate(GameTime span);                    // game.simulate(5min)
+  bool simulateUntil(const std::function<bool()>& done, GameTime atMost);
   double time() const;
 
   // The world, in the vocabulary of tests/component/steps/world_steps.py.
@@ -371,12 +461,15 @@ class Game {
   int countWithRole(std::string_view role);
   bool engages(std::string_view hunter, std::string_view quarry);
 
-  // The world, directly.
+  // The world, directly: the game's own objects.
+  Universe* universe();
+  PlayerEntity* player();
+  ShipEntity* addShip(const std::string& shipKey, HPVector position);  // null if it cannot be made
+  HPVector aheadOf(Entity* entity, double metres);
   std::shared_ptr<ShipEntity> spawnKey(const std::string& shipKey, HPVector position);
   std::vector<ShipEntity*> shipsWithRole(std::string_view role);
   void remove(ShipEntity* ship);
   std::size_t entityCount() const;
-  PlayerEntity* player();
 
   // Script expressions, evaluated the way the debug console evaluates them.
   double eval(std::string_view js);
@@ -391,9 +484,9 @@ class Game {
   std::uint64_t digest() const;
 
   // Keys and screens (atStartScreen games only).
-  void useLayout(std::string_view name);           // tests/component/cpp/layouts/<name>.tsv
+  void useLayout(std::string_view name);           // tests/component-cpp/layouts/<name>.tsv
   void press(std::string_view key);                // "n", "enter", "escape", "down", "f5"
-  bool hold(std::string_view key, const std::function<bool()>& until, double maxGameSeconds);
+  bool hold(std::string_view key, const std::function<bool()>& until, GameTime atMost);
   void pressScancode(SDL_Scancode code, SDL_Keymod mods);
   void keyDownScancode(SDL_Scancode code, SDL_Keymod mods);
   void keyUpScancode(SDL_Scancode code, SDL_Keymod mods);
@@ -463,8 +556,8 @@ void Game::step(int steps) {
   }
 }
 
-bool Game::runUntil(const std::function<bool()>& done, double maxGameSeconds) {
-  const double deadline = time() + maxGameSeconds;
+bool Game::simulateUntil(const std::function<bool()>& done, GameTime atMost) {
+  const double deadline = time() + atMost.count();
   while (time() < deadline) {
     if (done()) return true;
     step();
@@ -630,7 +723,7 @@ Linked into the C++ component tests on Linux and macOS. One function per GL symb
 objects import:
 
 ```cpp
-// Generated by tests/component/cpp/gl_trap_gen.py from the game's objects. Do not edit.
+// Generated by tests/component-cpp/gl_trap_gen.py from the game's objects. Do not edit.
 #include <cstdio>
 #include <cstdlib>
 
@@ -690,7 +783,7 @@ void ShipEntity::doScriptEvent(/* ... as today ... */) {
 }
 ```
 
-### C8. A recorded layout (`tests/component/cpp/layouts/fr_azerty.tsv`)
+### C8. A recorded layout (`tests/component-cpp/layouts/fr_azerty.tsv`)
 
 ```text
 # French AZERTY. Recorded with SDL 3.4.8 on <system>, by printing

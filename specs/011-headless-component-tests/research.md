@@ -190,7 +190,7 @@ whether a view exists for input. See [contracts/headless-game.md](contracts/head
 - The middle of `doPerformGameTick` becomes `GameController::tick(OOTimeDelta)`: update, restart
   check, sound update, frame callbacks. The windowed loop calls it with the dt it measured. A
   headless game calls it with a fixed dt and never sleeps.
-- **The fixed step is 1/60 s.** `runFor(seconds)` rounds up to whole steps.
+- **The fixed step is 1/60 s.** `simulate(span)` rounds up to whole steps.
 - A small clock object owned by `GameController` answers "monotonic seconds" and "time of day".
   The real one reads the system. The headless one advances only in `tick`. The state-affecting
   reads listed above go through it.
@@ -307,7 +307,7 @@ worded to match, and the limits go in Story 4's finding.
   neither stops nor changes the rest (FR-021).
 - **Reseeding per definition** from the base seed and the key makes each result independent of
   the order.
-- **Expectations file.** `tests/component/cpp/census-expectations.tsv` lists definitions expected to fail
+- **Expectations file.** `tests/component-cpp/census-expectations.tsv` lists definitions expected to fail
   or to leave by design, each with a reason. A listed definition that passes is an error.
 - The report format and exit codes are in [contracts/census.md](contracts/census.md).
 
@@ -322,7 +322,7 @@ worded to match, and the limits go in Story 4's finding.
 
 **Decision:**
 - **They are component tests** (Jon, 2026-11-13). The component tier gets a C++ half: a new
-  directory `tests/component/cpp/` and a meson suite `component`, declared on every platform.
+  directory `tests/component-cpp/` and a meson suite `component`, declared on every platform.
   The windowed Python scenarios stay where they are, as the tier's other half.
 - Each test program links the game's `['*']` objects and a small support library,
   `oo_component`.
