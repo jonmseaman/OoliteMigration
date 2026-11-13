@@ -170,7 +170,7 @@ stay round at the edge (G5); menus on a 32:9 window fit the 16:9 area (H2, H3).
   background and demo ships in the HUD area and clear the side bars to black (research R12). Add
   check H3 to the smoke tier. **Accept:** `tests/run.sh smoke --window 3840x1080` (H3, fails before)
   and `tests/run.sh smoke` at the default size
-- [ ] T015 [US1] (code done in `828938a2c`; the H2 test is open, see Notes) Map GUI mouse positions through the HUD area in
+- [X] T015 [US1] Map GUI mouse positions through the HUD area in
   `src/SDL/MyOpenGLView+Input.cpp:342-350` (normalise by the area's size, offset by its origin).
   Add `tests/gui/test_g<next>_wide_window_menu_click.py` (style of
   `tests/gui/test_g1_exit_via_mouse.py`): at 3840×1080 windowed, clicking a menu row's centre
@@ -501,3 +501,11 @@ any checkpoint.
   smoke, GUI 154.
 - T031 is Jon's (labelled design) and is still open: the quickstart M5 hand check, items 1-5, on
   the G9. Everything it depends on has landed. Its acceptance is Jon's note here.
+- T015's H2 test is G13 (`tests/gui/test_g13_wide_window_chart_click.py`, `oolite-dev`
+  `ba5bf5827`). Menu rows cannot show the bug, so G13 uses the short-range chart, where a
+  click picks a system from both coordinates. It is differential: the same click offset from the
+  HUD area's centre at 1920x1080 and at 3840x1080 must pick the same system. It also checks, at
+  16:9, that half the horizontal offset picks a different system. Without that check the first
+  version passed against the broken mapping too. With the old whole-window mapping put back,
+  G13 fails (system 154 against 129); with the code as it is, it passes. A chart click must hold
+  the button across frames, since a `pyautogui.click` can fall inside one frame and never be seen.
