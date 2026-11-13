@@ -109,15 +109,17 @@ clang++ -std=c++23 -Wall -Wextra -Werror -I src -I tests/unit/oofnd tests/unit/o
   resources (`Info-gnustep`, `descriptions`, `whitelist`, the generated `manifest`) and 82 `.json5`.
 - Not run here: the `gui` tier (Windows only) and the meson `oofnd`, `core` and `headers` suites
   (Windows only; see CI below). GCC locally (CI's Linux builds use it).
-- CI on `seriesb/030-json5-data-files` at `dca141e57`
-  ([43382544561](https://github.com/jonmseaman/oolite/actions/runs/43382544561)): clang-format,
+- CI on `seriesb/030-json5-data-files` at `f6b4dab6c`
+  ([43386641385](https://github.com/jonmseaman/oolite/actions/runs/43386641385)): clang-format,
   and build plus launch test on Ubuntu, Fedora, Windows, macOS, Flatpak and AppImage all pass;
   `unit-tests-windows` fails on `test_string_sweep` alone (the base's failure, below), 43 of 44
   `oofnd` tests passing, `test_plist_json5` among them.
 - CI on `claude/030-ci-check` (the same tree plus `cc94abb6d`,
-  [43382546855](https://github.com/jonmseaman/oolite/actions/runs/43382546855)): every job
-  passes; `tests/run.sh unit` is `oofnd` 44 of 44, `core` 184 of 184 (`test_ResourceManager` with
-  its new JSON5 case), `headers` 1 of 1.
+  [43386644856](https://github.com/jonmseaman/oolite/actions/runs/43386644856)): every job
+  passes, `unit-tests-windows` included. On the run before the last commit
+  ([43382546855](https://github.com/jonmseaman/oolite/actions/runs/43382546855)) the counts
+  were `oofnd` 44 of 44, `core` 184 of 184 (`test_ResourceManager` with its new JSON5 case),
+  `headers` 1 of 1.
 - Found on the way: `post_build` runs only when the `oolite` binary is relinked, so a change to
   `Resources/` alone does not reach an existing build's bundle until
   `build/meson_<type>/src/.oolite_bundle.stamp` is removed. Not changed here.
