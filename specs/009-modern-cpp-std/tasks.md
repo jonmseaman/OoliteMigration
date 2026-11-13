@@ -802,11 +802,11 @@ edits.**
 
 ## Phase 10: Polish and close-out (M8)
 
-- [ ] T101 (needs the T002 signature for the P10 rows) P10: rename the enumerators of the 20
+- [X] T101 (needs the T002 signature for the P10 rows) P10: rename the enumerators of the 20
   existing `enum class` types to `kPascalCase` (`oo::PList::Type`, `oo::FileType`,
   `oo::Http::Scheme`, `OOJSCallEntityMethodForm`, …), with their test edits (ledger rows signed).
   **Accept:** `cd oolite-dev && $C naming` (fails before: the 20 types' enumerators are not `kPascalCase`)
-- [ ] T102 Make `readability-identifier-naming` fatal in `oolite-dev/.clang-tidy`.
+- [X] T102 Make `readability-identifier-naming` fatal in `oolite-dev/.clang-tidy`.
   **Accept:** `cd oolite-dev && ./mk.sh tidy` and the check is in `WarningsAsErrors`
 - [ ] T103 [P] Docs (FR-023): `docs/phases/4p-upstream-polish.md` (the "Out of scope here (Phase
   6)" paragraph), `docs/phases/6-modernise.md` (exit-gate items this feature did),
