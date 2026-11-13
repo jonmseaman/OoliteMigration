@@ -791,7 +791,7 @@ edits.**
   `leaks@M7` in `baselines.md` (SC-005, SC-008).
   Measure the base again in the same session from a `git worktree` of `518520d43` and record it as the base rows for the comparison (baselines.md *Same-session comparison*).
   **Accept:** `cd oolite-dev && $C bound frame@M7 && $C bound start@M7 && $C bound asan-smoke@M7 && $C bound leaks@M7`
-- [ ] T100 [US2] Update CLAUDE.md's "Ownership is `oo::Ref<T>`, not `shared_ptr`" line to the new
+- [X] T100 [US2] Update CLAUDE.md's "Ownership is `oo::Ref<T>`, not `shared_ptr`" line to the new
   rule (`std::shared_ptr`/`std::weak_ptr`/`std::unique_ptr`, objects from `oo::makeShared`) and
   spec 003's plan gate row (`specs/003-encapsulate-global-state/plan.md:99`).
   **Accept:** `! grep -q 'Ownership is `oo::Ref<T>`' CLAUDE.md && ! grep -q 'oo::Ref<oo::RefCounted>' specs/003-encapsulate-global-state/plan.md`
