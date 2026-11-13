@@ -705,11 +705,16 @@ edits.**
   were in the build before it; left for their own fix (default: not silenced, not in this task).
 - [ ] T092 [US2] Area `materials` (textures, materials, shaders, meshes) off the bridge.
   **Accept:** `cd oolite-dev && $C ownership --area materials`
-- [ ] T093 [US2] The script slot: `OOJSSetCxxPrivate`/`OOJSGetCxxPrivate` and the finaliser in
+- [X] T093 [US2] The script slot: `OOJSSetCxxPrivate`/`OOJSGetCxxPrivate` and the finaliser in
   `src/Core/Scripting/OOJSPrivateObject.cpp` per the contract (heap `std::shared_ptr<oo::Object>`,
   today's finaliser order); `src/Core/Scripting/OOJSEntityHolder.h` and `ScriptPrivate` hold
   `std::weak_ptr`; `exceptions.md` row for the slot.
   **Accept:** `cd oolite-dev && ! rg -n 'leakRef|adopt\s*\(' src/Core/Scripting/OOJSPrivateObject.cpp && rg -q 'std::weak_ptr' src/Core/Scripting/OOJSEntityHolder.h` and CI `test_ScriptFinalisationRelease` passes
+  *Done* (`e2bfc9323`). Decision (default taken): the contract's signature names a `JSContext *`, but
+  says D1 keeps today's other parameters, so `OOJSSetCxxPrivate(JSValueConst, std::shared_ptr<oo::Object>)`
+  keeps today's (no context; `bool` back). The finaliser keeps the code's order (`clearJSSelf`, empty
+  the slot, delete the holder). Every reader of a C++ slot goes through `OOJSCxxPrivateFromOpaque`.
+  `test_ScriptFinalisationRelease` passes locally; CI runs it with T105.
 - [ ] T094 [US2] Entities, step 1: `src/Core/Entities/OOEntityHold.h` per the contract
   (`using EntityHold = std::shared_ptr<Entity>`, `Hold(e)`); entities made with `oo::makeShared`;
   the +1 creators (`newShipWithRole`, `newShipWithName`, …) return `std::shared_ptr`;
