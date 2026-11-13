@@ -814,7 +814,7 @@ edits.**
   the `Ref` decision), `notes/2026-11-07 Enum Tables from tbl X-Macros.md` (stale gates), and
   `oolite-dev/src/oofnd/README.md` (final component list).
   **Accept:** `! grep -q 'defensible pattern' 'notes/2026-10-28 Modern C++ Idiom Review.md' && grep -q '009-modern-cpp-std' docs/phases/6-modernise.md`
-- [ ] T104 [P] If Jon has ruled on `test_stdlib` (T002 row), act on it: delete `src/oofnd/StdLib.hpp`
+- [X] T104 [P] If Jon has ruled on `test_stdlib` (T002 row), act on it: delete `src/oofnd/StdLib.hpp`
   only if he approved retiring the test; otherwise leave both and note it in the checklist.
   **Accept:** `row=$(grep 'test_stdlib' specs/009-modern-cpp-std/test-ledger.md); echo "$row" | grep -qE '[0-9]{4}-[0-9]{2}-[0-9]{2}' && if echo "$row" | grep -q 'retire'; then test ! -e oolite-dev/src/oofnd/StdLib.hpp; else test -e oolite-dev/src/oofnd/StdLib.hpp; fi`
 - [ ] T107 (FR-029, Jon 2026-11-12) Remove the `cxx_` prefix from every identifier that has it
