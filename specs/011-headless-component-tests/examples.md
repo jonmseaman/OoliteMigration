@@ -110,7 +110,10 @@ oo::component::ShipHandle AddEnemyAdder(Game& game, double metresAhead) {
 Small tests of one thing a ship does. Each creates what it needs, runs a short time and asserts
 on the real objects. The game facts they rely on were read from the code on 2026-11-13 and are
 given under each test; none has been run.
-They share A0's includes and `using` lines.
+They share A0's includes and `using` lines. These four are deliverables (spec User Story 6), in
+`test_laser_fires.cpp`, `test_ship_attacks.cpp`, `test_mining_laser.cpp` and `test_fire_key.cpp`.
+Each program also takes `--without-weapon`, which skips the weapon mount so that the acceptance
+check can see the test fail.
 
 **A ship's gun fires and hits what is in front of it.**
 

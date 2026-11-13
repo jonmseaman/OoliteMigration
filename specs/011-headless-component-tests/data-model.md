@@ -20,6 +20,9 @@ behaviour, so the windowed game passes the defaults.
 | `step` | fixed dt for the stepper | n/a | 1/60 s | 1/60 s |
 | `scriptTimeLimit` | JS limiter's limit | as today | 10 s | 10 s |
 
+A scenario game that also takes keys (`Game::inFlightWithKeys`) is the scenario column with
+`inputView` true.
+
 Rules:
 - `headless` true requires `seed` to be given.
 - `addOns` is never `all` when `headless` is true.

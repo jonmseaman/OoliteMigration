@@ -21,7 +21,7 @@ The game gets a tier of C++ tests that run the real simulation in the test's own
 window, graphics card, sound device or keyboard. Time in these tests is simulated, so a test
 covers minutes of game time in seconds of real time.
 
-The tier is built for two uses, and both ship with it:
+The tier is built for three uses, and all three ship with it:
 
 - **A census of the game's content.** Every ship and every equipment item in the core data is
   created, run for a while and removed, so a definition that crashes, logs an error or never
@@ -29,6 +29,8 @@ The tier is built for two uses, and both ship with it:
 - **Menus and keys on every platform.** A test walks the menus and the first tutorial lessons by
   key press on Windows, macOS and Linux. A key that does nothing on one platform fails the test on
   that platform.
+- **Small tests of one behaviour.** A ship's gun fires and hits; a mining laser breaks an
+  asteroid. Each is a few lines and is the pattern for the next one.
 
 ## Context
 
@@ -230,6 +232,39 @@ they take less real time than one windowed scenario does today.
 3. **Given** the windowed scenarios, **When** this story is done, **Then** they are all still in
    the tree and still run.
 
+### User Story 6 - One behaviour of one ship is tested at a time (Priority: P2)
+
+A developer writes a short test of a single thing a ship does. They create the ship, give it what
+the behaviour needs, run a short span of game time and assert on the ship itself. Four such tests
+ship with the feature: a ship's forward laser fires and damages what is in front of it; a ship
+told to attack opens fire without further help; a ship with a mining laser breaks an asteroid into
+boulders; and the player's fire key fires the player's laser.
+
+**Why this priority**: The census says a ship can exist. These say a ship can do something. They
+are also the smallest complete examples of the tier, so they are what a developer copies to write
+the next one. (Jon asked for them on 2026-11-13.)
+
+**Independent Test**: Run the four tests with no display; they pass. Take the weapon off the
+shooting ship in the first test: it fails, and says the shot did not land.
+
+**Acceptance Scenarios**:
+
+1. **Given** a ship with a pulse laser and a target directly ahead and in range, **When** the ship
+   fires its forward weapon, **Then** the weapon heats, the target loses energy, and the game
+   reports the target as attacked.
+2. **Given** a ship with a laser, a target a few kilometres away, and an order to attack it,
+   **When** up to 60 s of game time pass, **Then** the target has been attacked and has lost
+   energy.
+3. **Given** a ship with a mining laser ordered to mine an asteroid 2 km away, **When** up to
+   2 minutes of game time pass, **Then** the asteroid is destroyed and at least two boulders
+   exist where there were none.
+4. **Given** the player in flight with a pulse laser and a target directly ahead, **When** the
+   test holds the fire key, **Then** the target loses energy and the player's weapon heats.
+5. **Given** any of these tests with its weapon removed, **When** it runs, **Then** it fails.
+6. **Given** a ship that a test added and that has since been destroyed, **When** the test asks
+   about it, **Then** the test is told it is gone, and the test's hold on the ship has not kept
+   it in the game.
+
 ### Edge Cases
 
 - **No devices at all.** In a container with no display server, no graphics driver and no sound
@@ -363,6 +398,19 @@ they take less real time than one windowed scenario does today.
 - **FR-033**: The testing docs, the agent contract's command list and exemplar table, and the
   glossary MUST describe the new tier and name one headless test as its exemplar.
 
+**Basic behaviours**
+
+- **FR-034**: The feature MUST include tests of four single behaviours: a forward laser fired
+  directly; a ship ordered to attack opening fire; a mining laser breaking an asteroid into
+  boulders; the player's fire key firing the player's laser.
+- **FR-035**: A test MUST be able to add one ship by its definition name at a chosen place
+  (a position, ahead of another entity, or near one), and call the game's own operations on it.
+- **FR-036**: A test's reference to a ship it added MUST NOT keep that ship in the game or change
+  when the game considers it gone. The test MUST be able to ask whether the ship still exists,
+  and to match events to it after it is gone.
+- **FR-037**: A game that starts in flight MUST be able to take key presses, so that a flight
+  control can be tested without going through the menus.
+
 ### Key Entities
 
 - **Headless game**: a game created by a test, with a seed, a private settings location and no
@@ -410,6 +458,8 @@ they take less real time than one windowed scenario does today.
   time.
 - **SC-011**: Every existing suite (unit, component, smoke, GUI) has the same results after the
   feature as before it, and the smoke run's frame time is within 2% of what it was.
+- **SC-012**: The four basic behaviour tests pass on Windows, macOS and Linux with no display,
+  each in under 15 seconds, and each fails when the weapon it tests is removed.
 
 ## Assumptions
 

@@ -83,6 +83,7 @@ Clang on macOS arm64, Clang or GCC on Linux x64.
 - 13 real-clock reads that affect game state;
 - 6 start-screen entries, about 29 screen ids;
 - 8 combat scenarios to port;
+- 4 basic behaviour tests;
 - 4 CI jobs gain a step.
 
 ## Constitution Check
@@ -166,6 +167,10 @@ tests/component-cpp/                         # new: the C++ half of the componen
 ├── test_boot.cpp              # boots headless; search path has one entry (M1)
 ├── test_s1_police_kills_pirate.cpp  # US1; exemplar for C++ component tests
 ├── test_repeat.cpp            # same seed, same digest
+├── test_laser_fires.cpp           # US6: a forward laser fired directly hits what is ahead
+├── test_ship_attacks.cpp          # US6: a ship ordered to attack opens fire
+├── test_mining_laser.cpp          # US6: an asteroid mined into boulders
+├── test_fire_key.cpp              # US6: the player's fire key (needs M5's keys)
 ├── test_s2 … s8_*.cpp         # US5
 ├── component_census.cpp                 # US2
 ├── test_menus.cpp             # US3: start screen and options walk
@@ -198,9 +203,9 @@ all` must give the same results as before at every gate (FR-031).
 | M0 | **Skeleton on every platform.** Worktree and branch. `tests/component-cpp/meson.build`, `test_skeleton` linking the `['*']` objects, `tests/run.sh component --cpp`, the CI step in the Windows, macOS and Fedora jobs. Three probes written as cases: SDL's dummy driver initialises; a pushed key event comes back from `SDL_PollEvent`; what `SDL_GetKeyFromScancode` returns for `N` with Caps Lock. | — | `tests/run.sh component --cpp` passes locally and the three CI jobs are green. |
 | M1 | **Boots headless, with a hidden GL window.** `OOHeadlessOptions`, `startHeadless`, `tick`, the game clock, seeds, private directories, add-ons off. Start-up time and steps per second measured and written into `tasks.md`. | US1 | `test_boot` passes: universe exists, system empty, player in flight, search path has one entry, 600 steps advance game time by 10 s. |
 | M2 | **No GL at all.** Headless state in the extension manager; the nine sites guarded; textures not decoded; `gl_trap_gen.py` and the trap linked on Linux and macOS; the hidden window removed. Each further site the trap names is its own task. | US1 | `test_boot` passes with no window created and the trap linked. Removing one guard makes it fail and name the GL function. |
-| M3 | **First scenario.** `oo_component` spawn, find, `eval`, the observer and the error record. S1 ported with the original's seed and expression. `test_repeat` and `repeat_100.sh`. | US1 | `test_s1_police_kills_pirate` passes on three platforms. SC-001 and SC-002 measured. **Main milestone.** |
+| M3 | **First scenario.** `oo_component` spawn, find, `eval`, the observer and the error record. S1 ported with the original's seed and expression. `test_repeat` and `repeat_100.sh`. `add`, placement and `ShipHandle`, with the three basic tests that need no keys: laser fires, ship attacks, mining laser. | US1, US6 | `test_s1_police_kills_pirate` and the three basic tests pass on three platforms. Each basic test fails with its weapon removed. SC-001 and SC-002 measured. **Main milestone.** |
 | M4 | **Census.** `component_census` with child restart, per-definition reseeding, the report and the expectations file. Findings recorded in `tasks.md`. | US2 | `component_census` exits zero with every definition accounted for. A broken definition added to a copy of the data makes it exit nonzero and name that key only. |
-| M5 | **Keys and menus.** `initHeadless` on the view, pushed key events, the key-lookup member, recorded layouts. The start-screen and options walk. The tutorial's lessons 0 and 1. The mutation check. | US3 | `test_menus` and `test_tutorial_keys` pass on three platforms under three layouts. With `n` remapped in one layout table the tutorial test fails and names the press. |
+| M5 | **Keys and menus.** `initHeadless` on the view, pushed key events, the key-lookup member, recorded layouts. The start-screen and options walk. The tutorial's lessons 0 and 1. The mutation check. `Game::inFlightWithKeys` and the fire-key test. | US3, US6 | `test_menus` and `test_tutorial_keys` pass on three platforms under three layouts. With `n` remapped in one layout table the tutorial test fails and names the press. |
 | M6 | **Sanitizers and Flatpak.** The C++ component suite under address and undefined-behaviour sanitizers. The optional `meson test --suite component` step in the Flatpak module, run in the Flatpak CI job. | US3, US4 | The sanitizer run is clean. The Flatpak job runs the suite to a result. |
 | M7 | **The `n` report.** `test_key_faults`: one case per observation H1–H5, each stating what a player should see. For each failing case, compare the same code in `upstream/oolite`, then fix it or record why not. The written finding. | US4 | Each case passes, or is recorded in the finding with its evidence. The finding exists in `tasks.md` with the three parts FR-030 requires. |
 | M8 | **The other seven scenarios.** S2–S8, each with the original's seed, spawns and expressions. | US5 | All eight pass. Their total time is below one windowed scenario's. |

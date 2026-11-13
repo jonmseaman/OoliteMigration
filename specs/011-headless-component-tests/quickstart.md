@@ -34,6 +34,26 @@ To prove it needs no display, on Linux:
 env -u DISPLAY -u WAYLAND_DISPLAY tests/run.sh component --cpp -k s1_police_kills_pirate
 ```
 
+## 2a. One behaviour at a time (US6)
+
+```bash
+tests/run.sh component --cpp -k laser_fires
+tests/run.sh component --cpp -k ship_attacks
+tests/run.sh component --cpp -k mining_laser
+tests/run.sh component --cpp -k fire_key
+```
+
+Expected: each passes. (`fire_key` needs milestone M5.)
+
+To prove each can fail, run it with its weapon left off:
+
+```bash
+build/meson_test/tests/component-cpp/test_laser_fires --without-weapon
+```
+
+Expected: exit 1, with the failed check saying the target's energy did not drop. The same flag
+works on the other three (SC-012).
+
 ## 3. The same result every time (SC-002)
 
 ```bash
