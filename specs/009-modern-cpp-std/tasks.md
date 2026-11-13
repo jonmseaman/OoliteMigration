@@ -253,7 +253,7 @@ baselines and the FR-016 tests exist and pass on the base.
   in the existing finaliser; `exceptions.md` rows (category `alloc`, owner the JS object, release
   the finaliser).
   **Accept:** `cd oolite-dev && ! rg -n -P '\b(malloc|calloc|free)\s*\(' src/Core/Scripting/OOJSVector.cpp src/Core/Scripting/OOJSQuaternion.cpp`
-- [ ] T021 [P] [US1] Static tables in `src/Core/Scripting/OOJSClasses.cpp:71,122-123` to
+- [X] T021 [P] [US1] Static tables in `src/Core/Scripting/OOJSClasses.cpp:71,122-123` to
   `std::array`/`std::vector` with static lifetime (QuickJS keeps the pointer and never frees it).
   **Accept:** `cd oolite-dev && ! rg -n -P '\b(malloc|calloc|realloc)\s*\(' src/Core/Scripting/OOJSClasses.cpp`
 - [ ] T022 [P] [US1] Growable arrays to `std::vector` in `src/Core/Octree.cpp:84,113,809-917`,
