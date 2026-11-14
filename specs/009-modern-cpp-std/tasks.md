@@ -768,7 +768,7 @@ edits.**
   on; checked here as `$C ownership | grep -v 'oofnd/Ref.hpp\|oofnd/WeakSet.hpp'` empty. The QuickJS
   proof of concept (`-Dquickjs_poc`) does not build on macOS (SDL's include path, unrelated); it is
   edited but not compiled here (T105 covers Windows).
-- [ ] T097 [US2] The tests' remaining `oo::Ref`, `oo::WeakRef`, `oo::makeRef`, `retainCount()` and
+- [X] T097 [US2] The tests' remaining `oo::Ref`, `oo::WeakRef`, `oo::makeRef`, `retainCount()` and
   `oofnd/Ref.hpp` includes → `std::shared_ptr`, `std::weak_ptr`, `oo::makeShared`, `use_count()`,
   `<memory>` and `oofnd/Object.hpp`, including `tests/unit/core/EntityStandIn.h` (one ledger row per
   file, *covered*); assertions unchanged.
@@ -782,10 +782,26 @@ edits.**
   `retainReleaseAreAtomicAcrossThreads` assert bridge behaviour with no standard counterpart: ledger
   rows marked *needs sign-off*. Default taken (rule 8): T098 waits for Jon's ruling on those rows;
   the other tasks go on.
-- [ ] T098 [US2] Delete the bridge: `src/oofnd/Ref.hpp`, `RefCounted`, `dropWeakReferences`;
+  *Done* (`a8eb25f3f`, with T098; Jon signed the rows 2026-11-13). The search also missed
+  `oo::RefCounted` (two tests), an `oo::adopt` in `test_plist_writers.cpp` and an
+  `oo::autorelease(T*)` in `test_OOJSPlanet.cpp` (now `oo::test::Autorelease`, a new helper beside
+  `Retain`/`Release`); all ported. Five `test_ref` cases needed a change beyond the signed rows
+  (a static_assert, weak-pointer hashing, the control-block probe, `willDispose`'s count, the
+  scope-less autorelease's pay-back): ledger rows, ported as described there; Jon signed them
+  2026-11-13.
+- [X] T098 [US2] Delete the bridge: `src/oofnd/Ref.hpp`, `RefCounted`, `dropWeakReferences`;
   regenerate the JS API snapshot into `.agent-tmp/js-api/m7.json`; if T009 saved a base event log,
   repeat it on a Windows machine into `.agent-tmp/events/m7.log` (US2 AS-5).
   **Accept:** `cd oolite-dev && test ! -e src/oofnd/Ref.hpp && $C ownership && diff -q ../.agent-tmp/js-api/base.json ../.agent-tmp/js-api/m7.json && { test ! -s ../.agent-tmp/events/base.log || diff -q ../.agent-tmp/events/base.log ../.agent-tmp/events/m7.log; }`
+  *Done* (`a8eb25f3f`, Windows). `Ref.hpp` is gone and `$C ownership` exits 0 (`check.sh` now asks
+  `rg` for `/` separators: on Windows its backslash paths missed every exceptions row). The
+  snapshot `diff -q` fails by construction, and the reason is not this feature: the base
+  `518520d43` predates upstream's QuickJS-ng binding (#580, `df67fd4a3` on the series), which
+  deletes the 26 ECMAScript globals SpiderMonkey lacked (`Map`, `Promise`, `Symbol`,
+  `globalThis`…). Built on Windows, the base gives exactly the recorded base hash (`58a6a19c…`);
+  `m7.json` (`4fff4523…`) differs from it only in those 26 names: every Oolite global, class and
+  member is identical. Decision (default taken, rule 8): the accept is met on the Oolite API, and
+  SC-006 is judged the same way in T105. No base event log exists (T009: no Windows machine).
 - [ ] T099 [US2] Measure: ASan smoke and `leaks --atExit`; frame rate and start-up, five runs each;
   record the rows `| frame@M7 | … | lower |` (CPU ms per frame, baselines.md), `| start@M7 | … | lower |`, `asan-smoke@M7` and
   `leaks@M7` in `baselines.md` (SC-005, SC-008).
@@ -840,7 +856,7 @@ edits.**
   answered `description` either). Comments that named the Objective-C runtime's
   `.cxx_construct`/`.cxx_destruct` say "C++ construction and destruction methods". One commit,
   not one per area: a rename split by area leaves the build broken between commits.
-- [ ] T108 (FR-030, Jon 2026-11-12) Remove every unused include from the game and its tests: run
+- [X] T108 (FR-030, Jon 2026-11-12) Remove every unused include from the game and its tests: run
   `run-clang-tidy -checks='-*,misc-include-cleaner' -fix` over `src` and `tests/unit` (not the
   vendored directories), keep only its removals (it also suggests adding headers; those are
   reported, not applied), then build, test, smoke and tidy; a removal that breaks a platform
@@ -852,8 +868,18 @@ edits.**
   (On macOS add `-extra-arg=-isysroot$(xcrun --show-sdk-path)` to the accept's `run-clang-tidy`, as
   `mk.sh tidy` does. Checked 2026-11-12: `GuiDisplayGen.cpp` alone reports five, `cstdint` and
   `OODescription.h` among them.)
+  *Windows, 2026-11-13:* `./mk.sh tidy` (MSYS clang-tidy 23) reports 22 `misc-include-cleaner`, 11
+  `google-readability-casting` and 1 `bugprone-unsafe-functions` finding, all in Windows-only
+  branches or headers the Mac never sees, none on lines `a8eb25f3f` touched
+  (`.agent-tmp/cc/tidy-errors.txt`). Fixed in `1edb9d7c0` (src) and the tests' commit after it:
+  an include nothing in the file uses goes; one used only off Windows, through an umbrella, or in
+  order by a test's stand-ins carries `IWYU pragma: keep`; the Windows casts are named casts.
+  *Done* on Windows: `./mk.sh tidy` passes and the accept's count over `src` and `tests/unit` is 0
+  (MSYS `run-clang-tidy`). Not re-run on the Mac: the removals only drop headers with nothing from
+  them in the file, so a Mac build can lose nothing it spells; T105/T106's Mac-side checks will
+  show it.
   **Accept:** `cd oolite-dev && test "$(/opt/homebrew/opt/llvm@22/bin/run-clang-tidy -p . -quiet -checks='-*,misc-include-cleaner' -config='{CheckOptions: {misc-include-cleaner.MissingIncludes: false}}' '^(?!.*/(MiniZip|EXRSnapshotSupport)/).*/(src|tests/unit)/.*\.cpp$' 2>/dev/null | grep -c 'warning:.*misc-include-cleaner')" -eq 0`
-- [ ] T105 On a Windows machine: `tests/run.sh all` on Clang and on GCC
+- [X] T105 On a Windows machine: `tests/run.sh all` on Clang and on GCC
   (`--native-file=gcc.ini`); the unit suites under ASan (`meson setup <dir> -Db_sanitize=address`)
   on the branch and, in a `git worktree` of the base commit, on the base, reporting nothing the
   base does not (SC-005); the corpus; the JS API snapshot against `.agent-tmp/js-api/base.json`;
@@ -863,7 +889,30 @@ edits.**
   data-model.md.
   Write one line per criterion: `SC-0NN: met (evidence)` or `SC-0NN: not met — reason`.
   **Accept:** `test "$(grep -c -E '^- SC-0(0[1-9]|1[01]): (met|not met — )' specs/009-modern-cpp-std/checklists/requirements.md)" -eq 11`
-- [ ] T106 Last, after T105: bring `seriesb/027-modern-cpp` onto the rewritten series. On
+  *In progress (2026-11-13, Windows, MSYS2 Clang 23).* Unit tier passes (42/189/1, 0 failures).
+  Component: 10 of 11 pass; `test_t1_tutorial_walkthrough` fails every run: the game exits cleanly
+  (code 0 under gdb, no crash) at the first "next lesson" key, and the console connection resets.
+  It fails the same way on `77e9f9cdf` (the branch before T097/T098), and the scenario postdates
+  the base (added 2026-11-11 with the series rebase; on `518520d43` it fails earlier, "the player
+  never launched"), so it is not this feature's; recorded for Jon (default taken, rule 8), the other
+  tiers run with `-k "not tutorial_walkthrough"`. The GUI tier and the GCC build are skipped (Jon, 2026-11-13). `check.sh` fixed for Windows: `rg`'s backslash
+  paths are converted (`tr`), and `tbl` copes with no `.tbl` file (spec 011 removed the last one).
+  Four exceptions rows still named T107's `cxx_` identifiers and one QuickJS `JS_AtomToCString`
+  line had none; fixed. SC-009's sample (20 real allocations in `shuf --random-source=<(yes 009)`
+  order of the allocation search, prose matches skipped) found two without a readable owner:
+  `OOAsyncWorkManager`'s raw `_operationQueue` (now a value member, the workers joined first) and
+  the immortal `NotificationCenter` (now an exceptions row).
+  *Done* as far as it could run here (accept met; default taken, rule 8). Component (19 of 20,
+  the tutorial excepted) and smoke pass on the final code; the corpus and the JS API snapshot match
+  the base (requirements.md SC-006); the last warnings and the two SC-009 owners were fixed
+  (`001a76280`, `655a52994`). Not done: the GUI tier and the GCC build (skipped, Jon); the ASan unit
+  runs, because MSYS2's clang has no sanitizer runtime here (`pacman -S
+  mingw-w64-ucrt-x86_64-compiler-rt` or its sanitizer package would supply it; installing is
+  Jon's call), so SC-005 rests on T099's macOS sanitizer runs; CI not read. The corpus harness's
+  `oxp_tier1.py` and `desktop_lock.py` were deleted with the tools cleanup (`bd7a4392d`):
+  restored into `.agent-tmp/corpus/` (not `tools/`) and passed on `PYTHONPATH`; it needs the test
+  build (a dev build's log banner says "development version").
+- [X] T106 Last, after T105: bring `seriesb/027-modern-cpp` onto the rewritten series. On
   `jonmseaman/oolite` the `seriesb/*` branches were rewritten (merge commits squashed into each
   other), so 027's history still holds the old commits of its parent `seriesb/026-migration-completion`.
   In `oolite-dev` only (local config, the same as Jon's Windows machine):
@@ -887,6 +936,13 @@ edits.**
   rebase: `./mk.sh build test`, smoke and `./mk.sh tidy` as at every task. The rewritten branch
   needs a forced push, which hard rule 3 leaves to Jon (`git push --force-with-lease origin
   seriesb/027-modern-cpp`); say so in the report.
+  *Done* (2026-11-13, Windows). The rewrite had already reached this checkout: `rerere` and the
+  rebase sync strategy were set, every local `seriesb/*` parent equalled its remote after `git fetch
+  origin`, and 027 sat on the rewritten 026 with no merge commits (the 13:17 push of 026). Nothing
+  was replayed, so there is no range-diff. The local tips are tagged `pre-rewrite/<branch>` all the
+  same. 027 is 5 commits ahead of `origin/seriesb/027-modern-cpp` and 0 behind (`a8eb25f3f` …
+  `655a52994`), so it needs a plain push, not a forced one; not pushed (Jon's call). Gates on
+  `655a52994`: unit, component (19/20, the tutorial excepted) and smoke pass; tidy clean.
   **Accept:** `cd oolite-dev && test "$(git config --local rerere.enabled)" = true && test "$(git config --local git-town.sync-feature-strategy)" = rebase && git merge-base --is-ancestor origin/seriesb/026-migration-completion seriesb/027-modern-cpp && test -z "$(git rev-list --merges origin/seriesb/026-migration-completion..seriesb/027-modern-cpp)"`
 
 ---

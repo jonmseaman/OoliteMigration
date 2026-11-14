@@ -93,7 +93,7 @@ esac
 
 search() {  # search <pcre> [extra rg args...]: prints file:line:text
   local re="$1"; shift
-  rg -n --no-heading -P "$re" "${paths[@]}" "${globs[@]}" "$@" 2>/dev/null
+  rg -n --no-heading -P "$re" "${paths[@]}" "${globs[@]}" "$@" 2>/dev/null | tr "\134" /  # Windows rg prints backslashes
 }
 
 tidy() {  # tidy <check>: prints file:line:message for one clang-tidy check over the area
@@ -122,7 +122,7 @@ case "$category" in
                       --glob '!src/Core/OOTypeEncodings.h' --glob '!src/Core/Entities/OOEntityObjectNamesTable.h' \
                       --glob '!src/oofnd/StdLib.hpp' --glob '!*.md') ;;
   enum)      hits=$(search '^\s*(typedef\s+)?enum\b(?!\s+class\b)') ;;
-  tbl)       hits=$(for f in src/Core/Tables/*.tbl; do [ "$(basename "$f")" = OOOpenGLStates.tbl ] || echo "$f:1:table"; done) ;;
+  tbl)       hits=$(for f in src/Core/Tables/*.tbl; do [ -e "$f" ] || continue; [ "$(basename "$f")" = OOOpenGLStates.tbl ] || echo "$f:1:table"; done) ;;
   cast)      hits=$(tidy google-readability-casting) ;;
   naming)    hits=$(tidy readability-identifier-naming) ;;
   cstring)   hits=$(search '\b(str(n?cpy|n?cat|n?cmp|casecmp|len|dup|r?chr|str|tok)|v?s?n?printf|ato[if]|strto[ld])\s*\(') ;;
