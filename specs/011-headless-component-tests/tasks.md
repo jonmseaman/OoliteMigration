@@ -618,7 +618,7 @@ fails and names the press.
   add an entry under *For Jon* asking for a real recording.
   **Accept:** both files load (case `every_layout_file_loads` in `test_menus.cpp`), `fr_azerty`
   gives `a` for `SDL_SCANCODE_Q`, and `ru` gives a code point above 326 for `SDL_SCANCODE_N`.
-- [ ] T042 [US3] The menu walk in `tests/component-cpp/test_menus.cpp` (examples A4; FR-024,
+- [X] T042 [US3] The menu walk in `tests/component-cpp/test_menus.cpp` (examples A4; FR-024,
   FR-025; US3 scenarios 2, 6, 7): for every selectable row the start screen itself reports, and
   for every row on the options screens beneath it, select it by key, open it, check the screen
   that shows, back out by key and check the game is where it was. The rows are counted from the
@@ -628,7 +628,7 @@ fails and names the press.
   times in meson, with `--layout us`, `fr_azerty` and `ru`. One case asserts that every user
   directory the game resolved is under the scratch directory.
   **Accept:** `tests/run.sh component --cpp -k menus` (three tests).
-- [ ] T043 [US3] The tutorial by `n`: `tests/component-cpp/tutorial_steps.hpp` (`StartTutorial`,
+- [X] T043 [US3] The tutorial by `n`: `tests/component-cpp/tutorial_steps.hpp` (`StartTutorial`,
   `Progress`, `Stage`) and `tests/component-cpp/test_tutorial_keys.cpp` (examples A5; FR-026).
   `StartTutorial` goes *Start New Commander* → the scenario screen → the tutorial scenario →
   Enter → the mission screen, Enter → launch → lesson 0 step 2, checking the screen after each
@@ -638,14 +638,14 @@ fails and names the press.
   tutorial script state at run time; read `tests/component/steps/tutorial_steps.py` for what the
   windowed walkthrough checks, and do not edit it. Register three tests, one per layout.
   **Accept:** `tests/run.sh component --cpp -k tutorial_keys` (three tests).
-- [ ] T044 [US3] Show the key tests can fail (FR-029, SC-007): the fixture
+- [X] T044 [US3] Show the key tests can fail (FR-029, SC-007): the fixture
   `tests/component-cpp/fixtures/us-n-remapped.tsv` is `us.tsv` with the `n` key's row giving
   another letter.
   **Accept:** `! build/meson_test/tests/component-cpp/test_tutorial_keys --layout
   tests/component-cpp/fixtures/us-n-remapped.tsv`, its output contains
   `pressing n had no effect at`, and `--layout us` still passes. Paste the failing line into
   *Records → Findings → Keys*.
-- [ ] T045 [US3] Games that start with keys and settings (contract *Creating a game*, *Keys and
+- [X] T045 [US3] Games that start with keys and settings (contract *Creating a game*, *Keys and
   screens*; FR-037, FR-039): `Settings().remapKey(control, key)` and `.keyboardCode(code)`,
   written to the test's private settings file before the game starts in the form the keyboard
   settings screen stores (`KeyConfigOverrides`, as `PlayerEntity::saveKeySetting` writes it);
@@ -653,7 +653,7 @@ fails and names the press.
   `Game::docked(seed, settings)` (a new commander docked at the main station, with keys). Each
   needs a program of its own (one game per process), so this task's tests are T046's and T047's.
   **Accept:** as T046 (pushed together).
-- [ ] T046 [US3] `tests/component-cpp/test_launch_key.cpp` (examples A0.2; FR-038; US3 scenarios
+- [X] T046 [US3] `tests/component-cpp/test_launch_key.cpp` (examples A0.2; FR-038; US3 scenarios
   8 and 9): docked; hold the launch key (`key_launch_ship`, `1`) until the player is in flight
   and `Universe::breakPatternOver()`; exactly one `shipLaunchedFromStation`; press the key again
   and simulate 5 s; still in flight, the break pattern is not replayed, the view is forward, and
@@ -662,12 +662,12 @@ fails and names the press.
   find-system entry) and checks the text arrived; if none is reachable without a save file,
   record that under *Decisions* and keep `type` covered by the case in T040's file instead.
   **Accept:** `tests/run.sh component --cpp -k launch_key`.
-- [ ] T047 [P] [US3] `tests/component-cpp/test_remapped_key.cpp` (FR-039; US3 scenario 10):
+- [X] T047 [P] [US3] `tests/component-cpp/test_remapped_key.cpp` (FR-039; US3 scenario 10):
   `Game::inFlightWithKeys(20260910, Settings().remapKey("key_fire_lasers", "k"))`, a target
   ahead; holding `k` heats the weapon and drains the target; holding the old key `a` does
   neither.
   **Accept:** `tests/run.sh component --cpp -k remapped_key`.
-- [ ] T048 [P] [US6] `tests/component-cpp/test_fire_key.cpp` (US6 scenario 4): the player in
+- [X] T048 [P] [US6] `tests/component-cpp/test_fire_key.cpp` (US6 scenario 4): the player in
   flight with a pulse laser and a target directly ahead; holding the fire key (looked up from the
   key settings) drops the target's energy and heats the player's weapon. `--without-weapon` as in
   T028.
@@ -715,7 +715,7 @@ fails and names the press.
 **Independent Test**: *Records → Finding: the Flatpak `n` report* names a test that failed before a
 named fix and passes after it, or holds the three parts FR-030 requires.
 
-- [ ] T052 [US4] `tests/component-cpp/test_key_faults.cpp` (examples A6; research H1–H5): one case
+- [X] T052 [US4] `tests/component-cpp/test_key_faults.cpp` (examples A6; research H1–H5): one case
   per observation, each stating what a player should see, each in flight with an equipment item
   primed so that *activate equipment* has a visible effect. **H1** with Caps Lock on, the `n` key
   activates. **H2** under `ru`, the `n` key activates. **H3** with an extra modifier bit that is
@@ -1043,6 +1043,17 @@ game's code reaches, and seeds after it exists.
 
 **GL sites** (T018–T021, T038): the nine known sites are in research R2. Further sites, one row
 each: file, function, GL call the trap named, task, commit.
+- T038a (`60fe34c06`), found by the menu walk: the headless view had no display modes, so the
+  game options screen built nothing (`setGuiToGameOptionsScreen` returns when the controller has
+  no modes); and its *Play in Full Screen* row made the view create a window, which the dummy
+  driver cannot, and the game exited. `startHeadless` now calls `setUpDisplayModes()`, and
+  `MyOpenGLView::initialiseGLWithSize` makes no window when `!OOGraphicsAvailable()`.
+- T038b (`d6f090f95`), found by `key_fault_h5`: the snapshot key reached
+  `MyOpenGLView::snapShot`, which reads the GL framebuffer; crashed (0xC0000005) with no GL.
+  Guarded.
+- Not a GL site, recorded for FR-025: headless, the game options screen's detail-level row is
+  empty, and the log has `Unknown expansion key [detailLevel]` (twice per build of the screen):
+  the detail level comes from the GL setup that does not run.
 - `Universe::deleteOpenGLObjects` (T018, `bfe20378f`): reached when `newUniverse` tears down a
   universe whose start-up raised; guarded beside the listed sites.
 - The JS engine was made as a side effect of the extension manager's per-GPU regular expression
@@ -1088,7 +1099,23 @@ each port checks both: `Game::logLinesContaining("ERROR")` is the windowed step'
 after 21 s of game time, the rest at 112.5 s: `simulateAtMost` stops once every non-police role
 spawned is gone, as `world_steps.py` `run_simulation` does (S6's pirate is destroyed).
 
-**Keys** (T044, T052, T053): 
+**Keys** (T044, T052, T053):
+- T044, Windows: `test_tutorial_keys --layout tests/component-cpp/fixtures/us-n-remapped.tsv`
+  exits 1 with
+  `FAIL ../../tests/component-cpp/test_tutorial_keys.cpp:38 [the_next_key_advances_every_step_of_lessons_0_and_1]: pressing n had no effect at GUI_SCREEN_MAIN, game time 2.667`
+  and `layout us-n-remapped: n -> scancode 17 (N), no modifiers -> key 0x6d`; `--layout us`
+  passes.
+- T052, Windows (the dummy driver's built-in map): **H1 fails** (Caps Lock on, the n key does not
+  move the tutorial); **H3 fails for AltGr's mode bit** (`SDL_KMOD_MODE`), passes for Num Lock;
+  **H4 fails** (Caps Lock alone is seen as `9`, Num Lock as `S`); **H5 passes** without a
+  sanitizer (T050 is its judge); **H2** waits for `ru.tsv` (T041).
+- T053: upstream's `src/SDL/MyOpenGLView+Input.m` (upstream `4bb1f53de`) has the same code at each
+  point: `:379` `key_id = SDL_GetKeyFromScancode(kbd_event->scancode, kbd_event->mod, NO)` into a
+  16-bit `key_id` (H4), and `:598-609` the Caps Lock reset left commented (H1); the exact
+  modifier match is upstream's `checkKeyPress` (H3). So the port did not introduce them. A fix
+  changes the windowed game's key handling, which this feature's contract keeps unchanged, so
+  `key_fault_h1`, `h3`, `h4` are registered `should_fail: true` (checked both ways) and listed
+  under *For Jon*.
 
 **Sanitizers** (T050): 
 
@@ -1167,6 +1194,12 @@ _not written_
 | T038 | `8386f36d9` |
 | T039 | `5f6ea3d71` |
 | T040 | `c36470430` (with `record_layout.cpp`) |
+| T041 | `737aa6bd4` (the CI step; the tables follow) |
+| T038a | `60fe34c06` |
+| T042-T048 | `dcb598ada` (one commit), `e6ebbe8d2` (T044) |
+| T038b | `d6f090f95` |
+| T052 | `16c1456b9` |
+| T053 | `b5f3a001a` (part 1: should_fail) |
 
 ### Branch state
 
@@ -1210,6 +1243,23 @@ Decisions already in plan.md (*Notes*) and research.md are not repeated. Added b
   of `GameController`: core unit tests link those files without the controller.
 - **The case `600_steps_...` is named `six_hundred_steps_advance_game_time_by_10_s`** (T011): a
   C++ identifier cannot start with a digit.
+- **The key tests are registered once per committed layout** (T042): meson registers
+  `<test>_<layout>` only for a `layouts/<name>.tsv` that exists, so until T041's tables are
+  committed only the `us` variants run.
+- **T042-T048 are one commit** (`dcb598ada`): their additions to `oo_component` and `meson.build`
+  are in the same two files; T038a, the game fix the walk found, is its own commit.
+- **A character no key of the layout gives is pressed at its US position** (T043): a Russian
+  player presses the key the letter is printed on; the layout says what that key gives (the
+  example A5 message `n -> scancode 17 (N) ... key 0x442`).
+- **`Game::docked` releases Return after the load** (T046): a load holds every key until one is
+  released (`suppressKeysUntilKeyUp`), as a player's load ends with the release of the key that
+  chose it; without it the first press after the load was swallowed.
+- **`aheadOf` uses a ship's own forward vector** (T047): the player's orientation is held the
+  other way round, so the quaternion's forward put the target behind the player.
+- **The menu walk backs out of each screen as its handler reads keys** (T042): the scenario
+  screen and the expansion manager by their `exit` / `_EXIT` rows, the ship library and the
+  keyboard screen by space, the game options by their last row (Back), anything else by Escape.
+  The expansion manager is opened and left; no other row of it is activated (hard rule 4).
 - **Headless, a request to quit is recorded, not obeyed** (T040): `exitAppWithContext` returns
   after logging when the game is headless, and `GameController::exitRequested()` holds the
   context, so the menu test can check *Exit Game* without the process ending under it.
@@ -1272,6 +1322,8 @@ Decisions already in plan.md (*Notes*) and research.md are not repeated. Added b
 
 - Merging `seriesb/029-cpp-component-tests`, and any force-push it needs after `seriesb/027-modern-cpp`
   is rewritten.
+- The key faults H1, H3 (AltGr's mode bit) and H4 (Findings -> Keys): upstream's behaviour, kept;
+  `key_fault_h1`, `h3`, `h4` are `should_fail` until a fix is wanted.
 - Adjudicating `tests/component-cpp/census-expectations.tsv` (eight rows), and in particular
   `asp-cloaked`, which leaves one entity behind after it is removed (not investigated).
 - `test_t1_tutorial_walkthrough` (windowed) fails on this machine at the base, as spec 009 found.
