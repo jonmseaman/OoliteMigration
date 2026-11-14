@@ -673,7 +673,7 @@ fails and names the press.
   T028.
   **Accept:** `tests/run.sh component --cpp -k fire_key &&
   ! build/meson_test/tests/component-cpp/test_fire_key --without-weapon`.
-- [ ] T049 [US3] The M5 gate. Push; record per platform under *Measurements* that the menu,
+- [X] T049 [US3] The M5 gate. Push; record per platform under *Measurements* that the menu,
   tutorial, launch-key, remapped-key and fire-key tests passed (SC-005, SC-013).
   **Accept:** CI's three jobs are green with those tests in their logs; the four tiers match the baselines.
 
@@ -685,7 +685,7 @@ fails and names the press.
 
 **Purpose**: FR-015 and FR-028. Needs Phase 6.
 
-- [ ] T050 Run the suite under address and undefined-behaviour sanitizers
+- [X] T050 Run the suite under address and undefined-behaviour sanitizers
   ([contracts/runner.md](contracts/runner.md), *Sanitizers*):
   `meson setup build/meson_asan -Db_sanitize=address,undefined -Db_lto=false`, then
   `meson test -C build/meson_asan --suite component --print-errorlogs -t 4`. No suppression is
@@ -694,7 +694,7 @@ fails and names the press.
   with its stack and listed under *For Jon*. This covers the census (US2 scenario 7).
   **Accept:** the `meson test` command above exits 0 with no sanitizer report in
   `build/meson_asan/meson-logs/testlog.txt`, or every remaining report is recorded as above.
-- [ ] T051 The Flatpak leg ([contracts/runner.md](contracts/runner.md), *CI*; FR-028; US4
+- [X] T051 The Flatpak leg ([contracts/runner.md](contracts/runner.md), *CI*; FR-028; US4
   scenario 1). Read `installers/flatpak/create_flatpak_fn.sh` and
   `installers/flatpak/space.oolite.Oolite.yaml` first. When `OO_FLATPAK_RUN_COMPONENT=1`, the
   manifest's `oolite` module, before install, also builds the test flavour with LTO off inside
@@ -735,7 +735,7 @@ named fix and passes after it, or holds the three parts FR-030 requires.
   list it under *For Jon*.
   **Accept:** `tests/run.sh component --cpp -k key_fault` exits 0, and
   `meson test -C build/meson_asan --suite component` is still clean.
-- [ ] T054 [US4] Write *Records → Finding: the Flatpak `n` report* (FR-030, SC-008; US4 scenario
+- [X] T054 [US4] Write *Records → Finding: the Flatpak `n` report* (FR-030, SC-008; US4 scenario
   3) with the result of the key tests inside the Flatpak environment (T051), and either the
   failing-then-passing case and its fix, or the three parts: what the tests covered (the game's
   whole handling of a key, under three layouts, on each platform's SDL); what they cannot cover
@@ -784,7 +784,7 @@ and report it under *Findings* (FR-032); change neither.
 - [X] T061 [P] [US5] `tests/component-cpp/test_s8_destroyed_ships_leave_allships.cpp`: seed
   20260910; 1 `pirate`; 8 `police` within 10 km; runs for 900 ticks; a `police` ship survives.
   **Accept:** `tests/run.sh component --cpp -k s8_`.
-- [ ] T062 [US5] The M8 gate. Record the eight scenarios' total real time against the windowed
+- [X] T062 [US5] The M8 gate. Record the eight scenarios' total real time against the windowed
   baseline of one (SC-009) under *Measurements*.
   **Accept:** `for n in 1 2 3 4 5 6 7 8; do tests/run.sh component --cpp -k "test_s${n}_" ||
   exit 1; done`;
@@ -810,10 +810,10 @@ and report it under *Findings* (FR-032); change neither.
   **Accept:** `grep -q 'component-cpp' CLAUDE.md docs/current-state.md docs/workflow.md &&
   grep -qi 'GL trap' GLOSSARY.md && grep -q '011' specs/003-encapsulate-global-state/spec.md &&
   test "$(wc -w < CLAUDE.md)" -lt 1000`.
-- [ ] T064 Run [quickstart.md](quickstart.md) from top to bottom in the worktree, steps 1 to 9,
+- [X] T064 Run [quickstart.md](quickstart.md) from top to bottom in the worktree, steps 1 to 9,
   and record each step's result under *Records → Quickstart*.
   **Accept:** every step has a recorded result, and none is "failed" without a finding beside it.
-- [ ] T065 Final measurements under *Records → Measurements*: the whole tier in parallel
+- [X] T065 Final measurements under *Records → Measurements*: the whole tier in parallel
   (`meson test -C build/meson_test --suite component`; SC-010: under 10 minutes) and one at a
   time (`--num-processes 1`), with the same results; the smoke run's frame time against the
   baseline (SC-011: within 2%); `repeat_100.sh` once more for S1 and one of S2–S8; and FR-016:
@@ -822,7 +822,7 @@ and report it under *Findings* (FR-032); change neither.
   with GCC, add the GCC build of the suite to the job that already has that toolchain
   (`--native-file=gcc.ini`), or record under *For Jon* that it could not be added and why.
   **Accept:** the rows are filled; a target that was missed is stated with its number.
-- [ ] T066 Close out. Every task above is ticked with its commit; *Records → Branch state* says
+- [X] T066 Close out. Every task above is ticked with its commit; *Records → Branch state* says
   whether `origin/seriesb/029-component-tests` matches the local branch or is stale and needs
   Jon's force-push; *For Jon* lists what is his: merging the branch, adjudicating
   `census-expectations.tsv` and any `should_fail` key-fault case, any real layout recording still
@@ -1218,6 +1218,7 @@ session type, layout, Caps Lock, what happened.
 | T041, T053 (at `6750c2f5c`) | https://github.com/jonmseaman/oolite/actions/runs/43630366242 | `unit-tests-windows`, `build-macos` green; `build-fedora`'s component step green, its sanitizer step red (UBSan, LSan); `build-flatpak` red (`get_version.sh` in the sandbox) |
 | T050a, T051 (at `b0baff428`) | https://github.com/jonmseaman/oolite/actions/runs/43632980653 | `unit-tests-windows`, `build-macos` green; Fedora component step green, sanitizer step: LSan and H5's UBSan; Flatpak sandbox 22 OK / 5 expected / 3 fail (SDL 3.4.8); `build-ubuntu` red on the game's GCC build |
 | T053a, T050 (at `114d71511`) | https://github.com/jonmseaman/oolite/actions/runs/43634823624 | `unit-tests-windows`, `build-macos`, `build-fedora`, `build-ubuntu`: green; Fedora: component 25 OK / 5 expected, sanitizer step (continues) UBSan clean, LSan only; `build-flatpak` cancelled by the next push |
+| T049, T050, T051, T062, T065 (at `974045c46`, the tip) | https://github.com/jonmseaman/oolite/actions/runs/43637749215 | `unit-tests-windows`, `build-macos`, `build-fedora`, `build-ubuntu`, `build-flatpak`: green. Fedora: component 25 OK / 5 expected fail; sanitizer step: UBSan clean, the SDL leak gone, the game's LSan report only. Flatpak sandbox: 22 OK / 5 expected / 3 fail (`test_menus`, SDL 3.4.8). Outside this feature: `build-appimage` (pacman download errors), `build-github-pages` (red as on `develop`) |
 | T021, T026, T031, T037 (at `22afdd2a0`) | https://github.com/jonmseaman/oolite/actions/runs/43624664527 | `unit-tests-windows` (8 programs, census included), `build-fedora`, `build-macos` (9 each, `GL trap: linked`): green. Outside this feature: `build-appimage` red on a pacman download error (`could not open file /var/cache/pacman/pkg/download-…`), `build-github-pages` red as on `develop` |
 
 ### Commits
@@ -1281,8 +1282,10 @@ session type, layout, Caps Lock, what happened.
 
 ### Branch state
 
-`origin/seriesb/029-cpp-component-tests` is pushed by fast-forward only and matched the local
-branch at each push; *Commits* has the tip.
+`origin/seriesb/029-cpp-component-tests` is pushed by fast-forward only and matches the local
+branch at its tip, `974045c46` (2026-11-14); no force-push is needed. `oolite-dev` has one untracked
+file that is not this feature's, `package-lock.json` (an `eslint` dev dependency, dated 02:05,
+before this session): left as found, for Jon.
 
 ### Decisions taken on defaults
 
@@ -1419,6 +1422,8 @@ Decisions already in plan.md (*Notes*) and research.md are not repeated. Added b
 
 - Merging `seriesb/029-cpp-component-tests`, and any force-push it needs after `seriesb/027-modern-cpp`
   is rewritten.
+- Merging `seriesb/029-cpp-component-tests` (tip `974045c46`) into `develop`.
+- `oolite-dev/package-lock.json`, untracked, not this feature's.
 - The game's LeakSanitizer report (about 1.22 MB in 12,480 allocations at exit in every program;
   *Findings -> Sanitizers*): the sanitizer step continues while it stands.
 - The game does not compile with GCC 15.2 on Ubuntu 26.04 (`OOStringExpander.h:368`), so no CI job
