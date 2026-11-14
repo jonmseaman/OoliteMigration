@@ -763,25 +763,25 @@ uses only the steps of T023, ends with `OO_COMPONENT_CHECK_NO_ERRORS`, and takes
 `simulate(ticks(900))`. If a counterpart disagrees with its original, stop work on that scenario
 and report it under *Findings* (FR-032); change neither.
 
-- [ ] T055 [P] [US5] `tests/component-cpp/test_s2_pirate_attacks_target_registers_attacker.cpp`:
+- [X] T055 [P] [US5] `tests/component-cpp/test_s2_pirate_attacks_target_registers_attacker.cpp`:
   seed 20260918; 1 `trader`; 1 `pirate` within 10 km; at most 900 ticks; a `trader` survives.
   **Accept:** `tests/run.sh component --cpp -k s2_`.
-- [ ] T056 [P] [US5] `tests/component-cpp/test_s3_hostile_spawn_drives_ship_into_attack.cpp`:
+- [X] T056 [P] [US5] `tests/component-cpp/test_s3_hostile_spawn_drives_ship_into_attack.cpp`:
   seed 20260918; 1 `trader`; 1 `pirate` within 10 km; at most 900 ticks; a `trader` survives.
   **Accept:** `tests/run.sh component --cpp -k s3_`.
-- [ ] T057 [P] [US5] `tests/component-cpp/test_s4_missile_armed_ship_kills_by_missile.cpp`: seed
+- [X] T057 [P] [US5] `tests/component-cpp/test_s4_missile_armed_ship_kills_by_missile.cpp`: seed
   20260918; 1 `pirate`; 1 `trader` within 10 km; at most 900 ticks; a `pirate` survives.
   **Accept:** `tests/run.sh component --cpp -k s4_`.
-- [ ] T058 [P] [US5] `tests/component-cpp/test_s5_escorts_converge_on_their_mother.cpp`: seed
+- [X] T058 [P] [US5] `tests/component-cpp/test_s5_escorts_converge_on_their_mother.cpp`: seed
   20260910; 1 `trader`; 2 `escort` within 5 km; at most 900 ticks; an `escort` survives.
   **Accept:** `tests/run.sh component --cpp -k s5_`.
-- [ ] T059 [P] [US5] `tests/component-cpp/test_s6_damaged_ship_flees.cpp`: seed 20260918; 1
+- [X] T059 [P] [US5] `tests/component-cpp/test_s6_damaged_ship_flees.cpp`: seed 20260918; 1
   `police`; 1 `pirate` within 10 km; at most 900 ticks; a `police` ship survives.
   **Accept:** `tests/run.sh component --cpp -k s6_`.
-- [ ] T060 [P] [US5] `tests/component-cpp/test_s7_neutral_traffic_is_quiet.cpp`: seed 20260910; 8
+- [X] T060 [P] [US5] `tests/component-cpp/test_s7_neutral_traffic_is_quiet.cpp`: seed 20260910; 8
   `shuttle`; runs for 900 ticks; a `shuttle` survives.
   **Accept:** `tests/run.sh component --cpp -k s7_`.
-- [ ] T061 [P] [US5] `tests/component-cpp/test_s8_destroyed_ships_leave_allships.cpp`: seed
+- [X] T061 [P] [US5] `tests/component-cpp/test_s8_destroyed_ships_leave_allships.cpp`: seed
   20260910; 1 `pirate`; 8 `police` within 10 km; runs for 900 ticks; a `police` ship survives.
   **Accept:** `tests/run.sh component --cpp -k s8_`.
 - [ ] T062 [US5] The M8 gate. Record the eight scenarios' total real time against the windowed
@@ -1007,7 +1007,7 @@ At the base commit `d4fe31640`, on Jon's Windows machine (MSYS2 UCRT64, Clang 23
 | Census: passed / left / n-a / failed / expected (SC-003) | 100% accounted | 127 / 2 / 100 / 6 / 8: 235 of 235 | | |
 | Census real time, s (SC-004) | < 300 | 2.2 | | |
 | Menu, tutorial, launch, remap, fire tests (SC-005, SC-013) | pass | | | |
-| S1–S8 total, s, against one windowed run (SC-009) | less | | | |
+| S1–S8 total, s, against one windowed run (SC-009) | less | 4.31 (one `meson test`, serial: 0.46-0.63 each) against 6.70 for windowed S1 alone (S2-S8 windowed: 118-119 s each); 12.3 through eight `tests/run.sh` calls | | |
 | Whole tier, parallel and serial, s (SC-010) | < 600 | | | |
 | Smoke frame time against baseline (SC-011) | within 2% | | | |
 
@@ -1081,6 +1081,13 @@ does). The crash-and-resume path was exercised by those crashes (children exitin
 on `std::bad_weak_ptr` were recorded failed and the next child resumed, report complete): the
 SIGKILL check of T034's Accept is met by them, not by a kill by hand.
 
+**S2-S8** (T055-T061): each counterpart agrees with its original (FR-032): every survivor
+check holds and no log line contains `ERROR`. The windowed step "no ERROR appears in the log"
+fails on any log line containing `ERROR`, wider than `OO_COMPONENT_CHECK_NO_ERRORS`'s classes, so
+each port checks both: `Game::logLinesContaining("ERROR")` is the windowed step's meaning. S6 stops
+after 21 s of game time, the rest at 112.5 s: `simulateAtMost` stops once every non-police role
+spawned is gone, as `world_steps.py` `run_simulation` does (S6's pirate is destroyed).
+
 **Keys** (T044, T052, T053): 
 
 **Sanitizers** (T050): 
@@ -1149,6 +1156,13 @@ _not written_
 | T035 | `013a43702` |
 | T036 | `06c6a3b4a` |
 | T037 | `cebd698f1` |
+| T055 | `46eba00c1` (with `Game::logLinesContaining`) |
+| T056 | `f20a9f68c` |
+| T057 | `8f75067e3` |
+| T058 | `a643da044` |
+| T059 | `b04018dbe` |
+| T060 | `c494dd55e` |
+| T061 | `f6df6746c` |
 
 ### Branch state
 
