@@ -1129,8 +1129,16 @@ under sanitizers"; `-t 4`; no suppression). Reports, at `b0baff428` (run 4363298
   (`45f02a36f`, bounds checks; nothing defined changes).
 - LeakSanitizer, every program that makes a game: about 1.22 MB in about 12,480 allocations
   unfreed at exit (`SUMMARY: AddressSanitizer: 1220852 byte(s) leaked in 12484 allocation(s)`),
-  and 8 bytes allocated through `libSDL3.so.0`. The stacks are unsymbolized in that run (no
-  `llvm-symbolizer`); the step now installs `llvm`. The game keeps many objects for the
+  and 8 bytes allocated through `libSDL3.so.0`. Symbolized at `114d71511` (run 43634823624):
+  the 8 bytes are `SDL_GetFullscreenDisplayModes`' array in
+  `MyOpenGLView::populateFullScreenModelist`, not freed on its early return for no modes (the
+  dummy driver's case), fixed by T050b (`974045c46`). The rest is the game's own: the most
+  frequent direct frames are `oo::detail::autoreleaseOwner` (`AutoreleaseScope.hpp:97`),
+  `oo::MadeEntity` (`EntityHelpers.cpp:84`), `ShipEntity::setUpSubEntities`
+  (`ShipEntity.cpp:1231`), `ShipEntity::setAIScript` (`ShipEntityAI.cpp:149`),
+  `OOScriptAutorelease` (`OOScript.cpp:339`) and `Universe::newUniverse`
+  (`Universe.cpp:281`), holding `oo::PList` arrays and the ship registry's probability sets
+  (`OOShipRegistry::buildRoleProbabilitySets`, `OOProbabilitySet.cpp:223-230`). The game keeps many objects for the
   process's life by design (the "exit(0) runs no destructor" holders), so this is not fixed here:
   the step reports and continues (`continue-on-error`), and it is listed under *For Jon*.
   Because LSan's exit code fails each program, the census's parent saw its `--list` child fail
@@ -1206,6 +1214,10 @@ session type, layout, Caps Lock, what happened.
 |---|---|---|
 | T006 (at T011, `0b7534e7d`) | https://github.com/jonmseaman/oolite/actions/runs/43618713800 | `unit-tests-windows`, `build-fedora`, `build-macos`: green, `test_skeleton` in each log |
 | T021, T024–T030 (at `01b466dea`) | https://github.com/jonmseaman/oolite/actions/runs/43622970759 | `build-fedora`, `build-macos`: green, 8 programs each, `GL trap: linked`; `unit-tests-windows`: red on `test_OOJSShip` (T022a) |
+| T038-T048, T052 (at `dcb598ada`) | https://github.com/jonmseaman/oolite/actions/runs/43628739112 | `unit-tests-windows`, `build-fedora` green (21 programs); `build-macos` red on `us_tsv_agrees_with_sdls_built_in_map` (shift+caps; see *Decisions*); layout recording gave US tables |
+| T041, T053 (at `6750c2f5c`) | https://github.com/jonmseaman/oolite/actions/runs/43630366242 | `unit-tests-windows`, `build-macos` green; `build-fedora`'s component step green, its sanitizer step red (UBSan, LSan); `build-flatpak` red (`get_version.sh` in the sandbox) |
+| T050a, T051 (at `b0baff428`) | https://github.com/jonmseaman/oolite/actions/runs/43632980653 | `unit-tests-windows`, `build-macos` green; Fedora component step green, sanitizer step: LSan and H5's UBSan; Flatpak sandbox 22 OK / 5 expected / 3 fail (SDL 3.4.8); `build-ubuntu` red on the game's GCC build |
+| T053a, T050 (at `114d71511`) | https://github.com/jonmseaman/oolite/actions/runs/43634823624 | `unit-tests-windows`, `build-macos`, `build-fedora`, `build-ubuntu`: green; Fedora: component 25 OK / 5 expected, sanitizer step (continues) UBSan clean, LSan only; `build-flatpak` cancelled by the next push |
 | T021, T026, T031, T037 (at `22afdd2a0`) | https://github.com/jonmseaman/oolite/actions/runs/43624664527 | `unit-tests-windows` (8 programs, census included), `build-fedora`, `build-macos` (9 each, `GL trap: linked`): green. Outside this feature: `build-appimage` red on a pacman download error (`could not open file /var/cache/pacman/pkg/download-…`), `build-github-pages` red as on `develop` |
 
 ### Commits
@@ -1260,6 +1272,7 @@ session type, layout, Caps Lock, what happened.
 | T038b | `d6f090f95` |
 | T052 | `16c1456b9` |
 | T053 | `b5f3a001a`, `6750c2f5c`; T053a `45f02a36f` |
+| T050b | `974045c46` |
 | T041 (tables) | `d85a6eae3` |
 | T050 | `7af900620`, `114d71511`; T050a `28e852a9d` |
 | T051 | `945b37abb`, `b0baff428`, `114d71511` |
