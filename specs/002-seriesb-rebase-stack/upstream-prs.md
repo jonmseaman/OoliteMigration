@@ -60,3 +60,44 @@ Each PR has a review document in [`series/upstream-review/`](series/upstream-rev
 | #772 | 2026-10-22 | hobleyd | Test more of the game: in-game JavaScript tests, a longer smoke test and a wider parity probe | not in the stack | [doc](series/upstream-review/pr-772.md) |
 | #794 | 2026-11-06 | hobleyd | Add a key bindings screen on '9' | not in the stack | [doc](series/upstream-review/pr-794.md) |
 | #738 | 2026-09-13 | mcarans | Rebased Rescaling Experiment IV | not in the stack | [doc](series/upstream-review/pr-738.md) |
+
+## The stack's own PRs (opened 2026-11-14)
+
+Steps 1–28 are open upstream as draft PRs #799–#826, step N as #(798+N), titled `[C++ NN/28] …`,
+and tracked in issue #790 (its table's PR column). Upstream has no stack branches and the fork has no
+push access there, so each PR goes from `jonmseaman:seriesb/0NN-…` into `master`, and its Files tab
+holds #767, #768 and every earlier step. Each body opens with the step's own diff (the fork's
+compare view against the previous step) and its size; `tools/series/stack_prs.py` writes the bodies.
+They were opened before #767 and #768 merged, with steps 25–28 unverified, on Jon's call (2026-11-14):
+the stack is rebased again when #767 and #768 settle, and a force-push to the fork updates each PR.
+
+| Step | Branch | PR |
+|--:|---|---|
+| 1 | `seriesb/001-random-seed-env` | [#799](https://github.com/OoliteProject/oolite/pull/799) |
+| 2 | `seriesb/002-safety-net` | [#800](https://github.com/OoliteProject/oolite/pull/800) |
+| 3 | `seriesb/003-objcpp-switch` | [#801](https://github.com/OoliteProject/oolite/pull/801) |
+| 4 | `seriesb/004-oofnd-core` | [#802](https://github.com/OoliteProject/oolite/pull/802) |
+| 5 | `seriesb/005-typed-accessors` | [#803](https://github.com/OoliteProject/oolite/pull/803) |
+| 6 | `seriesb/006-foundation-wave-1` | [#804](https://github.com/OoliteProject/oolite/pull/804) |
+| 7 | `seriesb/007-foundation-wave-2` | [#805](https://github.com/OoliteProject/oolite/pull/805) |
+| 8 | `seriesb/008-selector-families` | [#806](https://github.com/OoliteProject/oolite/pull/806) |
+| 9 | `seriesb/009-leaf-conversions` | [#807](https://github.com/OoliteProject/oolite/pull/807) |
+| 10 | `seriesb/010-module-conversions` | [#808](https://github.com/OoliteProject/oolite/pull/808) |
+| 11 | `seriesb/011-first-slices` | [#809](https://github.com/OoliteProject/oolite/pull/809) |
+| 12 | `seriesb/012-shipentity-slices` | [#810](https://github.com/OoliteProject/oolite/pull/810) |
+| 13 | `seriesb/013-universe-player-slices` | [#811](https://github.com/OoliteProject/oolite/pull/811) |
+| 14 | `seriesb/014-facade-deletions` | [#812](https://github.com/OoliteProject/oolite/pull/812) |
+| 15 | `seriesb/015-entity-facade` | [#813](https://github.com/OoliteProject/oolite/pull/813) |
+| 16 | `seriesb/016-objc-runtime-out` | [#814](https://github.com/OoliteProject/oolite/pull/814) |
+| 17 | `seriesb/017-gcc-build` | [#815](https://github.com/OoliteProject/oolite/pull/815) |
+| 18 | `seriesb/018-develop-fixes` | [#816](https://github.com/OoliteProject/oolite/pull/816) |
+| 19 | `seriesb/019-source-hygiene` | [#817](https://github.com/OoliteProject/oolite/pull/817) |
+| 20 | `seriesb/020-tests-and-tooling` | [#818](https://github.com/OoliteProject/oolite/pull/818) |
+| 21 | `seriesb/021-c-as-cxx` | [#819](https://github.com/OoliteProject/oolite/pull/819) |
+| 22 | `seriesb/022-upstream-28ceaaba0-ports` | [#820](https://github.com/OoliteProject/oolite/pull/820) |
+| 23 | `seriesb/023-google-style-format` | [#821](https://github.com/OoliteProject/oolite/pull/821) |
+| 24 | `seriesb/024-post-conversion-fixes` | [#822](https://github.com/OoliteProject/oolite/pull/822) |
+| 25 | `seriesb/025-libcurl-http` | [#823](https://github.com/OoliteProject/oolite/pull/823) |
+| 26 | `seriesb/026-migration-completion` | [#824](https://github.com/OoliteProject/oolite/pull/824) |
+| 27 | `seriesb/027-modern-cpp` | [#825](https://github.com/OoliteProject/oolite/pull/825) |
+| 28 | `seriesb/028-upstream-772-tests` | [#826](https://github.com/OoliteProject/oolite/pull/826) |
