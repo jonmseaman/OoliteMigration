@@ -1,9 +1,8 @@
 # Feature Specification: JSON5 data files beside property lists
 
 **Feature Branch**: `seriesb/030-json5-data-files` (in `oolite-dev`; git town parent
-`seriesb/027-modern-cpp` until `seriesb/029` exists, then that), which holds the three commits of
-`feature/json5-data-files` (based on `seriesb/027-modern-cpp` at `b692feb4e`) and the core data
-migration on top; spec directory `010-json5-data-files`
+`seriesb/027-modern-cpp` until `seriesb/029` exists, then that), based on the rewritten
+`seriesb/027-modern-cpp` at `cf0c1f040`; spec directory `010-json5-data-files`
 
 **Created**: 2026-11-12
 
@@ -150,7 +149,7 @@ Each has the conservative default taken; Jon may override.
 
 | # | Question | Default | Reason |
 |---|---|---|---|
-| D1 | Base | `b692feb4e`, the tip of local `seriesb/027-modern-cpp` (T050, not yet pushed) | the user asked for the newest modern C++ commits |
+| D1 | Base | `b692feb4e`, the tip of local `seriesb/027-modern-cpp` (T050, not yet pushed); rebased 2026-11-14 onto the rewritten `seriesb/027-modern-cpp` at `cf0c1f040` | the user asked for the newest modern C++ commits |
 | D2 | Where the `.json5` rule lives | one place, `cxx_OOPropertyListFromFile`, through `oo::loadPListFile` | every loader (ResourceManager, AI, script lists, OXZ manifests) goes through it |
 | D3 | Both files present | JSON5 wins, warning logged | 5b's default |
 | D4 | `null` | parse error | a plist has no null; silently dropping keys changes data |

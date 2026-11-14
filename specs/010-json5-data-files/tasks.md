@@ -4,9 +4,10 @@ description: "Tasks for JSON5 data files beside property lists (spec 010)"
 
 # Tasks: JSON5 data files beside property lists
 
-**Input**: [spec.md](spec.md). T001–T005 were done in `oolite-dev` on `feature/json5-data-files`
-(worktree `.agent-tmp/wt-json5`); T006 on are on `seriesb/030-json5-data-files`, which contains
-those commits. Each task names the command that fails before it and passes after.
+**Input**: [spec.md](spec.md). All of the work is on `seriesb/030-json5-data-files` in
+`oolite-dev`. T001–T005 began on a separate branch, `feature/json5-data-files`, which `030` was
+cut from; that branch was deleted on 2026-11-14. Each task names the command that fails before it
+and passes after.
 
 macOS unit check (D12), from the worktree:
 
@@ -128,6 +129,12 @@ clang++ -std=c++23 -Wall -Wextra -Werror -I src -I tests/unit/oofnd tests/unit/o
   the `core` suite; `seriesb/027-modern-cpp` fixes it later in `cc94abb6d`. To see the `core`
   suite on this change, the same tree plus that one commit was pushed as `claude/030-ci-check`
   (a CI-only branch, deleted from origin after its runs were read).
+
+- Rebased 2026-11-14 onto the rewritten `seriesb/027-modern-cpp` (`cf0c1f040`, from `b692feb4e`).
+  The conflicts were all 027 dropping the `cxx_` prefix. `e8540326d` follows the other renames
+  027 made: `PList::Type`'s enumerators are `kNull`, `kBool`, ..., and `oo::typeName` returns a
+  `std::string_view`. At `9aa425e3f`, macOS dev build: no new warnings; `meson test` (the
+  `plist2json5` suite) 4 of 4; `tests/run.sh smoke` passes. Not rerun: component, gui, CI.
 
 ## Follow-ups (not in this feature)
 
