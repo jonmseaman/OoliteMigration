@@ -1,5 +1,7 @@
 # Feature Specification: Encapsulate the game's global state
 
+> Spec 011 (headless component tests) delivered this spec's User Story 3 and its SC-001 and SC-002, with one game per process; its `OOHeadlessOptions` is the `OOUniverseOptions` described here.
+
 **Feature Branch**: `003-encapsulate-global-state`
 
 **Created**: 2026-11-02

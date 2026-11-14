@@ -74,13 +74,26 @@ The warning gate skips exactly two vendored paths, `src/Core/MiniZip/` and
 | Kind | Where | What it decides |
 |---|---|---|
 | Unit | `oolite-dev/tests/unit/` (core ~175 files, `oofnd` ~40) | class behaviour |
-| Component (BDD) | `oolite-dev/tests/component/` | pytest-bdd scenarios drive a real game over the debug console; tolerant invariants |
+| Component, C++ half | `oolite-dev/tests/component-cpp/` | headless games in the test's own process (no window, no GL context, a manual clock): S1-S8, one-behaviour tests, the census of every ship and equipment item, menus, the tutorial and key tests under recorded layouts, key faults |
+| Component, windowed half (BDD) | `oolite-dev/tests/component/` | pytest-bdd scenarios drive a real game over the debug console; tolerant invariants |
 | GUI | `oolite-dev/tests/gui/` | PyAutoGUI drives the real window (G1–G11) |
 | Smoke | `oolite-dev/tests/launch_snapshot.py` | the game launches and renders |
 | JS API contract | `oxp-contract/js-api-1.93.json` | the 1.93 scripting surface expansions are written against |
 | Expansion corpus | `tools/corpus.sh`, `tools/oxp-corpus/` | load-tests published expansions; known content failures in `tools/oxp-corpus/known-content-failures.json` |
 
-`oolite-dev/tests/run.sh` runs the first four. How to use them is in [workflow.md](workflow.md).
+`oolite-dev/tests/run.sh` runs the first five. How to use them is in [workflow.md](workflow.md).
+
+The C++ half (`tests/component-cpp`, meson suite `component`) links the game's own objects into
+each test program. One headless game per process: `OOHeadlessOptions` (`src/Core/OOHeadless.h`)
+and `GameController::startHeadless` give a seeded game on a manual clock, with no sound device,
+no add-ons, and, for the key tests, a view on SDL's `dummy` video driver that reads key events
+pushed onto SDL's queue. On Linux and macOS the GL trap is linked: any GL call while headless
+aborts the test naming the function. It covers the game's simulation, scripts, GUI screens and key
+handling; it does not cover drawing, real sound, SDL's own layout step for a real keyboard, window
+focus, or input methods: those stay with the windowed half, the GUI tests and the smoke run.
+`key_fault_h1`-`h4` and `test_tutorial_keys_ru` are registered `should_fail`: each is a key-path
+fault upstream shares (spec 011, *Findings -> Keys*). The fr and ru layout tables are derived,
+not recorded.
 
 ## Display: screen matching, the warp pass and the HUD area
 

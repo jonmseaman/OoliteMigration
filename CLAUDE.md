@@ -66,10 +66,10 @@ Specs live in `specs/`, the templates and constitution in `.specify/`; see
 All from `oolite-dev`, in an MSYS2 UCRT64 shell on Windows ([setup](tools/setup-windows.sh)):
 
 ```bash
-./mk.sh build test                 # build (Clang; add --native-file=gcc.ini for GCC)
-tests/run.sh unit                  # meson suites: oofnd, core, headers
-tests/run.sh component [-k name]   # Gherkin scenarios over the debug console
-tests/run.sh gui                   # PyAutoGUI against the real window
+./mk.sh build test                 # Clang; --native-file=gcc.ini for GCC
+tests/run.sh unit                  # meson: oofnd, core, headers
+tests/run.sh component [--cpp|--windowed] [-k name]   # C++, then Gherkin
+tests/run.sh gui                   # PyAutoGUI, real window
 tests/run.sh smoke                 # launch and snapshot
 tests/run.sh all                   # unit, component, smoke, then gui
 ```
@@ -80,6 +80,7 @@ tests/run.sh all                   # unit, component, smoke, then gui
 |---|---|
 | GUI test | `oolite-dev/tests/gui/test_g1_exit_via_mouse.py` |
 | Component scenario | `oolite-dev/tests/component/features/s1_police_kills_pirate.feature` |
+| C++ component test | `oolite-dev/tests/component-cpp/test_s1_police_kills_pirate.cpp` |
 | Converted class | `oolite-dev/src/Core/OOColor.*` |
 
 ## Repo conventions

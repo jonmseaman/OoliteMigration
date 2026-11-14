@@ -17,11 +17,25 @@ for the commands):
 | Suite | What it decides | Cost |
 |---|---|---|
 | `unit` | class behaviour (`oofnd`, `core`, headers); meson | seconds |
-| `component` | pytest-bdd scenarios against a real game over the debug console | minutes |
+| `component --cpp` | headless C++ tests in `tests/component-cpp` (meson suite `component`) | seconds each |
+| `component --windowed` | pytest-bdd scenarios against a real game over the debug console | minutes |
 | `gui` | PyAutoGUI against the real window | minutes; one at a time |
 | `smoke` | the game launches and renders | seconds |
 
-Before a pull request run `unit` and whatever `component` scenarios touch your change. Before a
+`tests/run.sh component` with no flag runs the C++ half, then the windowed half; `-k name`
+picks tests by name in both. A C++ test is one program, `tests/component-cpp/<name>.cpp`, built
+from the game's objects: copy `test_s1_police_kills_pirate.cpp` (a scenario) or
+`test_laser_fires.cpp` (one behaviour), use the calls in `oo_component.hpp` (`Game::scenario`,
+`spawn`, `simulateAtMost`, `press`, `OO_COMPONENT_CHECK_NO_ERRORS`), and add one entry to
+`component_programs` in `tests/component-cpp/meson.build` (`layouts` registers it once per
+keyboard layout, `cases` once per case). Every program takes `--digest-out <file>`;
+`tests/component-cpp/repeat_100.sh <program>` checks a run repeats exactly. The census
+(`component_census`, test `census`) tries every ship and equipment item in the core data; a
+definition that cannot pass is listed in `tests/component-cpp/census-expectations.tsv` with a
+one-sentence reason, and Jon adjudicates that list. Under sanitizers the suite runs on Fedora in
+CI (MSYS2's Clang has no sanitizer runtime).
+
+Before a pull request run `unit` and whatever `component` tests touch your change. Before a
 phase pull request run `all`, on Clang and on GCC. The expansion corpus (`bash tools/corpus.sh
 tier1`) is run by hand when a change could affect what expansions see.
 

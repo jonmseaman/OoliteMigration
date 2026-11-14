@@ -605,7 +605,7 @@ fails and names the press.
   built-in map. Cases in `test_menus.cpp`: `us_tsv_agrees_with_sdls_built_in_map`,
   `down_up_and_enter_move_and_open` (US3 scenario 1), `a_held_enter_acts_once` (scenario 5).
   **Accept:** `tests/run.sh component --cpp -k menus`.
-- [ ] T041 [P] [US3] Record the other two layouts,
+- [X] T041 [P] [US3] Record the other two layouts,
   `tests/component-cpp/layouts/fr_azerty.tsv` and `ru.tsv` (FR-027; examples C8). Add a small
   program `tests/component-cpp/record_layout.cpp` (built, not registered as a test) that starts
   SDL's real video backend and prints the table for the current layout. **Do not change this
@@ -727,7 +727,7 @@ named fix and passes after it, or holds the three parts FR-030 requires.
   not a verdict: it is not rewritten to pass.
   **Accept:** `tests/run.sh component --cpp -k key_fault` runs five tests to a result, and each
   result is recorded.
-- [ ] T053 [US4] For each case of T052 that fails: read the same code in `upstream/oolite`
+- [X] T053 [US4] For each case of T052 that fails: read the same code in `upstream/oolite`
   (reference only) and record whether upstream has the same fault or the port introduced it. Fix
   it here, in its own commit `T053a`, …, if the fix is small and one of those holds; the case then
   passes and stays in the suite. Otherwise register that one test with `should_fail: true` and a
@@ -797,7 +797,7 @@ and report it under *Findings* (FR-032); change neither.
 
 ## Phase 10: Polish (M9)
 
-- [ ] T063 [P] Docs, in the planning repo (FR-033): `docs/current-state.md` (the component tier
+- [X] T063 [P] Docs, in the planning repo (FR-033): `docs/current-state.md` (the component tier
   has a headless C++ half and a windowed half; what the C++ half covers and does not),
   `docs/workflow.md` (the commands, how to add a scenario, the census's expectations file),
   `GLOSSARY.md` (component test, headless, windowed, census, GL trap, recorded layout),
