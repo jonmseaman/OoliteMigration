@@ -1,3 +1,12 @@
+
+- [x] Fix run.sh running tests with test mode. It should just use the dev/debug mode.
+- [x] Consider changing to just debug/release. Tests are running super slow because there are optimizations for the unit tests which take forever...
+- [ ] master is upstream-master.
+
+
+
+----------
+
 TODO Mac icon used to have a grey background, then it was gone... Sometimes it is there and sometimes not.
 
 More branches:

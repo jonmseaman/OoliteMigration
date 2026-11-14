@@ -81,15 +81,15 @@ survives between agent iterations.
 
 | Setting | Value |
 |---|---|
-| main branch | `develop` |
-| perennial branch | `upstream-master` (OoliteProject `master`, mirrored on `origin`) |
+| main branch | `master` (OoliteProject `master`, mirrored on `origin`) |
+| perennial branch | `master` |
 | dev remote | `origin` |
 | feature sync strategy | `rebase` |
 | forge | GitHub, through `gh` |
 
-The branches form a tree rooted at `upstream-master`; `git town branch` prints it.
+The branches form a tree rooted at `master`; `git town branch` prints it.
 
-- `upstream-master`: perennial. Nobody commits to it.
+- `master`: perennial. Nobody commits to it.
 - `seriesb/000a-…`, `seriesb/000b-…`: observed branches, each mirroring an upstream PR (#767,
   #768) from the `hobleyd` remote.
 - `seriesb/001-…` up to the top step: the fork's changes as upstream-sized steps, each the parent
@@ -98,12 +98,15 @@ The branches form a tree rooted at `upstream-master`; `git town branch` prints i
 
 `develop` is not in the tree: Jon merges finished feature branches into it.
 
+Prototype branches (`upstream-master`, `feature/upstream-quickjs-poc-cxx` and the `claude/*`
+branches) are kept but never synced; `git town branch` marks them. Leave them alone (hard rule 3).
+
 For agents:
 
 - Create a branch with `git town append <name>` from its parent. Rename, delete or re-parent with
   `git town rename`, `git town delete`, `git town set-parent`. Plain `git checkout -b` or
   `git branch -m` leaves Git Town without a parent for the branch.
-- Sync with `git town sync --stack --detached`; `--detached` leaves `upstream-master` alone.
+- Sync with `git town sync --stack --detached`; `--detached` leaves `master` alone.
   Feature branches sync by rebase, so Git Town pushes a rebased branch with `--force-with-lease`.
   That is allowed on your own branches (hard rule 3) and is the only force-push allowed.
 - On a conflict, resolve it, `git add` the files and run `git town continue`; `git town undo`
