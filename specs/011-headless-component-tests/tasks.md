@@ -113,7 +113,7 @@ fourth (the fire key) is in the US3 phase because it needs them.
 
 **Purpose**: the branch, the worktree and the numbers later tasks are compared against.
 
-- [ ] T001 Create the branch and worktree. From the planning repo root:
+- [X] T001 Create the branch and worktree. From the planning repo root:
   `git -C oolite-dev fetch origin`, then
   `git -C oolite-dev worktree add -b seriesb/029-component-tests
   "$PWD/.agent-tmp/wt-component-tests" refs/heads/seriesb/027-modern-cpp`. The base is the
@@ -123,7 +123,7 @@ fourth (the fire key) is in the US3 phase because it needs them.
   **Accept:** `git -C .agent-tmp/wt-component-tests rev-parse --abbrev-ref HEAD` prints
   `seriesb/029-component-tests`, and
   `! grep -q '_not recorded_' <(sed -n '/^### Base/,/^### /p' specs/011-headless-component-tests/tasks.md)`.
-- [ ] T002 Build the base and record the baselines in *Records → Baselines*. In the worktree:
+- [X] T002 Build the base and record the baselines in *Records → Baselines*. In the worktree:
   `./mk.sh build test --setup-flags=-Db_lto=false`, `./mk.sh test test` (record the smoke run's
   frame time, for SC-011), then `tests/run.sh unit`, `component`, `smoke` and `gui`, one at a
   time, and record each tier's result on this Mac at the base commit: passed, failed (with the
@@ -142,7 +142,7 @@ fourth (the fire key) is in the US3 phase because it needs them.
 
 **⚠️ CRITICAL**: no user-story work starts until T006's three CI jobs are green.
 
-- [ ] T003 Create `tests/component-cpp/meson.build` and `tests/component-cpp/test_skeleton.cpp`,
+- [X] T003 Create `tests/component-cpp/meson.build` and `tests/component-cpp/test_skeleton.cpp`,
   and include the directory from the top-level `meson.build` with
   `if not get_option('deployment_release')` and **no** platform guard
   ([contracts/runner.md](contracts/runner.md), *Meson*). The build file keeps a list of programs;
@@ -156,7 +156,7 @@ fourth (the fire key) is in the US3 phase because it needs them.
   `the_whole_game_links`, that references one game symbol and boots nothing.
   **Accept:** `meson test -C build/meson_test --suite component --list | grep -q test_skeleton &&
   meson test -C build/meson_test --suite component --print-errorlogs`.
-- [ ] T004 Teach `tests/run.sh` the two halves ([contracts/runner.md](contracts/runner.md),
+- [X] T004 Teach `tests/run.sh` the two halves ([contracts/runner.md](contracts/runner.md),
   *`tests/run.sh`*): `component` runs the C++ half then the windowed half and exits nonzero if
   either failed, with the windowed half still run after a C++ failure; `--cpp` runs only
   `meson test -C build/meson_$BUILD_TYPE --suite component --print-errorlogs` and needs no
@@ -165,7 +165,7 @@ fourth (the fire key) is in the US3 phase because it needs them.
   the help comment at the top.
   **Accept:** `tests/run.sh component --cpp && tests/run.sh component --cpp -k skeleton &&
   ! tests/run.sh component --cpp -k no_such_test && tests/run.sh | grep -q -- '--cpp'`.
-- [ ] T005 [P] Add three probe cases to `tests/component-cpp/test_skeleton.cpp` (plan M0; research
+- [X] T005 [P] Add three probe cases to `tests/component-cpp/test_skeleton.cpp` (plan M0; research
   *To be confirmed*): `sdl_dummy_video_driver_initialises` (`SDL_SetHint(SDL_HINT_VIDEO_DRIVER,
   "dummy")`, `SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)` succeeds and
   `SDL_GetCurrentVideoDriver()` is `dummy`); `a_pushed_key_event_comes_back` (`SDL_PushEvent` of a
@@ -208,7 +208,7 @@ Until T021, `test_boot` needs a window, so it is registered in a temporary meson
 `component-window` and run locally with `meson test -C build/meson_test --suite component-window`.
 It is built on every platform, so CI still compiles it.
 
-- [ ] T007 [US1] Add `src/Core/OOHeadless.h` and `src/Core/OOHeadless.cpp` (examples C1;
+- [X] T007 [US1] Add `src/Core/OOHeadless.h` and `src/Core/OOHeadless.cpp` (examples C1;
   [contracts/headless-game.md](contracts/headless-game.md); data-model *Headless options*, *Game
   clock*, *Presentation record*) and list them in `src/meson.build`. `OOHeadlessOptions` has the
   fields `headless`, `seed`, `addOns`, `populate`, `startInFlight`, `inputView`, `step`,
@@ -224,7 +224,7 @@ It is built on every platform, so CI still compiles it.
   `default_options_are_the_windowed_game`, `headless_without_a_seed_is_rejected`,
   `headless_with_all_addons_is_rejected`, `the_manual_clock_moves_only_when_advanced`.
   **Accept:** `tests/run.sh component --cpp -k skeleton`.
-- [ ] T008 [US1] Split the frame in `src/Core/GameController.h` / `.cpp` (examples C2):
+- [X] T008 [US1] Split the frame in `src/Core/GameController.h` / `.cpp` (examples C2):
   `GameController::tick(OOTimeDelta dt)` is the simulation half of `doPerformGameTick` (clock
   advance, universe update, restart check, sound update, frame callbacks, in that order), and
   `doPerformGameTick` measures dt, caps it as today, calls `tick`, then draws. The controller owns
@@ -233,7 +233,7 @@ It is built on every platform, so CI still compiles it.
   `&GameController::tick`, so it does not compile before this task).
   **Accept:** `tests/run.sh component --cpp -k skeleton && ./mk.sh test test`, with the smoke
   run's frame time within 2% of the baseline (SC-011).
-- [ ] T009 [US1] Take the options into the universe: `Universe::newUniverse` and
+- [X] T009 [US1] Take the options into the universe: `Universe::newUniverse` and
   `initWithGameView` in `src/Core/Universe.h` / `.cpp` accept `const OOHeadlessOptions&`,
   defaulted. With `addOns` none, add-ons are not forced to "all" (`Universe.cpp:307, 342`) and
   `ResourceManager::setUseAddOns` gets the strict value; with `populate` false the system is left
@@ -241,7 +241,7 @@ It is built on every platform, so CI still compiles it.
   seeded from it. Defaults reproduce today's calls exactly.
   **Accept:** `./mk.sh build test --setup-flags=-Db_lto=false && ./mk.sh test test`; T011's
   `test_boot` is this task's failing-then-passing test, so T009–T011 are pushed together.
-- [ ] T010 [US1] Add `GameController::startHeadless(const OOHeadlessOptions&)` in
+- [X] T010 [US1] Add `GameController::startHeadless(const OOHeadlessOptions&)` in
   `src/Core/GameController.h` / `.cpp` (examples C3; contract *startHeadless*): the steps of
   `applicationDidFinishLaunching` in the same order, without the splash, display modes, the
   expansion manager, the window, the sound device and the frame loop; `-nosound`'s path for sound;
@@ -253,7 +253,7 @@ It is built on every platform, so CI still compiles it.
   uses; if two can exist, make the headless path use the shared one and record the windowed
   double-seed as a finding, not a fix.
   **Accept:** as T009 (pushed together with T011).
-- [ ] T011 [US1] Create the support library `tests/component-cpp/oo_component.hpp` / `.cpp` with
+- [X] T011 [US1] Create the support library `tests/component-cpp/oo_component.hpp` / `.cpp` with
   its first part (examples B1, B3; [contracts/component-test-api.md](contracts/component-test-api.md),
   *Creating a game*, *Time*) and `tests/component-cpp/test_boot.cpp`. `Game::scenario(seed)`:
   creates `<build>/component/scratch/<program>-<pid>/`, points `HOME`/`HOMEPATH`, `OO_SAVEDIR`,
@@ -272,7 +272,7 @@ It is built on every platform, so CI still compiles it.
   `user_directories_are_under_the_scratch_directory`, `600_steps_advance_game_time_by_10_s`.
   Register `test_boot` in suite `component-window`.
   **Accept:** `meson test -C build/meson_test --suite component-window --print-errorlogs`.
-- [ ] T012 [US1] Send the state-affecting clock reads through the controller's `OOGameClock`
+- [X] T012 [US1] Send the state-affecting clock reads through the controller's `OOGameClock`
   (research *The real clock*; contract *Game clock*): the ship clock's start
   (`src/Core/Entities/PlayerEntity.cpp:2555-2566`), deferred-call deadlines
   (`src/Core/GameController.cpp:150-197`), the GUI-screen time delta and the escape-pod double
@@ -284,7 +284,7 @@ It is built on every platform, so CI still compiles it.
   and not after 119).
   **Accept:** `meson test -C build/meson_test --suite component-window --print-errorlogs &&
   ./mk.sh test test`.
-- [ ] T013 [US1] Seed the script engine in `src/Core/Scripting/OOJavaScriptEngine.cpp` (research
+- [X] T013 [US1] Seed the script engine in `src/Core/Scripting/OOJavaScriptEngine.cpp` (research
   R4; contract *Script engine*): in a headless game only, replace `Math.random` through
   QuickJS-ng's public API with a function drawing from the generator of T007 seeded from
   `options.seed`, and take the time limiter's limit from `options.scriptTimeLimit` (10 s
@@ -293,14 +293,14 @@ It is built on every platform, so CI still compiles it.
   `test_boot.cpp`: `math_random_draws_from_the_seed`: three `Math.random()` values equal the first
   three draws of the same generator class seeded the same way, computed in the test.
   **Accept:** `meson test -C build/meson_test --suite component-window --print-errorlogs`.
-- [ ] T014 [P] [US1] List what cannot follow simulated time (FR-005). Search the core scripts
+- [X] T014 [P] [US1] List what cannot follow simulated time (FR-005). Search the core scripts
   (`Resources/Scripts`, `Resources/Config/*.plist` script fragments; core data only, no add-ons)
   and `src/` for `Date.now`, `new Date`, `performance.now` and any remaining state-affecting
   real-clock read from research's list of thirteen. Write each under *Records → Clock exceptions*
   with its file, what it affects and why it stays.
   **Accept:**
   `! grep -q '_not listed_' <(sed -n '/^### Clock exceptions/,/^### /p' specs/011-headless-component-tests/tasks.md)`.
-- [ ] T015 [US1] Measure (research R12). Make `test_boot` print one line,
+- [X] T015 [US1] Measure (research R12). Make `test_boot` print one line,
   `test_boot: startup <s> s, <n> steps/s, <x>x real time`, and write this Mac's numbers into
   *Records → Measurements*. If start-up is over 5 s, or stepping is under 20×, say so there with
   the number; the targets in SC-001, SC-004 and SC-010 are not changed.
@@ -951,28 +951,37 @@ Filled in as tasks finish. A placeholder in italics is what an Accept command lo
 
 ### Base
 
-- Branch base (commit of `seriesb/027-modern-cpp` when cut): _not recorded_
-- `origin/seriesb/027-modern-cpp` at that time: _not recorded_
+- The branch is **`seriesb/029-cpp-component-tests`**, which Jon cut on 2026-11-14 on top of
+  `seriesb/028-upstream-772-tests` (git town parent 028; 028's own parent is 027) and checked out
+  in the main `oolite-dev` checkout. It replaces the `seriesb/029-component-tests` worktree T001
+  named: git cannot check one branch out twice, the main checkout was clean, and Jon's branch is
+  the stack as it now is (see *Decisions*).
+- Branch base (tip of `seriesb/028-upstream-772-tests` when work started): `d4fe31640`
+  (`d4fe3164002449d1eba2fa7a8ccaa6602dec9ee6`); `seriesb/027-modern-cpp` was then `0c480b408`.
+- `origin/seriesb/028-upstream-772-tests` and `origin/seriesb/029-cpp-component-tests` at that
+  time: both `d4fe31640`, the same as the local branches.
 
 ### Baselines
 
-At the base commit, on this Mac unless stated.
+At the base commit `d4fe31640`, on Jon's Windows machine (MSYS2 UCRT64, Clang 23, dev flavour),
+2026-11-14, unless stated.
 
 | What | Result |
 |---|---|
-| Smoke run frame time (`./mk.sh test test`) | _not measured_ |
-| `tests/run.sh unit` | _not measured_ |
-| `tests/run.sh component` (windowed) | _not measured_ |
-| `tests/run.sh smoke` | _not measured_ |
-| `tests/run.sh gui` | _not measured_ |
-| One windowed S1 run, real time (and where measured) | _not measured_ |
-| Compiler per CI job (Windows, Fedora, macOS, Flatpak) | _not measured_ |
+| Smoke run frame time (`./mk.sh test dev`) | passed; the smoke run prints no frame time (see *Decisions*): it served the console after 1.2 s and drew 2.1 s of game time, `GUI_SCREEN_INTRO1`, snapshot passed |
+| `tests/run.sh unit` | passed: oofnd 42, core 189, headers 1, 0 failures |
+| `tests/run.sh component` (windowed) | 14 passed, 1 failed: `test_t1_tutorial_walkthrough` (the game drops the console connection while `n` is held, `ConnectionResetError`). Spec 009 recorded the same test failing every run on this machine at earlier bases (`specs/009-modern-cpp-std/tasks.md`, T108), so it is not this feature's. The second run (858 s) was at T008's tree because the first (889 s) overlapped a rebuild; both gave the same result |
+| `tests/run.sh smoke` | passed (as the first row) |
+| `tests/run.sh gui` | not run: Jon skipped the GUI tier on this machine on 2026-11-13 (spec 009 T108), and it takes over the desktop; there is no GUI job in CI either |
+| One windowed S1 run, real time (and where measured) | 6.70 s (`pytest --durations`, the test's call phase, this machine); S2-S8 take 118-119 s each |
+| Compiler per CI job (Windows, Fedora, macOS, Flatpak) | `unit-tests-windows`: MSYS2 UCRT64 Clang (`install_deps.sh clang`, `clang.ini`); `build-fedora`: Clang 23.1.5 (`clang.ini`); `build-macos`: Apple Clang (`darwin.ini`); `build-flatpak`: `mk.sh flatpak-internal` with `clang.ini`. No job builds with GCC (FR-011, T065) |
 
 ### Probes
 
 | Platform | SDL version | `dummy` driver | pushed key returns | `N` with Caps Lock |
 |---|---|---|---|---|
-| macOS arm64 (local) | | | | |
+| Windows x64 (local, 2026-11-14) | 3.4.18 | yes | came back, same scancode and mods | `0x4e` (`N`) |
+| macOS arm64 (CI) | | | | |
 | Windows x64 (CI) | | | | |
 | Fedora (CI) | | | | |
 | Flatpak sandbox (CI) | | | | |
@@ -981,8 +990,8 @@ At the base commit, on this Mac unless stated.
 
 | What | Target | macOS | Windows CI | Fedora CI |
 |---|---|---|---|---|
-| M1 start-up, s | — | | | |
-| M1 steps per second, and × real time | 20× | | | |
+| M1 start-up, s | — | 0.61-0.66 (Windows, local) | | |
+| M1 steps per second, and × real time | 20× | 257,000-304,000 steps/s, 4,300-5,100× (Windows, local; empty system, hidden GL window) | | |
 | S1 game ÷ real while stepping (SC-001) | ≥ 20 | | | |
 | S1 whole test, s (SC-001) | < 15 | | | |
 | `repeat_100.sh` S1 (SC-002) | identical | | | |
@@ -997,11 +1006,33 @@ At the base commit, on this Mac unless stated.
 
 ### Clock exceptions (FR-005)
 
-_not listed_
+Searched 2026-11-14 (T014): `Resources/Scripts`, `Resources/Config` (core data only) and `src/`.
+The core scripts use **no** `Date.now`, `new Date` or `performance.now` (their `clock.seconds` is
+game time); `oolite-quickjs-compat.js` only defines `Date.prototype.toSource`. What still reads the
+system, and why it stays:
+
+| Where | What it affects | Why it stays |
+|---|---|---|
+| `src/Core/Scripting/OOJavaScriptEngine.cpp` `MonotonicTime()` (the time limiter) | when a script that runs too long is stopped | it limits real CPU time, which is its job; headless the limit is 10 s (`scriptTimeLimit`) |
+| QuickJS `Date.now`, `new Date`, `performance.now` | anything a script computes from them | no core script uses them; an expansion's use is outside this tier (add-ons off) |
+| `src/SDL/MyOpenGLView.cpp:501-504`, `MyOpenGLView+Input.cpp:199` | mouse double-click and mouse-wheel timing | mouse input; no headless test uses the mouse |
+| `src/Core/Entities/PlayerEntityControls.cpp:4490` (`last_time`) | the custom view's zoom speed | the view only, not game state |
+| `GameController.cpp` splash and start-up log times, `OOLogOutputHandler.cpp` flush deadline, `OOEncodingConverter.cpp` profiling | log text and flushing | not game state (contract: log timestamps and profiling keep reading the system) |
+| `src/Core/OOOXZManager.cpp:593` | a download's file name | the expansion manager, which a headless game does not create |
+| `GameController.cpp` frame-loop deadlines (`TickClock`) | when the windowed loop ticks and sleeps | the windowed loop itself; a headless game never runs it |
+| `GameController`'s constructor seeding RANROT from the clock | the first RANROT state | re-seeded from the seed by `startHeadless` and again by `initWithGameView` |
 
 ### Findings
 
-**Start-up** (T010): 
+**Start-up** (T010): `main`'s controller is **not** the one `sharedController()` returns.
+`src/SDL/main.cpp` makes its own with `oo::makeShared<GameController>()`; the constructor raises
+only if a shared one already exists and never registers itself
+(`src/Core/GameController.cpp:210-229`), so the first `sharedController()` call (from
+`Universe::initWithGameView`'s progress messages on) makes a second controller, whose constructor
+seeds RANROT a second time and reads `animation_timer_interval` again. Upstream has the same shape
+(`upstream/oolite/src/Core/GameController.m:70-85`, `src/SDL/main.m:185`), so it is not a port
+fault. Recorded, not fixed (T010). `startHeadless` is called on `sharedController()`, the one the
+game's code reaches, and seeds after it exists. 
 
 **GL sites** (T018–T021, T038): the nine known sites are in research R2. Further sites, one row
 each: file, function, GL call the trap named, task, commit.
@@ -1044,14 +1075,65 @@ _not written_
 
 | Task | `oolite-dev` commit |
 |---|---|
+| T003 | `f30caa454` |
+| T004 | `16a9bc890` |
+| T005 | `39177a84e`, `dda7c68e4` (probes printed in every log) |
+| T006 | `ff63d0536` |
+| T007 | `0e879c9df` |
+| T008 | `6afa4a587` |
+| T009 | `005edee67` |
+| T010 | `4940ab9a7` |
+| T011 | `0b7534e7d` |
+| T012 | `4c3544d5e` |
+| T013 | `055615fa1` |
+| T014 | planning repo only (*Clock exceptions*) |
+| T015 | `c149886c7` |
 
 ### Branch state
 
-Not created yet.
+`origin/seriesb/029-cpp-component-tests` is pushed by fast-forward only and matched the local
+branch at each push; *Commits* has the tip.
 
 ### Decisions taken on defaults
 
 Decisions already in plan.md (*Notes*) and research.md are not repeated. Added by these tasks:
+
+- **The game branch is Jon's `seriesb/029-cpp-component-tests`, in the main checkout** (T001,
+  2026-11-14). Jon cut it on `seriesb/028-upstream-772-tests` and checked it out, clean, in the
+  main `oolite-dev` checkout; a second worktree cannot check out the same branch, and a separate
+  `seriesb/029-component-tests` would fork the stack he set up. Every rule for "the worktree"
+  applies to `oolite-dev` itself on that branch.
+- **Work is on Windows, not the Mac** (2026-11-14): this session ran on Jon's Windows machine.
+  "This Mac" in the tasks reads as "this machine"; the build is the **dev** flavour
+  (`build/meson_dev`, no LTO, what `tests/run.sh` and `unit-tests-windows` use) instead of
+  `./mk.sh build test --setup-flags=-Db_lto=false`. macOS is proved by CI. The GL trap is Linux
+  and macOS only (R2), so on this machine GL sites are found from CI's Fedora and macOS logs.
+- **clang-format 22 comes from PyPI** (`clang-format` 22.1.8 in `.agent-tmp/cf22`): this machine
+  has only LLVM 23, and CI's format check uses 22.
+- **The smoke run prints no frame time** (T002): `tests/launch_snapshot.py` reports only that game
+  time advanced. SC-011's baseline is therefore the smoke run's result and its real time; the
+  frame split (T008) is checked by the smoke run passing and by `tick` being the moved body
+  unchanged. A frame-rate figure would need a new probe in the smoke script, which is not this
+  feature's to change.
+- **The scenario game is the windowed tier's set-up** (T010, T011): `startInFlight` loads
+  `Resources/Scenarios/oolite-standard.oolite-save` (world_steps.py `SCENARIO_SAVE`), launches the
+  player and ticks until in flight; `Game::scenario` then lets it settle 2 s and runs the windowed
+  steps' own clear expression until only the player is left. So the game clock is not at 0 when a
+  test starts, and the save sets the ship clock.
+- **`the_ship_clock_starts_from_the_seed`** (T012) checks what the scenario game can show: the game
+  clock's time of day comes from the seed, and the ship clock follows game time. The start itself
+  is overwritten by the save in this game; a new commander's start is checked in the docked game
+  (T045).
+- **The manual clock counts whole nanoseconds** (T012), so 120 steps of 1/60 s are 2 s exactly
+  (a double sum gives 1.9999999999999978 s) and a deadline falls due on the step it should.
+- **The frame-callback id seed and the headless scripting are setters**
+  (`OOJSFrameCallbacksSetIDSeed`, `OOJSSetHeadlessScripting`) that `startHeadless` calls, not reads
+  of `GameController`: core unit tests link those files without the controller.
+- **The case `600_steps_...` is named `six_hundred_steps_advance_game_time_by_10_s`** (T011): a
+  C++ identifier cannot start with a digit.
+- **`tests/run.sh component -k <name>` with no flag** (T004): a name that matches no C++ program
+  is reported and the C++ half passes, so today's `tests/run.sh component -k s1` still runs the
+  windowed S1 before its C++ counterpart exists. With `--cpp` no match is an error, as T004 asks.
 
 - **Fedora's CI test build turns LTO off** (T006), as `unit-tests-windows` already does, because
   the GL trap is generated from real objects. LTO on Linux stays covered by the AppImage and
