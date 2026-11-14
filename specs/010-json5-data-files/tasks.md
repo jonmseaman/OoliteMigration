@@ -133,8 +133,10 @@ clang++ -std=c++23 -Wall -Wextra -Werror -I src -I tests/unit/oofnd tests/unit/o
 - Rebased 2026-11-14 onto the rewritten `seriesb/027-modern-cpp` (`cf0c1f040`, from `b692feb4e`).
   The conflicts were all 027 dropping the `cxx_` prefix. `e8540326d` follows the other renames
   027 made: `PList::Type`'s enumerators are `kNull`, `kBool`, ..., and `oo::typeName` returns a
-  `std::string_view`. At `9aa425e3f`, macOS dev build: no new warnings; `meson test` (the
-  `plist2json5` suite) 4 of 4; `tests/run.sh smoke` passes. Not rerun: component, gui, CI.
+  `std::string_view`. Then rebased onto `seriesb/028-upstream-772-tests` (`dc33de2eb`) without
+  conflicts. At `c607dea94`, macOS dev build: no new warnings; `meson test` (the `plist2json5`
+  suite) 4 of 4; `tests/run_js_tests.py` (upstream PR #772's suite, from 028) 69 passed, 0 failed;
+  `tests/run.sh smoke` passes. Not rerun: component, gui, CI.
 
 ## Follow-ups (not in this feature)
 

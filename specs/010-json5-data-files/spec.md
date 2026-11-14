@@ -1,8 +1,8 @@
 # Feature Specification: JSON5 data files beside property lists
 
 **Feature Branch**: `seriesb/030-json5-data-files` (in `oolite-dev`; git town parent
-`seriesb/027-modern-cpp` until `seriesb/029` exists, then that), based on the rewritten
-`seriesb/027-modern-cpp` at `cf0c1f040`; spec directory `010-json5-data-files`
+`seriesb/028-upstream-772-tests`, based on it at `dc33de2eb`); spec directory
+`010-json5-data-files`
 
 **Created**: 2026-11-12
 
@@ -168,5 +168,5 @@ Each has the conservative default taken; Jon may override.
 | D17 | What `pathForFileNamed` answers | the file that exists (`.json5` first) | a path that names no file is a trap for the next caller; `cxx_OOPropertyListFromFile` reads a `.json5` path directly (FR-010) |
 | D18 | Plists outside `Resources/` | unchanged (`DebugOXP/`, `tools/`) | the Debug OXP is an expansion in the old format and keeps the plist path exercised by every smoke and component run |
 | D19 | `script.plist` (legacy world script found by existence) | not extended to `script.json5` | the format is deprecated; a legacy script named in `world-scripts` is found in either format through FR-011 |
-| D20 | Branch | `seriesb/030-json5-data-files`, git town parent `seriesb/027-modern-cpp` | Jon, 2026-11-13: "I would call this seriesb/030"; 029 (component tests) will sit under it and does not exist yet |
+| D20 | Branch | `seriesb/030-json5-data-files`, git town parent `seriesb/028-upstream-772-tests` | Jon, 2026-11-13: "I would call this seriesb/030"; Jon, 2026-11-14: "030 should be based on 028" |
 | D21 | Running the game on the Mac | done: smoke and component tiers, debug build | the request was "get it working, building, and passing tests"; the GUI tier (Windows only) was not run |
