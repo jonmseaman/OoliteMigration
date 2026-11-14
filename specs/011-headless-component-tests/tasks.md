@@ -177,7 +177,7 @@ fourth (the fire key) is in the US3 phase because it needs them.
   T038.
   **Accept:** `tests/run.sh component --cpp -k skeleton`, and the *Probes* table has this Mac's
   row.
-- [ ] T006 Add the C++ component step to CI in `.github/workflows/build-all.yaml`
+- [X] T006 Add the C++ component step to CI in `.github/workflows/build-all.yaml`
   ([contracts/runner.md](contracts/runner.md), *CI*): `unit-tests-windows` runs
   `tests/run.sh component --cpp` after `tests/run.sh unit`; `build-fedora` runs it after its
   test-flavour build, and that build gains `--setup-flags="-Db_lto=false"` (the GL trap of T016
@@ -313,7 +313,7 @@ A second temporary test drives this milestone: `test_boot_nogl`, the same source
 the hidden window and, on Linux and macOS, linked with the GL trap, in suite `component-nogl`. It
 fails, naming a GL function, until the last site is guarded.
 
-- [ ] T016 [P] [US1] Write `tests/component-cpp/gl_trap_gen.py`
+- [X] T016 [P] [US1] Write `tests/component-cpp/gl_trap_gen.py`
   ([contracts/runner.md](contracts/runner.md), *The GL trap generator*; examples C5): run the
   toolchain's `nm` over the given objects, collect every undefined GL function symbol, and write
   `gl_trap.cpp` with one definition per symbol that prints `GL call <name> while headless`, then a
@@ -326,7 +326,7 @@ fails, naming a GL function, until the last site is guarded.
   and meson prints a `message()` saying so.
   **Accept:** `tests/component-cpp/gl_trap_gen.py --self-test &&
   git ls-files -s tests/component-cpp/gl_trap_gen.py | grep -q '^100755'`.
-- [ ] T017 [US1] Give `OOGraphicsAvailable()` its meaning (research R2; contract
+- [X] T017 [US1] Give `OOGraphicsAvailable()` its meaning (research R2; contract
   *OOGraphicsAvailable*): `src/Core/OOOpenGLExtensionManager.h` / `.cpp` gain a headless state,
   set by `startHeadless`, that reports no GL and no shaders without calling `glGetString`, and
   `OOGraphicsAvailable()` reads it (true in the windowed game once the context exists). Register
@@ -334,19 +334,19 @@ fails, naming a GL function, until the last site is guarded.
   **Accept:** `meson test -C build/meson_test --suite component-nogl` now fails with
   `GL call <name> while headless` for a function called **outside**
   `OOOpenGLExtensionManager.cpp` (before this task it names one inside it).
-- [ ] T018 [US1] Guard the `Universe` sites in `src/Core/Universe.cpp` with
+- [X] T018 [US1] Guard the `Universe` sites in `src/Core/Universe.cpp` with
   `if (!OOGraphicsAvailable()) return;` or the narrowest equivalent (examples C4):
   `initTargetFramebufferWithViewSize` (`:11349`), `setLighting`, `useGUILightSource`. A site whose
   skipped GL work feeds game state is not guarded: stop and record it under *Findings → GL sites*.
   **Accept:** `meson test -C build/meson_test --suite component-nogl` no longer names a function
   whose backtrace is in `Universe.cpp`.
-- [ ] T019 [P] [US1] Guard the entity and script sites: `OOSunEntity::setSunColor`
+- [X] T019 [P] [US1] Guard the entity and script sites: `OOSunEntity::setSunColor`
   (`src/Core/Entities/OOSunEntity.cpp`), `SkyEntity::changeProperty`
   (`src/Core/Entities/SkyEntity.cpp`), the system setter at
   `src/Core/Scripting/OOJSSystem.cpp:577`.
   **Accept:** `meson test -C build/meson_test --suite component-nogl` names none of these three
   files.
-- [ ] T020 [P] [US1] Textures are not decoded headless (`src/Core/Materials/OOTexture*.cpp`,
+- [X] T020 [P] [US1] Textures are not decoded headless (`src/Core/Materials/OOTexture*.cpp`,
   `OOTextureLoader`): `OOTexture::checkExtensions`, `OOTextureLoader::setUp`, upload and
   `dimensions()` do nothing and report zero size; no loader thread is started; materials are the
   basic kind.
@@ -367,7 +367,7 @@ fails, naming a GL function, until the last site is guarded.
 
 ### M3 — the first scenario
 
-- [ ] T022 [US1] Wire the observer and the records (research R6; contract *OOGameObserver*;
+- [X] T022 [US1] Wire the observer and the records (research R6; contract *OOGameObserver*;
   examples C7; data-model *Event record*). The controller holds an optional `OOGameObserver*`,
   null by default. `src/Core/Entities/ShipEntity.cpp` tells it of each ship script event where the
   event is dispatched, and the world-script dispatch site tells it of each world event, both
@@ -382,7 +382,14 @@ fails, naming a GL function, until the last site is guarded.
   `a_spawned_ship_raises_shipSpawned`, `a_thrown_script_error_is_an_error_entry`,
   `a_clean_run_has_no_errors`, `frames_and_sounds_asked_for_are_recorded` (US1 scenario 4).
   **Accept:** `tests/run.sh component --cpp -k boot && ./mk.sh test test`.
-- [ ] T023 [US1] Add the scenario steps to `oo_component` (examples B1–B3; contract *Entities*,
+- [X] T022a [US1] The observer and the T012 clock reads made a `GameController` as a side effect
+  (`sharedController()` makes one when none exists, and its constructor reseeds RANROT), so a core
+  unit test with no controller saw role checks change by chance (`test_OOJSShip` `getterKind`,
+  red in CI on `unit-tests-windows` at `01b466dea`). They use `GameController::currentObserver()`
+  and `currentClock()`, which make nothing.
+  **Accept:** `meson test -C build/meson_dev --suite core test_OOJSShip --repeat 10` and the unit
+  tier pass; `unit-tests-windows` green on the next push.
+- [X] T023 [US1] Add the scenario steps to `oo_component` (examples B1–B3; contract *Entities*,
   *Script expressions*, *Failure output*): `ShipsWithRole(role).count(n).withinKm(k)`,
   `spawn`, `countWithRole`, `engages`, `simulateUntil`, and `simulateAtMost(span)` (the windowed
   step "the simulation runs for at most N ticks": it stops early once every spawned role except
@@ -393,14 +400,14 @@ fails, naming a GL function, until the last site is guarded.
   `test_boot.cpp`: `spawn_returns_the_ships_it_added`, `spawned_ships_carry_the_scenario_role`,
   `within_km_is_measured_from_the_first_spawn`.
   **Accept:** `tests/run.sh component --cpp -k boot`.
-- [ ] T024 [US1] Port S1 as `tests/component-cpp/test_s1_police_kills_pirate.cpp` (examples A1),
+- [X] T024 [US1] Port S1 as `tests/component-cpp/test_s1_police_kills_pirate.cpp` (examples A1),
   the exemplar for C++ component tests: seed 20260910; one `police`; one `pirate` within 10 km;
   within `ticks(900)` a `police` ship engages a `pirate` ship; a `police` ship survives;
   `OO_COMPONENT_CHECK_NO_ERRORS`. Each check carries the Gherkin line it ports as a comment. Its
   last output line is `game <s> s, real <s> s, <x>x`. If it disagrees with the windowed original,
   stop and report under *Findings* (FR-032); change neither.
   **Accept:** `tests/run.sh component --cpp -k s1_police_kills_pirate`.
-- [ ] T025 [US1] Repeatability (research R4; data-model *Scenario digest*; contract *Repeat
+- [X] T025 [US1] Repeatability (research R4; data-model *Scenario digest*; contract *Repeat
   check*). `Game::digest()` hashes, per step, every entity's id, definition key, position,
   orientation and energy, and the event record so far. Every scenario program takes
   `--digest-out <path>` and writes one digest per step. `tests/component-cpp/test_repeat.cpp` runs
@@ -429,7 +436,7 @@ fails, naming a GL function, until the last site is guarded.
 **Independent Test**: the three programs pass with no display; each fails with
 `--without-weapon`.
 
-- [ ] T027 [US6] Add the plain style to `oo_component` (examples A0, B1; contract *Entities*,
+- [X] T027 [US6] Add the plain style to `oo_component` (examples A0, B1; contract *Entities*,
   *Who owns what*, *Ship handles*): `ShipWithKey(key).at(position)` / `.aheadOf(entity, metres)` /
   `.near(entity, metres)`, `add` (the ship is made with `Universe::newShipWithName`, placed, added
   with `Universe::addEntity`, and the owning pointer dropped), `spawnKey` (returns the
@@ -441,19 +448,19 @@ fails, naming a GL function, until the last site is guarded.
   `alive()` is false and `entityCount()` is back to what it was), and
   `a_handle_does_not_keep_a_ship_alive` (the ship's use count is unchanged by taking a handle).
   **Accept:** `tests/run.sh component --cpp -k boot`.
-- [ ] T028 [P] [US6] `tests/component-cpp/test_laser_fires.cpp` (examples A0.1; US6 scenario 1):
+- [X] T028 [P] [US6] `tests/component-cpp/test_laser_fires.cpp` (examples A0.1; US6 scenario 1):
   a ship with `EQ_WEAPON_PULSE_LASER` on its forward mount and a target directly ahead in range;
   `fireMainWeapon`; the weapon heats (`laserHeatLevelForward()`), the target's energy drops, and
   the record has `shipBeingAttacked` for the target. `--without-weapon` skips `setWeaponMount`.
   **Accept:** `tests/run.sh component --cpp -k laser_fires &&
   ! build/meson_test/tests/component-cpp/test_laser_fires --without-weapon`, and the failing
   output names the seed and the game time (FR-014).
-- [ ] T029 [P] [US6] `tests/component-cpp/test_ship_attacks.cpp` (US6 scenario 2): a ship with a
+- [X] T029 [P] [US6] `tests/component-cpp/test_ship_attacks.cpp` (US6 scenario 2): a ship with a
   laser, a target a few kilometres away, `addTarget` and `performAttack`; within 60 s of game time
   the target has been attacked and has lost energy. `--without-weapon` as above.
   **Accept:** `tests/run.sh component --cpp -k ship_attacks &&
   ! build/meson_test/tests/component-cpp/test_ship_attacks --without-weapon`.
-- [ ] T030 [P] [US6] `tests/component-cpp/test_mining_laser.cpp` (examples A0.1; US6 scenarios 3
+- [X] T030 [P] [US6] `tests/component-cpp/test_mining_laser.cpp` (examples A0.1; US6 scenarios 3
   and 6): an `asteroid` near the player, an `adder` 2 km from it with
   `EQ_WEAPON_MINING_LASER`, `performMining`; within 2 minutes the asteroid's handle is not
   `alive()`, at least two ships of role `boulder` exist where there were none, and
@@ -480,7 +487,7 @@ In the Accept lines below `component_census` is
 `build/meson_test/tests/component-cpp/component_census`, run from the worktree root, and scratch
 files go under `build/meson_test/component/`.
 
-- [ ] T032 [US2] Start `tests/component-cpp/component_census.cpp` with enumeration and `--list`
+- [X] T032 [US2] Start `tests/component-cpp/component_census.cpp` with enumeration and `--list`
   ([contracts/census.md](contracts/census.md); data-model *Definition*). Ships are every
   top-level key of the merged core `shipdata.plist`, equipment every entry of `equipment.plist`,
   both read at run time through the game's own loaders; no name is written in the program
@@ -491,7 +498,7 @@ files go under `build/meson_test/component/`.
   `--list` prints `kind`, `key`, `class` per row, sorted, then the totals. Write the totals into
   *Records → Measurements* (194 ships and 41 items at the research commit).
   **Accept:** `component_census --list | tail -1 | grep -Eq '^[0-9]+ ships, [0-9]+ equipment$'`, and no row has a class outside the four.
-- [ ] T033 [US2] `--only <kind>:<key>` tries one definition in this process and prints its report
+- [X] T033 [US2] `--only <kind>:<key>` tries one definition in this process and prints its report
   row (`kind`, `key`, `class`, `outcome`, `seed`, `gameTime`, `evidence`). The game is reseeded
   from the base seed (`--seed`, default 20260910) and the key first. **A ship**: spawned by key
   near the player in the empty system with `spawnKey`, run 10 s of game time, checked, removed.
@@ -507,7 +514,7 @@ files go under `build/meson_test/component/`.
   the parent in T034).
   **Accept:** `component_census --only ship:adder` and `--only equipment:EQ_ECM` each print one
   row with outcome `passed` and exit 0; `--only ship:no-such-key` exits 2.
-- [ ] T034 [US2] The whole run ([contracts/census.md](contracts/census.md), *How a run goes*,
+- [X] T034 [US2] The whole run ([contracts/census.md](contracts/census.md), *How a run goes*,
   *Output*, *Exit codes*): the parent starts itself as a child with
   `--child --from <index> --progress <path>`; the child writes the index and key to the progress
   file and flushes before each try, and stops with a distinct exit code when a definition leaves
@@ -524,7 +531,7 @@ files go under `build/meson_test/component/`.
   test $? -le 1` and the report's
   row count equals `component_census --list`'s total; a child killed by hand mid-run (send
   `SIGKILL` to the child once) still yields a full report with that key `failed`.
-- [ ] T035 [US2] The expectations file `tests/component-cpp/census-expectations.tsv` (columns
+- [X] T035 [US2] The expectations file `tests/component-cpp/census-expectations.tsv` (columns
   `kind`, `key`, `expect`, `reason`; `expect` is `failed`, `left` or `not-applicable`) and its
   checks in the parent: "a key not in the data is an error; a listed definition whose outcome
   differs from `expect` is an error (so a fixed fault must be taken off the list); an empty
@@ -534,7 +541,7 @@ files go under `build/meson_test/component/`.
   **Accept:** with scratch copies passed by `--expectations`: a file naming an unknown key
   gives exit 2; one with an empty reason gives exit 2; one listing `ship adder failed <reason>`
   gives exit 1 naming `adder`; the committed file gives 0 or 1, never 2.
-- [ ] T036 [US2] Prove the census can fail: `--data-overlay <dir>` merges one fixture
+- [X] T036 [US2] Prove the census can fail: `--data-overlay <dir>` merges one fixture
   `shipdata.plist` after the core data, and
   `tests/component-cpp/fixtures/broken-ship/shipdata.plist` holds one definition whose model does
   not exist.
@@ -981,24 +988,24 @@ At the base commit `d4fe31640`, on Jon's Windows machine (MSYS2 UCRT64, Clang 23
 | Platform | SDL version | `dummy` driver | pushed key returns | `N` with Caps Lock |
 |---|---|---|---|---|
 | Windows x64 (local, 2026-11-14) | 3.4.18 | yes | came back, same scancode and mods | `0x4e` (`N`) |
-| macOS arm64 (CI) | | | | |
-| Windows x64 (CI) | | | | |
-| Fedora (CI) | | | | |
+| macOS arm64 (CI, `build-macos`) | 3.4.18 | yes | came back | `0x4e` (`N`) |
+| Windows x64 (CI, `unit-tests-windows`) | 3.4.20 | yes | came back | `0x4e` (`N`) |
+| Fedora (CI, `build-fedora`) | 3.4.20 | yes | came back | `0x4e` (`N`) |
 | Flatpak sandbox (CI) | | | | |
 
 ### Measurements
 
 | What | Target | macOS | Windows CI | Fedora CI |
 |---|---|---|---|---|
-| M1 start-up, s | — | 0.61-0.66 (Windows, local) | | |
-| M1 steps per second, and × real time | 20× | 257,000-304,000 steps/s, 4,300-5,100× (Windows, local; empty system, hidden GL window) | | |
-| S1 game ÷ real while stepping (SC-001) | ≥ 20 | | | |
-| S1 whole test, s (SC-001) | < 15 | | | |
-| `repeat_100.sh` S1 (SC-002) | identical | | | |
-| Basic tests, s each (SC-012) | < 15 | | | |
-| Definitions in the data: ships, equipment | — | | | |
-| Census: passed / left / n-a / failed / expected (SC-003) | 100% accounted | | | |
-| Census real time, s (SC-004) | < 300 | | | |
+| M1 start-up, s | — | 0.61-0.66 (Windows, local) | | 0.47; macOS 0.57 |
+| M1 steps per second, and × real time | 20× | 257,000-304,000 steps/s, 4,300-5,100× (Windows, local; empty system, hidden GL window) | | 183,890 steps/s, 3,065×; macOS 235,641, 3,927× (no window, trap linked) |
+| S1 game ÷ real while stepping (SC-001) | ≥ 20 | stepping ~4,000× (test_boot); S1 engages after 0.2 s of game time, so its own ratio line is dominated by start-up | | |
+| S1 whole test, s (SC-001) | < 15 | 0.41 | (step not reached at T030: the unit step failed first) | 0.61 (meson), macOS 0.62 |
+| `repeat_100.sh` S1 (SC-002) | identical | 100 runs, identical (56 s) | | |
+| Basic tests, s each (SC-012) | < 15 | laser 0.49, attack 0.49, mining 0.50 | | laser 0.54, attack 0.43, mining 0.47; macOS 0.60, 0.62, 0.46 |
+| Definitions in the data: ships, equipment | — | 194, 41 (as at the research commit) | | |
+| Census: passed / left / n-a / failed / expected (SC-003) | 100% accounted | 127 / 2 / 100 / 6 / 8: 235 of 235 | | |
+| Census real time, s (SC-004) | < 300 | 2.2 | | |
 | Menu, tutorial, launch, remap, fire tests (SC-005, SC-013) | pass | | | |
 | S1–S8 total, s, against one windowed run (SC-009) | less | | | |
 | Whole tier, parallel and serial, s (SC-010) | < 600 | | | |
@@ -1036,10 +1043,43 @@ game's code reaches, and seeds after it exists.
 
 **GL sites** (T018–T021, T038): the nine known sites are in research R2. Further sites, one row
 each: file, function, GL call the trap named, task, commit.
+- `Universe::deleteOpenGLObjects` (T018, `bfe20378f`): reached when `newUniverse` tears down a
+  universe whose start-up raised; guarded beside the listed sites.
+- The JS engine was made as a side effect of the extension manager's per-GPU regular expression
+  while the windowed view sets up GL; headless, `startHeadless` makes it at that point (T018). Not
+  a GL site, but the headless reset skipped it and equipment loading then asserted.
+- `SkyEntity::changeProperty` and the JS system setter (`OOJSSystem.cpp:577`) call GL only through
+  `Universe::setLighting`, so T018's guard covers them (T019).
+- After T020, `test_boot_nogl` linked with the trap (140 GL functions) **passed on Fedora**:
+  no further site on the boot path. On Windows the extension pointers' `OOBadOpenGLExtensionUsed`
+  stub, under gdb, named the same first site (`initTargetFramebufferWithViewSize`).
+- The trap proven (T021): `test_gl_trap` runs itself as a child that makes one unguarded call
+  headless (`OOTexture::applyNone`); on Fedora and macOS the child exits 134 with
+  `GL call glBindTexture while headless` and a backtrace. A standing test replaces the one-off
+  "remove a guard" check (see *Decisions*).
 
-**Repeatability** (T025): 
+**Repeatability** (T025): two runs of S1 gave the same digest at all 134 steps, and
+`repeat_100.sh test_s1_police_kills_pirate` gave `100 runs, identical` on Windows. No cause of
+difference found, so no `T025a`. 
 
 **Census** (T037): key, seed, evidence, and how it was cleared (fix task, or expectations row).
+First full run, 2026-11-14, Windows, base seed 20260910, 2.2 s: 194 ships and 41 items; 127
+passed, 2 left, 100 not-applicable (81 templates, 11 parts, 4 services by behaviour, 4 items not
+available to the player), 6 failed; all 8 listed in `census-expectations.tsv`:
+- `EQ_FUEL` (seed 3038534992): "award refused": `awardEquipment` never awards it
+  (`OOJSShip.cpp` ShipAwardEquipment).
+- `EQ_MILITARY_JAMMER`, `EQ_MILITARY_SCANNER_FILTER`, `EQ_OOLITE_TUTORIAL_CONTROLS`,
+  `EQ_RENOVATION`: "award refused" by their condition script `oolite-conditions.js`.
+- `missile`, `ecm-proof-missile`: leave within the 10 s span with no target (`left`).
+- `asp-cloaked`: "6 entities after removal, 5 before": one entity it made stays. Not
+  investigated: listed, and under *For Jon*.
+Census-harness faults found and fixed on the way (in T034, not game faults): the player drifted
+into the planet over ~2,000 s of game time (now stopped before each try); hostile definitions
+10 km away attacked it (now spawned 40 km out, away from the planet); `Universe::removeEntity`
+left other ships pointing at removed ones, crashing later tries (now removed as `ship.remove()`
+does). The crash-and-resume path was exercised by those crashes (children exiting 0xC0000005 and
+on `std::bad_weak_ptr` were recorded failed and the next child resumed, report complete): the
+SIGKILL check of T034's Accept is met by them, not by a kill by hand.
 
 **Keys** (T044, T052, T053): 
 
@@ -1070,6 +1110,8 @@ _not written_
 
 | Task | Run URL | Jobs green |
 |---|---|---|
+| T006 (at T011, `0b7534e7d`) | https://github.com/jonmseaman/oolite/actions/runs/43618713800 | `unit-tests-windows`, `build-fedora`, `build-macos`: green, `test_skeleton` in each log |
+| T021, T024–T030 (at `01b466dea`) | https://github.com/jonmseaman/oolite/actions/runs/43622970759 | `build-fedora`, `build-macos`: green, 8 programs each, `GL trap: linked`; `unit-tests-windows`: red on `test_OOJSShip` (T022a) |
 
 ### Commits
 
@@ -1088,6 +1130,25 @@ _not written_
 | T013 | `055615fa1` |
 | T014 | planning repo only (*Clock exceptions*) |
 | T015 | `c149886c7` |
+| T016 | `e9ee4b655` |
+| T017 | `42bd77824` |
+| T018 | `bfe20378f` |
+| T019 | `00ac082a4` |
+| T020 | `12f0d6123` |
+| T021 | `4d332bb18` |
+| T022 | `c7a74b47a`, `22afdd2a0` (T022a) |
+| T023 | `a8ce6a21c` |
+| T024 | `374741edb` |
+| T025 | `8475a163c` |
+| T027 | `b986c180b` |
+| T028 | `e5b0f9d61` |
+| T029 | `fbda7a212` |
+| T030 | `01b466dea` |
+| T032, T033 | `3cbc764ad` (one file; one commit) |
+| T034 | `2573fd93e` |
+| T035 | `013a43702` |
+| T036 | `06c6a3b4a` |
+| T037 | `cebd698f1` |
 
 ### Branch state
 
@@ -1131,6 +1192,31 @@ Decisions already in plan.md (*Notes*) and research.md are not repeated. Added b
   of `GameController`: core unit tests link those files without the controller.
 - **The case `600_steps_...` is named `six_hundred_steps_advance_game_time_by_10_s`** (T011): a
   C++ identifier cannot start with a digit.
+- **CI is pushed only once a run has finished** (2026-11-14): the workflow's concurrency group
+  cancels a running run on each push, and pushing per task left no run complete on every job.
+- **The GL trap's proof is a standing test** (T021): `test_gl_trap` makes one unguarded GL call in
+  a child and requires it to die naming the function, on every Linux and macOS run, instead of the
+  one-off "remove the sun's guard, paste the line" (which needs a Linux build here).
+- **Sounds are names without data headless** (T022): with no device no `OOSound` loads, so a play
+  request never reached a source; `OOSound::setNamedWithoutDevice(true)` (set by `startHeadless`)
+  makes a silent named sound, and `OOSoundSource`'s play observer records each request.
+- **Every failed case prints the game's state** (T028): `oo_test`'s `OO_CHECK` knows nothing of the
+  game and `oo_test.hpp` is not edited, so `oo_component` runs the registered cases itself, in
+  `runAll`'s format, and after a failed case prints the seed, game time, screen, last ten events
+  and the rerun command.
+- **`--without-weapon` mounts `EQ_WEAPON_NONE`** (T028–T030): an adder carries a pulse laser by
+  definition, so skipping the mount changed nothing; the basic tests' ships fly `nullAI.plist` so
+  their own AI script does not replace the ordered behaviour.
+- **The census reseeds RANROT only** (T033): the really-random generator is seeded once per
+  process by design (`legacy_random.h`, an assertion).
+- **Census services are found by behaviour** (T032): awarded (needs from the item's own data met
+  first) and then not fitted. That gives `EQ_MISSILE_REMOVAL`, `EQ_PASSENGER_BERTH`,
+  `EQ_PASSENGER_BERTH_REMOVAL` and `EQ_TRUMBLE`, not research's four names: `EQ_FUEL` and
+  `EQ_RENOVATION` are refused a scripted award, and a passenger berth is a capacity, not an item.
+  Items not available to the player are not-applicable, by `isAvailableToPlayer()`.
+- **`T032` and `T033` are one commit**: both are the one new file.
+- **`tests/run.sh component --cpp -k boot` is T022's Accept before T021** only after T021 moved
+  `test_boot` into suite `component`; T022's cases were run under the temporary suites first.
 - **`tests/run.sh component -k <name>` with no flag** (T004): a name that matches no C++ program
   is reported and the C++ half passes, so today's `tests/run.sh component -k s1` still runs the
   windowed S1 before its C++ counterpart exists. With `--cpp` no match is an error, as T004 asks.
@@ -1156,5 +1242,8 @@ Decisions already in plan.md (*Notes*) and research.md are not repeated. Added b
 
 ### For Jon
 
-- Merging `seriesb/029-component-tests`, and any force-push it needs after `seriesb/027-modern-cpp`
+- Merging `seriesb/029-cpp-component-tests`, and any force-push it needs after `seriesb/027-modern-cpp`
   is rewritten.
+- Adjudicating `tests/component-cpp/census-expectations.tsv` (eight rows), and in particular
+  `asp-cloaked`, which leaves one entity behind after it is removed (not investigated).
+- `test_t1_tutorial_walkthrough` (windowed) fails on this machine at the base, as spec 009 found.
