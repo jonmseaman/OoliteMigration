@@ -1006,10 +1006,10 @@ At the base commit `d4fe31640`, on Jon's Windows machine (MSYS2 UCRT64, Clang 23
 | Definitions in the data: ships, equipment | — | 194, 41 (as at the research commit) | | |
 | Census: passed / left / n-a / failed / expected (SC-003) | 100% accounted | 127 / 2 / 100 / 6 / 8: 235 of 235 | the same | the same; macOS the same |
 | Census real time, s (SC-004) | < 300 | 2.2 | 3.90 | 2.83; macOS 3.37 |
-| Menu, tutorial, launch, remap, fire tests (SC-005, SC-013) | pass | | | |
+| Menu, tutorial, launch, remap, fire tests (SC-005, SC-013) | pass | passed (Windows, local; `_ru` tutorial an expected failure, H2) | passed, at `6750c2f5c` | passed on Fedora and macOS at `dcb598ada`; macOS's `us_tsv` case failed there on shift+caps (fixed in the test's scope, see *Decisions*) |
 | S1–S8 total, s, against one windowed run (SC-009) | less | 4.31 (one `meson test`, serial: 0.46-0.63 each) against 6.70 for windowed S1 alone (S2-S8 windowed: 118-119 s each); 12.3 through eight `tests/run.sh` calls | | |
-| Whole tier, parallel and serial, s (SC-010) | < 600 | | | |
-| Smoke frame time against baseline (SC-011) | within 2% | | | |
+| Whole tier, parallel and serial, s (SC-010) | < 600 | 4 parallel (24 cores), 18 serial (`build/meson_test`, 29 tests; same results both ways: 24 OK, 5 expected fail) | | |
+| Smoke frame time against baseline (SC-011) | within 2% | not measurable: the smoke run prints no frame time (as at the baseline); it passed | | |
 
 ### Clock exceptions (FR-005)
 
@@ -1117,28 +1117,88 @@ spawned is gone, as `world_steps.py` `run_simulation` does (S6's pirate is destr
   `key_fault_h1`, `h3`, `h4` are registered `should_fail: true` (checked both ways) and listed
   under *For Jon*.
 
-**Sanitizers** (T050): 
+**Sanitizers** (T050): MSYS2's Clang on this machine has no sanitizer runtime
+(`meson setup -Db_sanitize=address,undefined`: "Linker clang does not support sanitizer
+arguments"), so the suite runs under ASan and UBSan in `build-fedora` (step "C++ component tests
+under sanitizers"; `-t 4`; no suppression). Reports, at `b0baff428` (run 43632980653):
+- UBSan, every program: `legacy_random.cpp:109:32: signed integer overflow: 156 * 16777216
+  cannot be represented in type 'int'` (in `RanrotSeedFromRNGSeed`). Fixed by T050a
+  (`28e852a9d`, unsigned arithmetic, same bits); gone at `b0baff428`.
+- UBSan, `key_fault_h5`: `MyOpenGLView+Input.cpp:662:18: index 327 out of bounds for type
+  'int[327]'` (`scancode2Unicode`, research H5; upstream has the same lines). Fixed by T053a
+  (`45f02a36f`, bounds checks; nothing defined changes).
+- LeakSanitizer, every program that makes a game: about 1.22 MB in about 12,480 allocations
+  unfreed at exit (`SUMMARY: AddressSanitizer: 1220852 byte(s) leaked in 12484 allocation(s)`),
+  and 8 bytes allocated through `libSDL3.so.0`. The stacks are unsymbolized in that run (no
+  `llvm-symbolizer`); the step now installs `llvm`. The game keeps many objects for the
+  process's life by design (the "exit(0) runs no destructor" holders), so this is not fixed here:
+  the step reports and continues (`continue-on-error`), and it is listed under *For Jon*.
+  Because LSan's exit code fails each program, the census's parent saw its `--list` child fail
+  (`component_census: --list failed`); not a separate report.
 
-**Flatpak** (T051): 
+**Flatpak** (T051): with `OO_FLATPAK_RUN_COMPONENT=1` (CI's `build-flatpak`) the manifest's
+`oolite` module builds the test flavour with LTO off inside the build sandbox and runs
+`meson test --suite component` there. First attempt (run 43630366242): the sandbox could not run
+`get_version.sh` (`meson.build:5:13 ... get_version.sh ... failed with status 1`); the test
+build now takes the module's `--ver-full` / `--buildtime`. Run 43632980653 (`b0baff428`), in the
+sandbox: **22 OK, 5 expected fail, 3 fail**. The three are `test_menus_us`, `_fr_azerty`, `_ru`,
+all on `us_tsv_agrees_with_sdls_built_in_map`: the sandbox's SDL is the manifest's 3.4.8, whose
+built-in map has no key code for scancode 165 (`us.tsv 0x400000a5, SDL 0x0`); SDL 3.4.18 (here,
+macOS) and 3.4.20 (Fedora, Windows CI) have one. Every key test (tutorial, launch, remapped, fire,
+key faults) gave the same result in the sandbox as on Fedora. The sandbox's result is now
+reported without stopping the package build.
 
 ### Finding: the Flatpak `n` report
 
-_not written_
+**Not reproduced; ruled out for the game's own key handling, with the limits below.**
+
+*What the tests covered.* The game's whole handling of a key, from the SDL event the platform
+layer hands it to the control acting: key events pushed onto SDL's queue and read by the game's
+own `pollControls()`, through `MyOpenGLView`'s translation and `PlayerEntity`'s key settings, to
+the tutorial moving on. `test_tutorial_keys` presses the game's own activate-equipment key (`n`,
+looked up from the key settings) through every step of lessons 0 and 1: it passes under `us` and
+`fr_azerty` on Windows, macOS, Fedora and **inside the Flatpak build sandbox** (SDL 3.4.8, run
+43632980653). It fails, as it must, when the layout gives another letter for that key
+(`fixtures/us-n-remapped.tsv`: "pressing n had no effect at GUI_SCREEN_MAIN"). The key-path faults
+found (`test_key_faults`): **H1** with Caps Lock on, `n` does not activate; **H2** on a non-Latin
+layout whose `n` key gives a code point above 326 (the derived `ru` table), it is dropped; **H3**
+an AltGr mode bit stops the exact modifier match (Num Lock does not); **H4** Caps Lock alone reads
+as `9`, Num Lock as `S`; **H5** a scancode above 326 indexed `scancode2Unicode` out of bounds
+(fixed, T053a). H1-H4 are upstream's code too and are kept, `should_fail`, for Jon. Any of H1-H3
+would make `n` do nothing for a player in that state, on any platform, Flatpak included: Caps
+Lock on (H1) is the likeliest explanation of a report that "n does nothing".
+
+*What they cannot cover.* SDL's own step from a real keyboard to a key code on each platform
+(Win32, Cocoa, X11 and Wayland layout handling, including SDL's default keycode options, which
+may give Latin letters on a Russian layout and so remove H2 in practice); the `fr` and `ru`
+tables are derived, not recorded (T041). Window focus, including the XWayland note at
+`src/SDL/MyOpenGLView.cpp:547-552` (H7). Input methods. The Flatpak sandbox's access to input
+devices (the tests run in its build sandbox, which has none). Whether the report was against
+upstream's Objective-C build, which has the same key code as this port at each fault above.
+
+*Manual procedure for those.* On the Flatpak build (`flatpak run space.oolite.Oolite`), on X11
+and on Wayland: start the tutorial (Start New Commander, Tutorial, Enter, Enter, launch) and at
+lesson 0 step 2 press `n`: it should move on. Repeat with Caps Lock on (H1), with a French and a
+Russian layout active, and with the window refocused by clicking after switching away (H7).
+Then the game-side conditions (H6): press `n` while the mission screen is still up (nothing is
+expected), during the launch (nothing is expected), and after Shift+N has primed another
+equipment item (the primed item, not the tutorial's, activates). Note for each: platform,
+session type, layout, Caps Lock, what happened.
 
 ### Quickstart
 
 | Step | Result |
 |---|---|
-| 1 | |
-| 2 | |
-| 2a | |
-| 3 | |
-| 4 | |
-| 5 | |
-| 6 | |
-| 7 | |
-| 8 | |
-| 9 | |
+| 1 | passed: `tests/run.sh component --cpp` exit 0 (24 OK, 5 expected fail) |
+| 2 | passed, 0.50 s; no window. Its ratio line reads `game 0.2 s, real 0.40 s, 1x`: S1 engages within 0.2 s of game time, so the line is start-up (stepping runs ~4,000x, test_boot). `env -u DISPLAY` run: Fedora and macOS CI |
+| 2a | passed: laser_fires, ship_attacks, mining_laser, fire_key; each with `--without-weapon` exit 1 |
+| 3 | passed: `100 runs, identical` (S1; S2 also, T065) |
+| 4 | covered by the standing `test_gl_trap` on Fedora and macOS CI (a child's unguarded GL call dies with `GL call glBindTexture while headless`); the remove-a-guard edit was not made (see *Decisions*, T021) |
+| 5 | passed: 194 ships, 41 equipment; with `fixtures/broken-ship` exit 1 naming `oo-component-broken-ship` |
+| 6 | passed: `test_menus` under us, fr_azerty, ru; `test_tutorial_keys` under us and fr_azerty; `_ru` is an expected failure (H2); the mutated layout fails with `pressing n had no effect at GUI_SCREEN_MAIN, game time 2.667` |
+| 7 | not runnable here (no sanitizer runtime in MSYS2's Clang); run in `build-fedora`: see *Findings -> Sanitizers* |
+| 8 | ran to a result: h5 passes; h1-h4 fail and are named in *Findings -> Keys* (expected failures) |
+| 9 | unit, smoke: same as the baseline; windowed component: 14 passed, `test_t1_tutorial_walkthrough` failed as at the base; gui: not run (as at the base, Jon's 2026-11-13 decision) |
 
 ### CI runs
 
@@ -1199,7 +1259,12 @@ _not written_
 | T042-T048 | `dcb598ada` (one commit), `e6ebbe8d2` (T044) |
 | T038b | `d6f090f95` |
 | T052 | `16c1456b9` |
-| T053 | `b5f3a001a` (part 1: should_fail) |
+| T053 | `b5f3a001a`, `6750c2f5c`; T053a `45f02a36f` |
+| T041 (tables) | `d85a6eae3` |
+| T050 | `7af900620`, `114d71511`; T050a `28e852a9d` |
+| T051 | `945b37abb`, `b0baff428`, `114d71511` |
+| T063 | planning repo `08ad1f136` |
+| T065 | `b627daf99` (GCC step, removed in `114d71511`) |
 
 ### Branch state
 
@@ -1260,6 +1325,25 @@ Decisions already in plan.md (*Notes*) and research.md are not repeated. Added b
   screen and the expansion manager by their `exit` / `_EXIT` rows, the ship library and the
   keyboard screen by space, the game options by their last row (Back), anything else by Escape.
   The expansion manager is opened and left; no other row of it is activated (hard rule 4).
+- **The fr and ru tables are derived, not recorded** (T041): the Xvfb + `setxkbmap` recording in
+  `build-fedora` (run 43628739112) gave the US table for both layouts (`fr` gave `a` in the US A
+  position), so, as T041's fallback says, both are `us.tsv` with the keys fr(basic) and ru(basic)
+  move, each header says so, and the CI step is dropped.
+- **`us.tsv`'s agreement check leaves out shift+caps** (T041): SDL's own built-in map answers it
+  differently by platform (`A` on macOS, `a` on Windows and Linux; macOS CI at `dcb598ada`), so
+  no one table agrees everywhere. The case checks no modifiers, shift and caps, as T039's case does.
+- **The sanitizer run is Fedora's, and reports without failing the job** (T050): no sanitizer
+  runtime here; LeakSanitizer's whole-game report would otherwise fail every program on every run.
+- **The Flatpak sandbox reports its component result without stopping the package** (T051): its
+  SDL (3.4.8) answers one scancode differently, which fails `test_menus` there (*Findings ->
+  Flatpak*).
+- **Key faults H1-H4 are kept, `should_fail`** (T053): upstream's code, and fixing them changes
+  the windowed game's keys; H5's out-of-bounds index is fixed (T053a), as nothing defined changes.
+- **No GCC job** (T065, FR-011): `build-ubuntu` with `gcc.ini` (GCC 15.2) failed compiling the game
+  itself (`OOStringExpander.h:368:29: could not convert '{<expression error>}' ...`), outside this
+  feature, so the step was removed and the build is listed under *For Jon*.
+- **One unit-tier failure not captured** (T050a): one of five unit runs after the T050a rebuild
+  reported `Fail: 1`; its log was overwritten before it was read; the four reruns were clean.
 - **Headless, a request to quit is recorded, not obeyed** (T040): `exitAppWithContext` returns
   after logging when the game is headless, and `GameController::exitRequested()` holds the
   context, so the menu test can check *Exit Game* without the process ending under it.
@@ -1322,7 +1406,15 @@ Decisions already in plan.md (*Notes*) and research.md are not repeated. Added b
 
 - Merging `seriesb/029-cpp-component-tests`, and any force-push it needs after `seriesb/027-modern-cpp`
   is rewritten.
-- The key faults H1, H3 (AltGr's mode bit) and H4 (Findings -> Keys): upstream's behaviour, kept;
+- The game's LeakSanitizer report (about 1.22 MB in 12,480 allocations at exit in every program;
+  *Findings -> Sanitizers*): the sanitizer step continues while it stands.
+- The game does not compile with GCC 15.2 on Ubuntu 26.04 (`OOStringExpander.h:368`), so no CI job
+  builds the suite with GCC (FR-011).
+- A real recording of the `fr_azerty` and `ru` tables (they are derived), and whether SDL's
+  default keycode options make H2 moot for Russian players.
+- SDL in the Flatpak manifest is 3.4.8; its built-in map lacks scancode 165, which fails
+  `test_menus`' `us.tsv` check in the sandbox.
+- The key faults H1, H2, H3 (AltGr's mode bit) and H4 (Findings -> Keys): upstream's behaviour, kept;
   `key_fault_h1`, `h3`, `h4` are `should_fail` until a fix is wanted.
 - Adjudicating `tests/component-cpp/census-expectations.tsv` (eight rows), and in particular
   `asp-cloaked`, which leaves one entity behind after it is removed (not investigated).
