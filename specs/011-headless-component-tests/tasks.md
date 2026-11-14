@@ -352,7 +352,7 @@ fails, naming a GL function, until the last site is guarded.
   basic kind.
   **Accept:** `meson test -C build/meson_test --suite component-nogl` names no function whose
   backtrace is in `src/Core/Materials`.
-- [ ] T021 [US1] Finish M2. Run `test_boot_nogl`; for each further site the trap names, add a task
+- [X] T021 [US1] Finish M2. Run `test_boot_nogl`; for each further site the trap names, add a task
   `T021a`, `T021b`, … (one site or one file each, its own commit, listed under *Findings → GL
   sites*) until it passes. Then remove the hidden window from `oo_component.cpp`, delete the
   `component-window` and `component-nogl` suites and the `test_boot_nogl` target, link the trap
@@ -418,7 +418,7 @@ fails, naming a GL function, until the last site is guarded.
   under *Findings → Repeatability*.
   **Accept:** `tests/run.sh component --cpp -k repeat &&
   tests/component-cpp/repeat_100.sh test_s1_police_kills_pirate`.
-- [ ] T026 [US1] Measure SC-001 and SC-002 and write them into *Records → Measurements*: S1's
+- [X] T026 [US1] Measure SC-001 and SC-002 and write them into *Records → Measurements*: S1's
   game-to-real ratio and total real time on this Mac and from each CI job's log, and the
   `repeat_100.sh` result. On Linux CI the S1 step runs with `env -u DISPLAY -u WAYLAND_DISPLAY`.
   **Accept:** CI's three jobs are green with `test_s1_police_kills_pirate` and `test_repeat` in
@@ -467,7 +467,7 @@ fails, naming a GL function, until the last site is guarded.
   `events().has("shipDied", asteroid)`. `--without-weapon` as above.
   **Accept:** `tests/run.sh component --cpp -k mining_laser &&
   ! build/meson_test/tests/component-cpp/test_mining_laser --without-weapon`.
-- [ ] T031 [US6] The M3 gate. Push; record each of the three tests' real time per platform in
+- [X] T031 [US6] The M3 gate. Push; record each of the three tests' real time per platform in
   *Records → Measurements* (SC-012 asks for under 15 s each).
   **Accept:** CI's three jobs are green with the three tests in their logs; the four tiers match the baselines.
 
@@ -547,7 +547,7 @@ files go under `build/meson_test/component/`.
   not exist.
   **Accept:** `component_census --data-overlay tests/component-cpp/fixtures/broken-ship;
   test $? -eq 1`, and its output names the fixture's key and no other as an unexpected failure.
-- [ ] T037 [US2] The first full run. Register
+- [X] T037 [US2] The first full run. Register
   `test('census', component_census, suite: 'component', timeout: 600)` in
   `tests/component-cpp/meson.build`. Run it, and write every `failed` and `left` definition under
   *Records → Findings → Census* with its key, seed and evidence (FR-022). For each: a small fix to
@@ -571,7 +571,7 @@ layouts, on three platforms.
 display under `us`, `fr_azerty` and `ru`; with `n` remapped in one layout table the tutorial test
 fails and names the press.
 
-- [ ] T038 [US3] `MyOpenGLView::initHeadless()` in `src/SDL/MyOpenGLView.h` / `.cpp` (contract
+- [X] T038 [US3] `MyOpenGLView::initHeadless()` in `src/SDL/MyOpenGLView.h` / `.cpp` (contract
   *initHeadless*; research R7): SDL's events and video subsystems with the video driver hint set
   to `dummy`, no audio, joystick or gamepad subsystem, no window, no GL context, a fixed nominal
   view size. `startHeadless` creates the view this way when `options.inputView`, and
@@ -583,7 +583,7 @@ fails and names the press.
   trap: each site it names is a task `T038a`, …; if one needs more than a guard, start the menu
   game with that element off and record the limit of FR-025 under *Findings → GL sites*.
   **Accept:** `tests/run.sh component --cpp -k menus && ./mk.sh test test`.
-- [ ] T039 [US3] The key-lookup member (contract *Key lookup member*; examples C6):
+- [X] T039 [US3] The key-lookup member (contract *Key lookup member*; examples C6):
   `MyOpenGLView` gains one replaceable member that maps (scancode, modifiers) to a key code,
   defaulting to `SDL_GetKeyFromScancode(scancode, modifiers, false)`, and
   `src/SDL/MyOpenGLView+Input.cpp` calls it at the one place that line is today (`:365`).
@@ -591,7 +591,7 @@ fails and names the press.
   `the_default_lookup_is_sdls_own` (for every scancode and the modifier sets `-`, `shift`,
   `caps`, the member's answer equals SDL's).
   **Accept:** `tests/run.sh component --cpp -k menus && ./mk.sh test test`.
-- [ ] T040 [US3] Keys and screens in `oo_component` (contract *Keys and screens*; data-model *Key
+- [X] T040 [US3] Keys and screens in `oo_component` (contract *Keys and screens*; data-model *Key
   event*, *Recorded layout*; examples B3): `press` (key down, steps until the game has sampled
   it, key up, steps until sampled), `hold`, `pressScancode`, `keyDownScancode`, `keyUpScancode`,
   `type`, `useLayout(name)` and the `--layout <name-or-path>` program argument, `selectedRow`,
@@ -997,15 +997,15 @@ At the base commit `d4fe31640`, on Jon's Windows machine (MSYS2 UCRT64, Clang 23
 
 | What | Target | macOS | Windows CI | Fedora CI |
 |---|---|---|---|---|
-| M1 start-up, s | — | 0.61-0.66 (Windows, local) | | 0.47; macOS 0.57 |
-| M1 steps per second, and × real time | 20× | 257,000-304,000 steps/s, 4,300-5,100× (Windows, local; empty system, hidden GL window) | | 183,890 steps/s, 3,065×; macOS 235,641, 3,927× (no window, trap linked) |
-| S1 game ÷ real while stepping (SC-001) | ≥ 20 | stepping ~4,000× (test_boot); S1 engages after 0.2 s of game time, so its own ratio line is dominated by start-up | | |
-| S1 whole test, s (SC-001) | < 15 | 0.41 | (step not reached at T030: the unit step failed first) | 0.61 (meson), macOS 0.62 |
-| `repeat_100.sh` S1 (SC-002) | identical | 100 runs, identical (56 s) | | |
-| Basic tests, s each (SC-012) | < 15 | laser 0.49, attack 0.49, mining 0.50 | | laser 0.54, attack 0.43, mining 0.47; macOS 0.60, 0.62, 0.46 |
+| M1 start-up, s | — | 0.61-0.66 (Windows, local) | 1.03 | 0.47; macOS 0.57 (at `22afdd2a0`: 0.88; macOS 1.07) |
+| M1 steps per second, and × real time | 20× | 257,000-304,000 steps/s, 4,300-5,100× (Windows, local; empty system, hidden GL window) | 74,962 steps/s, 1,249× (no window, trap not linked) | 183,890 steps/s, 3,065×; macOS 235,641, 3,927× (no window, trap linked); at `22afdd2a0`: 90,489, 1,508×; macOS 156,359, 2,606× |
+| S1 game ÷ real while stepping (SC-001) | ≥ 20 | stepping ~4,000× (test_boot); S1 engages after 0.2 s of game time, so its own ratio line is dominated by start-up | stepping 1,249× (test_boot) | stepping 1,508×; macOS 2,606× (test_boot) |
+| S1 whole test, s (SC-001) | < 15 | 0.41 | 1.17 (meson, at `22afdd2a0`) | 0.61 (meson), macOS 0.62; at `22afdd2a0`: 0.95, macOS 1.09 |
+| `repeat_100.sh` S1 (SC-002) | identical | 100 runs, identical (56 s) | `test_repeat` (two runs, same digest) passed, 2.38 s | `test_repeat` passed, 1.83 s; macOS 1.83 s |
+| Basic tests, s each (SC-012) | < 15 | laser 0.49, attack 0.49, mining 0.50 | laser 1.18, attack 1.15, mining 1.13 | laser 0.54, attack 0.43, mining 0.47; macOS 0.60, 0.62, 0.46 |
 | Definitions in the data: ships, equipment | — | 194, 41 (as at the research commit) | | |
-| Census: passed / left / n-a / failed / expected (SC-003) | 100% accounted | 127 / 2 / 100 / 6 / 8: 235 of 235 | | |
-| Census real time, s (SC-004) | < 300 | 2.2 | | |
+| Census: passed / left / n-a / failed / expected (SC-003) | 100% accounted | 127 / 2 / 100 / 6 / 8: 235 of 235 | the same | the same; macOS the same |
+| Census real time, s (SC-004) | < 300 | 2.2 | 3.90 | 2.83; macOS 3.37 |
 | Menu, tutorial, launch, remap, fire tests (SC-005, SC-013) | pass | | | |
 | S1–S8 total, s, against one windowed run (SC-009) | less | 4.31 (one `meson test`, serial: 0.46-0.63 each) against 6.70 for windowed S1 alone (S2-S8 windowed: 118-119 s each); 12.3 through eight `tests/run.sh` calls | | |
 | Whole tier, parallel and serial, s (SC-010) | < 600 | | | |
@@ -1119,6 +1119,7 @@ _not written_
 |---|---|---|
 | T006 (at T011, `0b7534e7d`) | https://github.com/jonmseaman/oolite/actions/runs/43618713800 | `unit-tests-windows`, `build-fedora`, `build-macos`: green, `test_skeleton` in each log |
 | T021, T024–T030 (at `01b466dea`) | https://github.com/jonmseaman/oolite/actions/runs/43622970759 | `build-fedora`, `build-macos`: green, 8 programs each, `GL trap: linked`; `unit-tests-windows`: red on `test_OOJSShip` (T022a) |
+| T021, T026, T031, T037 (at `22afdd2a0`) | https://github.com/jonmseaman/oolite/actions/runs/43624664527 | `unit-tests-windows` (8 programs, census included), `build-fedora`, `build-macos` (9 each, `GL trap: linked`): green. Outside this feature: `build-appimage` red on a pacman download error (`could not open file /var/cache/pacman/pkg/download-…`), `build-github-pages` red as on `develop` |
 
 ### Commits
 
@@ -1163,6 +1164,9 @@ _not written_
 | T059 | `b04018dbe` |
 | T060 | `c494dd55e` |
 | T061 | `f6df6746c` |
+| T038 | `8386f36d9` |
+| T039 | `5f6ea3d71` |
+| T040 | `c36470430` (with `record_layout.cpp`) |
 
 ### Branch state
 
@@ -1206,6 +1210,16 @@ Decisions already in plan.md (*Notes*) and research.md are not repeated. Added b
   of `GameController`: core unit tests link those files without the controller.
 - **The case `600_steps_...` is named `six_hundred_steps_advance_game_time_by_10_s`** (T011): a
   C++ identifier cannot start with a digit.
+- **Headless, a request to quit is recorded, not obeyed** (T040): `exitAppWithContext` returns
+  after logging when the game is headless, and `GameController::exitRequested()` holds the
+  context, so the menu test can check *Exit Game* without the process ending under it.
+- **`record_layout.cpp` came with T040**, not T041: `us.tsv` is its output under
+  `--video-driver dummy` (SDL's built-in map), and T040 needed the table.
+- **A press is two steps down and two up** (T040): the game samples keys once a frame, and a key
+  not seen up makes the next press a repeat. A pushed event's `key` field is what a real one
+  would carry: the recorded layout's key code, or `SDL_GetKeyFromScancode(…, true)` with none.
+- **The new-game screen is left by its `exit` row** (T040): Escape does nothing there in the
+  windowed game either (`PlayerEntityControls.cpp`, `kNewGame`).
 - **CI is pushed only once a run has finished** (2026-11-14): the workflow's concurrency group
   cancels a running run on each push, and pushing per task left no run complete on every job.
 - **The GL trap's proof is a standing test** (T021): `test_gl_trap` makes one unguarded GL call in
