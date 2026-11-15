@@ -257,6 +257,12 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   Don't change a signature that JS or the by-name tables expose by name unless they're updated in
   the same commit.
   - Done per family: no `out[A-Z]` parameter left in its files.
+  - Not started (worker, 2026-11-15): 678 lines in 94 files. The tests call many of these
+    signatures directly (`OOTextureLoader::getResult` 17 times, `OOBasicMaterial::get*Components`,
+    `getResultFormatWidthHeight`, `getDesiredWidth`, …), and changing a signature a test calls
+    edits the test, which no rule-1 exception covers (a returned `std::optional` is not the
+    "standard equivalent" of an out-parameter). Default taken: leave the families the tests call
+    until Jon signs off those edits; the rest can go family by family.
 - **I17. `goto`.** 42 in 11 files (`OOJSShip.cpp` 17). Replace only where a simple early return or
   RAII scope does it. Leave the rest, and libpng's `setjmp`.
   - Done: each remaining `goto` is listed with why it stays.
@@ -270,6 +276,11 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   `HeadUpDisplay.cpp`, using a local build with the flag added, uncommitted, just to count. Commit
   the flag only once the build is clean (rule 2: never `-Wno-*`).
   - Done: `src/meson.build` has `-Wconversion`, and `./mk.sh build dev` is warning-free.
+  - Measured (worker, 2026-11-15, all 616 TUs, `-fsyntax-only`): 2,875 findings:
+    1,249 `-Wimplicit-float-conversion`, 812 `-Wsign-conversion`, 351 `-Wfloat-conversion`,
+    234 `-Wimplicit-int-float-conversion`, 171 `-Wimplicit-int-conversion`, 58
+    `-Wshorten-64-to-32`. Every fix is a cast or a type choice that has to keep today's rounding,
+    so it is an area-by-area pass. Not started.
 
 ### Standard library (§2.4, B9)
 
