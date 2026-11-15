@@ -111,6 +111,12 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     static initialisation.
   - Done: `! git grep -qE '\bOOJS(STR|ID)\(' -- src` (or the macros reduced to one-line forwards, if
     a caller needs a macro for stringising; record which).
+  - Done (oolite-dev 1fc51dcb3): `OOJSID(str)` is a one-line forward to `oo::js::Atom<str>()`
+    (`OOJSPropID.h`), a function template keyed by the literal whose atom is a thread-safe
+    function-local static. One atom per name, not per call site: there is one runtime for the
+    process and atoms are never freed, so every site interned the same atom anyway. `OOJSID` and
+    `OOJSSTR` stay as macros because `tests/unit/core/test_EntityScriptEvents.cpp` calls `OOJSID`
+    by name, and keeping the 277 call sites avoids churn.
 - **I7. `OO_LOG` and `OOCAssert` use `std::source_location`.** The macros stay, so arguments aren't
   evaluated when logging is off, but they stop passing `__FILE__`/`__LINE__`/`__func__`.
   - Done: `! git grep -qE '__FILE__|__LINE__' -- src/oofnd/Log.hpp src/oofnd/objc/OOAssert.h src/Core/OOLogging.h src/Core/OOLoggingExtended.h`,
@@ -286,6 +292,8 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     (ffe6978ee), `-Wshadow` (e1dc69d27) and `-Wunused-parameter` (cf8367dbe) are on; dev and debug build
     warning-free. Natives that ignore `this` or `argc` spell out `OOJS_NATIVE_ARGS` with the names
     commented out, since `[[maybe_unused]]` counts as silencing under rule 2.
+  - `-Wpedantic` is on (oolite-dev fb3f537bd, after I6): the `, ##__VA_ARGS__` macros use `__VA_OPT__(,)`
+    and `OOBreakPatternEntity.cpp`'s compound-literal arrays are named locals.
   - Left: `-Wextra`'s other half, 38 `-Wmissing-(designated-)field-initializers`: 36 are QuickJS
     `JSClassDef`/`JSClassExoticMethods` tables that name only the fields they set. Fixing means
     writing every other field as `nullptr` in each table, which would churn whenever QuickJS-ng
