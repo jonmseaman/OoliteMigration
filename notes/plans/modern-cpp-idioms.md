@@ -228,7 +228,7 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
 
 ### Warnings and tooling (§2.6, B11)
 
-- **I21. Warnings.**
+- **I21. Warnings.** Partly done (worker, 2026-11-15): `-Wunused` and `-Wsign-compare` are on (oolite-dev f3ef09dd4; 0 warnings). Measured over every `src/` translation unit with `-fsyntax-only`: `-Wextra` adds 297 (259 `-Wunused-parameter`, 38 missing field initialisers), and `-Wpedantic` adds 267 (261 GNU statement expressions from `OOJSSTR`/`OOJSID`, so I6 comes first; 4 zero-argument variadic macros; 2 C99 extensions in `OOBreakPatternEntity.cpp`). The game builds with `-Wall` only (Meson's warning level 1), not `-Wall -Wextra`.
   - Enable `-Wextra`, `-Wpedantic`, `-Wunused` and `-Wsign-compare` in `src/meson.build` (the review
     measured 0 hits).
   - Then fix and enable `-Wundef` (54 in the review), `-Wsuggest-destructor-override` (10),
