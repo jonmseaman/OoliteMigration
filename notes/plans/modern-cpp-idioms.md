@@ -178,6 +178,12 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     ties.
   - Done: `! git grep -qE '\bOOCache\b|OOPriorityQueue' -- src`. Then `tests/run.sh component --cpp`
     and a smoke run. The cache files must still load: run the game once with an existing cache.
+  - Blocked (worker, 2026-11-15): `OOCache` is checked out with uncommitted edits by another
+    session, so it waits. Replacing `OOPriorityQueueOf` means deleting `OOPriorityQueue.h` and so
+    `tests/unit/core/test_OOPriorityQueue.cpp`, which no rule-1 exception covers. Also,
+    `std::priority_queue` has no `removeExactObject` and its heap steps are the library's, so
+    equal-time timers could fire in a different order. Default taken: keep `OOPriorityQueueOf`;
+    Jon to sign off the test deletion first if he wants it gone.
 - **I12. Type punning and C arrays.**
   - `memcpy` used for punning → `std::bit_cast` (`OOPlanetTextureGenerator.cpp`,
     `OOStandaloneAtmosphereGenerator.cpp`, `JSEngine_quickjs.cpp`; 28 `memcpy` in total, so check
