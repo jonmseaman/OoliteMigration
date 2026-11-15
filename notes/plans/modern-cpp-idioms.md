@@ -219,6 +219,11 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   - `sizeof x / sizeof x[0]` (12) → `std::size`. Done: oolite-dev 208df5e56.
   - C arrays (about 233) → `std::array` by area, starting with `HeadUpDisplay.cpp`. Leave arrays
     passed to C or GL APIs whose layout must stay, or use `.data()`.
+  - GL colour arrays (worker, 2026-11-15): kept as C arrays under the rule above. The 121
+    `GLfloat x[N]` arrays left are colours, vertices and texture coordinates that reach
+    `glColor4fv`, `glMaterialfv` and the vertex-array calls through `SET_COLOR*` macros,
+    `GLColorWithOverallAlpha(const GLfloat*, …)`, ternaries and `const GLfloat*` locals; a
+    `std::array` adds `.data()` at each of about 90 sites without changing what reaches GL.
   - Done: `! git grep -qE 'sizeof\s*\(?\s*\w+\s*\)?\s*/\s*sizeof' -- src`, and the punning `memcpy`s
     are listed as converted.
 - **I13. `void*` callbacks.** The `void*` + callback APIs in `OOTCPStreamDecoder.h`,
@@ -339,7 +344,14 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
       round; a range-for over a container that changes under it is undefined. Each needs its own
       review (no mutation reachable from the body, the index unused after the loop). Default
       taken: leave them.
-    - `std::span` parameters: not started.
+    - `std::span` parameters: the GL point draws and the sky quad sets (8ed67ec94), the debug
+      console's socket buffers (2dd17a81e), and nine read-only string-list parameters in
+      `ResourceManager`, the OXP verifier and `Universe` (b4c17ea9c). Left: the parameters a body
+      copies or stores (`applyMarketFilter`/`Sorter` return a filtered copy, `setCargo`,
+      `setLocalShipyard`), the ones tests call (`CompareVersions`, `setArray`, `exhaustForShip`,
+      `scriptsFromList`, `addConditionScripts`, `EntityNodesFrom`), `doScriptEvent`'s JS
+      `argv`/`argc`, the C-style `OOTCPStreamDecoderReceiveBytes`, and `OOProbabilitySet.h`
+      (checked out by another session).
 - **I20. `std::print`.** Where code writes text to `stdout`/`stderr` directly (not through
   `OO_LOG`), use `std::print`/`std::println`.
   - Done: `! git grep -qE '\b(std::)?(puts|fputs)\(|std::cout|std::cerr' -- src` (list any that
