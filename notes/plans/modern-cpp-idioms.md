@@ -351,10 +351,14 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     `OOOpenGLExtensionManager::version()`, `shadowAtPointOcclusion` (`Occlusion` struct; the
     value is given either way), `OOWriteXMLPListToFile` (`std::expected<void, std::string>`),
     `OOInterpretTextureSpecifier` (`std::optional<OOTextureSpecifier>`) and
-    `OOSynthesizeMaterialShader` (`std::optional<OOSynthesizedShader>`). Left, with reasons:
-    `OOJSEntityGetEntity` and the PList schema verifier (below), the JS `Vector`/`Quaternion`
-    and engine-core getters (`OOJSVector.h` 10, `OOJSQuaternion.h` 6, `OOJSEngineCore.h` 5: the
-    binding convention where false means an exception is pending), `scale_vector` and
+    `OOSynthesizeMaterialShader` (`std::optional<OOSynthesizedShader>`). Then (oolite-dev
+    2ef29559e) `JSValueToVector`, `JSValueToHPVector` and `JSValueToQuaternion`
+    (`std::optional`). Left, with reasons: `OOJSEntityGetEntity` and the PList schema verifier
+    (below); the `*ToJSValue` writers (`OOJS_RETURN_WITH_HELPER` and the property tables take
+    `bool f(ctx, T, JSValue*)` for every type); `JSObjectGetVector`/`JSObjectGetQuaternion`, the
+    `VectorFromArgumentList`/`QuaternionFromArgumentList` pairs and the engine-core number
+    readers (`OOJSEngineCore.h` 5), which answer two values (the result and the arguments used)
+    and follow the binding's false-means-exception convention; `scale_vector` and
     `HPscale_vector` (in-out, not out), the shader-uniform `memberBinding`/`randomSeed` function
     pointers (the shader-binding table's signature), and `Entity`'s member-binding lookup
     (same table).
@@ -553,6 +557,8 @@ Std-equivalent edits (rule 1, third exception), and the I7, I11, I16 and I23 edi
 | `tests/unit/core/test_OODefaultShaderSynthesizer.cpp` (`Synthesize`) | `OOSynthesizeMaterialShader(…, &v, &f, &t, &u)` → `std::optional<OOSynthesizedShader>` | same: `ok` and the four outputs (I16, oolite-dev 1ae067d28) |
 | `tests/unit/core/test_OOFastArithmetic.cpp:81` | comment names `getDesiredSize` (was `getDesiredWidth`) | comment only (I16, oolite-dev 1ae067d28) |
 | `tests/unit/core/test_OOCache.cpp` | added `aValueMayUseTheCacheAsItGoes` | new test (I11, oolite-dev bfc72748c) |
+| `tests/unit/core/test_OOJSEntity.cpp`, `test_OOJSExhaustPlume.cpp`, `test_OOJSMission.cpp`, `test_OOJSPlanet.cpp`, `test_OOJSSoundSource.cpp`, `test_OOJSVisualEffect.cpp`, `test_OOJSWaypoint.cpp` | link stubs of `JSValueTo{Vector,HPVector,Quaternion}` return `std::optional` (`return false` → `std::nullopt`, the out-write → the return) | same: each stub converts the same values and fails on the same inputs (I16, oolite-dev 2ef29559e) |
+| `tests/unit/core/test_OOJSVector.cpp` (`nativeInterface`), `test_OOJSQuaternion.cpp` (`nativeInterface`) | `JSValueTo…(ctx, v, &out) && out.x == …` → the returned optional checked the same way; the unused `Vector v` local dropped | same values and the same failing input (I16, oolite-dev 2ef29559e) |
 
 ## Decisions (defaults taken)
 
