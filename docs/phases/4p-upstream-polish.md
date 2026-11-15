@@ -4,94 +4,84 @@
 
 ## Goal
 
-Make the C++ fork something the Oolite maintainers can review and want: behaviour matches 1.93
-where it should, the remaining differences are documented, the source is free of migration
-scaffolding, and a write-up explains the work. Windows x64 is the reference platform; macOS builds
-and runs and Linux builds, and Phase 5 finishes both.
+Make the C++ fork something the Oolite maintainers can review and want:
+- behaviour matches 1.93 where it should, and the remaining differences are documented;
+- the source is free of migration scaffolding;
+- a write-up explains the work.
 
-Inputs: `notes/Phase 4 Writeup.md` (draft write-up and open items),
-`notes/plans/modern-cpp-idioms.md`, `notes/plans/platform-layer.md`,
-`notes/Follow Ups.md`, `notes/Playtest Notes.md`, the [parity audit](../parity/README.md), and the
-two open lists measured on 2026-11-07: `notes/2026-11-07 Parity Fixes.md` and
-`notes/2026-11-07 Cross-Platform Correctness.md` (both waiting for Jon's review).
+Windows x64 is the reference platform. macOS and Linux are Phase 5.
 
-## Exit gate
+## Where it stands (2026-11-15)
 
-- [ ] `tests/run.sh all` green on Clang and GCC.
-- [ ] Every high and medium ❌ in [parity/README.md](../parity/README.md) is fixed (with a test) or
-      moved to ⚠️ with a reason.
-- [ ] `grep -rnE "ADR-[0-9]{4}|\boo-[0-9a-z]{3,}\b" oolite-dev/src` finds no migration bookkeeping
-      in source comments (comments explain the code, not the project history).
-- [ ] `grep -rn GNUSTEP oolite-dev/src oolite-dev/meson.build` finds only code that still needs it
-      (or nothing).
-- [ ] The write-up is final and sent upstream — Jon.
-
-"Migration complete" also means (each line is checked by the command after it):
-
-- [ ] No Objective-C syntax in the game's sources, live or under a false `#if`:
-      `python3 tests/idiom_check.py objc-syntax` and `python3 tests/idiom_check.py mac-blocks`
-      (from `oolite-dev`) report nothing.
-- [ ] No Objective-C sources or Xcode/GNUstep-make projects tracked:
-      `git ls-files '*.m' '*.mm' '*.xcodeproj/*' '*.nib' '*.pch' '*GNUmakefile*'` is empty.
-- [ ] No GNUstep in the build, CI or install scripts:
-      `git grep -niE 'gnustep|libobjc' -- .github ShellScripts installers meson.build src/meson`
-      finds only names kept on purpose (current-state.md, Leftovers): `OO_GNUSTEPDEFAULTSDIR`,
-      `Info-gnustep.plist`, and the Windows install's `oolite.app\GNUstep\...` data folders.
-- [ ] The unit suites run in CI on every OS (Windows: all four; macOS and Linux: `tools`, then the
-      rest once the cross-platform note's LP64 item is done).
+**Done:**
+- **No migration bookkeeping in the source.** `grep -rnE "ADR-[0-9]{4}|\boo-[0-9a-z]{3,}\b" oolite-dev/src`
+  finds nothing.
+- **No Objective-C.** No `.m`, `.mm`, Xcode or GNUstep-make files are tracked. The remaining
+  `@end` and `[[X alloc]` text is all in comments that describe upstream's calls.
+- **No GNUstep in the build, CI or install scripts,** except the names kept on purpose
+  (current-state.md, Leftovers):
+  - `OO_GNUSTEPDEFAULTSDIR`;
+  - `Info-gnustep.plist`;
+  - the Windows installer's `oolite.app\GNUstep\…` data folders.
+- **Both high parity findings fixed,** with tests (see [parity/README.md](../parity/README.md)).
+- **The idiom review's real bugs fixed:** the `SDL/main.cpp` `strcat` and `-load` argv read, the
+  256-byte path buffer, `OOCPUInfo.cpp`'s `strcpy`, and the octree `realloc` leak.
+- **Tooling:** `.clang-tidy` (CI's clang-tidy guards), `.editorconfig`, and the Google-style
+  `.clang-format`.
+- **Windows manifest:** `src/SDL/OOResourcesWin/oolite.exe.manifest`.
+- **QuickJS-ng 0.17:** in `third_party/quickjs-0.17.0/`.
+- **The playtest keys and tutorial:** spec 011's component tests cover them. The view and
+  tutorial key faults that remain are upstream's own, registered `should_fail` (`key_fault_h1`-`h4`,
+  `test_tutorial_keys_ru`).
 
 ## Work items
 
-1. **Behaviour parity.** Fix the parity audit's high/medium findings, starting with the cross-cutting
-   ones (preference defaults with `oo_*ForKey` semantics; two `doubleValue` ports). Each fix gets a
-   unit or component test.
-2. **Real bugs from the idiom review** (§2.5): `SDL/main.cpp` `strcat` into the environment buffer
-   and the `argv[argc]` dereference after `-load`; `OOCPUInfo.cpp` unchecked `strcpy`;
-   `OOMeshToOctreeConverter.cpp` leak on `realloc` failure.
-3. **Playtest bugs:** blank screen starting the tutorial; view keys 1–4 and W/A not working; menu
-   controls unclear. Check each against upstream 1.93 first and note if it is upstream's too.
-4. **Source hygiene:**
-   - strip bead ids, ADR numbers and `docs/` paths from source comments (≈1,370 `ADR-NNNN` hits);
-     keep the explanation, drop the bookkeeping;
-   - remove dead GNUstep macros and scripts (bead oo-wm7);
-   - Windows manifest (bead oo-1vw).
-5. **Tooling** (idiom review §2.6): `.clang-tidy`, `.editorconfig`, a Google-style `.clang-format`
-   applied in one reformat commit listed in `.git-blame-ignore-revs`; turn on the warnings that are
-   already at zero hits (`-Wextra -Wpedantic`); fix build references to deleted scripts.
-6. **QuickJS-ng 0.17.** Bump `oolite-dev/subprojects/quickjs-ng.wrap`; JS API snapshot and corpus
-   must not regress.
-7. **Expansion compatibility.** Keep [EXPANSION_MIGRATION.md](../EXPANSION_MIGRATION.md) and
-   [expansions/](../expansions/README.md) current; it ships with the write-up.
-8. **The write-up.** Finish `notes/Phase 4 Writeup.md` (Jon's motivation paragraph, final numbers).
+1. **Medium parity fixes.** About 12 medium findings in [parity/README.md](../parity/README.md)
+   ("Suspected divergences → Medium") are open. `notes/2026-11-07 Parity Fixes.md` lists 13
+   items, re-checked on 2026-11-07, waiting for Jon's review. Each item is either fixed with a unit
+   or component test, or moved to ⚠️ with a reason. Examples still open on 2026-11-15:
+   - JS `ship.speed` is writable (`Scripting/OOJSShip.cpp:588`, `OOJS_PROPERTY_RW`); upstream had
+     it read-only.
+   - The `laserColor` shader uniform has no row in `Entities/EntityShaderBindings.cpp`.
+   - The preference defaults use `isNull() ? default : xForKey()` instead of upstream's
+     `oo_*ForKey:defaultValue:` semantics (cross-cutting finding 1: `OOALSound.cpp`,
+     `OOLogging.cpp`, `GameController.cpp`, `Universe.cpp`).
 
-The mechanical modernisation sweeps of the idiom review §3 are done on their own branch at the top
-of the series, `seriesb/027-modern-cpp` ([spec 009](../../specs/009-modern-cpp-std/spec.md)): C
-allocation, ownership, threads, `oofnd`'s replaced types, scoped enums, casts and C strings. The
-branches before it stay the faithful version, so reviewers can still compare them line for line.
-Out of scope here (Phase 6): the platform layer and the structural splits.
+   Re-check the "symlinked `.oxp` folders" finding first: the `symlink_status` call it cites has
+   gone from `ResourceManager.cpp`.
+2. **Clang and GCC both green.** `tests/run.sh all` passes on Clang, and CI's GCC jobs (Fedora,
+   Ubuntu) build and pass. GCC is checked only in CI; don't build it locally.
+3. **Expansion compatibility.** Keep [EXPANSION_MIGRATION.md](../EXPANSION_MIGRATION.md) and
+   [expansions/](../expansions/README.md) current. They ship with the write-up.
+4. **The write-up** (Jon). Finish `notes/Phase 4 Writeup.md` (Jon's motivation paragraph, the final
+   numbers) and send it upstream.
 
-## Status log
+Other work that helps the review is in its own plans:
+- the idiom work, including the warning flags (I21), in `notes/plans/modern-cpp-idioms.md`;
+- the platform layer, in `notes/plans/platform-layer.md`;
+- the one-off reformat with `.git-blame-ignore-revs`, a task in `notes/0_AI_Tasks.md`.
 
-- 2026-11-14 — `seriesb/031-third-party` (on `seriesb/028-upstream-772-tests`): MiniZip, miniz,
-  tinyexr and stb_image_write moved from `src/` to `oolite-dev/third_party/`, unchanged (a pure
-  move; `OOSaveEXRSnapshot.cpp` stays in `src/SDL/`). Decision: the copies stay as they are; going
-  to wraps or pristine C remains the follow-up in `specs/005-adopt-google-test/research.md` R2.
-  Upstream keeps them in `src/`, a layout divergence recorded in `docs/UPSTREAM_DELTA.md`.
-  `third_party/` is also meson's `subproject_dir`: the QuickJS-ng wrap and patches moved there
-  from `subprojects/`, and each copied library is a minimal local subproject that only names its
-  sources (meson forbids `subdir()` into the subproject directory); `src/meson.build` still builds
-  them with the game's project arguments. Commits `f066f25a6`, `5f4d79dcc`.
-- 2026-10-28 — Phase doc created during the docs cleanup; phases 0–4 docs and ADRs moved to the
-  `archive/phase-0-4-docs` tag.
-- 2026-11-08 — `seriesb/026-migration-completion` (on `seriesb/025-libcurl-http`): the Objective-C tools
-  replaced (icosmesh in C++, with a test) or removed; the dead `OOLITE_MAC_OS_X`, salvage, preload
-  and CoreFoundation branches removed; GNUstep dropped from CI, the launchers and the flatpak; a
-  Windows unit-test job in CI. Parity and cross-platform fixes are in two notes for review.
-  Unit suites (Windows, Clang, test flavour): oofnd 39/40, core all but `test_OOOXZManager` (185 tests), headers 2/2,
-  tools 1/1. The failures are the same on the base `2bc38c154`: `test_http` (6 checks, `file:`
-  URLs) and `test_OOOXZManager` (35 checks, manifest download and GUI input); `test_PlayerEntity`
-  failed once under the parallel meson run and passes on its own on both. Component, smoke and GUI
-  tiers were not run on the branch.
-- 2026-11-02 — The migration is a 26-step PR series on upstream `49a5eb9fc` (spec
-  `specs/001-split-migration-prs`), each step built and verified; `series/HANDOVER.md` has the push
-  and PR commands.
+Running the unit suites on macOS and Linux is Phase 5, item 1.
+
+## Exit gate
+
+- [x] No migration bookkeeping in source comments (the grep above is empty).
+- [x] No Objective-C sources or Xcode/GNUstep-make projects tracked:
+      `git ls-files '*.m' '*.mm' '*.xcodeproj/*' '*.nib' '*.pch' '*GNUmakefile*'` is empty.
+- [x] No live Objective-C: every source compiles as plain C++, so any Objective-C outside a
+      comment fails the build. From `oolite-dev`, no Objective-C compile mode or flag remains:
+      `! git grep -nE 'objective-c|-fobjc|objc_args' -- meson.build src/meson.build src/meson`
+- [x] No GNUstep in the build, CI or install scripts beyond the kept names:
+      `git grep -niE 'gnustep|libobjc' -- .github ShellScripts installers meson.build src/meson`.
+- [ ] Every medium ❌ in [parity/README.md](../parity/README.md) is fixed with a test, or moved
+      to ⚠️ with a reason (item 1).
+- [ ] `tests/run.sh all` is green on Clang, and CI is green on GCC (item 2).
+- [ ] The write-up is final and sent upstream (item 4, Jon).
+
+## Decisions
+
+- **The PR series** is built on upstream `49a5eb9fc` as the `seriesb/*` stack (spec 002). The
+  mechanical modernisation is on its own branch at the top (`seriesb/027-modern-cpp`, spec 009),
+  so the branches before it stay the faithful version reviewers can compare line for line.
+- **Third-party copies** (MiniZip, miniz, tinyexr, stb_image_write) live in `oolite-dev/third_party/`,
+  unchanged. Upstream keeps them in `src/`; the difference is recorded in `docs/UPSTREAM_DELTA.md`.
