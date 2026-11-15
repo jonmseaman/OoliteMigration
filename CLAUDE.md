@@ -75,17 +75,18 @@ tests/run.sh all                   # unit, component, then smoke
 
 ## Exemplars
 
-| Kind | Path |
-|---|---|
+| Kind               | Path                                                                 |
+| ------------------ | -------------------------------------------------------------------- |
 | Component scenario | `oolite-dev/tests/component/features/s1_police_kills_pirate.feature` |
-| C++ component test | `oolite-dev/tests/component-cpp/test_s1_police_kills_pirate.cpp` |
-| Converted class | `oolite-dev/src/Core/OOColor.*` |
+| C++ component test | `oolite-dev/tests/component-cpp/test_s1_police_kills_pirate.cpp`     |
+| Converted class    | `oolite-dev/src/Core/OOColor.*`                                      |
 
 ## Repo conventions
 
 - Submodules: `oolite-dev` = `jonmseaman/oolite` `develop` (the game); `oolite-main` = the same
   repo's `master` (reference); everything under `upstream/` is OoliteProject's own, unmodified,
   reference only. `origin` = `jonmseaman/OoliteMigration`.
+- New code generated in oolite-dev should follow Google style guidelines: https://google.github.io/styleguide/cppguide.html
 - **The recorded `oolite-dev` commit is not yours to move.** Commit game changes only inside
   `oolite-dev`; Jon records merged work here.
 - **Git Town, in `oolite-dev` only.** One stack: `master` (perennial) → `seriesb/000a`,
@@ -104,4 +105,3 @@ tests/run.sh all                   # unit, component, then smoke
 - Do not restate the user's request.
 - Do not include generic explanations unless asked.
 - Put the result first.
-
