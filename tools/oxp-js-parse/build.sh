@@ -4,8 +4,8 @@
 #
 #     bash tools/oxp-js-parse/build.sh [--quickjs-src DIR] [--out FILE]
 #
-# The QuickJS-ng source is the one oolite-dev's meson build unpacks from
-# oolite-dev/subprojects/quickjs-ng.wrap. In a worktree whose oolite-dev submodule is not
+# The QuickJS-ng source is the one oolite-dev's meson build unpacks from its wrap,
+# oolite-dev/third_party/quickjs-ng.wrap (subprojects/ on branches from before the move). In a worktree whose oolite-dev submodule is not
 # initialised, pass --quickjs-src (or OO_QUICKJS_SRC) pointing at the main checkout's copy. The
 # build refuses a source whose version differs from the wrap's, so the parser is always the one the
 # game ships. The binary goes under .agent-tmp/ and is never committed.
@@ -26,16 +26,17 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-wrap_of() { sed -n 's/^directory *= *//p' "$1/subprojects/quickjs-ng.wrap"; }
-
+# WRAP_ROOT is meson's subproject directory: third_party/, or subprojects/ before the move.
 WRAP_ROOT=""
 for cand in "$REPO_ROOT/oolite-dev" "$REPO_ROOT/../../oolite-dev"; do
-  if [ -f "$cand/subprojects/quickjs-ng.wrap" ]; then WRAP_ROOT="$cand"; break; fi
+  for sub in third_party subprojects; do
+    if [ -f "$cand/$sub/quickjs-ng.wrap" ]; then WRAP_ROOT="$cand/$sub"; break 2; fi
+  done
 done
-[ -n "$WRAP_ROOT" ] || die "cannot find oolite-dev/subprojects/quickjs-ng.wrap"
-WANT_DIR="$(wrap_of "$WRAP_ROOT")"
+[ -n "$WRAP_ROOT" ] || die "cannot find oolite-dev/third_party/quickjs-ng.wrap"
+WANT_DIR="$(sed -n 's/^directory *= *//p' "$WRAP_ROOT/quickjs-ng.wrap")"
 [ -n "$WANT_DIR" ] || die "quickjs-ng.wrap names no directory"
-[ -n "$SRC" ] || SRC="$WRAP_ROOT/subprojects/$WANT_DIR"
+[ -n "$SRC" ] || SRC="$WRAP_ROOT/$WANT_DIR"
 [ -f "$SRC/quickjs.c" ] || die "no QuickJS-ng source at $SRC (run oolite-dev's meson setup once, or pass --quickjs-src)"
 [ "$(basename "$(cd "$SRC" && pwd)")" = "$WANT_DIR" ] || die "source $SRC is not the pinned $WANT_DIR"
 

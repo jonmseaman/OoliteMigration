@@ -34,11 +34,17 @@ pull request on the fork.
 | `oofnd/` | The Foundation replacement: `Ref`/`WeakRef` (intrusive refcount), `AutoreleaseScope`, `String` helpers (UTF-8 `std::string`), `PList` with old-style and XML parsers/writers and typed `PListGet`, `Defaults`, `FileSystem`, `Log`/`LogFile`, `Http`, `Scanner`, `Expected`. `oofnd/objc/` holds C-only leftovers (`OOAssert`, `OOException.h`, type aliases). |
 | `Core/` | The game, converted class by class from Objective-C. Shape is deliberately close to the original (see "Style" below). |
 | `Core/Scripting/ooscript/` | `JSEngine.hpp`, the JS façade; `JSEngine_quickjs.cpp` is the only file that touches QuickJS-ng. |
-| `Core/MiniZip/`, other vendored C | Kept as C, not rewritten. |
 | `SDL/` | Platform layer: window, input, Windows resources. |
 | `meson/` | Per-platform meson fragments. |
 
-QuickJS-ng is a meson subproject pinned in `oolite-dev/subprojects/quickjs-ng.wrap` (v0.17.0).
+Third-party code copied into the tree is in `oolite-dev/third_party/`, outside `src/`: MiniZip 1.1
+(`minizip/`), miniz (`miniz/`), tinyexr (`tinyexr/`) and stb_image_write (`stb/`), each with its
+licence. `third_party/` is meson's `subproject_dir`: each library is a local subproject that only
+names its sources, and `src/meson.build` builds them as one library with the game's project
+arguments but without its warning flags. It is not formatted, tidied or rewritten.
+
+QuickJS-ng is a meson wrap pinned in `oolite-dev/third_party/quickjs-ng.wrap` (v0.17.0), with its
+patches in `third_party/packagefiles/`; meson fetches the source into `third_party/` (git-ignored).
 
 ## Style of the converted code
 
@@ -66,8 +72,8 @@ Run from `oolite-dev`, in an MSYS2 UCRT64 shell (`tools/setup-windows.sh` instal
 | GCC | `./mk.sh build test --native-file=gcc.ini` | must stay green beside Clang |
 
 `-ffp-contract=off` and a pinned `-O` keep floating point reproducible. `-Wall -Wextra` is clean.
-The warning gate skips exactly two vendored paths, `src/Core/MiniZip/` and
-`src/SDL/stb_image_write.h`; their warnings still print, and no other path may be added.
+Third-party code (`third_party/`) builds without the game's own warning flags (`oolite_cpp_args`);
+its warnings still print, and no game source may be moved there to escape them.
 
 ## Tests
 

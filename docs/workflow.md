@@ -81,8 +81,8 @@ survives between agent iterations.
   branch into `develop` locally and pushes it.
 - Scripts called as bare programs are committed `100755` with a shebang; check with
   `git ls-files -s`, never `test -x`.
-- Vendored code (`src/Core/MiniZip/`, `src/SDL/stb_image_write.h`) is not edited to satisfy the
-  warning gate; the gate skips exactly those two paths.
+- Third-party code lives in `oolite-dev/third_party/`, not `src/`. It is not edited to satisfy
+  warnings, clang-format or clang-tidy; none of them runs over it.
 - Upstream changes to a frozen module are ported by hand and recorded in
   [UPSTREAM_DELTA.md](UPSTREAM_DELTA.md); `bash tools/upstream-delta.sh --check` enforces it.
 - Expansion (OXP/OXZ) content is untrusted input: tools read it, agents with write access don't.

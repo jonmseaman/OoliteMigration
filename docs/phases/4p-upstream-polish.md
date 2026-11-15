@@ -72,6 +72,15 @@ Out of scope here (Phase 6): the platform layer and the structural splits.
 
 ## Status log
 
+- 2026-11-14 — `seriesb/031-third-party` (on `seriesb/028-upstream-772-tests`): MiniZip, miniz,
+  tinyexr and stb_image_write moved from `src/` to `oolite-dev/third_party/`, unchanged (a pure
+  move; `OOSaveEXRSnapshot.cpp` stays in `src/SDL/`). Decision: the copies stay as they are; going
+  to wraps or pristine C remains the follow-up in `specs/005-adopt-google-test/research.md` R2.
+  Upstream keeps them in `src/`, a layout divergence recorded in `docs/UPSTREAM_DELTA.md`.
+  `third_party/` is also meson's `subproject_dir`: the QuickJS-ng wrap and patches moved there
+  from `subprojects/`, and each copied library is a minimal local subproject that only names its
+  sources (meson forbids `subdir()` into the subproject directory); `src/meson.build` still builds
+  them with the game's project arguments. Commits `f066f25a6`, `5f4d79dcc`.
 - 2026-10-28 — Phase doc created during the docs cleanup; phases 0–4 docs and ADRs moved to the
   `archive/phase-0-4-docs` tag.
 - 2026-11-08 — `seriesb/026-migration-completion` (on `seriesb/025-libcurl-http`): the Objective-C tools

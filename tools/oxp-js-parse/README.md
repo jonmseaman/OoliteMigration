@@ -1,7 +1,7 @@
 # oxp-js-parse: does the game's QuickJS-ng parse it? (ADR-0069, layer 1)
 
 This tool compiles every `.js` file of every catalogued expansion with the **game's own pinned
-QuickJS-ng** (`oolite-dev/subprojects/quickjs-ng.wrap`). It uses the flags the game's script loader
+QuickJS-ng** (`oolite-dev/third_party/quickjs-ng.wrap`). It uses the flags the game's script loader
 uses: `JS_EVAL_TYPE_GLOBAL | JS_EVAL_FLAG_COMPILE_ONLY`, from line 1 (`compileUCScript` in
 `JSEngine_quickjs.cpp`). Nothing is executed.
 
