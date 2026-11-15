@@ -148,3 +148,25 @@ and `slice24Voices` passing) and `tests/run.sh smoke`.
   stale.
 - **Name: `oo::SpeechSynthesizer`** in `src/Core/SpeechSynthesizer.{h,cpp}`. New code uses the `oo`
   namespace, with no `OO` prefix on the type or the file (Jon, 2026-11-15).
+
+## Implementation notes (oolite-dev 40c688712, 2026-11-15)
+
+- **Three files, not two.** `SpeechSynthesizer.cpp` holds what doesn't touch espeak (the shared
+  instance, the voice-list arithmetic, `setVoice`'s lookup, the test seam);
+  `SpeechSynthesizer_espeak.cpp` and `SpeechSynthesizer_none.cpp` hold the espeak calls or their
+  silent stand-ins, and `src/Core/meson.build` picks one from the `espeak` option. That way
+  `test_SpeechSynthesizer` tests the same arithmetic in either build.
+- **`#if`s kept at the call sites.** The `OOLITE_ESPEAK`/`OOLITE_SPEECH_SYNTH` blocks in
+  `PlayerEntity.{h,cpp}` and `PlayerEntityControls.cpp` (the save keys, the options-screen rows,
+  the key latches) still stand. Removing them changes what a no-espeak build saves and shows, so it
+  belongs with [make-espeak-mandatory.md](make-espeak-mandatory.md) or the `if constexpr` follow-up,
+  not this move. The `#if`s that only wrapped espeak calls are gone, and Universe's eight speech
+  methods are declared and forwarded in every build.
+- **`initialize` takes the data path decision from the caller.** `MyOpenGLView` still reads
+  `ESPEAK_DATA_PATH` and passes `nullopt` when it is set, so the class doesn't depend on SDL.
+- **Not checked: speech in the running game, and `tests/run.sh smoke`.** Smoke failed before the
+  game connected: `oolite.exe` exited with 0xC0000139 (entry point not found). The DLLs that
+  `oolite.app` bundles differ from the toolchain's `/ucrt64/bin` copies (14 of them, `libstdc++-6.dll`
+  among them), which is a packaging problem on this machine, not this change (it adds no DLL
+  import). Run smoke, and cycle voices, gender and volume on the options screen, on a machine
+  where the game launches.
