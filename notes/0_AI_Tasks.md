@@ -48,7 +48,7 @@ You turn Jon's requests into tasks in this file. You do not change code in `ooli
 - **Commits:** commit nothing in `oolite-dev`. Edits to `notes/` stay uncommitted unless Jon asks.
 
 # Prepare
-- [ ] Replace the three hand-kept by-name tables (`OOEntityCalledByNameTable.h`, `OOJSCallEntityMethods.h`, `OOEntityObjectNamesTable.h`, about 4,850 lines) with one table of `oo::Call<&Class::member>("name")` rows that work out their types from the member pointer. Needs Jon's sign-off for two test edits. [plan](plans/by-name-table.md)
+- [ ] Replace the three hand-kept by-name tables (`OOEntityCalledByNameTable.h`, `OOJSCallEntityMethods.h`, `OOEntityObjectNamesTable.h`, about 4,850 lines) with one table of `oo::Call<&Class::member>("name")` rows that work out their types from the member pointer. Two test edits signed off 2026-11-15. [plan](plans/by-name-table.md)
 - [ ] Platform layer in `src/platform/` (outside `oofnd`, which is being retired): `Platform.hpp`, per-OS `*_win32.cpp`/`*_posix.cpp` chosen by Meson, in-body `#if`s out of `oofnd` and Core/SDL, `OOLITE_SDL`, `std::endian`, feature switches via `config.hpp`, and a CI guard. [plan](plans/platform-layer.md)
 
 # Tasks
