@@ -31,6 +31,9 @@ You turn Jon's requests into tasks in this file. You do not change code in `ooli
 - **Defaults:** take the conservative option, so behaviour stays the same and the tests pass
   unedited. Record it under "Decisions" in the plan, with the reason.
 - **Order:** if two tasks touch the same lines, put the dependency in the later task ("do X first").
+- **Naming new code:** new types, functions and files go in the `oo` namespace with no `OO` prefix
+  (`oo::SpeechSynthesizer` in `SpeechSynthesizer.h`, not `OOSpeechSynthesizer`). Existing `OO`
+  names stay unless a task renames them.
 - **What a plan contains:**
   - why the work is needed;
   - the done check;
@@ -44,13 +47,13 @@ You turn Jon's requests into tasks in this file. You do not change code in `ooli
 - **Commits:** commit nothing in `oolite-dev`. Edits to `notes/` stay uncommitted unless Jon asks.
 
 # Prepare
-- [ ] Encapsulate espeak-ng in an `OOSpeechSynthesizer` class (`src/Core`): espeak's API and `<espeak-ng/speak_lib.h>` leave `Universe.h`, `MyOpenGLView.cpp` and `PlayerEntityControls.cpp`, and `Universe` keeps its speech methods as forwarders. One test edit (`slice24Voices`), signed off 2026-11-15. [plan](plans/speech-synthesizer-class.md)
 
 # Tasks
+- [ ] Encapsulate espeak-ng in an `oo::SpeechSynthesizer` class (`src/Core/SpeechSynthesizer.{h,cpp}`): espeak's API and `<espeak-ng/speak_lib.h>` leave `Universe.h`, `MyOpenGLView.cpp` and `PlayerEntityControls.cpp`, and `Universe` keeps its speech methods as forwarders. One test edit (`slice24Voices`), signed off 2026-11-15. [plan](plans/speech-synthesizer-class.md)
 
 - [ ] Modern C++ idioms: what's left of the 2026-10-28 idiom review and its epics outline. 23 workstreams: `M_PI`→`std::numbers`, `OOClamp`/`OOLerp`→`std::clamp`/`lerp`, `rand()`→`<random>`, constant `#define`s, `EXPECT`→`[[likely]]`, `OOJSSTR`, `source_location`, memory, strings, out-parameters, warnings, asan … [plan](plans/modern-cpp-idioms.md)
 - [ ] Platform layer in `src/platform/` (outside `oofnd`, which is being retired): `Platform.hpp`, per-OS `*_win32.cpp`/`*_posix.cpp` chosen by Meson, in-body `#if`s out of `oofnd` and Core/SDL, `OOLITE_SDL`, `std::endian`, feature switches via `config.hpp`, and a CI guard. [plan](plans/platform-layer.md)
-- [ ] Delete `src/Core/OOTypeEncodings.h`; carry return types as a compile-time `OOValueType` enum (test edits signed off 2026-11-15): [plan](plans/retire-type-encodings.md)
+- [ ] Delete `src/Core/OOTypeEncodings.h`; carry return types as a compile-time `oo::ValueType` enum (test edits signed off 2026-11-15): [plan](plans/retire-type-encodings.md)
 - [ ] Delete the PyAutoGUI GUI tier, oolite-dev/tests/gui (Jon asked 2026-11-15): [plan](plans/remove-gui-tests.md)
 - [x] Fix all clang tidy redundant conversion notifications in the oolite-dev/src directory (oolite-dev 73d99d167)
 - [x] Rename GameController+SDLFullScreen.cpp to GameController.cpp (oolite-dev 796b9556d)
@@ -63,7 +66,7 @@ You turn Jon's requests into tasks in this file. You do not change code in `ooli
 - [ ] Resolve Possibly unused #include directive for all obviously unused includes. If there is platform specific code in the file, please make sure it is not used on any platform.
 - [x] Resolve all the redundant static_cast tidies in the src/ directory. (oolite-dev df5869f9d)
   - Kept, as a false positive: `static_cast<int>(recv(...))` in `OODebugTCPConsoleClient.cpp` (`receive`). It is redundant only on Windows, where `recv` returns `int`; POSIX `recv` returns `ssize_t`. So `readability-redundant-casting` is not made an error.
-- [ ] Declare structs, unions and enums directly instead of aliasing them with `using` (what clang-tidy's typedef→using fix left behind: 59 lines in src/, 22 of them anonymous). Do the 'using instead of typedef' task first, since these lines come from it.
+- [x] (oolite-dev 3c4ea3b73) Declare structs, unions and enums directly instead of aliasing them with `using` (what clang-tidy's typedef→using fix left behind: 59 lines in src/, 22 of them anonymous). Do the 'using instead of typedef' task first, since these lines come from it.
   - `using X = struct X { … };` → `struct X { … };`
   - `using X = struct { … };` (anonymous, e.g. `ChainedEntityPredicateParameter`, `BinaryOperationPredicateParameter` in `OOEntityFilterPredicate.h`) → `struct X { … };`. Same for `union`/`enum`.
   - `using X = struct X;` (forward declaration, e.g. `AI.cpp:388`) → `struct X;`
@@ -96,7 +99,7 @@ The three excluded headers are hand-laid tables (`clang-format off`) or are bein
     - A cast to `unsigned long` only to feed a `{}` format argument (e.g. `OOJSConsole.cpp:1131`, `OOTCPStreamDecoder.cpp:170`): drop the cast if `oo::str::format` takes the type, else use `std::size_t`/`std::uint64_t`.
     - Anything else: use the fixed-width type for the value's real range.
   - **`long long` (216; worst: `Universe.cpp` 26, `oofnd/PListGet.hpp` 17, `oofnd/String.hpp` 16, `OOPListSchemaVerifier.cpp` 12):** `long long` becomes `std::int64_t` and `unsigned long long` becomes `std::uint64_t`. API names such as `longLongValue` can keep their names; only the types change.
-    - Watch the by-name, `callObjC` and shader-binding tables. They pick a result's handling by its exact type (today via `kOOTypeEncoding<T>`, later via `OOValueType`; see the `OOTypeEncodings.h` task). On Linux/macOS `std::uint64_t` is `unsigned long`, so a typedef such as `OOCreditsQuantity` changing from `unsigned long long` to `std::uint64_t` would move its rows from "not a uniform type" to UnsignedLong there. Keep those rows' handling the same, and say how in the commit.
+    - Watch the by-name, `callObjC` and shader-binding tables. They pick a result's handling by its exact type (today via `kOOTypeEncoding<T>`, later via `oo::ValueType`; see the `OOTypeEncodings.h` task). On Linux/macOS `std::uint64_t` is `unsigned long`, so a typedef such as `OOCreditsQuantity` changing from `unsigned long long` to `std::uint64_t` would move its rows from "not a uniform type" to UnsignedLong there. Keep those rows' handling the same, and say how in the commit.
   - **`short` (38; `DockEntity.cpp` 14):** use the game's named type where the value is one. For example, `std::map<unsigned short, …>` of ship IDs in `DockEntity.cpp:49-51,310,344,403` becomes `OOUniversalID` (`uint16_t`, `OOTypes.h:253`), and a system number becomes `OOSystemID`. Otherwise use `std::uint16_t`/`std::int16_t`; for example, the TCP `consolePort` in `OODebugSupport.cpp:41,66` becomes `std::uint16_t`.
   - **Leave alone, because changing them would break the build or the behaviour; these are expected findings:**
     - Overload sets that must name every fundamental type (`FormatArg(long)`/`(long long)`/`(unsigned long)` in `oofnd/String.hpp:1012-1015`). `std::int64_t` is `long` on Linux and `long long` on Windows, so a rewrite would duplicate one overload and lose the other.
@@ -106,3 +109,7 @@ The three excluded headers are hand-laid tables (`clang-format off`) or are bein
     - Anything in `OOTypeEncodings.h` (being deleted).
   - Don't change a value's width where it is saved, sent over the debug protocol or exposed to JS, unless the old and new type hold the same range on Windows. If they don't, record the site under this task and leave it.
   - Done when every line `L runtime/int` reports is one of the leave-alone cases (list any new one under this task, with its reason), and `./mk.sh build dev` (no new warnings) and `tests/run.sh unit` pass. To list what's left, run from `oolite-dev`: `L runtime/int | tr '\134' '/' | sed -E 's/:([0-9]+):.*/ \1/' | while read -r f n; do printf '%s:%s: ' "$f" "$n"; sed -n "${n}p" "$f"; done`.
+- [ ] `mk.sh`: keep the root `compile_commands.json` current after every build step, not only after `setup`. Today `meson_setup` (`mk.sh:91-95`) copies `build/meson_<type>/compile_commands.json` to the root, so `./mk.sh build dev` already refreshes it, since `build` runs `setup` (a `--reconfigure`) before `compile`. Two gaps remain:
+  - `./mk.sh compile <type>` and `./mk.sh configure <type>` never copy, yet Meson rewrites the build directory's database whenever a `meson.build` change triggers a reconfigure inside `meson compile`. Fix: move the copy into a `copy_compile_commands "<build_dir>"` helper and call it at the end of `meson_setup`, `meson_compile` and `meson_configure`.
+  - The clang-tidy target's fallback (`mk.sh:459-461`) runs `./mk.sh build test` when there's no database. That breaks the build-dev rule (`.claude/rules/build-dev.md`): `test` turns on LTO. Make it `./mk.sh build dev`.
+  - Done when, from `oolite-dev`, `touch meson.build && ./mk.sh compile dev && test compile_commands.json -nt meson.build && cmp -s compile_commands.json build/meson_dev/compile_commands.json` exits 0 (it exits nonzero today), and `grep -q 'mk.sh" build dev' mk.sh` exits 0.
