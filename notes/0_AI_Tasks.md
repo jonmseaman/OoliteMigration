@@ -55,7 +55,7 @@ You turn Jon's requests into tasks in this file. You do not change code in `ooli
 - [ ] Modern C++ idioms: what's left of the 2026-10-28 idiom review and its epics outline. 23 workstreams: `M_PI`→`std::numbers`, `OOClamp`/`OOLerp`→`std::clamp`/`lerp`, `rand()`→`<random>`, constant `#define`s, `EXPECT`→`[[likely]]`, `OOJSSTR`, `source_location`, memory, strings, out-parameters, warnings, asan … [plan](plans/modern-cpp-idioms.md)
 
 - [ ] Delete `src/Core/OOTypeEncodings.h`; carry return types as a compile-time `oo::ValueType` enum (test edits signed off 2026-11-15): [plan](plans/retire-type-encodings.md)
-- [ ] Delete the PyAutoGUI GUI tier, oolite-dev/tests/gui (Jon asked 2026-11-15): [plan](plans/remove-gui-tests.md)
+- [x] Delete the PyAutoGUI GUI tier, oolite-dev/tests/gui (Jon asked 2026-11-15): [plan](plans/remove-gui-tests.md) (oolite-dev c2be52677; outer docs edited, left uncommitted as the plan says)
 - [x] Fix all clang tidy redundant conversion notifications in the oolite-dev/src directory (oolite-dev 73d99d167)
 - [x] Rename GameController+SDLFullScreen.cpp to GameController.cpp (oolite-dev 796b9556d)
 - [x] GameController.cpp should be alongside it's header too. I'm not sure why it's in the SDL folder. (oolite-dev 1ad3e3e3e: merged into src/Core/GameController.cpp, under OOLITE_SDL)

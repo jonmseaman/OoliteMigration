@@ -51,5 +51,12 @@ Run it along with `./mk.sh build dev`, `tests/run.sh unit` and `tests/run.sh com
 - Don't keep a stub `gui` tier. `tests/run.sh gui` falls through to the usage text and exits 2, which is how it handles any other unknown tier.
 - Keep `keyboard.py`'s SendInput recipe in the component tier as it is. Only its comment changes.
 
+- Done (oolite-dev c2be52677). `tests/run.sh component --cpp` could not run: `seriesb/032-cleanup` has no
+  `tests/component-cpp` tier and its `run.sh` has no `--cpp` flag (that is `e6aa774f4`, on another
+  branch). The component edits are comments only, so the four Python files were parse-checked
+  instead; the done check, `bash -n`, `run.sh venv`, `./mk.sh build dev` and `run.sh unit` passed.
+- `docs/phases/5-apple-silicon.md:32-33` also named the tier (G1-G9, G7), not only `:50`; all three
+  now name the windowed component tier and the smoke run.
+
 ## Out of scope
 - `tests/launch_snapshot.py` (the smoke tier) stays.
