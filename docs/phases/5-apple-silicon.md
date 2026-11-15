@@ -1,79 +1,83 @@
-# Phase 5 — Apple Silicon milestone 🎯 (and Linux x64)
+# Phase 5 — Apple Silicon and Linux x64
 
-**Status:** in progress · **Est.:** 1–2 eng-months · **Depends on:** [Phase 4p](4p-upstream-polish.md)
-**Runs in parallel with:** —
+**Status:** in progress · **Depends on:** [Phase 4p](4p-upstream-polish.md)
 
 ## Goal
 
-**Oolite plays on Apple Silicon, with expansions.** By this point the codebase is pure C++20 with
-no Objective-C, no `libobjc`, no GNUstep, and no SpiderMonkey, so the macOS port is a platform
-layer, a build branch, and packaging: nothing Objective-C-specific ever has to work on macOS
-(ADR-0009). This is the first externally
-visible win and the right point to talk to upstream (architecture §6.3). It is
-also the first time any platform other than Windows x86-64 exists: **Linux x64 joins here too**
-(ADR-0017), from a container or a rented box, and a
-second physical machine joins the setup (ADR-0010).
-The work is done by a frontier agent in an interactive session on the Mac; Jon's part is the TCC
-grants and the signing identity (ADR-0013).
-No fleet.
+Oolite plays on Apple Silicon and Linux x64 with expansions, and the same tests that hold Windows
+also hold those two.
 
-## Entry gate
+## Where it stands (2026-11-15)
 
-- [ ] Phase 4 exit gate green (no `.mm`, no `-fobjc-*`, GCC and Clang both green)
-- [ ] TCC grants and signing identity held on the Mac (I0); a Linux build environment reachable
-- [ ] Legacy OpenGL 2.1 context still available on the target macOS version, **or** the Phase 6
-  renderer work has been pulled forward (ADR-0004)
+**Done:**
+- **macOS build:** the game builds for `aarch64-apple-darwin` from `src/meson/darwin/`. CI's
+  `build-macos` job builds it, packages an app bundle and a DMG, and runs the smoke launch
+  (`./mk.sh test deployment`). Jon plays it on his Mac.
+- **Linux builds:** CI builds AppImage, Ubuntu, Fedora and Flatpak, and runs the smoke launch on
+  each.
+- **Upstream's Apple Silicon port** (#766, #781) is in, in C++.
 
-## Exit gate
-
-- [ ] `meson` builds `aarch64-apple-darwin` from a `macos` branch in `src/meson/` with Apple Clang
-- [ ] `tests/run.sh unit` and `component` pass on macOS
-- [ ] Tier-1 OXP corpus green on macOS
-- [ ] The windowed component tier and the smoke run green on the Mac (the proof it is an application, not a binary that links)
-- [ ] Signed, notarised `.app` launches on a clean Mac with no prior config
-- [ ] Linux x64 builds and passes `tests/run.sh unit` and `component`
-- [ ] macOS arm64 and Linux x64 added to the definition of done in `docs/workflow.md`
-
-## Seams
-
-Everything here is a seam; there are no sweeps.
+**Left:** the work items below. The port works. What's missing is test coverage on macOS and Linux,
+and three macOS bugs.
 
 ## Work items
 
-1. Add a `macos` branch to `src/meson/`; SDL3 for window/input (Cocoa backend), legacy GL 2.1 context.
-2. `.app` bundle packaging, `Info.plist`, code-signing/notarisation; Application Support paths for
-   saves, OXZ downloads, and the cache.
-3. Port the residual `SDL/` platform code; consult `upstream/oolite-mac-components` for the
-   historical Cocoa dock-tile, document-type, and importer bits (for behaviour, not for code: those
-   components are Objective-C and are not coming back).
-4. Run `tests/run.sh all` on macOS arm64 (natively) and Linux x64 (in a container or on a rented
-   box; restore upstream's `build-linux.sh` flow). On the Mac the windowed component tier and the
-   smoke run are the proof that this is a working macOS application rather than a binary that links.
-5. Fix whatever arm64 shakes out: alignment, `long` width assumptions, FMA-sensitive float paths
-   (the build pins `-ffp-contract=off`).
+1. **Build and run the tests on macOS and Linux.** Today they're Windows-only.
+   - `meson.build:132-150` builds the unit suites (`oofnd`, `core`) and the `headers` checks only
+     when `host_machine.system() == 'windows'`, so `tests/run.sh unit` on a Mac runs nothing.
+     Remove the Windows guard, keeping the Windows-only `PATH` test setup at `:123-130`.
+   - Fix what fails:
+     - The LP64 integer clamping in `oofnd/PListGet.hpp:66-68` is "exact on Windows (LLP64)" only,
+       and five `oofnd` tests depend on it.
+     - Anything that assumes `long` is 32 bits.
+   - Add CI jobs that run `tests/run.sh unit` and `tests/run.sh component --cpp` on `macos-latest`
+     and on Ubuntu, like `unit-tests-windows`.
+   - Done when both jobs are green.
+2. **macOS key mappings.** `KeyMappingsFileName()` in `Entities/PlayerEntityKeyMapper.cpp` has no
+   macOS branch, so it returns `""` and `Resources/Config/keymappings_mac.plist` is never used.
+   - Add the branch, plus a unit test that it names the Mac file on macOS.
+3. **macOS log folder.** `LogBasePath()` in `OOLogOutputHandler.cpp` has branches for Linux and
+   Windows only. On macOS, without `OO_LOGSDIR`, the log goes to `Logs/` under the working
+   directory.
+   - Use upstream 1.93's `~/Library/Logs/Oolite`.
+4. **Save, prefs and OXZ paths.** Check that the Mac (Application Support) and Linux (`~/.Oolite`,
+   the GNUstep defaults dir) locations match upstream 1.93, so existing players keep their saves
+   and OXZs, and pin each one with a unit test.
+   - Linux: `run_oolite.sh` computes `OO_GNUSTEPDEFAULTSDIR` but never exports it. Check the
+     defaults still land where upstream's did.
+5. **CPU detection by architecture.** The x86 `cpuid` assembly in `OOCPUInfo.cpp` is guarded by OS
+   (`OOLITE_WINDOWS || OOLITE_LINUX`), not by architecture. It breaks Linux on ARM and
+   Windows on ARM.
+   - Guard it with `__x86_64__ || _M_X64`, and use `sysctl` or `std::thread::hardware_concurrency()`
+     elsewhere.
+   - This overlaps P3 in [notes/plans/platform-layer.md](../../notes/plans/platform-layer.md).
+6. **Expansions on the Mac.** Run the Tier-1 OXP corpus (`tools/corpus.sh`) and the windowed
+   component scenarios (`tests/run.sh component --windowed`) on the Mac once, and record the
+   result here.
+
+Items 2, 3 and 5 are listed with their evidence in `notes/2026-11-07 Cross-Platform Correctness.md`.
+
+## Exit gate
+
+- [x] `meson` builds `aarch64-apple-darwin` (`src/meson/darwin/`)
+- [x] An app bundle and a DMG are built in CI, and the game launches (the smoke run)
+- [x] Linux x64 builds in CI (AppImage, Ubuntu, Fedora, Flatpak)
+- [ ] `tests/run.sh unit` and `component --cpp` run and pass on macOS and Linux, in CI (item 1)
+- [ ] The macOS key mappings, log folder and path bugs are fixed (items 2–4)
+- [ ] The Tier-1 OXP corpus and the windowed component scenarios pass on the Mac (item 6)
+- [ ] macOS arm64 and Linux x64 added to the definition of done in `docs/workflow.md`
 
 ## Commands
 
-`./mk.sh build test` and `tests/run.sh` from `oolite-dev`, on each platform.
+From `oolite-dev`, on each platform: `./mk.sh build dev`, then `tests/run.sh unit` and
+`tests/run.sh component`.
 
-## Open decisions
+## Decisions
 
-- **8** — decided: the macOS legs run on Jon's Mac; Jon grants the TCC prompts once (ADR-0013).
-- **5** — renderer; only if Apple has removed legacy GL.
+- **Signing and notarisation are out of scope.** The DMG stays ad-hoc signed (issue #779). Developer
+  ID signing is for upstream to take on.
 
-## Status log
-
-- 2026-09-06 — Phase doc created from MIGRATION_PLAN §8 (Phase 3).
-- 2026-09-10 — Resequenced from Phase 3 to Phase 5 (ADR-0009). Goal, entry gate and work items
-  rewritten for a codebase with no Objective-C.
-- 2026-09-11 — Linux x64 joins here with macOS (ADR-0017); runner wording removed.
-- 2026-11-01 — Upstream's Apple Silicon port (#766, #781) merged by oo-74i. Its macOS hunks are ported to
-  C++ and dormant behind `OOLITE_MAC_OS_X` (GL 2.1 names and extension check, MSAA renderbuffer, GLSL
-  330→120 translation, swap interval, front-buffer snapshot, bundle chdir); the bundle, DMG and install
-  scripts are in. Still to do for item 1: a C++ `darwin` branch in `src/meson/` (upstream's links
-  SpiderMonkey and Apple Foundation, so it was not taken) and defining `OOLITE_MAC_OS_X` there.
-- 2026-11-08 — The macOS build runs from a `darwin` branch in `src/meson/`, with an app bundle and a
-  DMG; Linux builds in CI (AppImage, Ubuntu, Fedora, flatpak). The dead `OOLITE_MAC_OS_X`
-  Objective-C arms are removed (`seriesb/026-migration-completion`); the macOS-specific gaps found on the
-  way (key mappings file, relative log folder, x86-only `cpuid`) are in
-  `notes/2026-11-07 Cross-Platform Correctness.md`.
+- **The macOS legs run on Jon's Mac and on CI's `macos-latest`.** Jon grants the TCC prompts on his
+  Mac.
+- **Renderer:** legacy OpenGL 2.1 stays while macOS still provides it. A new renderer is only needed
+  if Apple removes it.
