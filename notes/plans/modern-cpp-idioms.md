@@ -307,6 +307,11 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   `tests/component/console.py:133`).
   - Done: `./mk.sh build asan` builds and `BUILD_TYPE=asan tests/run.sh unit` runs. Report failures
     rather than suppressing game findings.
+  - Blocked on the Windows box (worker, 2026-11-15): MSYS2 UCRT64's clang 23 has no sanitizer
+    runtime (`-fsanitize=address,undefined` fails to link:
+    `libclang_rt.asan_dynamic_runtime_thunk.a` not found), so `./mk.sh build asan` can't be checked
+    here. Installing `mingw-w64-ucrt-x86_64-compiler-rt` would change the toolchain, which is Jon's
+    call. Do it on the Mac, or install that package first. Default taken: not done.
 - **I23. Close-out.** Move the clang-tidy checks that are now clean into `WarningsAsErrors`.
   - Done: `.clang-tidy` lists them, and CI's clang-tidy job passes.
 
