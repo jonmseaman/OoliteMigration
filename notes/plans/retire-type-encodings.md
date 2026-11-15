@@ -118,7 +118,9 @@ Every edit keeps each assertion's meaning except where stated. Fill in the commi
 | `tests/unit/core/test_OOJSCallEntityMethods.cpp:58-70,120,177` | Replace `strcmp(row.result, kOOTypeEncoding<void>)` with `row.result == oo::ValueType::kVoid`, and the PList comparison the same way. `OOShaderUniformTypeFromEncoding(x)` becomes `oo::ShaderUniformTypeOf(x)`. `entry.encoding` becomes `entry.type`. | Same. |
 | `tests/unit/core/test_OOJSConsole.cpp:363` | The stub `OOShaderUniformTypeFromEncoding(const char*)` becomes a stub of `oo::ShaderUniformTypeOf(oo::ValueType)`, if the linker still needs one. Otherwise delete it. | Not an assertion. |
 
-Commit: _(fill in)_
+| `tests/unit/core/test_OOJSCallEntityMethods.cpp:149` | `(row.encoding != nullptr)` becomes `(row.type != oo::ValueType::kVoid)`. Not listed above; it reads the renamed field. No Typed row has a void type, so the two agree on every row. | Same. |
+
+Commit: oolite-dev 5ae4cb9e0 (2026-11-15).
 
 ## Decisions (defaults taken)
 
@@ -133,3 +135,12 @@ Commit: _(fill in)_
   mechanism.
 - **No Spec Kit spec.** This is one `0_AI_Tasks` item. Promote it to `specs/016-…` if it grows past
   the steps above.
+- **Enums map to `kInt`, not through their underlying type** (done, 5ae4cb9e0). The design above says to use
+  `std::underlying_type_t`, but `OOWeaponFacing` is a `std::uint8_t` enum that was encoded `"i"`, so
+  the underlying type would have moved it from Int to UnsignedChar. Every enum is `kInt`, as every
+  enum's string was.
+- **`tests/run.sh component --cpp` not run.** This branch (`seriesb/032-cleanup`) has no
+  `tests/component-cpp` tier. The done check, the build (no warnings) and `tests/run.sh unit`
+  (191 core tests, `test_ValueType` among them) passed.
+- **Another session's uncommitted one-line edit to `OOTypeEncodings.h`** (it dropped the
+  `// clang-format off` line) went with the file.
