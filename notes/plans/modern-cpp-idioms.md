@@ -130,13 +130,14 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   evaluated when logging is off, but they stop passing `__FILE__`/`__LINE__`/`__func__`.
   - Done: `! git grep -qE '__FILE__|__LINE__' -- src/oofnd/Log.hpp src/oofnd/objc/OOAssert.h src/Core/OOLogging.h src/Core/OOLoggingExtended.h`,
     and the log line text is unchanged (`test_log` pins it).
-  - Not done (worker, 2026-11-15): the macros are in `src/oofnd/Log.hpp` and
-    `src/oofnd/objc/OOAssert.h`, and `oofnd` is being retired (no new code there). Also,
-    `std::source_location::function_name()` gives the full signature
-    (`void Foo::bar(int)`), while the log lines print `__FUNCTION__` (`bar`) and the assertion
-    text `__PRETTY_FUNCTION__`, so the log text would change unless only the file and line move
-    to `source_location`. Default taken: leave it until the platform layer replaces `oofnd`'s
-    logger.
+  - Done (worker, 2026-11-15, oolite-dev 373488055; Jon signed off the log-text change): `OO_LOG`,
+    `OO_LOG_ERR`, `OO_LOG_WARN`, `OOCAssert` and the string expander's `SyntaxError`/`SyntaxWarning`
+    pass `std::source_location::current()`; `OOLOG_FILE_NAME` is gone. The done grep exits zero.
+    Text: the file and line are unchanged. With `logging-show-function` on, a line now names the
+    function by `function_name()` (the full signature) instead of `__FUNCTION__`. The assertion
+    text already used the pretty function and is unchanged (`test_objc_assert` passes). No test
+    edits: `messageWithPrefix` keeps its explicit function/file/line overload, which `test_log`
+    calls.
 - **I8. Small macro fixes:** Partly done: oolite-dev c4c3406b6 (the `__has_*` fallbacks and the five dead macros that used them, `[[maybe_unused]]`, `ABS`). Left: `STAGE_TRACKING_BEGIN`/`END`, because the catch logs the in-flight exception's name and reason, which a destructor can't read during unwinding, so a scope object would change the log line. A lambda wrapper would keep it; the default taken is to leave them. The `do { } while (0)` review is done (worker, 2026-11-15, oolite-dev faee65a34): 90 such macros. `OODisposeHighResTime` became an empty inline function, and `OO_SETACCESSCONDITIONFORROW` (PlayerEntity.cpp) and `SKYCOLOR_TONEMAP_COMPONENT` (OOSkyDrawable.cpp) became lambdas. The rest stay, for one of these reasons: the empty no-op variants of debug switches (about 40: `DebugDump*`, `FCBLog*`, `PROFILE`, `Scribble`, `DUMP*`, `SVGDump*`, `OCTREE_COLOR`, …) must not evaluate their arguments; `OOGL`/`OOAL`/`OOGLBEGIN` take a statement or report `__FUNCTION__`/`__LINE__`; the GL helpers (`GLVertexOOVector`, `GLMultOOMatrix`, `DrawQuadForView`, …) must expand where `OO_ENTER_OPENGL()`'s context is; `GET_THIS_*`, `OOJS_RETURN*`, `REQUIRE_PLIST_TYPE`, `FAIL`, `COLOR_CASE` return from the caller; `ShipScriptEvent` needs `OOJSID` on a literal; `UPDATE_STAGE` pairs with `STAGE_TRACKING_*`; `ACCUM*`/`CLEAR_ACCUM*` update the caller's locals in a hot loop.
   - Delete the reserved-name `__has_feature`/`__has_attribute`/`__has_extension` redefinitions
     (`OOFunctionAttributes.h`, 3).
@@ -214,12 +215,18 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     ties.
   - Done: `! git grep -qE '\bOOCache\b|OOPriorityQueue' -- src`. Then `tests/run.sh component --cpp`
     and a smoke run. The cache files must still load: run the game once with an existing cache.
-  - Blocked (worker, 2026-11-15): `OOCache` is checked out with uncommitted edits by another
-    session, so it waits. Replacing `OOPriorityQueueOf` means deleting `OOPriorityQueue.h` and so
-    `tests/unit/core/test_OOPriorityQueue.cpp`, which no rule-1 exception covers. Also,
-    `std::priority_queue` has no `removeExactObject` and its heap steps are the library's, so
-    equal-time timers could fire in a different order. Default taken: keep `OOPriorityQueueOf`;
-    Jon to sign off the test deletion first if he wants it gone.
+  - `OOCache` (worker, 2026-11-15, oolite-dev bfc72748c): its splay tree and age list are a
+    `std::list` age list with a `std::unordered_map` index. Same eviction rule, same property-list
+    form, same public API, so the class name stays (`test_OOCache` drives it; the done grep's
+    `\bOOCache\b` half can't reach zero without a test edit nobody signed off). A replaced or
+    removed value is destroyed only once the cache is consistent: a texture's destructor looks
+    itself up in the recent-textures cache, and the first version crashed the game (stack
+    overflow; found by the component suite). New test `aValueMayUseTheCacheAsItGoes` fails
+    without the fix. Unit, component (24, dev build) and smoke pass. `OOCache` is not saved to
+    disk (`OOCacheManager` has its own store), so there is no cache file to reload.
+  - `OOPriorityQueueOf` stays, under Jon's stop rule: its equal-time order comes from its own
+    sift steps, `std::priority_queue`'s are implementation-defined (libstdc++ and libc++ differ),
+    and it has no `removeExactObject`. `test_OOPriorityQueue.cpp` is not deleted.
 - **I12. Type punning and C arrays.**
   - `memcpy` used for punning → `std::bit_cast` (`OOPlanetTextureGenerator.cpp`,
     `OOStandaloneAtmosphereGenerator.cpp`, `JSEngine_quickjs.cpp`; 28 `memcpy` in total, so check
@@ -285,6 +292,45 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
       `test_OOPListSchemaVerifier`, so it was reverted.
     - Literal overloads: `OOCastParam(const char*)`.
     - Test hooks: the shader member-binding pointer (`test_OOShaderMaterial`).
+- **I24. `constexpr char x[]` string constants → `constexpr std::string_view`.** 91 in 14 files
+  (`HeadUpDisplay.h` 37, `ShipEntityLoadRestore.cpp` 20, `Universe.h`, `OOJSScript.cpp`,
+  `PlayerEntityStickMapper.h` and `OOWaypointEntity.cpp` 5 each, …). I4 changed each `#define`
+  only into a `char[]` constant. Most of them are plist or dictionary keys passed to `PList::find`
+  and `PList::get`, which take `std::string_view` (`oofnd/PList.hpp:258,329`). As `char[]`, each
+  call converts the array and runs `strlen`. 139 `constexpr std::string_view k…` constants already
+  exist, for example `OOExplosionCloudEntity.cpp:46`.
+  - Example, `OOWaypointEntity.cpp:43-47`:
+    `constexpr char OOWAYPOINT_KEY_POSITION[] = "position";` →
+    `constexpr std::string_view kWaypointKeyPosition = "position";`
+  - In a header, write `inline constexpr std::string_view`.
+  - Rename to Google constant style (`kFooBar`, no `OO` prefix) where the constant is used only in
+    `src/`.
+  - Keep `char[]` where its text reaches an
+    API that needs a null-terminated string: GL, QuickJS (`JS_NewAtom`, `JS_GetPropertyStr`, …),
+    SDL, `printf`-style formats, `fopen`, or the `const char*` parameters I15 kept. Also keep it
+    where `sizeof` is taken or the text is concatenated with another literal. List each one kept,
+    with its reason.
+  - Constants that tests name (`KEY_HEADER`, `KEY_GUIDESC`, `KEY_ALLOWABLE`, `KEY_AXISFN`,
+    `KEY_BUTTONFN`, `kLocalManifestProperty`; check each, as some may be the test's own local
+    constant) keep their name, and their type changes only if the test compiles and its assertions
+    mean the same unchanged. Otherwise leave them and list them. The rename belongs to the
+    `drop-oo-prefix` plan, which has the test sign-off.
+  - Done:
+    `! git grep -nE 'constexpr char [A-Za-z_0-9]+\[\] =' -- src | grep -vFf <kept-list>`
+    exits zero, with the kept list recorded here, and `./mk.sh build dev`, `tests/run.sh unit` and
+    `tests/run.sh component --cpp` pass.
+  - Done (worker, 2026-11-15, oolite-dev 51cd2181f): 84 constants are `constexpr std::string_view`,
+    74 renamed to `kFooBar`. Map subscripts take `std::string(k…)`. Kept list (the done grep's
+    `<kept-list>`): `kOoliteExceptionLooping`, `kOoliteExceptionDataNotFound`,
+    `kOoliteExceptionFatal` (`OORaiseException` takes a C string); `kLocalManifestProperty`
+    (`propertyNamed(const std::string&)`, as `test_OOJSScript` calls it); `OOJavaScriptEngine.cpp`'s
+    local `test` and `source` (`JS_Eval` sources, null-terminated, `sizeof`). The test-named
+    `KEY_*` constants keep their names; the tests compile unchanged. `component --cpp`: not on this branch
+    (no `tests/component-cpp`; it lives on the 029 line), so plain `tests/run.sh component` ran
+    instead. Its first full run stopped at `test_t1_tutorial_walkthrough` (lesson 1 at step 1, not
+    0), which then failed three times alone in 8-55 s. A per-file bisect back to I11 passed at every
+    step, and the I24 tip itself then passed twice in the usual 76 s. Recorded as an intermittent
+    outside the code (another session sharing the machine is the likely cause).
 - **I16. Out-parameters.** About 679 `outFoo` lines in 94 files. Convert by family to
   `std::optional`, `std::expected` or a returned struct:
   - JS `getJSClass(ClassDef**, …)`;
@@ -298,6 +344,20 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   Don't change a signature that JS or the by-name tables expose by name unless they're updated in
   the same commit.
   - Done per family: no `out[A-Z]` parameter left in its files.
+  - Test-called families (worker, 2026-11-15, oolite-dev 1ae067d28; dev, debug, unit, smoke and all 24 component scenarios pass; Jon's sign-off, each test edit in
+    the ledger): `OOTextureLoader::getResult` and the generators' `getResultFormatWidthHeight`
+    (`std::optional<Result>`), `getDesiredWidth` → `getDesiredSize()`, the three
+    `Scan*FromString` (`std::optional`; callers keep their value on failure),
+    `OOOpenGLExtensionManager::version()`, `shadowAtPointOcclusion` (`Occlusion` struct; the
+    value is given either way), `OOWriteXMLPListToFile` (`std::expected<void, std::string>`),
+    `OOInterpretTextureSpecifier` (`std::optional<OOTextureSpecifier>`) and
+    `OOSynthesizeMaterialShader` (`std::optional<OOSynthesizedShader>`). Left, with reasons:
+    `OOJSEntityGetEntity` and the PList schema verifier (below), the JS `Vector`/`Quaternion`
+    and engine-core getters (`OOJSVector.h` 10, `OOJSQuaternion.h` 6, `OOJSEngineCore.h` 5: the
+    binding convention where false means an exception is pending), `scale_vector` and
+    `HPscale_vector` (in-out, not out), the shader-uniform `memberBinding`/`randomSeed` function
+    pointers (the shader-binding table's signature), and `Entity`'s member-binding lookup
+    (same table).
   - Partly done (worker, 2026-11-15): six families with no test caller now return a value:
     `Universe::activeView()` (`ActiveView`), `oo::BasisVectors` from the quaternion and matrix
     basis getters, `OODefaultShaderSynthesizer::getSampleName`, `ScanVectorAndQuaternionFromString`
@@ -435,21 +495,64 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     `readability-redundant-void-arg`, `bugprone-command-processor`,
     `bugprone-std-exception-baseclass`, `bugprone-unhandled-self-assignment`,
     `bugprone-unused-local-non-trivial-variable`, `performance-inefficient-vector-operation`.
-    Left: `bugprone-lambda-function-name` fires 7 times in `OOOpenGLStateManager.cpp` (debug
-    builds only, `OO_GL_STATE_VERIFICATION`): `OOGL` inside the spec-011 state-table lambdas reports
-    the lambda's name. Clearing it changes those log lines, so it waits for Jon. Largest
+    `bugprone-lambda-function-name` (7 in `OOOpenGLStateManager.cpp`, debug builds only) is clear
+    (oolite-dev 30c2a2cb3): the state table's readers and writers that call `OOGL` are named
+    function templates, so the GL verifier's log names them instead of `operator()`. The check was
+    already an error through `bugprone-*`. Largest
     non-error counts: `bugprone-narrowing-conversions` 2,034 (I18), `bugprone-signed-bitwise` 606,
     `readability-make-member-function-const` 490, `bugprone-easily-swappable-parameters` 211. CI's
     clang-tidy job not checked from here.
 
+## Jon's decisions (2026-11-15)
+
+These lift the blocks recorded under each workstream.
+
+- **I7, I23: log text may change.** Moving `OO_LOG`/`OOCAssert` to `std::source_location` may change
+  the function name a log line prints, and clearing `bugprone-lambda-function-name` in
+  `OOOpenGLStateManager.cpp` may change those lines. Edit `test_log` (or any test that pins the
+  text) only where the printed name changes, and list each edit in the test-change ledger.
+- **I11: `test_OOPriorityQueue.cpp` may be deleted** with `OOPriorityQueue.h`, once nothing uses it.
+  Keep the equal-time timer order: if `std::priority_queue` can't keep it, or `removeExactObject`
+  has no clean replacement, stop and record why. Ledger entry: file deleted, with the reason.
+- **I16: tests may be edited where a function they call changes signature** (out-parameter →
+  returned value, `std::optional` or struct). Each assertion keeps its meaning: the same inputs,
+  the same expected values. List each file and line in the ledger.
+- **I2: not doing it.** The float `OOClamp_*` helpers stay. Rewriting 121 sites as
+  `std::fmax(lo, std::fmin(v, hi))` would only spell out what the helpers already do.
+- **I21: `-Wextra` stays off; this is a planner judgement call that Jon delegated.** Every useful
+  `-Wextra` warning is already on as its own flag. The only ones left, 38
+  `-Wmissing-(designated-)field-initializers`, are 36 QuickJS class tables that name only the
+  fields they set, plus 2 others. Fix those 2 if they're real omissions. Don't pad the QuickJS
+  tables. `-Wno-*` stays banned (rule 2).
+- **I22: the sanitizer build runs on the Mac.** `mingw-w64-ucrt-x86_64-compiler-rt` is already
+  installed (23.1.4), but MSYS2's UCRT64 package ships no ASan or UBSan runtime. Only CLANG64's
+  does (`libclang_rt.asan_dynamic-x86_64.dll`), and CLANG64 is a separate libc++ environment with
+  every dependency reinstalled. So `./mk.sh build asan` is checked on macOS.
+- **I5: keep the `[[likely]]`/`[[unlikely]]` hints, and add no new ones.** The 526 hints are
+  upstream's `EXPECT`/`EXPECT_NOT`, converted one for one. There's no measured gain, but they cost
+  nothing at run time and keep upstream's intent. Don't add a hint without a measurement. Drop one
+  only when its line is being rewritten anyway.
+- **I20: not doing it.** Don't link `-lstdc++exp`. Only one site, `legacy_random.cpp:134`, would
+  use `std::print`, and the two in `OOLogOutputHandler.cpp` must stay `fputs`.
+
 ## Test-change ledger
 
-Std-equivalent edits only (rule 1, third exception). Fill in the commit for each.
+Std-equivalent edits (rule 1, third exception), and the I7, I11, I16 and I23 edits Jon signed off on 2026-11-15. Fill in the commit for each.
 
 | File | Edit | Assertion meaning |
 |---|---|---|
 | `tests/unit/core/test_DockEntity.cpp:186`, `test_MyOpenGLView.cpp:195,199`, `test_OOFlasherEntity.cpp:213`, `test_OOJSVector.cpp:348`, `test_OOMathsHeaders.cpp:38`, `test_ShipEntity.cpp:1476,1784,1789`, `test_WormholeEntity.cpp:208,329` | `M_PI`/`M_PI_2` → `std::numbers::pi` (`/ 2`) | same (oolite-dev 5ceffa8d4; also `test_ShipEntity.cpp:1476`'s `M_PI / 2.0` inside a cast, and `test_WormholeEntity`'s two) |
 | `tests/unit/core/test_OOMathsHeaders.cpp:37` | `OOClamp_0_1_f(2.0f)` → `std::clamp(2.0f, 0.0f, 1.0f)` | same |
+| `tests/unit/core/test_OOTextureLoader.cpp` (`GetResult`, `:349`), `test_OOPNGTextureLoader.cpp` (`GetResult`, `:270`, `:280`), `test_OOPixMapTextureLoader.cpp:101,142`, `test_OOTextureGenerator.cpp:131` (its unused `height` local dropped), `test_OOCombinedEmissionMapGenerator.cpp` (`Bake`), `test_OOPlanetTextureGenerator.cpp` (`Generate`, `:321`), `test_OOStandaloneAtmosphereGenerator.cpp` (`Generate`, `:252`) | `getResult(&pixMap, &format, &w, &h)` / `getResultFormatWidthHeight(…)` → `std::optional<OOTextureLoader::Result> getResult()`; the test copies the result's fields into the locals it already had | same: the success check is `has_value()`, and a failure leaves the locals at their initial values, which are the null pixmap and invalid format the old call wrote (I16, oolite-dev 1ae067d28) |
+| `tests/unit/core/test_OOMaterialConvenienceCreators.cpp`, `test_OOMultiTextureMaterial.cpp`, `test_OOTextureVerifierStage.cpp` | link stubs of `OOTextureLoader::getResult` and the `StandInLoader` override take the new signature | same: the stubs still fail, the stand-in still answers its parsed size (I16, oolite-dev 1ae067d28) |
+| `tests/unit/core/test_OOMaterialConvenienceCreators.cpp`, `test_OOPListSchemaVerifier.cpp`, `test_OOShaderMaterial.cpp`, `test_OOShipRegistry.cpp` | link stubs of `Scan{Vector,HPVector,Quaternion}FromString` return `std::optional` | same: never reached (`std::abort`) (I16, oolite-dev 1ae067d28) |
+| `tests/unit/core/test_OOOpenGLExtensionManager.cpp:151-155` | `getVersionMajor(&a, &b, &c)` → `version()` struct; the "NULL outs are skipped" call reads `version().minor` | same values checked; a null out-parameter no longer exists to skip (I16, oolite-dev 1ae067d28) |
+| `tests/unit/core/test_CollisionRegion.cpp:12,180-192` | `shadowAtPointOcclusionToValue(…, &value)` → `shadowAtPointOcclusion(…)` returning `{occluded, value}` | same: each case checks the same flag and value (I16, oolite-dev 1ae067d28) |
+| `tests/unit/core/test_OOOXZManager.cpp:173,409` | `OOWriteXMLPListToFile(…, nullptr)` → `OOWriteXMLPListToFile(…)` (`std::expected<void, std::string>`) | same: success is checked (I16, oolite-dev 1ae067d28) |
+| `tests/unit/core/test_OOCombinedEmissionMapGenerator.cpp:200-203` | `OOInterpretTextureSpecifier(spec, NULL, &options, &aniso, &bias, true)` → `std::optional<OOTextureSpecifier>` | same: success, then the same three values compared (I16, oolite-dev 1ae067d28) |
+| `tests/unit/core/test_OODefaultShaderSynthesizer.cpp` (`Synthesize`) | `OOSynthesizeMaterialShader(…, &v, &f, &t, &u)` → `std::optional<OOSynthesizedShader>` | same: `ok` and the four outputs (I16, oolite-dev 1ae067d28) |
+| `tests/unit/core/test_OOFastArithmetic.cpp:81` | comment names `getDesiredSize` (was `getDesiredWidth`) | comment only (I16, oolite-dev 1ae067d28) |
+| `tests/unit/core/test_OOCache.cpp` | added `aValueMayUseTheCacheAsItGoes` | new test (I11, oolite-dev bfc72748c) |
 
 ## Decisions (defaults taken)
 
