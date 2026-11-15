@@ -226,6 +226,10 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   `EntityFilterPredicate` stays (decision). Leave `void*` at C interfaces (QuickJS, OpenAL, libpng,
   GL).
   - Done: each of the three APIs takes no `void*` context parameter.
+  - Done (worker, 2026-11-15, oolite-dev c83ad8a51): `OOTCPStreamDecoderCreate()` takes `std::function`
+    callbacks and no context. `OOALSoundDecoder.cpp`'s `void*` functions are Vorbis's
+    `ov_callbacks` (a C interface, so they stay), and `OOConcreteTexture.h` has no `void*` context
+    parameter left.
 
 ### Strings, nulls, out-parameters (§2.3, B8)
 
