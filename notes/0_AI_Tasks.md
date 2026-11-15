@@ -80,6 +80,8 @@ You turn Jon's requests into tasks in this file. You do not change code in `ooli
   - Leave the `// clang-format off` tables alone; clang-format already skips them.
   - Done when `clang-format --dry-run --Werror` over `src/**/*.{cpp,h,hpp}` (excluding `third_party/`) exits 0 with the new option, and `./mk.sh build dev` and `tests/run.sh unit` pass. Before the change, the same command exits nonzero on files such as the review's `int func1() {}` / `int func2() {}` example.
 
+
+
 ## cpplint tasks
 cpplint 2.0.2 is installed at `.agent-tmp/cpplint-venv` (repo root); results are in `notes/cpplint/2026-11-15-summary.md`. To check one category, run from `oolite-dev`:
 `L() { ../.agent-tmp/cpplint-venv/Scripts/cpplint.exe --recursive --quiet --filter=-,+$1 src 2>&1 | grep -F "[$1]" | grep -vE 'OOEntityCalledByNameTable\.h|OOJSCallEntityMethods\.h|OOTypeEncodings\.h'; }`.
@@ -91,12 +93,18 @@ The three excluded headers are hand-laid tables (`clang-format off`) or are bein
   - Each moved comment is now the first line inside its block. Two long ones (`ShipEntity.cpp`, the 2013-01-13 note; `MyOpenGLView.cpp`, "Occurs on some systems") were re-wrapped by clang-format at 80 columns: same words, different line break.
 - [x] (oolite-dev 27222e717) cpplint `build/include_what_you_use`: 536 missing standard includes, mostly `<string>` (166), `<memory>` (161) and `<vector>` (71), spread thinly across files (at most 7 per file). Add the `#include` each finding names, in the file it names, in the right include group. Skip any finding where the name is not the std one (e.g. a member or `oo::` function called `min`, `swap` or `move`), and list it as a false positive. Done when `L build/include_what_you_use` prints only listed false positives and the build and unit tests pass.
   - False positive (1): `OOTCPStreamDecoder.cpp:233`, where `string` is a local `OOALStringRef`, not `std::string` (clang-tidy's include-cleaner calls `<string>` unused there, which is an error).
-- [ ] cpplint `readability/braces` (347 outside the tables). Do it after the `whitespace/braces` task.
+- [x] (oolite-dev 855de3670, 5d3c510eb) cpplint `readability/braces` (347 outside the tables). Do it after the `whitespace/braces` task.
   - 275 × "If an else has a brace on one side, it should have it on both": `if (x) a; else { … }` → `if (x) { a; } else { … }`. Worst: `PlayerEntityControls.cpp` 63, `PlayerEntity.cpp` 33, `ShipEntity.cpp` 28, `Universe.cpp` 21.
   - 85 × "If/else bodies with multiple statements require braces". Some are the comment-before-`{` case and clear with the `whitespace/braces` task. Add braces to the rest.
   - 23 × "You don't need a ; after a }": C99 compound literals such as `return (Vector){c.x, …};` (`OOPlanetEntity.cpp:409`), which C++ accepts only as a GNU extension. Write `Vector{…}`. Also convert any other `(Type){…}` compound literal in src/ that `git grep -nE '\((Vector|HPVector|Quaternion|NSPoint|NSRect|NSSize|OO\w+)\)\{' -- src` finds.
   - 1 × "Ambiguous nested if/else" at `ResourceManager.cpp:1736`. Add braces so the `else` binds to the `if` the indentation shows. If the indentation and the parse disagree, keep the current parse (the behaviour) and record that under this task.
   - Done when `L readability/braces` prints only listed false positives, the compound-literal grep finds nothing, and the build and unit tests pass.
+  - False positives (30 lines, all left as they are):
+    - An `else` split from its `}` by `#if`/`#else`/`#endif`, braced on both sides: `DustEntity.cpp:322,343,391`, `OOPlanetEntity.cpp:317,881`, `PlayerEntity.cpp:9427`, `PlayerEntityControls.cpp:937,2220,2224,4160`, `ShipEntity.cpp:648,656`, `GameController.cpp:499`, `OOConcreteTexture.cpp:290,306,479,486`, `OOOpenGLExtensionManager.cpp:339`, `OOJSShip.cpp:1983,1991`, `MyOpenGLView.cpp:666`. Some lines get both messages.
+    - The `PACKET_CASE` macro's else-if chain: `OODebugTCPConsoleClient.cpp:771,785`.
+    - A braced `else if constexpr` whose condition spans two lines: `OOEntityCalledByName.cpp:132`.
+  - `ResourceManager.cpp:1736`: the `if` and the parse agreed (the `else if` chain is inside the `for`); bracing the `if` kept that parse.
+  - Compound literals: besides the grep's 24, `(NSRange)`, `(FloatRGB)`, `(FloatRGBA)`, `(BoundingBox)`, `(Triangle)` and `(RNG_Seed)` were converted too.
 - [ ] cpplint `runtime/int`: replace every `long long`, `long` and `short` with a fixed-width type (Jon, 2026-11-15: all of them, not only where the width matters). There are 354 findings: 216 `long long`, 100 plain `long`/`unsigned long`, 38 `short`/`unsigned short`. Each finding with its source line is in `notes/cpplint/2026-11-15-runtime-int.txt`. The reason is portability: `long` is 32 bits on Windows and 64 on Linux/macOS, the next targets. Check `specs/009-modern-cpp-std` first, and don't redo anything it owns.
   - **Plain `long` (100; worst: `PlayerEntity.cpp` 14, `oofnd/PList.hpp` 7, `Universe.cpp` 6):**
     - A cast to `long` on the way into a 64-bit API is a needless 32-bit step on Windows. For example, `oo::PList::signedInteger(static_cast<long>(missiles))` (`PlayerEntity.cpp:1317`; `signedInteger` takes `std::int64_t`) becomes `static_cast<std::int64_t>(…)`, or no cast where the conversion is implicit and warning-free. Same for `unsignedInteger` and `std::uint64_t`.
