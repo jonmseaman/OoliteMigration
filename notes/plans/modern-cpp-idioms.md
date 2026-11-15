@@ -250,6 +250,19 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
 ### Warnings and tooling (§2.6, B11)
 
 - **I21. Warnings.** Partly done (worker, 2026-11-15): `-Wunused` and `-Wsign-compare` are on (oolite-dev f3ef09dd4; 0 warnings). Measured over every `src/` translation unit with `-fsyntax-only`: `-Wextra` adds 297 (259 `-Wunused-parameter`, 38 missing field initialisers), and `-Wpedantic` adds 267 (261 GNU statement expressions from `OOJSSTR`/`OOJSID`, so I6 comes first; 4 zero-argument variadic macros; 2 C99 extensions in `OOBreakPatternEntity.cpp`). The game builds with `-Wall` only (Meson's warning level 1), not `-Wall -Wextra`.
+  - Worker, 2026-11-15, second pass: `-Wimplicit-fallthrough` (69c709c36), `-Wsuggest-destructor-override`
+    (ffe6978ee), `-Wshadow` (e1dc69d27) and `-Wunused-parameter` (cf8367dbe) are on; dev and debug build
+    warning-free. Natives that ignore `this` or `argc` spell out `OOJS_NATIVE_ARGS` with the names
+    commented out, since `[[maybe_unused]]` counts as silencing under rule 2.
+  - Left: `-Wextra`'s other half, 38 `-Wmissing-(designated-)field-initializers`: 36 are QuickJS
+    `JSClassDef`/`JSClassExoticMethods` tables that name only the fields they set. Fixing means
+    writing every other field as `nullptr` in each table, which would churn whenever QuickJS-ng
+    adds a field. Default taken: not done; Jon to decide whether that noise is worth `-Wextra`.
+  - Left: `-Wundef` (49): the feature switches (`OO_FOV_INFLIGHT_CONTROL_ENABLED`,
+    `OOJS_POC_HARNESS`, `DEBUG`, `OO_DEBUG`, `INSTRUMENT_TEXTURE_LOADING`, …) are defined only in some
+    build types, and `OOLITE_LINUX`/`OO_DEBUG` are tested before `OOFoundation.h` defines them. Each
+    needs a default in one header that everything includes first: the platform-layer plan's
+    `config.hpp` (Prepare). Default taken: wait for that plan.
   - Enable `-Wextra`, `-Wpedantic`, `-Wunused` and `-Wsign-compare` in `src/meson.build` (the review
     measured 0 hits).
   - Then fix and enable `-Wundef` (54 in the review), `-Wsuggest-destructor-override` (10),
