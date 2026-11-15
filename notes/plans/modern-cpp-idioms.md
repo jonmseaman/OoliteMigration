@@ -358,7 +358,9 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     `bool f(ctx, T, JSValue*)` for every type); `JSObjectGetVector`/`JSObjectGetQuaternion`, the
     `VectorFromArgumentList`/`QuaternionFromArgumentList` pairs and the engine-core number
     readers (`OOJSEngineCore.h` 5), which answer two values (the result and the arguments used)
-    and follow the binding's false-means-exception convention; `scale_vector` and
+    and follow the binding's false-means-exception convention. `test_OOJSVector` and
+    `test_OOJSQuaternion` check `consumed == 0` after a failure; a returned optional has no count
+    then, so that assertion would go, which the I16 sign-off (same values checked) doesn't cover; `scale_vector` and
     `HPscale_vector` (in-out, not out), the shader-uniform `memberBinding`/`randomSeed` function
     pointers (the shader-binding table's signature), and `Entity`'s member-binding lookup
     (same table).
