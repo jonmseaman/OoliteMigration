@@ -21,7 +21,7 @@ Reference: https://github.com/jonmseaman/oolite/branches/all
         - { key: readability-identifier-naming.EnumConstantPrefix,  value: k }
     NB EnumConstant* covers scoped AND unscoped constants, so it puts all 175 unscoped enums in
     scope at once. ScopedEnumConstant* confines it to enum class, which is what lets the enum
-    work land incrementally: [[2026-11-07 Enum Tables from tbl X-Macros]]
+    work land incrementally.
 
 
 

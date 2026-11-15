@@ -36,30 +36,6 @@ Ideally would not have windows-only code like this.
 I'd rather have this moved to a library where there is one implementation per platform.
 
 
-## Ugly enum code:
-
-```cpp
-typedef enum {
-  GUI_ALIGN_LEFT,
-  GUI_ALIGN_RIGHT,
-  GUI_ALIGN_CENTER
-} OOGUIAlignment;
-
-typedef enum {
-  GUI_BACKGROUND_SPECIAL_NONE,
-  GUI_BACKGROUND_SPECIAL_CUSTOM,
-  GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_SHORTEST,
-  GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_QUICKEST,
-  GUI_BACKGROUND_SPECIAL_SHORT,
-  GUI_BACKGROUND_SPECIAL_SHORT_ANA_SHORTEST,
-  GUI_BACKGROUND_SPECIAL_SHORT_ANA_QUICKEST,
-  GUI_BACKGROUND_SPECIAL_LONG,
-  GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST,
-  GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST
-} OOGUIBackgroundSpecial;
-```
-
-
 ## Macros instead of constants
 
 ```cpp
@@ -71,28 +47,8 @@ typedef enum {
 #define MAIN_GUI_ROW_WIDTH 16
 #define MAIN_GUI_PIXEL_ROW_START 40
 ```
-## AI-driven behavior analysis before and after
-Compare the Objective-C code and the C++ code for behavior discrepancies.
-This should also be driven through playtests etc.
 
 
-## Component tests organization
-
-- `tests/unit` --> Unit tests should normally go alongside the files they test.
-- `tests/component`
-	- feature folder files should be moved up one with step definitions in subfolders or a different folder alongside.
-
-
-## GnuStep macros
-
-Many instances of macros with GNUSTEP in it. Are these obsolete and can they be deleted?
-```cpp
-#elif (OOLITE_GNUSTEP && defined(OO_DEBUG_MONITOR_ENABLED))  
-#include "OODebugMonitor.h"  
-#endif
-```
-
-`ShellScripts/Linux/build_gnustep.sh` --> Should this file even exist?
 
 ## Better autoformat
 
@@ -110,7 +66,6 @@ Readability prefers spaces between functions. There should be readability rules 
 
 Example potential style guide:
 https://google.github.io/styleguide/cppguide.html
-Cons: I don't like the license boilerplate at the beginning.
 
 ## Heavy macro use
 
