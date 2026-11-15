@@ -247,6 +247,20 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     `std::span`.
   - Done: `! git grep -qE '\bf(open|close)\(|erase\(\s*std::remove|\.size\(\)\s*==\s*0' -- src`, and
     the lock and indent pairs are converted.
+  - Worker, 2026-11-15:
+    - `fopen`: the ship registry's strings dump is a `std::ofstream` (ca1149b63). The rest stay,
+      each at a C interface: `OOJSConsole.cpp:1298` (`JS_DumpMemoryUsage` takes a `FILE*`),
+      `OOALSoundDecoder.cpp:178` (`ov_open_callbacks`), the OXZ manager's `_fileWriter` (made by
+      `oo::fs::openFile`, flushed by `oo::fs::synchronizeFile`, both `FILE*`), and `oofnd/` (being
+      retired; no changes there). So the done grep cannot reach zero.
+    - Lock pairs: the five in `OOAsyncWorkManager.cpp` and `OOOpenGLExtensionManager.cpp` are
+      `std::lock_guard` (ab992e2f2); no other manual pairs are left.
+    - Indent pairs: `oo::LogIndentScope` (`src/Core/LogIndentScope.h`, tested) replaces the 17 pairs
+      that bracket one block (a75ae2803). Left as calls, because the indent and outdent sit under
+      separate conditions or in different functions: `AI.cpp:540`, `Entity.cpp:792`,
+      `ShipEntity.cpp:13686`, `OOCheckShipDataPListVerifierStage.cpp:244,259`,
+      `OOOXPVerifier.cpp:601`, `OOJSEngineTimeManagement.cpp:106,170`.
+    - Not started: index loops to range-for, and `std::span` parameters.
 - **I20. `std::print`.** Where code writes text to `stdout`/`stderr` directly (not through
   `OO_LOG`), use `std::print`/`std::println`.
   - Done: `! git grep -qE '\b(std::)?(puts|fputs)\(|std::cout|std::cerr' -- src` (list any that
