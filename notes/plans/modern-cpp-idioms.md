@@ -128,7 +128,16 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
 
 ### Enums and types (§1.1, B4)
 
-- **I9. The rest of §1.1:**
+- **I9. The rest of §1.1:** done (oolite-dev b9a6f792f, 2e5e0057b, f4ad5bfeb).
+  - The NOLINT was in `ShipEntityAI.cpp` (two `randf()` draws), now two named draws; `src/` has
+    no NOLINT.
+  - `OOShaderUniform`'s union is a `std::variant`; the GL upload takes the array's `data()`.
+  - `ooliteStandardMatrixUniforms` and `kSpiderMonkeyGlobals` are `std::array<std::string_view>`.
+    `ShipEntityAI.cpp`'s `argNames` stays a `const char*[]`: `OOJSFunction::initWithName` takes
+    `const char**`.
+  - Sentinels: the `GUI_ROW_MARKET_*` and `OOLITE_GL_MATRIX_*` values are already `inline
+    constexpr int`, not enumerators. Renaming `OOLITE_GL_MATRIX_END` to `kCount` would edit
+    `test_OOOpenGLMatrixManager.cpp`, which no exception covers, so it stays.
   - Enum sentinels. `GUI_ROW_MARKET_LAST`/`END` (`PlayerEntity.h:161-162`) and
     `OOLITE_GL_MATRIX_END` (`OOOpenGLMatrixManager.h:80`) become `kCount` constants beside their
     enum.
