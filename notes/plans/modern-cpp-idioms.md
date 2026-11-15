@@ -244,6 +244,15 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   - Do it by area.
   - Done: the remaining `const char*` lines are all literal types or C-interface calls, with the
     list recorded in this plan.
+  - Audit (worker, 2026-11-15): 530 lines name `const char*`. 234 are `constexpr`/`const`
+    pointers to literals (a literal's type). Of the other 296: 63 are in `oofnd/` (being retired),
+    11 in the `poc/` harness, 24 printf-style format parameters (C varargs), 20 C API calls or
+    byte views (`JS_*`, GL, sockets, `reinterpret_cast<const char*>` of data bytes), 16 more
+    literal constants split over two lines, and 161 others. Those include the by-name tables'
+    `name`/`encoding` fields (the Prepare by-name-table plan replaces them), `__FUNCTION__` receivers
+    (`OOLogGeneric*ForFunction`) and parameters tests call with `const char*` hooks
+    (`test_OOShaderMaterial`'s member-binding hook). Done so far: `EntityShaderMemberBindingFor`
+    takes `std::string_view` (oolite-dev, this pass). The rest of the 161 are a per-API pass.
 - **I16. Out-parameters.** About 679 `outFoo` lines in 94 files. Convert by family to
   `std::optional`, `std::expected` or a returned struct:
   - JS `getJSClass(ClassDef**, …)`;
