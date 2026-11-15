@@ -210,7 +210,12 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   - `memcpy` used for punning → `std::bit_cast` (`OOPlanetTextureGenerator.cpp`,
     `OOStandaloneAtmosphereGenerator.cpp`, `JSEngine_quickjs.cpp`; 28 `memcpy` in total, so check
     each).
-  - The eight colour `memcpy`s in `OOBasicMaterial.cpp` → one helper.
+  - The eight colour `memcpy`s in `OOBasicMaterial.cpp` → one helper. Done: oolite-dev feaa1b347, `CopyComponents()`.
+  - Punning `memcpy`s (worker, 2026-11-15): none are left to convert. The three files the review
+    named no longer have one. Of the 25 `memcpy`s left, `OOCacheManager.cpp:334` reads a `uint32_t`
+    from a byte buffer (memcpy is the defined way; `std::bit_cast` needs a whole object), and
+    `OODebugTCPConsoleClient.cpp:455` copies a `sockaddr` for the C socket API; the rest are byte
+    or pixel copies, not punning.
   - `sizeof x / sizeof x[0]` (12) → `std::size`. Done: oolite-dev 208df5e56.
   - C arrays (about 233) → `std::array` by area, starting with `HeadUpDisplay.cpp`. Leave arrays
     passed to C or GL APIs whose layout must stay, or use `.data()`.
