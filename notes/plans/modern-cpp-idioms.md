@@ -364,6 +364,19 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     call. Do it on the Mac, or install that package first. Default taken: not done.
 - **I23. Close-out.** Move the clang-tidy checks that are now clean into `WarningsAsErrors`.
   - Done: `.clang-tidy` lists them, and CI's clang-tidy job passes.
+  - Done for now (worker, 2026-11-15, oolite-dev 965185057 and 725fc49c2): a full run-clang-tidy sweep
+    over src/ found the error-level findings left by today's work (16 unused
+    `OOFunctionAttributes.h` includes, a NULL, a `string_view::data()` passed to GL), now fixed. Seven
+    checks with no findings are now errors: `modernize-use-override`,
+    `readability-redundant-void-arg`, `bugprone-command-processor`,
+    `bugprone-std-exception-baseclass`, `bugprone-unhandled-self-assignment`,
+    `bugprone-unused-local-non-trivial-variable`, `performance-inefficient-vector-operation`.
+    Left: `bugprone-lambda-function-name` fires 7 times in `OOOpenGLStateManager.cpp` (debug
+    builds only, `OO_GL_STATE_VERIFICATION`): `OOGL` inside the spec-011 state-table lambdas reports
+    the lambda's name. Clearing it changes those log lines, so it waits for Jon. Largest
+    non-error counts: `bugprone-narrowing-conversions` 2,034 (I18), `bugprone-signed-bitwise` 606,
+    `readability-make-member-function-const` 490, `bugprone-easily-swappable-parameters` 211. CI's
+    clang-tidy job not checked from here.
 
 ## Test-change ledger
 
