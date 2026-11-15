@@ -66,7 +66,7 @@ Specs live in `specs/`, the templates and constitution in `.specify/`; see
 All from `oolite-dev`, in an MSYS2 UCRT64 shell on Windows ([setup](tools/setup-windows.sh)):
 
 ```bash
-./mk.sh build test                 # Clang; --native-file=gcc.ini for GCC
+./mk.sh build dev                  # Clang; --native-file=gcc.ini for GCC
 tests/run.sh unit                  # meson: oofnd, core, headers
 tests/run.sh component [--cpp|--windowed] [-k name]   # C++, then Gherkin
 tests/run.sh gui                   # PyAutoGUI, real window
