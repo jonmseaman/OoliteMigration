@@ -100,6 +100,15 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   - Fix the trailing `;` in `SYSTEM_REPOPULATION_INTERVAL` on the way.
   - Done: `git grep -cE '^\s*#\s*define\s+[A-Z_][A-Z0-9_]*\s+(\(?-?[0-9.]+[fFuUlL]*\)?|")' -- src`
     is 0, apart from listed exceptions such as values a `#if` reads.
+  - Partly done (worker, 2026-11-15; oolite-dev 1913c10c6 and the 40 commits after it, one per
+    file): 297 numeric literal defines are `inline constexpr` (headers) or `constexpr` (`.cpp`) with
+    the literal's own type (`int`, `unsigned`, `float`, `double`). The converter
+    (`.agent-tmp/cc/defs2constexpr.py`) skipped a define when any preprocessor line names it (130:
+    a `#if` switch, or another macro's body, such as `#define MISSILE_ICON_HEIGHT
+    MISSILE_ICON_WIDTH`), when the name is defined in more than one file (9), and the files another
+    session has checked out. `OO_LIKELY_PROPERTIES_PER_SYSTEM` was never used and is deleted.
+    The done grep still finds 274 (162 numeric, 112 strings). Left: the alias and expression
+    defines, the string defines, and the const `extern`s.
 - **I5. `EXPECT`/`EXPECT_NOT` → `[[likely]]`/`[[unlikely]]`.** Done: oolite-dev f6c15da0f. 544 uses in 88 files.
   - `if (EXPECT(x))` becomes `if (x) [[likely]]`. Where the macro is used outside an `if`, drop the
     hint.
