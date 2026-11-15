@@ -152,6 +152,18 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
 ### Memory and ownership (§2.2, B7)
 
 - **I10. Raw `new`/`delete`.** 119 `new` and 29 `delete` in 69/22 files.
+  - Partly done (oolite-dev dd056a3fa, 56428113f): the OXZ download, the profiler table, the
+    deferred frame-callback operations and timers are `std::unique_ptr`; `stopAll()` takes the
+    playing set into one.
+  - Decision: leaked singletons (`new std::shared_ptr<X>(…)`, `*new T`) stay. Google style forbids
+    statics with non-trivial destructors, and exit-time destruction would run GL/AL/JS teardown
+    after those libraries have gone. This overrides the "function-local statics" bullet below.
+  - The `delete`s left, and why: `OOTCPStreamDecoderAbstractionLayer.cpp` (`OOALRelease`,
+    `OOALDestroyAutoreleasePool`: the C decoder's create/release API), `OOJSQuaternion.cpp` and
+    `OOJSVector.cpp` (QuickJS finalizers of opaque pointers), `oofnd/Object.hpp` (`oo::Dispose`
+    itself), `GameController.cpp:190` (the call leaks on purpose when its handler throws),
+    `OOJSScript.cpp:533` (the running stack mixes stack and heap elements), `OOCache.cpp` (I11
+    replaces it; another session has it checked out).
   - `new` is fine when a smart pointer owns the result at once (spec 009's rule). Otherwise use
     `oo::makeShared`/`std::make_unique`.
   - Leaked singletons → function-local statics or `std::unique_ptr` (`Notification.hpp`,
