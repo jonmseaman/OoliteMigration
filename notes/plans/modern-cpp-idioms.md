@@ -66,7 +66,7 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     `test_OOJSVector`, `test_OOMathsHeaders`, `test_ShipEntity`, `test_WormholeEntity`). Changing
     them is a std-equivalent edit (rule 1, third exception), so list each in this plan's ledger.
   - Done: `! git grep -qE '\bM_PI(_2|_4)?\b' -- src tests`.
-- **I2. `OOClamp*` / `OOLerp*` → `std::clamp` / `std::lerp`.** 124 + 9 uses in 39 files; the
+- **I2. `OOClamp*` / `OOLerp*` → `std::clamp` / `std::lerp`.** Not started (worker, 2026-11-15): with `_GLIBCXX_ASSERTIONS` in dev builds, `std::clamp` aborts when `lo > hi`. Several `OOClamp_0_max_*` maxima are data-driven (`maxEnergy`, `maxThrust()`, `maxFlightSpeed`, shield maxima), and `OOClamp_0_max_f(v, m)` with `m < 0` gives 0 today, so they need `std::clamp(v, 0.0f, std::max(0.0f, m))`. `OOClampInteger(v, 1, pageCount)` likewise. Each `OOLerp` caller passing doubles also needs casts to keep the float arithmetic. That's a careful per-site pass. 124 + 9 uses in 39 files; the
   definitions are at `OOFastArithmetic.h:32-110`.
   - `OOClampInteger(v, lo, hi)` gives the same results as `std::clamp` when `lo <= hi`. Check each
     call site; `std::clamp` is undefined when `lo > hi`.
@@ -162,7 +162,7 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     `OOStandaloneAtmosphereGenerator.cpp`, `JSEngine_quickjs.cpp`; 28 `memcpy` in total, so check
     each).
   - The eight colour `memcpy`s in `OOBasicMaterial.cpp` → one helper.
-  - `sizeof x / sizeof x[0]` (12) → `std::size`.
+  - `sizeof x / sizeof x[0]` (12) → `std::size`. Done: oolite-dev 208df5e56.
   - C arrays (about 233) → `std::array` by area, starting with `HeadUpDisplay.cpp`. Leave arrays
     passed to C or GL APIs whose layout must stay, or use `.data()`.
   - Done: `! git grep -qE 'sizeof\s*\(?\s*\w+\s*\)?\s*/\s*sizeof' -- src`, and the punning `memcpy`s
@@ -214,8 +214,8 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   - `fopen`/`fclose` (13, 7 files) → `std::ifstream`/`std::ofstream` on `std::filesystem::path`.
   - Manual `.lock()`/`.unlock()` pairs (37, 18 files) → `std::lock_guard`/`std::scoped_lock`.
   - `OOLogIndent`/`Outdent` pairs (30) → an RAII indent scope.
-  - `erase(std::remove(…))` (3) → `std::erase`/`std::erase_if`.
-  - `.size() == 0` (4) → `.empty()`.
+  - `erase(std::remove(…))` (3) → `std::erase`/`std::erase_if`. Done: oolite-dev 208df5e56.
+  - `.size() == 0` (4) → `.empty()`. Done: oolite-dev 208df5e56.
   - Index loops over `.size()` (35) → range-for, or `std::views::enumerate` where the index is used.
   - `const std::vector<T>&` parameters that are only read, and pointer-plus-length pairs →
     `std::span`.
