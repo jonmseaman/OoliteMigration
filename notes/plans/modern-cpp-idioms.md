@@ -59,7 +59,7 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
 
 ### Maths and randomness (B1, B9)
 
-- **I1. `M_PI` → `std::numbers`.** 72 uses in 20 files; the defines are at `OOMathsBase.h:59-65`.
+- **I1. `M_PI` → `std::numbers`.** Done: oolite-dev 5ceffa8d4. 72 uses in 20 files; the defines are at `OOMathsBase.h:59-65`.
   `M_PI` → `std::numbers::pi`, `M_PI_2` → `std::numbers::pi / 2`, `M_PI_4` → `/ 4`, and
   `std::numbers::pi_v<float>` where a float is wanted. These are the same doubles.
   - The tests use `M_PI` 11 times (`test_DockEntity`, `test_MyOpenGLView`, `test_OOFlasherEntity`,
@@ -250,7 +250,7 @@ Std-equivalent edits only (rule 1, third exception). Fill in the commit for each
 
 | File | Edit | Assertion meaning |
 |---|---|---|
-| `tests/unit/core/test_DockEntity.cpp:186`, `test_MyOpenGLView.cpp:195,199`, `test_OOFlasherEntity.cpp:213`, `test_OOJSVector.cpp:348`, `test_OOMathsHeaders.cpp:38`, `test_ShipEntity.cpp:1476,1784,1789`, `test_WormholeEntity.cpp:208,329` | `M_PI`/`M_PI_2` → `std::numbers::pi` (`/ 2`) | same |
+| `tests/unit/core/test_DockEntity.cpp:186`, `test_MyOpenGLView.cpp:195,199`, `test_OOFlasherEntity.cpp:213`, `test_OOJSVector.cpp:348`, `test_OOMathsHeaders.cpp:38`, `test_ShipEntity.cpp:1476,1784,1789`, `test_WormholeEntity.cpp:208,329` | `M_PI`/`M_PI_2` → `std::numbers::pi` (`/ 2`) | same (oolite-dev 5ceffa8d4; also `test_ShipEntity.cpp:1476`'s `M_PI / 2.0` inside a cast, and `test_WormholeEntity`'s two) |
 | `tests/unit/core/test_OOMathsHeaders.cpp:37` | `OOClamp_0_1_f(2.0f)` → `std::clamp(2.0f, 0.0f, 1.0f)` | same |
 
 ## Decisions (defaults taken)
@@ -268,3 +268,9 @@ Std-equivalent edits only (rule 1, third exception). Fill in the commit for each
   keep them.
 - **No Spec Kit spec.** Each workstream is one `0_AI_Tasks` item. Promote one to `specs/` if it
   turns out to need design. I6, I11 and I16 are the likeliest.
+
+## Worker notes
+
+- Branch: the workstreams are committed on `seriesb/032-cleanup`, not a `git town append` branch per
+  workstream. Another session had uncommitted edits in the same `oolite-dev` checkout, and
+  switching branches would carry them along. Default taken; split the branch later if wanted.
