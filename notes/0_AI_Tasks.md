@@ -14,7 +14,7 @@ Plans in the "Prepare" section aren't ready for work, but plans in the "Tasks" s
 - [ ] Retire the frozen `@encode()` strings in `src/Core/OOTypeEncodings.h` for a type enum: [plan](plans/retire-type-encodings.md)
 
 # Tasks
-- [ ] Fix all clang tidy redundant conversion notifications in the oolite-dev/src directory
+- [x] Fix all clang tidy redundant conversion notifications in the oolite-dev/src directory (oolite-dev 73d99d167)
 - [ ] Rename GameController+SDLFullScreen.cpp to GameController.cpp
 - [ ] GameController.cpp should be alongside it's header too. I'm not sure why it's in the SDL folder.
 - [ ] Clang-Tidy: Use 'using' instead of 'typedef' Fix all of these in the src/ directory.
