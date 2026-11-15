@@ -308,7 +308,13 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
       separate conditions or in different functions: `AI.cpp:540`, `Entity.cpp:792`,
       `ShipEntity.cpp:13686`, `OOCheckShipDataPListVerifierStage.cpp:244,259`,
       `OOOXPVerifier.cpp:601`, `OOJSEngineTimeManagement.cpp:106,170`.
-    - Not started: index loops to range-for, and `std::span` parameters.
+    - Index loops: not converted. There are 101 `for (… i < x.size() …)` loops, not 35, and most
+      walk member containers (`cargo`, `passengers`, `contracts`, `targets`, …) while calling
+      methods that may add to or remove from them. The index loop reads `size()` again each time
+      round; a range-for over a container that changes under it is undefined. Each needs its own
+      review (no mutation reachable from the body, the index unused after the loop). Default
+      taken: leave them.
+    - `std::span` parameters: not started.
 - **I20. `std::print`.** Where code writes text to `stdout`/`stderr` directly (not through
   `OO_LOG`), use `std::print`/`std::println`.
   - Done: `! git grep -qE '\b(std::)?(puts|fputs)\(|std::cout|std::cerr' -- src` (list any that
