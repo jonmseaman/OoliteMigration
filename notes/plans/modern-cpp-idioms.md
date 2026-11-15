@@ -100,7 +100,7 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   - Fix the trailing `;` in `SYSTEM_REPOPULATION_INTERVAL` on the way.
   - Done: `git grep -cE '^\s*#\s*define\s+[A-Z_][A-Z0-9_]*\s+(\(?-?[0-9.]+[fFuUlL]*\)?|")' -- src`
     is 0, apart from listed exceptions such as values a `#if` reads.
-- **I5. `EXPECT`/`EXPECT_NOT` → `[[likely]]`/`[[unlikely]]`.** 544 uses in 88 files.
+- **I5. `EXPECT`/`EXPECT_NOT` → `[[likely]]`/`[[unlikely]]`.** Done: oolite-dev f6c15da0f. 544 uses in 88 files.
   - `if (EXPECT(x))` becomes `if (x) [[likely]]`. Where the macro is used outside an `if`, drop the
     hint.
   - Delete the macros.
