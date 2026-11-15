@@ -44,9 +44,14 @@ You turn Jon's requests into tasks in this file. You do not change code in `ooli
 - **Commits:** commit nothing in `oolite-dev`. Edits to `notes/` stay uncommitted unless Jon asks.
 
 # Prepare
+- [ ] Encapsulate espeak-ng in an `OOSpeechSynthesizer` class (`src/Core`): espeak's API and `<espeak-ng/speak_lib.h>` leave `Universe.h`, `MyOpenGLView.cpp` and `PlayerEntityControls.cpp`, and `Universe` keeps its speech methods as forwarders. One test edit (`slice24Voices`), signed off 2026-11-15. [plan](plans/speech-synthesizer-class.md)
 
 # Tasks
+
+- [ ] Modern C++ idioms: what's left of the 2026-10-28 idiom review and its epics outline. 23 workstreams: `M_PI`→`std::numbers`, `OOClamp`/`OOLerp`→`std::clamp`/`lerp`, `rand()`→`<random>`, constant `#define`s, `EXPECT`→`[[likely]]`, `OOJSSTR`, `source_location`, memory, strings, out-parameters, warnings, asan … [plan](plans/modern-cpp-idioms.md)
+- [ ] Platform layer in `src/platform/` (outside `oofnd`, which is being retired): `Platform.hpp`, per-OS `*_win32.cpp`/`*_posix.cpp` chosen by Meson, in-body `#if`s out of `oofnd` and Core/SDL, `OOLITE_SDL`, `std::endian`, feature switches via `config.hpp`, and a CI guard. [plan](plans/platform-layer.md)
 - [ ] Delete `src/Core/OOTypeEncodings.h`; carry return types as a compile-time `OOValueType` enum (test edits signed off 2026-11-15): [plan](plans/retire-type-encodings.md)
+- [ ] Delete the PyAutoGUI GUI tier, oolite-dev/tests/gui (Jon asked 2026-11-15): [plan](plans/remove-gui-tests.md)
 - [x] Fix all clang tidy redundant conversion notifications in the oolite-dev/src directory (oolite-dev 73d99d167)
 - [x] Rename GameController+SDLFullScreen.cpp to GameController.cpp (oolite-dev 796b9556d)
 - [x] GameController.cpp should be alongside it's header too. I'm not sure why it's in the SDL folder. (oolite-dev 1ad3e3e3e: merged into src/Core/GameController.cpp, under OOLITE_SDL)
@@ -54,8 +59,10 @@ You turn Jon's requests into tasks in this file. You do not change code in `ooli
 - [x] Fix all of these Redundant 'inline' specifier on a global static function in the src/directory (oolite-dev 86b9c9e72; check now an error, StrictMode)
 - [x] Replace the `OOINLINE` macro (`src/Core/OOFunctionAttributes.h:24`, `#define OOINLINE inline`) with plain `inline` at every use (326 uses in 34 files, all under src/; tests/ has none), then delete the `#define`. Do the 'Redundant inline' task above first, or drop `inline` where clang-tidy calls it redundant. Done when `git grep -q OOINLINE -- src tests` exits nonzero. (oolite-dev 236b7430c)
 - [x] Remove the `OOLITE_OPENAL` macro. It is always 1 (`src/Core/OOSound.h:48`, unconditional `#define`; nothing else sets it). In `OOSound.h` and `OOSoundInternal.h`, unwrap the `#if OOLITE_OPENAL` blocks and delete the dead `#else #warning …` branches. In `src/Core/OOLogHeader.cpp:101`, keep `"OpenAL"` in the feature list without the `#if`. Done when `git grep -q OOLITE_OPENAL -- src tests` exits nonzero. (oolite-dev f5257e466)
+- [ ] Delete the no-op `OOSoundAcquireLock()`/`OOSoundReleaseLock()` macros (`src/Core/OOSoundInternal.h:8-13`) and their 7 call sites in `src/Core/OOSoundSource.cpp` (`play` :126/:150, `stop` :161/:179, the channel-finished delegate :268/:280/:283). Each expands to `do { } while (0)`, an empty statement that runs once and exits, so they lock nothing and never block. They are left over from upstream's CoreAudio backend, whose audio thread needed a lock; upstream's OpenAL build has the same empty bodies. With OpenAL, everything that reaches `OOSoundSource` runs on the game thread: `GameController.cpp:402` → `OOSound::update()` → `OOSoundMixer::update()` → `OOSoundChannel::update()` → the delegate. So no `std::mutex` replaces them. Don't add one: there's no second thread to guard against. In the delegate, the early `OOSoundReleaseLock(); return;` becomes a plain `return;`. Done when `git grep -q 'OOSound\(Acquire\|Release\)Lock' -- src tests` exits nonzero, and `./mk.sh build dev` and `tests/run.sh unit` pass.
 - [ ] Resolve Possibly unused #include directive for all obviously unused includes. If there is platform specific code in the file, please make sure it is not used on any platform.
-- [ ] Resolve all the redundant static_cast tidies in the src/ directory.
+- [x] Resolve all the redundant static_cast tidies in the src/ directory. (oolite-dev df5869f9d)
+  - Kept, as a false positive: `static_cast<int>(recv(...))` in `OODebugTCPConsoleClient.cpp` (`receive`). It is redundant only on Windows, where `recv` returns `int`; POSIX `recv` returns `ssize_t`. So `readability-redundant-casting` is not made an error.
 - [ ] Declare structs, unions and enums directly instead of aliasing them with `using` (what clang-tidy's typedef→using fix left behind: 59 lines in src/, 22 of them anonymous). Do the 'using instead of typedef' task first, since these lines come from it.
   - `using X = struct X { … };` → `struct X { … };`
   - `using X = struct { … };` (anonymous, e.g. `ChainedEntityPredicateParameter`, `BinaryOperationPredicateParameter` in `OOEntityFilterPredicate.h`) → `struct X { … };`. Same for `union`/`enum`.
