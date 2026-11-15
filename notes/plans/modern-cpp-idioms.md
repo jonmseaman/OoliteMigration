@@ -186,6 +186,20 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     itself), `GameController.cpp:190` (the call leaks on purpose when its handler throws),
     `OOJSScript.cpp:533` (the running stack mixes stack and heap elements), `OOCache.cpp` (I11
     replaces it; another session has it checked out).
+  - The `new`s left (worker, 2026-11-15), and why; every other one is a smart pointer's argument
+    (mostly `std::shared_ptr<T>(new T(…), oo::Dispose{})` for a private constructor):
+    - Lazily made leaked singletons, under the decision above: `sShaderCache`, `sAllLiveTextures`,
+      `sLiveTextureCache`, `sPlayingSoundSources`, `sAtomCache`, `sTimers`, `ShipEntityAI`'s
+      `scriptCache`, and `OOStringExpander`'s `specials`, `whitelist`, `aliases` and
+      `selectorCache`.
+    - The deliberate leaks of a reference: `oo::LeakHold` (`OOEntityHold.h:105`),
+      `ShipEntity.cpp:9058,12059`, `PlayerEntity.cpp:2321`.
+    - The C decoder's create functions in `OOTCPStreamDecoderAbstractionLayer.cpp`, paired with the
+      `OOALRelease` deletes above.
+    - `GameController.cpp:155`, the deferred call's `std::function*`, paired with the `delete` at
+      `:190` that leaks on purpose when the handler throws.
+    - The four texture reset clients handed to `OOGraphicsResetManager::registerCxxClient`, and
+      `OOCache.cpp`: both headers are checked out by another session.
   - `new` is fine when a smart pointer owns the result at once (spec 009's rule). Otherwise use
     `oo::makeShared`/`std::make_unique`.
   - Leaked singletons → function-local statics or `std::unique_ptr` (`Notification.hpp`,
