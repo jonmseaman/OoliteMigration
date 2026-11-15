@@ -56,8 +56,12 @@ You turn Jon's requests into tasks in this file. You do not change code in `ooli
 - [ ] Modern C++ idioms: what's left of the 2026-10-28 idiom review and its epics outline. 23 workstreams: `M_PI`→`std::numbers`, `OOClamp`/`OOLerp`→`std::clamp`/`lerp`, `rand()`→`<random>`, constant `#define`s, `EXPECT`→`[[likely]]`, `OOJSSTR`, `source_location`, memory, strings, out-parameters, warnings, asan … [plan](plans/modern-cpp-idioms.md)
 
 - [ ] Delete `src/Core/OOTypeEncodings.h`; carry return types as a compile-time `oo::ValueType` enum (test edits signed off 2026-11-15): [plan](plans/retire-type-encodings.md)
-- [ ] Resolve Possibly unused #include directive for all obviously unused includes. If there is platform specific code in the file, please make sure it is not used on any platform.
-
+- [x] Resolve Possibly unused #include directive for all obviously unused includes. If there is platform specific code in the file, please make sure it is not used on any platform. (oolite-dev dada1cea0: 1,324 standard includes from 112 headers; 7da885e84: 22 project includes from 17 headers)
+  - How: `clang-include-cleaner` on each header as its own main file (clang-tidy's `misc-include-cleaner`, already an error, only checks .cpp files, and reports nothing there). A standard include went only if none of its names appears anywhere in the file, inactive `#if` branches included (61 kept for that). A project include went only if the header needs no include added, isn't an umbrella (`OOEntityEnums.h`, `OOLogging.h`), and still defines every macro some `#if` in src/ or tests/ tests.
+  - Left alone on purpose: ~250 project includes in ~140 headers that include-cleaner calls unused but that dependents rely on transitively (it wants an umbrella swapped for the specific header) or that carry `#if` macros (`OOFoundation.h` is most of them). Clearing those means adding direct includes to the dependents first, which is the cpplint `build/include_what_you_use` task's job. `OOAssert.h` keeps `OOException.h` because `tests/unit/oofnd/test_objc_assert.cpp` gets `oo::` through it.
+  - Not touched: the 13 files with another session's uncommitted edits (`OOCache.*`, `OOCommodityMarket.h`, `OOConstToString.h`, `OOCrosshairs.h`, `OOEncodingConverter.h`, `OOGraphicsResetManager.h`, `OOProbabilitySet.h`, `OORoleSet.h`, `OOShipLibraryDescriptions.h`, `OOStringWidth.h`, `OOTypeEncodings.h`, `oofnd/objc/OOObject.h`); those edits are this same kind of removal.
+- [ ] Complete the cpplint asks below.
+- [ ] New `seriesb` branch: drop the `OO` prefix from names in `src/` except `src/Core/Scripting/` (`OOColor` → `oo::Color`, files too). Not yet: Jon wants it eventually. Tests are renamed with the source (signed off 2026-11-15). [plan](plans/drop-oo-prefix.md) (Do the cpplint tasks before this one.)
 ## cpplint tasks
 cpplint 2.0.2 is installed at `.agent-tmp/cpplint-venv` (repo root); results are in `notes/cpplint/2026-11-15-summary.md`. To check one category, run from `oolite-dev`:
 `L() { ../.agent-tmp/cpplint-venv/Scripts/cpplint.exe --recursive --quiet --filter=-,+$1 src 2>&1 | grep -F "[$1]" | grep -vE 'OOEntityCalledByNameTable\.h|OOJSCallEntityMethods\.h|OOTypeEncodings\.h'; }`.
@@ -92,7 +96,7 @@ The three excluded headers are hand-laid tables (`clang-format off`) or are bein
   - `./mk.sh compile <type>` and `./mk.sh configure <type>` never copy, yet Meson rewrites the build directory's database whenever a `meson.build` change triggers a reconfigure inside `meson compile`. Fix: move the copy into a `copy_compile_commands "<build_dir>"` helper and call it at the end of `meson_setup`, `meson_compile` and `meson_configure`.
   - The clang-tidy target's fallback (`mk.sh:459-461`) runs `./mk.sh build test` when there's no database. That breaks the build-dev rule (`.claude/rules/build-dev.md`): `test` turns on LTO. Make it `./mk.sh build dev`.
   - Done when, from `oolite-dev`, `touch meson.build && ./mk.sh compile dev && test compile_commands.json -nt meson.build && cmp -s compile_commands.json build/meson_dev/compile_commands.json` exits 0 (it exits nonzero today), and `grep -q 'mk.sh" build dev' mk.sh` exits 0.
-- [ ] New `seriesb` branch: drop the `OO` prefix from names in `src/` except `src/Core/Scripting/` (`OOColor` → `oo::Color`, files too). Not yet: Jon wants it eventually. Tests are renamed with the source (signed off 2026-11-15). [plan](plans/drop-oo-prefix.md)
+
 
 # Done
 - [x] Delete the PyAutoGUI GUI tier, oolite-dev/tests/gui (Jon asked 2026-11-15): [plan](plans/remove-gui-tests.md) (oolite-dev c2be52677; outer docs edited, left uncommitted as the plan says)
