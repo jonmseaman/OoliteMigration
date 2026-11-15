@@ -266,7 +266,15 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   Don't change a signature that JS or the by-name tables expose by name unless they're updated in
   the same commit.
   - Done per family: no `out[A-Z]` parameter left in its files.
-  - Not started (worker, 2026-11-15): 678 lines in 94 files. The tests call many of these
+  - Partly done (worker, 2026-11-15): six families with no test caller now return a value:
+    `Universe::activeView()` (`ActiveView`), `oo::BasisVectors` from the quaternion and matrix
+    basis getters, `OODefaultShaderSynthesizer::getSampleName`, `ScanVectorAndQuaternionFromString`
+    (`std::optional`; callers keep their values on failure), the seven `OOShipRegistry` subentity
+    helpers (`SubentityResult`) and `OOMesh::getNormal` (`NormalAndTangent`). Kept, with reasons:
+    `OOJSEntityGetEntity[OfClass]` has three outcomes (exception, stale null, entity) and follows
+    `OOJSGetCxxPrivate`'s binding convention; the PList schema verifier's `outError`/`outStop`
+    pair is the shared signature of a dispatch table of about 20 type verifiers, so changing it is
+    a redesign, and `test_OOPListSchemaVerifier` drives it. Before that: 678 lines in 94 files. The tests call many of these
     signatures directly (`OOTextureLoader::getResult` 17 times, `OOBasicMaterial::get*Components`,
     `getResultFormatWidthHeight`, `getDesiredWidth`, …), and changing a signature a test calls
     edits the test, which no rule-1 exception covers (a returned `std::optional` is not the
