@@ -258,6 +258,19 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     (`OOLogGeneric*ForFunction`) and parameters tests call with `const char*` hooks
     (`test_OOShaderMaterial`'s member-binding hook). Done so far: `EntityShaderMemberBindingFor`
     takes `std::string_view` (oolite-dev, this pass). The rest of the 161 are a per-API pass.
+  - Parameter pass (worker, 2026-11-15): no `const char*` parameter in `src/Core` is plain
+    borrowed text any more. Each kind left, once:
+    - `__FUNCTION__`/`__PRETTY_FUNCTION__` receivers (`OOLogGeneric*ForFunction`,
+      `OOSetOpenGLState_`, `OOVerifyOpenGLState_`, `OOGLNoteCurrentFunction`, `OOJSProfileEnter`,
+      `OOJSProfileScope`, `OOTimeProfileEntry`, `SyntaxIssue`, `PerformProfiling`'s nominal name).
+    - C interfaces: `OODemangle` (`abi::__cxa_demangle`), `OOJSInternAtomPRIVATE` (`JS_NewAtom`),
+      `GetSysCtlString` (`sysctlbyname`), `OOALGetConstantString`.
+    - printf-style varargs: the `format` parameters, and `RaiseUnlessDictionary` and
+      `ErrorTypeMismatch`, whose text reaches a `%s`. A `std::string_view` there compiles without a
+      warning (`ErrorWithDictionary` has no format attribute) and broke
+      `test_OOPListSchemaVerifier`, so it was reverted.
+    - Literal overloads: `OOCastParam(const char*)`.
+    - Test hooks: the shader member-binding pointer (`test_OOShaderMaterial`).
 - **I16. Out-parameters.** About 679 `outFoo` lines in 94 files. Convert by family to
   `std::optional`, `std::expected` or a returned struct:
   - JS `getJSClass(ClassDef**, …)`;
