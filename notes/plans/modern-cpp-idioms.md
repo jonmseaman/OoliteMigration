@@ -289,7 +289,15 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     1,249 `-Wimplicit-float-conversion`, 812 `-Wsign-conversion`, 351 `-Wfloat-conversion`,
     234 `-Wimplicit-int-float-conversion`, 171 `-Wimplicit-int-conversion`, 58
     `-Wshorten-64-to-32`. Every fix is a cast or a type choice that has to keep today's rounding,
-    so it is an area-by-area pass. Not started.
+    so it is an area-by-area pass.
+  - Done (worker, 2026-11-15, oolite-dev 531e8b0f8 … ab323317e, one commit per sub-flag): every
+    finding is written as the `static_cast` the implicit conversion already did. A compound assignment
+    becomes `a = static_cast<T>(a op (b))`, a conversion inside an `OOGL()` argument is cast on the
+    argument, and literals inside macros are cast in the macro. So no value or rounding changes.
+    `src/meson.build` has `-Wconversion`, `-Wimplicit-float-conversion` and `-Wsign-conversion`, and the
+    dev and debug Clang builds are warning-free. Not checked: GCC, whose `-Wconversion` differs
+    (it also warns on `char`/`short` arithmetic). CI has no `-Werror`, so it can only add warnings
+    there. The scripts are `.agent-tmp/cc/convfix.py` (clang's source ranges) and `convargs.py`.
 
 ### Standard library (§2.4, B9)
 
