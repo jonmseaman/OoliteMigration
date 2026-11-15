@@ -77,7 +77,7 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   - `test_OOMathsHeaders.cpp:37` calls `OOClamp_0_1_f`, a std-equivalent edit for the ledger.
   - If a test with an exact comparison fails after the change, stop and report it. Don't edit it.
   - Done: `! git grep -qE '\bOOClamp\w*|\bOOLerpd?\b' -- src tests`.
-- **I3. `rand()` → `<random>`.** 18 calls: three identical blocks fill `very_random_seed` byte by
+- **I3. `rand()` → `<random>`.** Done: oolite-dev 93209e011. 18 calls: three identical blocks fill `very_random_seed` byte by
   byte (`ShipEntity.cpp:13433-13438`, `13525-13530`, `PlayerEntityLegacyScriptEngine.cpp:1251-1256`)
   and pass it to `seed_RNG_only_for_planet_description`.
   - Replace them with one `Random_Seed oo::RandomDescriptionSeed()` in `legacy_random.{h,cpp}`, beside
