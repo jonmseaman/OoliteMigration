@@ -115,7 +115,7 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   evaluated when logging is off, but they stop passing `__FILE__`/`__LINE__`/`__func__`.
   - Done: `! git grep -qE '__FILE__|__LINE__' -- src/oofnd/Log.hpp src/oofnd/objc/OOAssert.h src/Core/OOLogging.h src/Core/OOLoggingExtended.h`,
     and the log line text is unchanged (`test_log` pins it).
-- **I8. Small macro fixes:**
+- **I8. Small macro fixes:** Partly done: oolite-dev c4c3406b6 (the `__has_*` fallbacks and the five dead macros that used them, `[[maybe_unused]]`, `ABS`). Left: `STAGE_TRACKING_BEGIN`/`END`, because the catch logs the in-flight exception's name and reason, which a destructor can't read during unwinding, so a scope object would change the log line. A lambda wrapper would keep it; the default taken is to leave them. The `do { } while (0)` review isn't done yet.
   - Delete the reserved-name `__has_feature`/`__has_attribute`/`__has_extension` redefinitions
     (`OOFunctionAttributes.h`, 3).
   - `GCC_ATTR((unused))` → `[[maybe_unused]]` (1).
