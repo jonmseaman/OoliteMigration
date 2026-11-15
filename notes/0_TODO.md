@@ -1,21 +1,15 @@
+Reference: https://github.com/jonmseaman/oolite/branches/all
 
-- [x] Fix run.sh running tests with test mode. It should just use the dev/debug mode.
-- [x] Consider changing to just debug/release. Tests are running super slow because there are optimizations for the unit tests which take forever...
-- [ ] master is upstream-master.
+- [ ] Use Google test instead of custom assertions.
+- [ ] Use a namespace instead of OO prefix.
+- [ ] Encapsulate platform-specific code into classes.
+- [ ] Encapsulate global state into classes.
+- [ ] Use feature flags instead of compile-time macros (works better with IDEs + clang-tidy).
+- [ ] Further replacements of oofnd with C++ std libraries.
 
 
 
-----------
-
-TODO Mac icon used to have a grey background, then it was gone... Sometimes it is there and sometimes not.
-
-More branches:
-- Cleanup pass (plan on WinPC)
-- TBL drop, switch to enums... — planned: [[2026-11-07 Enum Tables from tbl X-Macros]]
-- oofnd cleanup, stop using that, use C++ types instead.
-- SDL_Net? What was the platform specific http test that was broken?
-- Google test instead of custom?
-- Google style guide with cpplint:
+- [ ] Google style guide with cpplint:
     CheckOptions:
         - { key: readability-identifier-naming.ClassCase,           value: CamelCase }
         - { key: readability-identifier-naming.FunctionCase,        value: CamelCase }
@@ -29,15 +23,12 @@ More branches:
     scope at once. ScopedEnumConstant* confines it to enum class, which is what lets the enum
     work land incrementally: [[2026-11-07 Enum Tables from tbl X-Macros]]
 
-- Convert tools directory to C++.
-- Import javascript tests from the upstream.
-- Encapsulation pass.
-
-https://github.com/jonmseaman/oolite/branches/all
-
-----------------------------------------
 
 
+## Maybe
+
+More branches:
+- SDL_Net? What was the platform specific http test that was broken?
 
 - [ ] Do a write up of this project to send to upstream.
 	- Include why I did this.
@@ -46,7 +37,6 @@ https://github.com/jonmseaman/oolite/branches/all
 	- Phase plan with a summary of each one.
 	- Future improvement ideas. Upgrade to arm, replace plist maybe, fine tune the menus, other modernization ideas.
 - [ ] Idea: Visual studio support?
-- [ ] Try a rust version with Bevy one day?
 - [ ] Typescript tests?
 - [ ] Get rid of Gherkin tests, apply what was in the upstream testing pull request.
 - [ ] Remove OO prefix?
@@ -56,4 +46,20 @@ https://github.com/jonmseaman/oolite/branches/all
 - [ ] Decrease oofnd usage.
 - [ ] Use Google Test instead of OOAssert?
 - [ ] Should delete probably the gui tests and other tests to clean up.
-- [X] Fix unit tests taking over 1h
+
+-  Data formats - Support something like JSON5 alongside plist/tbl files.
+	- plist seems like an Objective-C thing, but don't see any strong reason to change it for now.
+- Modern C++
+	- Making the code base more idiomatic for C++ would be good, but it would also
+	  make it essentially impossible for me to merge in Objective-C changes from
+	  upstream, so I'm not tackling that just yet.
+	- Use Modern C++ idioms like constructors instead of initWith, constants
+	  instead of macros, std types instead of `oofnd`
+	- Use a modern style guide like
+	  https://google.github.io/styleguide/cppguide.html
+	- C++ unit test library instead of custom.
+	- Clang Tidy and consistent naming rules for constants, functions, classes.
+- Feature development - This would be great, but is not part of this.
+- Refactor codebase - It would make it much harder for me to port upstream
+  changes, which are in a different language. Any rename or substantial
+  refactors could make it impossible to merge between languages.

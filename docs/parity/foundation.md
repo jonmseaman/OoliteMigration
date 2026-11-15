@@ -175,6 +175,7 @@ Upstream `src/Core/NSStringOOExtensions.m` ↔ `oofnd/String.hpp`, `oofnd/Encodi
 
 - ⚠️ **low** — After a UTF-8 BOM, upstream decoded `length + 3` bytes, six bytes past the buffer. Those heap bytes could flip the result to Latin-1 or append junk. The port decodes the file's own bytes. Documented in the `oofnd/Encoding.hpp` banner ("One deliberate difference") — upstream `Core/NSStringOOExtensions.m:67` ↔ port `oofnd/Encoding.hpp:41-49,2113-2116`
 - ⚠️ **low** — `deleteCharacterAtIndex:` past the end raised NSRangeException. `deleteUnitAt` ignores it, as its comment says ("oofnd does not throw") — upstream `Core/NSStringOOExtensions.m:197` ↔ port `oofnd/String.hpp:557-565`
+- ⚠️ **low** — `-uppercaseString`/`-lowercaseString`/`-capitalizedString`/`-caseInsensitiveCompare:` use ICU's simple case mapping (`oo::str::toUpper`/`toLower`, oofnd/String.hpp), not GNUstep 1.31.1's table. The two agree on U+0000–U+017F. ICU also maps scripts GNUstep's table lacked (Georgian, Cherokee, Glagolitic, Latin Ext-B…) and upper-cases U+03F2 to U+03F9 instead of U+03A3. Upstream on macOS uses current tables too. Decision and test ledger: `specs/015-icu-string-tables`.
 - subtle — Both readers treat a big-endian (FE FF) UTF-16 file as machine-order (byte-swapped) text. The port reproduces this on purpose, and the captures pin it — upstream `Core/NSStringOOExtensions.m:52-58` ↔ port `oofnd/Encoding.hpp:2100-2110`
 
 ## NSThreadOOExtensions

@@ -1,0 +1,741 @@
+area	file	kind	role	symbol
+Core	src/Core/AI.cpp	file-local (static / anonymous namespace)	mutable state	sStack
+Core	src/Core/AI.cpp	function-local static	mutable state	(…)::sCurrentlyRunningAI
+Core	src/Core/AI.cpp	function-local static	mutable state	AI::cleanActions(…)::aliases
+Core	src/Core/AI.cpp	function-local static	mutable state	AI::cleanActions(…)::whitelist
+Core	src/Core/AI.cpp	function-local static	mutable state	AI::reactToMessage(…)::recursionLimiter
+Core	src/Core/CollisionRegion.cpp	file-local (static / anonymous namespace)	mutable state	crid_counter
+Core	src/Core/GameController.cpp	function-local static	mutable state	(…)::sDeferredCalls (…)
+Core	src/Core/GameController.cpp	function-local static	mutable state	(…)::sGameTickInterval
+Core	src/Core/GameController.cpp	function-local static	mutable state	(…)::sGameTickScheduled
+Core	src/Core/GameController.cpp	function-local static	mutable state	(…)::sLastDeferredCallException
+Core	src/Core/GameController.cpp	function-local static	mutable state	(…)::sNextGameTick
+Core	src/Core/GameController.cpp	function-local static	singleton / shared accessor	(…)::sSharedController
+Core	src/Core/GameController.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	GameController::setGamePaused(…)::idCache
+Core	src/Core/GameController.cpp	function-local static	singleton / shared accessor	GameController::sharedController(…)::sSharedControllerHolder
+Core	src/Core/GuiDisplayGen.cpp	file-local (static / anonymous namespace)	mutable state	_refreshStarChart
+Core	src/Core/GuiDisplayGen.cpp	function-local static	mutable state	GuiDisplayGen::drawStarChart(…)::nearby_systems
+Core	src/Core/GuiDisplayGen.cpp	function-local static	mutable state	GuiDisplayGen::drawStarChart(…)::num_nearby_systems
+Core	src/Core/GuiDisplayGen.cpp	function-local static	mutable state	GuiDisplayGen::drawStarChart(…)::routeInfo
+Core	src/Core/GuiDisplayGen.cpp	function-local static	mutable state	GuiDisplayGen::drawStarChart(…)::savedArrayMode
+Core	src/Core/GuiDisplayGen.cpp	function-local static	mutable state	GuiDisplayGen::drawStarChart(…)::savedDestNumber
+Core	src/Core/GuiDisplayGen.cpp	function-local static	mutable state	GuiDisplayGen::drawStarChart(…)::savedPlanetNumber
+Core	src/Core/GuiDisplayGen.cpp	function-local static	mutable state	GuiDisplayGen::drawStarChart(…)::saved_galaxy_id
+Core	src/Core/GuiDisplayGen.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	GuiDisplayGen::reportSelectedRow(…)::idCache
+Core	src/Core/HeadUpDisplay.cpp	file-local (static / anonymous namespace)	mutable state	_compassUpdated
+Core	src/Core/HeadUpDisplay.cpp	file-local (static / anonymous namespace)	mutable state	distance_unit
+Core	src/Core/HeadUpDisplay.cpp	file-local (static / anonymous namespace)	mutable state	sF6KernGovt
+Core	src/Core/HeadUpDisplay.cpp	file-local (static / anonymous namespace)	mutable state	sF6KernTL
+Core	src/Core/HeadUpDisplay.cpp	file-local (static / anonymous namespace)	mutable state	sGlyphWidths
+Core	src/Core/HeadUpDisplay.cpp	function-local static	mutable state	(…)::IconForMissileRole(…)::sIcons
+Core	src/Core/HeadUpDisplay.cpp	function-local static	constant initialised at run time	(…)::sCurrentDrawItem
+Core	src/Core/HeadUpDisplay.cpp	function-local static	mutable state	EncodingConverter(…)::converter
+Core	src/Core/HeadUpDisplay.cpp	function-local static	mutable state	FontTexture(…)::texture
+Core	src/Core/HeadUpDisplay.cpp	function-local static	mutable state	HeadUpDisplay::addDial(…)::allowedSelectors
+Core	src/Core/HeadUpDisplay.cpp	function-local static	mutable state	HeadUpDisplay::addDial(…)::allowedSelectorsLoaded
+Core	src/Core/HeadUpDisplay.cpp	function-local static	mutable state	HeadUpDisplay::crosshairDefinitionForWeaponType(…)::crosshairDefs
+Core	src/Core/HeadUpDisplay.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	HeadUpDisplay::drawDials(…)::idCache
+Core	src/Core/OOALMusic.cpp	function-local static	mutable state	(…)::sMusicSource
+Core	src/Core/OOALMusic.cpp	function-local static	mutable state	(…)::sPlayingMusic
+Core	src/Core/OOALMusic.cpp	function-local static	mutable state	OOMusic::playLooped(…)::sMusicSourceHolder
+Core	src/Core/OOALSound.cpp	function-local static	mutable state	(…)::sIsSetUp
+Core	src/Core/OOALSound.cpp	function-local static	mutable state	(…)::sIsSoundOK
+Core	src/Core/OOAsyncWorkManager.cpp	function-local static	mutable state	MakeAsyncWorkManager(…)::managerHolder
+Core	src/Core/OOAsyncWorkManager.cpp	function-local static	singleton / shared accessor	OOAsyncWorkManager::sharedAsyncWorkManager(…)::sSingleton
+Core	src/Core/OOCPUInfo.cpp	file-local (static / anonymous namespace)	mutable state	sNumberOfCPUs
+Core	src/Core/OOCacheManager.cpp	file-local (static / anonymous namespace)	mutable state	sSingleton
+Core	src/Core/OOCacheManager.cpp	function-local static	singleton / shared accessor	OOCacheManager::sharedCache(…)::sSingletonHolder
+Core	src/Core/OOCommodities.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	OOCommodities::modifyGood(…)::idCache
+Core	src/Core/OOEquipmentType.cpp	function-local static	mutable state	(…)::sEquipmentTypes
+Core	src/Core/OOEquipmentType.cpp	function-local static	mutable state	(…)::sEquipmentTypesByIdentifier
+Core	src/Core/OOEquipmentType.cpp	function-local static	mutable state	(…)::sEquipmentTypesOutfitting
+Core	src/Core/OOEquipmentType.cpp	function-local static	mutable state	(…)::sMissilesRegistry
+Core	src/Core/OOGraphicsResetManager.cpp	function-local static	singleton / shared accessor	OOGraphicsResetManager::sharedManager(…)::sSingletonHolder
+Core	src/Core/OOJoystickManager.cpp	function-local static	singleton / shared accessor	(…)::sSharedStickHandler
+Core	src/Core/OOJoystickManager.cpp	function-local static	mutable state	(…)::sStickHandlerFactory
+Core	src/Core/OOJoystickManager.cpp	function-local static	singleton / shared accessor	OOJoystickManager::sharedStickHandler(…)::sSharedStickHandlerHolder
+Core	src/Core/OOLogOutputHandler.cpp	file-local (static / anonymous namespace)	mutable state	sWriteToStderr
+Core	src/Core/OOLogOutputHandler.cpp	file-local (static / anonymous namespace)	mutable state	sWriteToStdout
+Core	src/Core/OOLogOutputHandler.cpp	function-local static	mutable state	(…)::LogBasePath(…)::basePath
+Core	src/Core/OOLogOutputHandler.cpp	function-local static	mutable state	(…)::sFlushDeadline (…)
+Core	src/Core/OOLogOutputHandler.cpp	function-local static	mutable state	(…)::sFlushPending
+Core	src/Core/OOLogOutputHandler.cpp	function-local static	mutable state	(…)::sLogFileName
+Core	src/Core/OOLogOutputHandler.cpp	function-local static	mutable state	(…)::sLogger (…)
+Core	src/Core/OOLogOutputHandler.cpp	function-local static	mutable state	(…)::sSaturated
+Core	src/Core/OOMesh.cpp	function-local static	mutable state	OOMesh::placeholderMaterial(…)::placeholderMaterial
+Core	src/Core/OOMesh.cpp	function-local static	mutable state	OOMesh::placeholderMaterial(…)::placeholderMaterialHolder
+Core	src/Core/OOMusicController.cpp	function-local static	singleton / shared accessor	OOMusicController::sharedController(…)::sSingletonHolder
+Core	src/Core/OOOXZManager.cpp	function-local static	singleton / shared accessor	OOOXZManager::sharedManager(…)::managerHolder
+Core	src/Core/OOOXZManager.cpp	function-local static	mutable state	oo::http::Download::runCurl(…)::initialised
+Core	src/Core/OOOpenALController.cpp	function-local static	singleton / shared accessor	OOOpenALController::sharedController(…)::sSingletonHolder
+Core	src/Core/OOOpenGL.cpp	file-local (static / anonymous namespace)	mutable state	sDisplayScaleFactor
+Core	src/Core/OOOpenGL.cpp	function-local static	mutable state	OOCheckOpenGLErrors(…)::noReenter
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glActiveTextureARBPtr
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glActiveTexturePtr
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glAttachObjectARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glBindAttribLocationARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glBindBuffer
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glBindFramebuffer
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glBindFramebufferEXT
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glBindRenderbuffer
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glBindRenderbufferEXT
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glBindVertexArray
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glBlendFuncSeparate
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glBlitFramebuffer
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glBufferData
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glCheckFramebufferStatus
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glCheckFramebufferStatusEXT
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glClampColor
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glClientActiveTextureARBPtr
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glCompileShaderARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glCreateProgramObjectARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glCreateShaderObjectARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glDeleteBuffers
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glDeleteFramebuffers
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glDeleteFramebuffersEXT
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glDeleteObjectARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glDeleteRenderbuffers
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glDeleteRenderbuffersEXT
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glDeleteVertexArrays
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glDisableVertexAttribArrayARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glDrawBuffers
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glEnableVertexAttribArray
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glEnableVertexAttribArrayARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glFramebufferRenderbuffer
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glFramebufferRenderbufferEXT
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glFramebufferTexture2D
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glFramebufferTexture2DEXT
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glGenBuffers
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glGenFramebuffers
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glGenFramebuffersEXT
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glGenRenderbuffers
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glGenRenderbuffersEXT
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glGenVertexArrays
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glGetInfoLogARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glGetObjectParameterivARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glGetUniformLocation
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glGetUniformLocationARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glLinkProgramARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glRenderbufferStorage
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glRenderbufferStorageEXT
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glRenderbufferStorageMultisample
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glShaderSourceARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glTexImage2DMultisample
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glUniform1f
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glUniform1fARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glUniform1i
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glUniform1iARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glUniform2fv
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glUniform2fvARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glUniform4fvARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glUniformMatrix3fvARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glUniformMatrix4fvARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glUseProgram
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glUseProgramObjectARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glValidateProgramARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glVertexAttribPointer
+Core	src/Core/OOOpenGLExtensionManager.cpp	external (extern global or class static)	GL function pointer	glVertexAttribPointerARB
+Core	src/Core/OOOpenGLExtensionManager.cpp	function-local static	singleton / shared accessor	OOOpenGLExtensionManager::sharedManager(…)::sSingletonHolder
+Core	src/Core/OOOpenGLMatrixManager.cpp	external (extern global or class static)	constant initialised at run time	ooliteStandardMatrixUniforms
+Core	src/Core/OOOpenGLStateManager.cpp	file-local (static / anonymous namespace)	mutable state	sCurrentStateID
+Core	src/Core/OOProbabilitySet.cpp	function-local static	mutable state	(…)::OOEmptyProbabilitySet::singleton(…)::sOOEmptyProbabilitySetSingletonHolder
+Core	src/Core/OOProbabilitySet.cpp	function-local static	mutable state	(…)::sOOEmptyProbabilitySetSingleton
+Core	src/Core/OORegExpMatcher.cpp	function-local static	mutable state	(…)::sActiveInstance
+Core	src/Core/OOShipRegistry.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	OOShipRegistry::loadDemoShips(…)::idCache
+Core	src/Core/OOShipRegistry.cpp	function-local static	singleton / shared accessor	OOShipRegistry::sharedRegistry(…)::sSingletonHolder
+Core	src/Core/OOSkyDrawable.cpp	external (extern global or class static)	mutable state	OOSkyDrawable::sSetUpStarsStandIn
+Core	src/Core/OOSkyDrawable.cpp	function-local static	mutable state	(…)::sInited
+Core	src/Core/OOSkyDrawable.cpp	function-local static	mutable state	(…)::sMaxTexCoord
+Core	src/Core/OOSkyDrawable.cpp	function-local static	mutable state	(…)::sMinTexCoord
+Core	src/Core/OOSkyDrawable.cpp	function-local static	mutable state	(…)::sNebulaTextures
+Core	src/Core/OOSkyDrawable.cpp	function-local static	mutable state	(…)::sStarTextures
+Core	src/Core/OOSkyDrawable.cpp	function-local static	mutable state	OOSkyDrawable::loadNebulaTextures(…)::sNebulaTexturesHolder
+Core	src/Core/OOSkyDrawable.cpp	function-local static	mutable state	OOSkyDrawable::loadStarTextures(…)::sStarTexturesHolder
+Core	src/Core/OOSoundSource.cpp	function-local static	mutable state	(…)::sPlayingSoundSources
+Core	src/Core/OOSoundSource.cpp	function-local static	mutable state	(…)::sStoppedSourceHandler
+Core	src/Core/OOStringExpander.cpp	function-local static	mutable state	(…)::LookUpLegacySelector(…)::aliases
+Core	src/Core/OOStringExpander.cpp	function-local static	cache	(…)::LookUpLegacySelector(…)::selectorCache
+Core	src/Core/OOStringExpander.cpp	function-local static	mutable state	(…)::LookUpLegacySelector(…)::whitelist
+Core	src/Core/OOStringExpander.cpp	function-local static	mutable state	(…)::SpecialSubstitutionSelectors(…)::specials
+Core	src/Core/OOStringParsing.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	OOStringFromDeciCredits(…)::idCache
+Core	src/Core/OOStringParsing.cpp	function-local static	mutable state	OOStringFromDeciCredits(…)::reentrancyLock
+Core	src/Core/OOTrumble.cpp	file-local (static / anonymous namespace)	mutable state	sTrumbleIdleSound
+Core	src/Core/OOTrumble.cpp	file-local (static / anonymous namespace)	mutable state	sTrumbleSoundSource
+Core	src/Core/OOTrumble.cpp	file-local (static / anonymous namespace)	mutable state	sTrumbleSqealSound
+Core	src/Core/OOTrumble.cpp	function-local static	mutable state	InitTrumbleSounds(…)::sTrumbleIdleSoundHolder
+Core	src/Core/OOTrumble.cpp	function-local static	mutable state	InitTrumbleSounds(…)::sTrumbleSoundSourceHolder
+Core	src/Core/OOTrumble.cpp	function-local static	mutable state	InitTrumbleSounds(…)::sTrumbleSqealSoundHolder
+Core	src/Core/Octree.cpp	file-local (static / anonymous namespace)	mutable state	drawTestForCollisions
+Core	src/Core/Octree.cpp	file-local (static / anonymous namespace)	mutable state	hasCollided
+Core	src/Core/Octree.cpp	file-local (static / anonymous namespace)	mutable state	hit_dist
+Core	src/Core/ResourceManager.cpp	file-local (static / anonymous namespace)	mutable state	sAllMet
+Core	src/Core/ResourceManager.cpp	file-local (static / anonymous namespace)	mutable state	sFirstRun
+Core	src/Core/ResourceManager.cpp	function-local static	mutable state	(…)::sErrors (…)
+Core	src/Core/ResourceManager.cpp	function-local static	mutable state	(…)::sExternalPaths
+Core	src/Core/ResourceManager.cpp	function-local static	mutable state	(…)::sOXPManifests
+Core	src/Core/ResourceManager.cpp	function-local static	mutable state	(…)::sOXPsWithMessagesFound
+Core	src/Core/ResourceManager.cpp	function-local static	mutable state	(…)::sSearchPaths
+Core	src/Core/ResourceManager.cpp	function-local static	cache	(…)::sSoundCache
+Core	src/Core/ResourceManager.cpp	function-local static	cache	(…)::sStringCache
+Core	src/Core/ResourceManager.cpp	function-local static	mutable state	(…)::sUseAddOns
+Core	src/Core/ResourceManager.cpp	function-local static	mutable state	(…)::sUseAddOnsParts (…)
+Core	src/Core/ResourceManager.cpp	function-local static	mutable state	ResourceManager::areRequirementsFulfilled(…)::ooVersionComponents (…)
+Core	src/Core/ResourceManager.cpp	function-local static	mutable state	ResourceManager::rootPaths(…)::sRootPaths
+Core	src/Core/ResourceManager.cpp	function-local static	mutable state	ResourceManager::shaderBindingTypesDictionary(…)::shaderBindingTypesDictionary
+Core	src/Core/ResourceManager.cpp	function-local static	mutable state	ResourceManager::userRootPaths(…)::sUserRootPaths
+Core	src/Core/ResourceManager.cpp	function-local static	mutable state	ResourceManager::whitelistDictionary(…)::whitelistDictionary
+Core	src/Core/Universe.cpp	external (extern global or class static)	engine-wide pointer or flag (g-prefixed)	gOOJSPlayerIfStale
+Core	src/Core/Universe.cpp	external (extern global or class static)	engine-wide pointer or flag (g-prefixed)	gSharedUniverse
+Core	src/Core/Universe.cpp	file-local (static / anonymous namespace)	mutable state	JSResetFlags
+Core	src/Core/Universe.cpp	file-local (static / anonymous namespace)	mutable state	demo_light_on
+Core	src/Core/Universe.cpp	file-local (static / anonymous namespace)	mutable state	demo_light_position
+Core	src/Core/Universe.cpp	file-local (static / anonymous namespace)	mutable state	docked_light_ambient
+Core	src/Core/Universe.cpp	file-local (static / anonymous namespace)	mutable state	docked_light_diffuse
+Core	src/Core/Universe.cpp	file-local (static / anonymous namespace)	mutable state	docked_light_specular
+Core	src/Core/Universe.cpp	file-local (static / anonymous namespace)	mutable state	object_light_on
+Core	src/Core/Universe.cpp	file-local (static / anonymous namespace)	mutable state	sun_off
+Core	src/Core/Universe.cpp	function-local static	mutable state	(…)::sDescriptionsGeneration
+Core	src/Core/Universe.cpp	function-local static	mutable state	OOLookUpPluralDescriptionPRIV(…)::warned
+Core	src/Core/Universe.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	Universe::addMessage(…)::idCache
+Core	src/Core/Universe.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	Universe::canInstantiateShip(…)::idCache
+Core	src/Core/Universe.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	Universe::carryPlayerOn(…)::idCache
+Core	src/Core/Universe.cpp	function-local static	mutable state	Universe::currentSystemData(…)::interstellarDict
+Core	src/Core/Universe.cpp	function-local static	mutable state	Universe::drawUniverse(…)::sPrevHudAlpha
+Core	src/Core/Universe.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	Universe::enterGUIViewModeWithMouseInteraction(…)::idCache
+Core	src/Core/Universe.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	Universe::reinitAndShowDemo(…)::idCache
+Core	src/Core/Universe.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	Universe::setSystemDataForGalaxy(…)::idCache
+Core	src/Core/Universe.cpp	function-local static	mutable state	Universe::setSystemDataForGalaxy(…)::sysdataLocked
+Core	src/Core/Universe.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	Universe::setUpUniverseFromStation(…)::idCache
+Core	src/Core/Universe.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	Universe::shipsForSaleForSystem(…)::idCache
+Core	src/Core/legacy_random.cpp	file-local (static / anonymous namespace)	mutable state	checksum
+Core	src/Core/legacy_random.cpp	file-local (static / anonymous namespace)	mutable state	rnd_seed
+Core	src/Core/legacy_random.cpp	file-local (static / anonymous namespace)	mutable state	sRANROT
+Core	src/Core/legacy_random.cpp	file-local (static / anonymous namespace)	mutable state	sReallyRandomInited
+Core	src/Core/legacy_random.cpp	file-local (static / anonymous namespace)	mutable state	sReallyRandomSeed
+Core/Debug	src/Core/Debug/OODebugMonitor.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	OODebugMonitor::performJSConsoleCommand(…)::idCache
+Core/Debug	src/Core/Debug/OODebugMonitor.cpp	function-local static	constant initialised at run time	OODebugMonitor::setUpDebugConsoleScript(…)::path
+Core/Debug	src/Core/Debug/OODebugMonitor.cpp	function-local static	singleton / shared accessor	OODebugMonitor::sharedDebugMonitor(…)::sSingletonHolder
+Core/Debug	src/Core/Debug/OODebugStandards.cpp	file-local (static / anonymous namespace)	mutable state	sEnforcement
+Core/Debug	src/Core/Debug/OODebugStandards.cpp	function-local static	mutable state	(…)::sSetup
+Core/Debug	src/Core/Debug/OODebugTCPConsoleClient.cpp	function-local static	mutable state	(…)::sLiveClients
+Core/Debug	src/Core/Debug/OODebugTCPConsoleClient.cpp	function-local static	mutable state	OODebugTCPConsoleClient::openSocketToHost(…)::winsockStarted
+Core/Debug	src/Core/Debug/OOJSConsole.cpp	file-local (static / anonymous namespace)	mutable state	sConsoleClass
+Core/Debug	src/Core/Debug/OOJSConsole.cpp	file-local (static / anonymous namespace)	mutable state	sConsoleClassID
+Core/Debug	src/Core/Debug/OOJSConsole.cpp	file-local (static / anonymous namespace)	mutable state	sConsoleSettingsClass
+Core/Debug	src/Core/Debug/OOJSConsole.cpp	file-local (static / anonymous namespace)	mutable state	sConsoleSettingsClassID
+Core/Debug	src/Core/Debug/OOJSConsole.cpp	file-local (static / anonymous namespace)	mutable state	sConsoleSettingsExoticMethods
+Core/Debug	src/Core/Debug/OOJSConsole.cpp	file-local (static / anonymous namespace)	mutable state	sPedanticMode
+Core/Debug	src/Core/Debug/OOTCPStreamDecoderAbstractionLayer.cpp	function-local static	mutable state	(…)::sPools
+Core/Debug	src/Core/Debug/OOTCPStreamDecoderAbstractionLayer.cpp	function-local static	constant initialised at run time	OOALGetConstantString(…)::sStrings
+Core/Entities	src/Core/Entities/DockEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	DockEntity::abortAllDockings(…)::idCache
+Core/Entities	src/Core/Entities/DockEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	DockEntity::allowsLaunchingOf(…)::idCache
+Core/Entities	src/Core/Entities/DockEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	DockEntity::canAcceptShipForDocking(…)::idCache
+Core/Entities	src/Core/Entities/DockEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	DockEntity::launchShip(…)::idCache
+Core/Entities	src/Core/Entities/DockEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	DockEntity::pruneAndCountShipsOnApproach(…)::idCache
+Core/Entities	src/Core/Entities/DockEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	DockEntity::shipIsInDockingCorridor(…)::idCache
+Core/Entities	src/Core/Entities/Entity.cpp	external (extern global or class static)	engine-wide pointer or flag (g-prefixed)	gLiveEntityCount
+Core/Entities	src/Core/Entities/Entity.cpp	external (extern global or class static)	engine-wide pointer or flag (g-prefixed)	gTotalEntityMemory
+Core/Entities	src/Core/Entities/EntityShaderBindings.cpp	function-local static	constant initialised at run time	(…)::sShaderEntityHooksRegistered
+Core/Entities	src/Core/Entities/EntityShaderBindings.cpp	function-local static	mutable state	EntityShaderMemberBindingFor(…)::getters
+Core/Entities	src/Core/Entities/EntityShaderBindings.cpp	function-local static	constant initialised at run time	EntityShaderMemberBindingFor(…)::rows
+Core/Entities	src/Core/Entities/OOECMBlastEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	OOECMBlastEntity::update(…)::idCache
+Core/Entities	src/Core/Entities/OOEntityCalledByName.cpp	function-local static	mutable state	oo::EntityByNameRowNamed(…)::rows
+Core/Entities	src/Core/Entities/OOEntityCalledByName.cpp	function-local static	mutable state	oo::EntityFacadeRowNamed(…)::rows
+Core/Entities	src/Core/Entities/OOEntityCalledByName.cpp	function-local static	mutable state	oo::EntityObjectNameNamed(…)::names
+Core/Entities	src/Core/Entities/OOExhaustPlumeEntity.cpp	file-local (static / anonymous namespace)	mutable state	afttstr1
+Core/Entities	src/Core/Entities/OOExhaustPlumeEntity.cpp	file-local (static / anonymous namespace)	mutable state	afttstr2
+Core/Entities	src/Core/Entities/OOExhaustPlumeEntity.cpp	file-local (static / anonymous namespace)	mutable state	afttstr3
+Core/Entities	src/Core/Entities/OOExhaustPlumeEntity.cpp	file-local (static / anonymous namespace)	mutable state	afttstr4
+Core/Entities	src/Core/Entities/OOExhaustPlumeEntity.cpp	file-local (static / anonymous namespace)	mutable state	tfan1
+Core/Entities	src/Core/Entities/OOExhaustPlumeEntity.cpp	file-local (static / anonymous namespace)	mutable state	tstr1
+Core/Entities	src/Core/Entities/OOExhaustPlumeEntity.cpp	file-local (static / anonymous namespace)	mutable state	tstr2
+Core/Entities	src/Core/Entities/OOExhaustPlumeEntity.cpp	file-local (static / anonymous namespace)	mutable state	tstr3
+Core/Entities	src/Core/Entities/OOExhaustPlumeEntity.cpp	file-local (static / anonymous namespace)	mutable state	tstr4
+Core/Entities	src/Core/Entities/OOExhaustPlumeEntity.cpp	function-local static	mutable state	PlumeTexture(…)::texture
+Core/Entities	src/Core/Entities/OOFlashEffectEntity.cpp	function-local static	mutable state	FlashTexture(…)::texture
+Core/Entities	src/Core/Entities/OOLaserShotEntity.cpp	function-local static	mutable state	ShotTexture(…)::texture
+Core/Entities	src/Core/Entities/OOLaserShotEntity.cpp	function-local static	mutable state	ShotTexture2(…)::texture
+Core/Entities	src/Core/Entities/OOLightParticleEntity.cpp	function-local static	mutable state	BlobTexture(…)::texture
+Core/Entities	src/Core/Entities/OORingEffectEntity.cpp	file-local (static / anonymous namespace)	mutable state	sCircleVerts
+Core/Entities	src/Core/Entities/OORingEffectEntity.cpp	function-local static	mutable state	OORingEffectEntity::initialize(…)::initialized
+Core/Entities	src/Core/Entities/OOSunEntity.cpp	function-local static	mutable state	OOSunEntity::changeSunProperty(…)::oldRadius
+Core/Entities	src/Core/Entities/OOVisualEffectEntity.cpp	file-local (static / anonymous namespace)	mutable state	default_color
+Core/Entities	src/Core/Entities/OOVisualEffectEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	OOVisualEffectEntity::remove(…)::idCache
+Core/Entities	src/Core/Entities/OOVisualEffectEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	OOVisualEffectEntity::update(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	external (extern global or class static)	engine-wide pointer or flag (g-prefixed)	gOOPlayer
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	file-local (static / anonymous namespace)	mutable state	sBaseMass
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	mutable state	(…)::last_outfitting_key
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::activatePrimableEquipment(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::adjustPriceByScriptForEqKey(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::buySelectedItem(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::cancelDockingRequest(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::completeSetUpAndSetTarget(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::cycleNextMultiFunctionDisplay(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::cyclePreviousMultiFunctionDisplay(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::disengageAutopilot(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	mutable state	PlayerEntity::doBookkeeping(…)::gettingInterference
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::doBookkeeping(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::docked(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::engageAutopilotToStation(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::enterDock(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::enterGalacticWitchspace(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::enterWitchspace(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::enterWormhole(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	mutable state	PlayerEntity::gameOverFadeToBW(…)::originalColorSaturation
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::interpretAIMessage(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::launchEscapeCapsule(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::launchMine(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::leaveDock(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::leaveWitchspace(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::markAsOffender(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::noteCompassLostTarget(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::noteGUIDidChangeFrom(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::noteGUIWillChangeTo(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::performDockingRequest(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::performLaunchingUpdates(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::performWitchspaceCountdownUpdates(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::performWitchspaceExitUpdates(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::selectNextMultiFunctionDisplay(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::selectPreviousMultiFunctionDisplay(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::setBounty(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::setInfoSystemID(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	singleton / shared accessor	PlayerEntity::sharedPlayer(…)::gOOPlayerHolder
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::startUpComplete(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::takeEnergyDamage(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::takeInternalDamage(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::tryBuyingCommodity(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::tryBuyingItem(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::trySellingCommodity(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::updateAlertCondition(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::updateClocks(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::validateCompassTarget(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::witchJumpChecklist(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::witchStart(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityContracts.cpp	function-local static	mutable state	(…)::currentShipyard
+Core/Entities	src/Core/Entities/PlayerEntityContracts.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::addParcel(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityContracts.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::addPassenger(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityContracts.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::awardContract(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityContracts.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::buySelectedShip(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityContracts.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::checkPassengerContracts(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityContracts.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::processEscapePods(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityContracts.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::replaceShipWithNamedShip(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	activate_equipment_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	autopilot_key_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	autopilot_pause
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	centre_at_mouse_click
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	chartInfoPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	colorblindModeControlPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	cursor_moving
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	customView_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	cycleMFD_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	disc_operation_in_progress
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	docking_clearance_request_key_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	dump_entity_list_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	dump_target_state_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	escapePodKey_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	extra_gui_key_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	extra_key_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	f9_key_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	f_key_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	fast_autopilot_key_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	fastactivate_a_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	fastactivate_b_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	fire_missile_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	fovControlPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	galhyperspace_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	hdrMaxBrightnessControlPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	hdrPaperWhiteControlPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	hide_hud_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	home_info_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	hyperspace_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	ident_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	jump_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	leftRightKeyPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	m_key_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	mode_equipment_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	mouse_click_position
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	mouse_left_down
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	mouse_x_axis_map_to_yaw
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	musicModeKeyPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	next_compass_mode_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	next_missile_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	next_planet_info_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	next_target_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	oxz_manager_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	pageUpDownKeyPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	pause_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	playing_music
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	pling_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	pressedArrow
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	prev_compass_mode_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	previous_planet_info_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	previous_target_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	prime_equipment_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	queryPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	rotateCargo_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	safety_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	saved_gui_screen
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	saved_script_time
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	saved_view_direction
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	saved_weapon_facing
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	searchStringLength
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	selectPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	shaderSelectKeyPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	spacePressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	speechGenderSelectKeyPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	speechVoiceSelectKeyPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	speech_settings_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	switchMFD_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	switching_chart_screens
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	switching_equipship_screens
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	switching_interface_screens
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	switching_resolution
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	switching_status_screens
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	taking_snapshot
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	target_incoming_missile_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	target_info_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	target_missile_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	timeLastKeyPress
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	time_last_frame
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	toggling_music
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	upDownKeyPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	volumeControlPressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	wait_for_key_up
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	weaponsOnlineToggle_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	file-local (static / anonymous namespace)	input/controls latch	zoom_pressed
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::beginWitchspaceCountdown(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::cancelWitchspaceCountdown(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::handleMissionCallback(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	mutable state	PlayerEntity::pollCustomViewControls(…)::caps_on
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	mutable state	PlayerEntity::pollCustomViewControls(…)::last_time
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	mutable state	PlayerEntity::pollCustomViewControls(…)::mouse_clicked
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	mutable state	PlayerEntity::pollCustomViewControls(…)::mouse_clicked_position
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	mutable state	PlayerEntity::pollCustomViewControls(…)::right
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	mutable state	PlayerEntity::pollCustomViewControls(…)::rotationCenter
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	mutable state	PlayerEntity::pollCustomViewControls(…)::shift_down
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	mutable state	PlayerEntity::pollCustomViewControls(…)::up
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	mutable state	PlayerEntity::pollCustomViewControls(…)::viewOffset
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	mutable state	PlayerEntity::pollCustomViewControls(…)::viewQuaternion
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	mutable state	PlayerEntity::pollFlightControls(…)::escapePodKeyResetTime
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::pollFlightControls(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::pollGuiArrowKeyControls(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityControls.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::switchToThisView(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityKeyMapper.cpp	file-local (static / anonymous namespace)	mutable state	current_row
+Core/Entities	src/Core/Entities/PlayerEntityKeyMapper.cpp	file-local (static / anonymous namespace)	mutable state	has_error
+Core/Entities	src/Core/Entities/PlayerEntityKeyMapper.cpp	file-local (static / anonymous namespace)	mutable state	key_index
+Core/Entities	src/Core/Entities/PlayerEntityKeyMapper.cpp	file-local (static / anonymous namespace)	mutable state	last_shift
+Core/Entities	src/Core/Entities/PlayerEntityKeyMapper.cpp	function-local static	mutable state	(…)::camera_keys
+Core/Entities	src/Core/Entities/PlayerEntityKeyMapper.cpp	function-local static	mutable state	(…)::kdic_check
+Core/Entities	src/Core/Entities/PlayerEntityKeyMapper.cpp	function-local static	mutable state	(…)::key_list
+Core/Entities	src/Core/Entities/PlayerEntityKeyMapper.cpp	function-local static	mutable state	(…)::nav_keys
+Core/Entities	src/Core/Entities/PlayerEntityKeyMapper.cpp	function-local static	mutable state	(…)::selected_entry
+Core/Entities	src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp	file-local (static / anonymous namespace)	mutable state	sRunningScript
+Core/Entities	src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp	file-local (static / anonymous namespace)	mutable state	scriptTarget
+Core/Entities	src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp	file-local (static / anonymous namespace)	mutable state	shipsFound
+Core/Entities	src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp	function-local static	mutable state	(…)::sCurrentMissionKey
+Core/Entities	src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp	function-local static	mutable state	(…)::sMissionStringValue
+Core/Entities	src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::endMissionScreenAndNoteOpportunity(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityLoadSave.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::autosavePlayer(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityLoadSave.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::loadPlayerFromFile(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityLoadSave.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::nativeSavePlayer(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityLoadSave.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::quicksavePlayer(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntityScriptMethods.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerEntity::setMissionChoice(…)::idCache
+Core/Entities	src/Core/Entities/PlayerEntitySound.cpp	function-local static	mutable state	(…)::Sounds(…)::sounds
+Core/Entities	src/Core/Entities/PlayerEntitySound.cpp	function-local static	mutable state	(…)::weaponLaunched
+Core/Entities	src/Core/Entities/PlayerEntitySound.cpp	function-local static	mutable state	(…)::weaponShieldHit
+Core/Entities	src/Core/Entities/PlayerEntitySound.cpp	function-local static	mutable state	(…)::weaponShotHit
+Core/Entities	src/Core/Entities/PlayerEntitySound.cpp	function-local static	mutable state	(…)::weaponShotMiss
+Core/Entities	src/Core/Entities/PlayerEntitySound.cpp	function-local static	mutable state	(…)::weaponUnshieldedHit
+Core/Entities	src/Core/Entities/PlayerEntitySound.cpp	function-local static	mutable state	PlayerEntity::updateAfterburnerSound(…)::which
+Core/Entities	src/Core/Entities/PlayerEntitySound.cpp	function-local static	mutable state	PlayerEntity::updateFuelScoopSoundWithInterval(…)::scoopSoundPlayTime
+Core/Entities	src/Core/Entities/PlayerEntityStickProfile.cpp	file-local (static / anonymous namespace)	mutable state	stickProfileArrow_pressed
+Core/Entities	src/Core/Entities/ShipEntity.cpp	file-local (static / anonymous namespace)	mutable state	cargo_color
+Core/Entities	src/Core/Entities/ShipEntity.cpp	file-local (static / anonymous namespace)	mutable state	friendly_color
+Core/Entities	src/Core/Entities/ShipEntity.cpp	file-local (static / anonymous namespace)	mutable state	hostile_color
+Core/Entities	src/Core/Entities/ShipEntity.cpp	file-local (static / anonymous namespace)	mutable state	jammed_color
+Core/Entities	src/Core/Entities/ShipEntity.cpp	file-local (static / anonymous namespace)	mutable state	mascem_color1
+Core/Entities	src/Core/Entities/ShipEntity.cpp	file-local (static / anonymous namespace)	mutable state	mascem_color2
+Core/Entities	src/Core/Entities/ShipEntity.cpp	file-local (static / anonymous namespace)	mutable state	missile_color
+Core/Entities	src/Core/Entities/ShipEntity.cpp	file-local (static / anonymous namespace)	mutable state	neutral_color
+Core/Entities	src/Core/Entities/ShipEntity.cpp	file-local (static / anonymous namespace)	mutable state	police_color1
+Core/Entities	src/Core/Entities/ShipEntity.cpp	file-local (static / anonymous namespace)	mutable state	police_color2
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	constant initialised at run time	OODefaultShipShaderMacros(…)::macros
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	constant initialised at run time	OOUniformBindingPermitted(…)::entityWhitelist
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	constant initialised at run time	OOUniformBindingPermitted(…)::playerShipWhitelist
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	constant initialised at run time	OOUniformBindingPermitted(…)::shipWhitelist
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	constant initialised at run time	OOUniformBindingPermitted(…)::visualEffectWhitelist
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	constant initialised at run time	OOUniformBindingPermitted(…)::wlDict
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::acceptAsEscort(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::activateCloakingDevice(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::addEquipmentItem(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::addTarget(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::behaviour_face_destination(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::behaviour_fly_from_destination(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::behaviour_fly_thru_navpoints(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::behaviour_fly_to_destination(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::behaviour_intercept_target(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::behaviour_scripted_ai(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::broadcastEnergyBlastImminent(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::broadcastHitByLaserFrom(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::checkCloseCollisionWith(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::checkForAegis(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::collideWithShip(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::deactivateCloakingDevice(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::deployEscorts(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::dockEscorts(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::dumpCargoItem(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::dumpItem(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::enterDock(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::equipmentValidToAdd(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::fireLaserShotInDirection(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::fireMissileWithIdentifier(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::fireSubentityLaserShot(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::landOnPlanet(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::launchEscapeCapsule(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::markAsOffender(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::noteFrustration(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::noteKilledBy(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::noteLostTarget(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::noteTakingDamage(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::noteTargetDestroyed(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::receiveCommsMessage(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::refreshEscortPositions(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::removeEquipmentItem(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::respondToAttackFrom(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::scoopUpProcess(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::setBounty(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::setUpOneEscort(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::shipWillDealloc(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::takeEnergyDamage(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::takeHeatDamage(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::takeScrapeDamage(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::transitionToAegisNone(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::update(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntityAI.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::broadcastDistressMessageWithDumping(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntityAI.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::fightOrFleeMissile(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntityAI.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::groupAttackTarget(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntityAI.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::performHyperSpaceExitReplace(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntityAI.cpp	function-local static	cache	ShipEntity::scanForNearestShipMatchingPredicate(…)::errorCache
+Core/Entities	src/Core/Entities/ShipEntityAI.cpp	function-local static	cache	ShipEntity::scanForNearestShipMatchingPredicate(…)::scriptCache
+Core/Entities	src/Core/Entities/ShipEntityAI.cpp	function-local static	mutable state	ShipEntity::scriptActionOnTarget(…)::deprecationWarning
+Core/Entities	src/Core/Entities/ShipEntityAI.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::setTargetToPrimaryAggressor(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntityAI.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::suggestEscortTo(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntityAI.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::wormholeEscorts(…)::idCache
+Core/Entities	src/Core/Entities/ShipEntityAI.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEntity::wormholeGroup(…)::idCache
+Core/Entities	src/Core/Entities/StationEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	StationEntity::abortAllDockings(…)::idCache
+Core/Entities	src/Core/Entities/StationEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	StationEntity::abortDockingForShip(…)::idCache
+Core/Entities	src/Core/Entities/StationEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	StationEntity::acceptDockingClearanceRequestFrom(…)::idCache
+Core/Entities	src/Core/Entities/StationEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	StationEntity::autoDockShipsOnApproach(…)::idCache
+Core/Entities	src/Core/Entities/StationEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	StationEntity::dockingInstructionsForShip(…)::idCache
+Core/Entities	src/Core/Entities/StationEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	StationEntity::noteDockedShip(…)::idCache
+Core/Entities	src/Core/Entities/StationEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	StationEntity::sanityCheckShipsOnApproach(…)::idCache
+Core/Entities	src/Core/Entities/StationEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	StationEntity::setAlertLevel(…)::idCache
+Core/Entities	src/Core/Entities/StationEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	StationEntity::update(…)::idCache
+Core/Entities	src/Core/Entities/WormholeEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	WormholeEntity::disgorgeShips(…)::idCache
+Core/Entities	src/Core/Entities/WormholeEntity.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	WormholeEntity::suckInShip(…)::idCache
+Core/Materials	src/Core/Materials/OOBasicMaterial.cpp	function-local static	singleton / shared accessor	(…)::sDefaultMaterial
+Core/Materials	src/Core/Materials/OOBasicMaterial.cpp	function-local static	singleton / shared accessor	OOBasicMaterial::unapplyWithNext(…)::sDefaultMaterialHolder
+Core/Materials	src/Core/Materials/OOConcreteTexture.cpp	function-local static	mutable state	OOConcreteTexture::setUpTexture(…)::dumpID
+Core/Materials	src/Core/Materials/OOMaterial.cpp	function-local static	mutable state	(…)::ActiveMaterial(…)::active
+Core/Materials	src/Core/Materials/OONullTexture.cpp	function-local static	singleton / shared accessor	OONullTexture::sharedNullTexture(…)::sSingletonHolder
+Core/Materials	src/Core/Materials/OOPNGTextureLoader.cpp	function-local static	mutable state	OOPNGTextureLoader::readBytes(…)::message
+Core/Materials	src/Core/Materials/OOPixMap.cpp	external (extern global or class static)	constant initialised at run time	kOONullPixMap
+Core/Materials	src/Core/Materials/OOShaderMaterial.cpp	function-local static	mutable state	OOShaderMaterial::initWithName(…)::attributeBindings
+Core/Materials	src/Core/Materials/OOShaderProgram.cpp	function-local static	mutable state	(…)::ActiveProgram(…)::active
+Core/Materials	src/Core/Materials/OOShaderProgram.cpp	function-local static	cache	(…)::sShaderCache
+Core/Materials	src/Core/Materials/OOShaderProgram.cpp	function-local static	mutable state	std::__detail::_AnyMatcher<std::__cxx11::regex_traits<char>, false, false, false>::operator(…)(…)::__nul
+Core/Materials	src/Core/Materials/OOShaderProgram.cpp	function-local static	mutable state	std::__detail::_AnyMatcher<std::__cxx11::regex_traits<char>, false, false, true>::operator(…)(…)::__nul
+Core/Materials	src/Core/Materials/OOShaderProgram.cpp	function-local static	mutable state	std::__detail::_AnyMatcher<std::__cxx11::regex_traits<char>, false, true, false>::operator(…)(…)::__nul
+Core/Materials	src/Core/Materials/OOShaderProgram.cpp	function-local static	mutable state	std::__detail::_AnyMatcher<std::__cxx11::regex_traits<char>, false, true, true>::operator(…)(…)::__nul
+Core/Materials	src/Core/Materials/OOShaderUniformMethodType.cpp	file-local (static / anonymous namespace)	constant initialised at run time	sTemplates
+Core/Materials	src/Core/Materials/OOShaderUniformMethodType.cpp	function-local static	mutable state	(…)::sEntityHooks
+Core/Materials	src/Core/Materials/OOShaderUniformMethodType.cpp	function-local static	mutable state	(…)::sEntityHooksSet
+Core/Materials	src/Core/Materials/OOTexture.cpp	external (extern global or class static)	mutable state	OOTexture::configurationFactory
+Core/Materials	src/Core/Materials/OOTexture.cpp	external (extern global or class static)	mutable state	OOTexture::nameFactory
+Core/Materials	src/Core/Materials/OOTexture.cpp	external (extern global or class static)	engine-wide pointer or flag (g-prefixed)	gOOTextureInfo
+Core/Materials	src/Core/Materials/OOTexture.cpp	file-local (static / anonymous namespace)	mutable state	sCheckedExtensions
+Core/Materials	src/Core/Materials/OOTexture.cpp	function-local static	mutable state	(…)::RecentTextures(…)::recent
+Core/Materials	src/Core/Materials/OOTexture.cpp	function-local static	mutable state	(…)::sAllLiveTextures
+Core/Materials	src/Core/Materials/OOTexture.cpp	function-local static	cache	(…)::sLiveTextureCache
+Core/Materials	src/Core/Materials/OOTextureLoader.cpp	file-local (static / anonymous namespace)	mutable state	sGLMaxSize
+Core/Materials	src/Core/Materials/OOTextureLoader.cpp	file-local (static / anonymous namespace)	mutable state	sHaveSetUp
+Core/Materials	src/Core/Materials/OOTextureLoader.cpp	file-local (static / anonymous namespace)	mutable state	sReducedDetail
+Core/Materials	src/Core/Materials/OOTextureLoader.cpp	file-local (static / anonymous namespace)	mutable state	sUserMaxSize
+Core/OXPVerifier	src/Core/OXPVerifier/OOOXPVerifier.cpp	external (extern global or class static)	mutable state	OOOXPVerifier::sTestStageMaker
+Core/OXPVerifier	src/Core/OXPVerifier/OOPListSchemaVerifier.cpp	file-local (static / anonymous namespace)	mutable state	sDebugDump
+Core/OXPVerifier	src/Core/OXPVerifier/OOPListSchemaVerifier.cpp	function-local static	constant initialised at run time	(…)::StringToSchemaType(…)::typeMap
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	external (extern global or class static)	lookup table (built once)	gOOCompassModeConstTable
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	external (extern global or class static)	lookup table (built once)	gOOEntityStatusConstTable
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	external (extern global or class static)	lookup table (built once)	gOOGUIScreenIDConstTable
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	external (extern global or class static)	lookup table (built once)	gOOGalacticHyperspaceBehaviourConstTable
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	external (extern global or class static)	lookup table (built once)	gOOLegalStatusReasonConstTable
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	external (extern global or class static)	lookup table (built once)	gOOLongRangeChartModeConstTable
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	external (extern global or class static)	lookup table (built once)	gOOScanClassConstTable
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	external (extern global or class static)	lookup table (built once)	gOOShipDamageTypeConstTable
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	external (extern global or class static)	lookup table (built once)	gOOViewIDConstTable
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	file-local (static / anonymous namespace)	lookup table (built once)	sAtomsInterned
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	file-local (static / anonymous namespace)	lookup table (built once)	sOOCompassModeTableEntries
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	file-local (static / anonymous namespace)	lookup table (built once)	sOOEntityStatusTableEntries
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	file-local (static / anonymous namespace)	lookup table (built once)	sOOGUIScreenIDTableEntries
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	file-local (static / anonymous namespace)	lookup table (built once)	sOOGalacticHyperspaceBehaviourTableEntries
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	file-local (static / anonymous namespace)	lookup table (built once)	sOOLegalStatusReasonTableEntries
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	file-local (static / anonymous namespace)	lookup table (built once)	sOOLongRangeChartModeTableEntries
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	file-local (static / anonymous namespace)	lookup table (built once)	sOOScanClassTableEntries
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	file-local (static / anonymous namespace)	lookup table (built once)	sOOShipDamageTypeTableEntries
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	file-local (static / anonymous namespace)	lookup table (built once)	sOOViewIDTableEntries
+Core/Scripting	src/Core/Scripting/OOConstToJSString.cpp	file-local (static / anonymous namespace)	lookup table (built once)	sUndefinedAtom
+Core/Scripting	src/Core/Scripting/OOJSClasses.cpp	file-local (static / anonymous namespace)	constant initialised at run time	sClassNames
+Core/Scripting	src/Core/Scripting/OOJSClasses.cpp	file-local (static / anonymous namespace)	mutable state	sExoticMethodStorage
+Core/Scripting	src/Core/Scripting/OOJSClasses.cpp	file-local (static / anonymous namespace)	mutable state	sOwnExoticMethods
+Core/Scripting	src/Core/Scripting/OOJSClasses.cpp	file-local (static / anonymous namespace)	singleton / shared accessor	sSharedProperties
+Core/Scripting	src/Core/Scripting/OOJSClasses.cpp	file-local (static / anonymous namespace)	mutable state	sSuperclasses
+Core/Scripting	src/Core/Scripting/OOJSClock.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sClockClass
+Core/Scripting	src/Core/Scripting/OOJSClock.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sClockClassID
+Core/Scripting	src/Core/Scripting/OOJSDock.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sDockClass
+Core/Scripting	src/Core/Scripting/OOJSDock.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sDockClassID
+Core/Scripting	src/Core/Scripting/OOJSEngineDebuggerHelpers.cpp	function-local static	mutable state	(…)::DebuggerCString(…)::sText
+Core/Scripting	src/Core/Scripting/OOJSEngineTimeManagement.cpp	file-local (static / anonymous namespace)	mutable state	sProfileStack
+Core/Scripting	src/Core/Scripting/OOJSEngineTimeManagement.cpp	file-local (static / anonymous namespace)	mutable state	sProfilerEntryTimeLimit
+Core/Scripting	src/Core/Scripting/OOJSEngineTimeManagement.cpp	file-local (static / anonymous namespace)	mutable state	sProfilerOverhead
+Core/Scripting	src/Core/Scripting/OOJSEngineTimeManagement.cpp	file-local (static / anonymous namespace)	mutable state	sProfilerStartTime
+Core/Scripting	src/Core/Scripting/OOJSEngineTimeManagement.cpp	file-local (static / anonymous namespace)	mutable state	sProfilerTotalNativeTime
+Core/Scripting	src/Core/Scripting/OOJSEngineTimeManagement.cpp	function-local static	mutable state	(…)::sProfileInfo
+Core/Scripting	src/Core/Scripting/OOJSEngineTimeManagement.cpp	function-local static	mutable state	(…)::sProfiling
+Core/Scripting	src/Core/Scripting/OOJSEngineTimeManagement.cpp	function-local static	mutable state	(…)::sTracing
+Core/Scripting	src/Core/Scripting/OOJSEntity.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sEntityClass
+Core/Scripting	src/Core/Scripting/OOJSEntity.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sEntityClassID
+Core/Scripting	src/Core/Scripting/OOJSEquipmentInfo.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sEquipmentInfoClass
+Core/Scripting	src/Core/Scripting/OOJSEquipmentInfo.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sEquipmentInfoClassID
+Core/Scripting	src/Core/Scripting/OOJSExhaustPlume.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sExhaustPlumeClass
+Core/Scripting	src/Core/Scripting/OOJSExhaustPlume.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sExhaustPlumeClassID
+Core/Scripting	src/Core/Scripting/OOJSFlasher.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sFlasherClass
+Core/Scripting	src/Core/Scripting/OOJSFlasher.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sFlasherClassID
+Core/Scripting	src/Core/Scripting/OOJSFrameCallbacks.cpp	file-local (static / anonymous namespace)	mutable state	sCallbacks
+Core/Scripting	src/Core/Scripting/OOJSFrameCallbacks.cpp	file-local (static / anonymous namespace)	mutable state	sNextID
+Core/Scripting	src/Core/Scripting/OOJSFrameCallbacks.cpp	function-local static	mutable state	(…)::sDeferredOps
+Core/Scripting	src/Core/Scripting/OOJSFrameCallbacks.cpp	function-local static	mutable state	(…)::sRunning
+Core/Scripting	src/Core/Scripting/OOJSManifest.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sManifestClass
+Core/Scripting	src/Core/Scripting/OOJSManifest.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sManifestClassID
+Core/Scripting	src/Core/Scripting/OOJSManifest.cpp	file-local (static / anonymous namespace)	mutable state	sManifestExoticMethods
+Core/Scripting	src/Core/Scripting/OOJSMission.cpp	file-local (static / anonymous namespace)	mutable state	sCallbackFunction
+Core/Scripting	src/Core/Scripting/OOJSMission.cpp	file-local (static / anonymous namespace)	mutable state	sCallbackThis
+Core/Scripting	src/Core/Scripting/OOJSMission.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sMissionClass
+Core/Scripting	src/Core/Scripting/OOJSMission.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sMissionClassID
+Core/Scripting	src/Core/Scripting/OOJSMission.cpp	file-local (static / anonymous namespace)	mutable state	sMissionObject
+Core/Scripting	src/Core/Scripting/OOJSMission.cpp	function-local static	mutable state	CallbackScript(…)::script
+Core/Scripting	src/Core/Scripting/OOJSMission.cpp	function-local static	mutable state	InitOOJSMission(…)::observing
+Core/Scripting	src/Core/Scripting/OOJSMission.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	MissionRunScreen(…)::idCache
+Core/Scripting	src/Core/Scripting/OOJSMissionVariables.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sMissionVariablesClass
+Core/Scripting	src/Core/Scripting/OOJSMissionVariables.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sMissionVariablesClassID
+Core/Scripting	src/Core/Scripting/OOJSMissionVariables.cpp	file-local (static / anonymous namespace)	mutable state	sMissionVariablesExoticMethods
+Core/Scripting	src/Core/Scripting/OOJSOolite.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sOoliteClass
+Core/Scripting	src/Core/Scripting/OOJSOolite.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sOoliteClassID
+Core/Scripting	src/Core/Scripting/OOJSPlanet.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sPlanetClass
+Core/Scripting	src/Core/Scripting/OOJSPlanet.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sPlanetClassID
+Core/Scripting	src/Core/Scripting/OOJSPlayer.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sPlayerClass
+Core/Scripting	src/Core/Scripting/OOJSPlayer.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sPlayerClassID
+Core/Scripting	src/Core/Scripting/OOJSPlayer.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerCommsMessage(…)::idCache
+Core/Scripting	src/Core/Scripting/OOJSPlayer.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerReplaceShip(…)::idCache
+Core/Scripting	src/Core/Scripting/OOJSPlayerShip.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sPlayerShipClass
+Core/Scripting	src/Core/Scripting/OOJSPlayerShip.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sPlayerShipClassID
+Core/Scripting	src/Core/Scripting/OOJSPlayerShip.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	PlayerShipSetProperty(…)::idCache
+Core/Scripting	src/Core/Scripting/OOJSQuaternion.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sQuaternionClass
+Core/Scripting	src/Core/Scripting/OOJSQuaternion.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sQuaternionClassID
+Core/Scripting	src/Core/Scripting/OOJSScript.cpp	file-local (static / anonymous namespace)	mutable state	sRunningStack
+Core/Scripting	src/Core/Scripting/OOJSScript.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sScriptClass
+Core/Scripting	src/Core/Scripting/OOJSScript.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sScriptClassID
+Core/Scripting	src/Core/Scripting/OOJSScript.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	OOJSScript::initWithPath(…)::idCache
+Core/Scripting	src/Core/Scripting/OOJSScript.cpp	function-local static	mutable state	RewriteLegacyConst(…)::sRewritten
+Core/Scripting	src/Core/Scripting/OOJSShip.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sShipClass
+Core/Scripting	src/Core/Scripting/OOJSShip.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sShipClassID
+Core/Scripting	src/Core/Scripting/OOJSShip.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipAwardEquipment(…)::idCache
+Core/Scripting	src/Core/Scripting/OOJSShip.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipEquipmentStatus(…)::idCache
+Core/Scripting	src/Core/Scripting/OOJSShip.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipRemove(…)::idCache
+Core/Scripting	src/Core/Scripting/OOJSShip.cpp	function-local static	JS atom cache (OOJSID/OOJSSTR macro)	ShipSetEquipmentStatus(…)::idCache
+Core/Scripting	src/Core/Scripting/OOJSShipGroup.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sShipGroupClass
+Core/Scripting	src/Core/Scripting/OOJSShipGroup.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sShipGroupClassID
+Core/Scripting	src/Core/Scripting/OOJSSound.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sSoundClass
+Core/Scripting	src/Core/Scripting/OOJSSound.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sSoundClassID
+Core/Scripting	src/Core/Scripting/OOJSSoundSource.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sSoundSourceClass
+Core/Scripting	src/Core/Scripting/OOJSSoundSource.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sSoundSourceClassID
+Core/Scripting	src/Core/Scripting/OOJSStation.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sStationClass
+Core/Scripting	src/Core/Scripting/OOJSStation.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sStationClassID
+Core/Scripting	src/Core/Scripting/OOJSSun.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sSunClass
+Core/Scripting	src/Core/Scripting/OOJSSun.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sSunClassID
+Core/Scripting	src/Core/Scripting/OOJSSystem.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sSystemClass
+Core/Scripting	src/Core/Scripting/OOJSSystem.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sSystemClassID
+Core/Scripting	src/Core/Scripting/OOJSSystem.cpp	function-local static	constant initialised at run time	SystemAddShipsOrGroupToRoute(…)::validRoutes
+Core/Scripting	src/Core/Scripting/OOJSSystemInfo.cpp	file-local (static / anonymous namespace)	cache	sCachedGalaxy
+Core/Scripting	src/Core/Scripting/OOJSSystemInfo.cpp	file-local (static / anonymous namespace)	cache	sCachedSystem
+Core/Scripting	src/Core/Scripting/OOJSSystemInfo.cpp	file-local (static / anonymous namespace)	cache	sCachedSystemInfo
+Core/Scripting	src/Core/Scripting/OOJSSystemInfo.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sSystemInfoClass
+Core/Scripting	src/Core/Scripting/OOJSSystemInfo.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sSystemInfoClassID
+Core/Scripting	src/Core/Scripting/OOJSSystemInfo.cpp	file-local (static / anonymous namespace)	mutable state	sSystemInfoExoticMethods
+Core/Scripting	src/Core/Scripting/OOJSSystemInfo.cpp	function-local static	mutable state	InitOOJSSystemInfo(…)::observing
+Core/Scripting	src/Core/Scripting/OOJSTimer.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sTimerClass
+Core/Scripting	src/Core/Scripting/OOJSTimer.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sTimerClassID
+Core/Scripting	src/Core/Scripting/OOJSVector.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sVectorClass
+Core/Scripting	src/Core/Scripting/OOJSVector.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sVectorClassID
+Core/Scripting	src/Core/Scripting/OOJSVisualEffect.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sVisualEffectClass
+Core/Scripting	src/Core/Scripting/OOJSVisualEffect.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sVisualEffectClassID
+Core/Scripting	src/Core/Scripting/OOJSWaypoint.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sWaypointClass
+Core/Scripting	src/Core/Scripting/OOJSWaypoint.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sWaypointClassID
+Core/Scripting	src/Core/Scripting/OOJSWorldScripts.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sWorldScriptsClass
+Core/Scripting	src/Core/Scripting/OOJSWorldScripts.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sWorldScriptsClassID
+Core/Scripting	src/Core/Scripting/OOJSWorldScripts.cpp	file-local (static / anonymous namespace)	mutable state	sWorldScriptsExoticMethods
+Core/Scripting	src/Core/Scripting/OOJSWormhole.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sWormholeClass
+Core/Scripting	src/Core/Scripting/OOJSWormhole.cpp	file-local (static / anonymous namespace)	JS class / prototype handle	sWormholeClassID
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	external (extern global or class static)	engine-wide pointer or flag (g-prefixed)	gOOJSArrayClassID
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	external (extern global or class static)	engine-wide pointer or flag (g-prefixed)	gOOJSBooleanClassID
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	external (extern global or class static)	engine-wide pointer or flag (g-prefixed)	gOOJSMainThreadContext
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	external (extern global or class static)	engine-wide pointer or flag (g-prefixed)	gOOJSNumberClassID
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	external (extern global or class static)	engine-wide pointer or flag (g-prefixed)	gOOJSObjectClassID
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	external (extern global or class static)	engine-wide pointer or flag (g-prefixed)	gOOJSStringClassID
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	file-local (static / anonymous namespace)	mutable state	sErrorHandlerStackSkip
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	file-local (static / anonymous namespace)	mutable state	sLegacyConstRewriter
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	file-local (static / anonymous namespace)	mutable state	sLimiterPauseDepth
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	file-local (static / anonymous namespace)	mutable state	sLimiterPauseStart
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	file-local (static / anonymous namespace)	mutable state	sLimiterStart
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	file-local (static / anonymous namespace)	mutable state	sLimiterStartDepth
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	file-local (static / anonymous namespace)	mutable state	sLimiterTimeLimit
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	file-local (static / anonymous namespace)	mutable state	sObjectConverters
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	file-local (static / anonymous namespace)	singleton / shared accessor	sSharedEngine
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	function-local static	mutable state	LoadCompatibilityScript(…)::checked
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	function-local static	mutable state	MonotonicTime(…)::frequency
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	function-local static	cache	OOJSIDFromString(…)::sAtomCache
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	function-local static	singleton / shared accessor	OOJavaScriptEngine::sharedEngine(…)::engineHolder
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	function-local static	mutable state	OONull::null(…)::sNull
+Core/Scripting	src/Core/Scripting/OOJavaScriptEngine.cpp	function-local static	mutable state	OONull::null(…)::sNullHolder
+Core/Scripting	src/Core/Scripting/OOLegacyScriptWhitelist.cpp	function-local static	lookup table (built once)	(…)::AlwaysFalseConditions(…)::alwaysFalse
+Core/Scripting	src/Core/Scripting/OOLegacyScriptWhitelist.cpp	function-local static	lookup table (built once)	(…)::SanitizeActionMethod(…)::aliases
+Core/Scripting	src/Core/Scripting/OOLegacyScriptWhitelist.cpp	function-local static	lookup table (built once)	(…)::SanitizeActionMethod(…)::aliasesWithAI
+Core/Scripting	src/Core/Scripting/OOLegacyScriptWhitelist.cpp	function-local static	lookup table (built once)	(…)::SanitizeActionMethod(…)::inited
+Core/Scripting	src/Core/Scripting/OOLegacyScriptWhitelist.cpp	function-local static	lookup table (built once)	(…)::SanitizeActionMethod(…)::whitelist
+Core/Scripting	src/Core/Scripting/OOLegacyScriptWhitelist.cpp	function-local static	lookup table (built once)	(…)::SanitizeActionMethod(…)::whitelistDictionary
+Core/Scripting	src/Core/Scripting/OOLegacyScriptWhitelist.cpp	function-local static	lookup table (built once)	(…)::SanitizeActionMethod(…)::whitelistWithAI
+Core/Scripting	src/Core/Scripting/OOLegacyScriptWhitelist.cpp	function-local static	lookup table (built once)	(…)::SanitizeQueryMethod(…)::aliases
+Core/Scripting	src/Core/Scripting/OOLegacyScriptWhitelist.cpp	function-local static	lookup table (built once)	(…)::SanitizeQueryMethod(…)::whitelist
+Core/Scripting	src/Core/Scripting/OOLegacyScriptWhitelist.cpp	function-local static	lookup table (built once)	(…)::SanitizeQueryMethod(…)::whitelistDictionary
+Core/Scripting	src/Core/Scripting/OOScriptTimer.cpp	function-local static	mutable state	(…)::sDeferredTimers
+Core/Scripting	src/Core/Scripting/OOScriptTimer.cpp	function-local static	mutable state	(…)::sTimers
+Core/Scripting	src/Core/Scripting/OOScriptTimer.cpp	function-local static	mutable state	(…)::sUpdating
+SDL	src/SDL/MyOpenGLView.cpp	function-local static	mutable state	MyOpenGLView::snapShot(…)::imageNo
+SDL	src/SDL/main.cpp	external (extern global or class static)	mutable state	AmdPowerXpressRequestHighPerformance
+SDL	src/SDL/main.cpp	external (extern global or class static)	mutable state	NvOptimusEnablement
+SDL	src/SDL/main.cpp	external (extern global or class static)	engine-wide pointer or flag (g-prefixed)	gDebugFlags
+SDL	src/SDL/main.cpp	file-local (static / anonymous namespace)	mutable state	SDL_main::controllerHolder
+SDL	src/SDL/main.cpp	function-local static	mutable state	(…)::controller
+header	header, in 107 objects	function-local static	mutable state	oo::log::detail::indentState(…)::state
+header	header, in 108 objects	function-local static	singleton / shared accessor	oo::log::logger(…)::instance
+header	header, in 12 objects	function-local static	singleton / shared accessor	oo::NotificationCenter::defaultCenter(…)::center
+header	header, in 13 objects	header (inline) variable	mutable state	oo::detail::tLeakedWithoutScope
+header	header, in 2 objects	function-local static	mutable state	oo::str::localizedCompare(…)::collator
+header	header, in 2 objects	function-local static	mutable state	oo::str::localizedCompare(…)::opened
+header	header, in 2 objects	function-local static	mutable state	oo::str::localizedCompare(…)::openedFor
+header	header, in 2 objects	header (inline) variable	mutable state	scripted_color
+header	header, in 23 objects	header (inline) variable	mutable state	oo::detail::tInnermostScope
+header	header, in 30 objects	function-local static	singleton / shared accessor	oo::Defaults::standard(…)::instance
+header	header, in 4 objects	header (inline) variable	mutable state	oo::thread::kMainThreadId
+header	header, in 5 objects	header (inline) variable	mutable state	sInited
+header	header, in 8 objects	function-local static	singleton / shared accessor	oo::process::detail::argumentStore(…)::store
+header	header, in 9 objects	function-local static	singleton / shared accessor	(…)::sSingleton

@@ -1,0 +1,354 @@
+src/Core/Debug/OODebugMonitor.cpp:253: long long OODebugMonitor::configurationIntValueForKey(const std::string& key,
+src/Core/Debug/OODebugMonitor.cpp:254:                                                       long long value) {
+src/Core/Debug/OODebugMonitor.cpp:266:                  ? static_cast<long long>(integer.unsignedValue())
+src/Core/Debug/OODebugMonitor.cpp:270:       return static_cast<long long>(*object.getIf<double>());
+src/Core/Debug/OODebugMonitor.cpp:594:                   SizeString(jsSize), static_cast<long long>(usage.obj_count),
+src/Core/Debug/OODebugMonitor.h:109:   long long configurationIntValueForKey(const std::string& key,
+src/Core/Debug/OODebugMonitor.h:110:                                         long long value);
+src/Core/Debug/OODebugSupport.cpp:41:   unsigned short consolePort = 0;
+src/Core/Debug/OODebugSupport.cpp:66:     consolePort = debugSettings.get<unsigned short>("console-port");
+src/Core/Debug/OODebugTCPConsoleClient.cpp:611:           static_cast<long long>(ceil(remaining * 1000.0))));
+src/Core/Debug/OODebugTCPConsoleClient.cpp:988:     const long long millis = static_cast<long long>(ceil(timeout * 1000.0));
+src/Core/Debug/OODebugTCPConsoleClient.cpp:989:     limit.tv_sec = static_cast<long>(millis / 1000);
+src/Core/Debug/OODebugTCPConsoleClient.cpp:990:     limit.tv_usec = static_cast<long>(millis % 1000) * 1000;
+src/Core/Debug/OOJSConsole.cpp:868:   long long (*scalar)(OODebugMonitor*);
+src/Core/Debug/OOJSConsole.cpp:899:      [](OODebugMonitor* m) -> long long { return m->debuggerConnected(); },
+src/Core/Debug/OOJSConsole.cpp:903:      [](OODebugMonitor* m) -> long long {
+src/Core/Debug/OOJSConsole.cpp:909:      [](OODebugMonitor* m) -> long long { return m->usingPlugInController(); },
+src/Core/Debug/OOJSConsole.cpp:915:      [](OODebugMonitor* m) -> long long {
+src/Core/Debug/OOJSConsole.cpp:916:        return static_cast<long long>(m->dumpJSMemoryStatistics());
+src/Core/Debug/OOJSConsole.cpp:994:               static_cast<unsigned long long>(method->scalar(monitor)));
+src/Core/Debug/OOJSConsole.cpp:1131:       "<console input>:{}:{}", static_cast<unsigned long>(lineCount),
+src/Core/Debug/OOJSConsole.cpp:1132:       static_cast<unsigned long>(oo::utf8ToUtf16(lastLine).size()) + 1);
+src/Core/Debug/OOTCPStreamDecoder.cpp:170:             static_cast<unsigned long>(decoder->nextSize),
+src/Core/Debug/OOTCPStreamDecoder.cpp:171:             static_cast<unsigned long>(decoder->headerSpaceUsed),
+src/Core/Entities/DockEntity.cpp:49: std::vector<unsigned short> ShipIDsIn(
+src/Core/Entities/DockEntity.cpp:50:     const std::map<unsigned short, std::vector<oo::PList>>& queue) {
+src/Core/Entities/DockEntity.cpp:51:   std::vector<unsigned short> shipIDs;
+src/Core/Entities/DockEntity.cpp:310:   for (unsigned short idObj : ShipIDsIn(shipsOnApproach)) {
+src/Core/Entities/DockEntity.cpp:344:   for (unsigned short idObj : ShipIDsIn(shipsOnApproach)) {
+src/Core/Entities/DockEntity.cpp:403:     std::map<unsigned short, std::vector<oo::PList>>& queue) {
+src/Core/Entities/DockEntity.cpp:404:   for (unsigned short idObj : ShipIDsIn(queue)) {
+src/Core/Entities/DockEntity.cpp:473:   const unsigned short shipID =
+src/Core/Entities/DockEntity.cpp:474:       static_cast<unsigned short>(ship_id);  // +numberWithUnsignedShort:
+src/Core/Entities/DockEntity.cpp:702:   const unsigned short shipID = static_cast<unsigned short>(
+src/Core/Entities/DockEntity.cpp:846:   const unsigned short shipID =
+src/Core/Entities/DockEntity.cpp:847:       static_cast<unsigned short>(ship_id);  // +numberWithUnsignedShort:
+src/Core/Entities/DockEntity.cpp:898:   const unsigned short shipID =
+src/Core/Entities/DockEntity.cpp:899:       static_cast<unsigned short>(ship_id);  // +numberWithUnsignedShort:
+src/Core/Entities/DockEntity.h:91:       std::map<unsigned short, std::vector<oo::PList>>& queue);
+src/Core/Entities/DockEntity.h:121:   std::map<unsigned short, std::vector<oo::PList>>
+src/Core/Entities/EntityShaderBindings.cpp:137:             ? static_cast<long long>(static_cast<unsigned char>(value)) - 256
+src/Core/Entities/EntityShaderBindings.cpp:138:             : static_cast<long long>(static_cast<unsigned char>(value));
+src/Core/Entities/EntityShaderBindings.cpp:140:     out.i = static_cast<long long>(value);  // integers and enums
+src/Core/Entities/OOEntityCalledByName.cpp:132:     const long long bits = static_cast<unsigned char>(Function(entity));
+src/Core/Entities/OOEntityCalledByName.cpp:135:     value.integer = static_cast<long long>(Function(entity));
+src/Core/Entities/OOEntityCalledByName.h:70:   long long integer = 0;
+src/Core/Entities/OOSunEntity.cpp:466:   unsigned short i, j, k;
+src/Core/Entities/PlayerEntity.cpp:1230:         oo::PList::unsignedInteger(static_cast<unsigned short>(government));
+src/Core/Entities/PlayerEntity.cpp:1234:         oo::PList::unsignedInteger(static_cast<unsigned short>(economy));
+src/Core/Entities/PlayerEntity.cpp:1255:   result["fuel"] = oo::PList::unsignedInteger(static_cast<unsigned long>(fuel));
+src/Core/Entities/PlayerEntity.cpp:1258:       oo::PList::signedInteger(static_cast<long>(galaxy_number));
+src/Core/Entities/PlayerEntity.cpp:1295:       static_cast<long>(max_cargo + PASSENGER_BERTH_SPACE * max_passengers));
+src/Core/Entities/PlayerEntity.cpp:1317:   result["missiles"] = oo::PList::signedInteger(static_cast<long>(missiles));
+src/Core/Entities/PlayerEntity.cpp:1320:       oo::PList::signedInteger(static_cast<long>(legalStatusValue));
+src/Core/Entities/PlayerEntity.cpp:1322:       oo::PList::signedInteger(static_cast<long>(market_rnd));
+src/Core/Entities/PlayerEntity.cpp:1324:       oo::PList::signedInteger(static_cast<long>(ship_kills));
+src/Core/Entities/PlayerEntity.cpp:1328:       oo::PList::signedInteger(static_cast<long>(ship_trade_in_factor));
+src/Core/Entities/PlayerEntity.cpp:1341:       static_cast<unsigned long>(entity_personality));
+src/Core/Entities/PlayerEntity.cpp:1347:         oo::PList::signedInteger(static_cast<long>(countEquipmentItem(eqDesc)));
+src/Core/Entities/PlayerEntity.cpp:1391:       oo::PList::signedInteger(static_cast<long>(max_passengers));
+src/Core/Entities/PlayerEntity.cpp:1438:       oo::PList::unsignedInteger(static_cast<unsigned long>(_customViewIndex));
+src/Core/Entities/PlayerEntity.cpp:1535:       oo::PList::signedInteger(static_cast<long>(final_checksum));
+src/Core/Entities/PlayerEntity.cpp:2195:       dict.get<unsigned short>("entity_personality", entity_personality);
+src/Core/Entities/PlayerEntity.cpp:2537:   long long secondOfDay =
+src/Core/Entities/PlayerEntity.cpp:2538:       (static_cast<long long>(
+src/Core/Entities/PlayerEntity.cpp:2541:        static_cast<long long>(oo::date::localUTCOffsetMinutes(now)) * 60) %
+src/Core/Entities/PlayerEntity.cpp:8914:             std::format("sysdata-line-{}", static_cast<long>(i));
+src/Core/Entities/PlayerEntity.cpp:10810:                                static_cast<long long>(old_credits - credits))};
+src/Core/Entities/PlayerEntityContracts.cpp:252:         long long fee = passenger_info.get<long long>(CONTRACT_KEY_FEE);
+src/Core/Entities/PlayerEntityContracts.cpp:282:         long long fee =
+src/Core/Entities/PlayerEntityContracts.cpp:283:             passenger_info.get<long long>(CONTRACT_KEY_FEE) / 2;  // halve fare
+src/Core/Entities/PlayerEntityContracts.cpp:336:         long long fee = parcel_info.get<long long>(CONTRACT_KEY_FEE);
+src/Core/Entities/PlayerEntityContracts.cpp:368:         long long fee =
+src/Core/Entities/PlayerEntityContracts.cpp:369:             parcel_info.get<long long>(CONTRACT_KEY_FEE) / 2;  // halve fare
+src/Core/Entities/PlayerEntityContracts.cpp:1581:   return CurrentShipyardEntry(key).get<unsigned long long>(
+src/Core/Entities/PlayerEntityContracts.cpp:1690:             ship_info.get<unsigned long long>("price");  // SHIPYARD_KEY_PRICE
+src/Core/Entities/PlayerEntityContracts.cpp:1823:           info.get<unsigned short>("personality"));  // SHIPYARD_KEY_PERSONALITY
+src/Core/Entities/PlayerEntityContracts.cpp:1885:   unsigned long long value =
+src/Core/Entities/PlayerEntityContracts.cpp:1892:   const unsigned long long rounded =
+src/Core/Entities/PlayerEntityContracts.cpp:1943:       shipInfo.get<unsigned long long>("price");  // SHIPYARD_KEY_PRICE
+src/Core/Entities/PlayerEntityContracts.cpp:2029:       shipInfo.get<unsigned short>("personality"));  // SHIPYARD_KEY_PERSONALITY
+src/Core/Entities/PlayerEntityContracts.cpp:2084:   setEntityPersonalityInt(ship_info.get<unsigned short>(
+src/Core/Entities/PlayerEntityKeyMapper.cpp:48: static long current_row;
+src/Core/Entities/PlayerEntityKeyMapper.cpp:49: static long kbd_row = GUI_ROW_KC_FUNCSTART;
+src/Core/Entities/PlayerEntityKeyMapper.cpp:561:           static_cast<OOKeyCode>(def.get<long long>("key"));  // -integerValue
+src/Core/Entities/PlayerEntityKeyMapper.cpp:744:       def != nullptr ? def->get<long long>("key") : 0);  // -integerValue
+src/Core/Entities/PlayerEntityKeyMapper.cpp:862:         static_cast<OOKeyCode>(key_def.get<long long>("key"));  // -integerValue
+src/Core/Entities/PlayerEntityKeyMapper.cpp:2018:   if (first.get<long long>("key") == second.get<long long>("key")) {
+src/Core/Entities/PlayerEntityKeyMapper.cpp:2032:   if (key_list.count() > 1 && key_list.at(1)->get<long long>("key") == 0) {
+src/Core/Entities/PlayerEntityKeyMapper.cpp:2043:   if ((key_list.at(0) != nullptr ? key_list.at(0)->get<long long>("key") : 0) ==
+src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp:1087:       static_cast<unsigned long long>(ship_clock));
+src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp:1094:       static_cast<unsigned long long>(ship_clock / 60.0));
+src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp:1101:       static_cast<unsigned long long>(ship_clock / 3600.0));
+src/Core/Entities/PlayerEntityLegacyScriptEngine.cpp:1108:       static_cast<unsigned long long>(ship_clock / 86400.0));
+src/Core/Entities/PlayerEntityLoadSave.cpp:1379:   uint16_t personality = dict.get<unsigned short>("entity_personality",
+src/Core/Entities/PlayerEntityScriptMethods.cpp:341:   unsigned long long integerCredits = tenthsOfCredits / 10;
+src/Core/Entities/PlayerEntityScriptMethods.cpp:342:   unsigned long long tenths = tenthsOfCredits % 10;
+src/Core/Entities/ShipEntity.cpp:960:   fuel = shipDict.get<unsigned short>(
+src/Core/Entities/ShipEntity.cpp:6723:         oo::PList(static_cast<long>(behaviour));  // as oo_setInteger: stored it
+src/Core/GameController.cpp:304:              static_cast<unsigned long>(GetLastError()));
+src/Core/GameController.cpp:318:              static_cast<unsigned long>(GetLastError()));
+src/Core/GameController.cpp:517:                 static_cast<long long>(ceil(remaining * 1000.0))));
+src/Core/GuiDisplayGen.cpp:1700:                                                static_cast<long>(system_id));
+src/Core/GuiDisplayGen.cpp:1927:                               static_cast<long>(i), static_cast<long>(j))));
+src/Core/GuiDisplayGen.cpp:1942:                               static_cast<long>(j), static_cast<long>(i))));
+src/Core/HeadUpDisplay.cpp:232:                      static_cast<unsigned long>(index),
+src/Core/HeadUpDisplay.cpp:233:                      static_cast<unsigned long>(colors.size()));
+src/Core/Materials/OODefaultShaderSynthesizer.cpp:1383:   long long intValue = value;
+src/Core/Materials/OOPixMap.cpp:216: unsigned short OOPixMapBytesPerPixelForFormat(OOPixMapFormat format) {
+src/Core/Materials/OOPixMap.h:167: unsigned short OOPixMapBytesPerPixelForFormat(OOPixMapFormat format) PURE_FUNC;
+src/Core/Materials/OOPixMap.h:169: OOINLINE unsigned short OOPixMapBytesPerPixelForFormat(OOPixMapFormat format) {
+src/Core/Materials/OOPixMap.h:175: OOINLINE unsigned short OOPixMapBytesPerPixel(OOPixMap pixMap) {
+src/Core/Materials/OOShaderUniformMethodType.cpp:95:   GET_TEMPLATE(kOOShaderUniformTypeShort, signed short);
+src/Core/Materials/OOShaderUniformMethodType.cpp:96:   GET_TEMPLATE(kOOShaderUniformTypeUnsignedShort, unsigned short);
+src/Core/Materials/OOShaderUniformMethodType.cpp:99:   GET_TEMPLATE(kOOShaderUniformTypeLong, signed long);
+src/Core/Materials/OOShaderUniformMethodType.cpp:100:   GET_TEMPLATE(kOOShaderUniformTypeUnsignedLong, unsigned long);
+src/Core/Materials/OOShaderUniformMethodType.h:124:   long long i;
+src/Core/OOALSoundDecoder.cpp:67:   long sampleRate() override;
+src/Core/OOALSoundDecoder.cpp:117: long OOALSoundDecoder::sampleRate() { return 0; }
+src/Core/OOALSoundDecoder.cpp:293:   long framesRead;
+src/Core/OOALSoundDecoder.cpp:344:   long framesRead;
+src/Core/OOALSoundDecoder.cpp:398: long OOALSoundVorbisCodec::sampleRate() { return ov_info(&_vf, -1)->rate; }
+src/Core/OOALSoundDecoder.h:87:   virtual long sampleRate();
+src/Core/OOCPUInfo.cpp:170:       static_cast<unsigned long long>(si.totalram / toMegabyte);
+src/Core/OOCPUInfo.cpp:172:       static_cast<unsigned long long>(si.freeram / toMegabyte);
+src/Core/OOCPUInfo.cpp:207:                      static_cast<unsigned long>(osver.dwMajorVersion),
+src/Core/OOCPUInfo.cpp:208:                      static_cast<unsigned long>(osver.dwMinorVersion),
+src/Core/OOCPUInfo.cpp:209:                      static_cast<unsigned long>(osver.dwBuildNumber),
+src/Core/OOCPUInfo.h:70:   unsigned long long ooPhysicalMemory;
+src/Core/OOCPUInfo.h:71:   unsigned long long ooAvailableMemory;
+src/Core/OOCacheManager.cpp:60: constexpr unsigned long long kEndianTagValue = 0x0123456789ABCDEFULL;
+src/Core/OOCacheManager.cpp:61: constexpr unsigned long long kFormatVersionValue = 219;
+src/Core/OOCharacter.cpp:484:     setInsuranceCredits(dict.get<unsigned long long>("insurance"));
+src/Core/OOCommodities.cpp:122:                  unsigned long long value) {
+src/Core/OOCommodities.cpp:126: void SetSigned(oo::PList& info, std::string_view key, long long value) {
+src/Core/OOCommodities.cpp:560:   return good.get<unsigned long long>(kOOCommodityPriceCurrent);
+src/Core/OOCommodities.cpp:660:   long long import = rule.get<long long>(kOOCommodityMarketLegalityImport, -1);
+src/Core/OOCommodities.cpp:665:   long long exportValue =
+src/Core/OOCommodities.cpp:666:       rule.get<long long>(kOOCommodityMarketLegalityExport, -1);
+src/Core/OOCommodities.cpp:672:   long long capacity = rule.get<long long>(kOOCommodityMarketCapacity, -1);
+src/Core/OOCommodities.cpp:673:   if (capacity >= 0 && capacity <= static_cast<long long>(maxCapacity)) {
+src/Core/OOCommodityMarket.cpp:177:   return definition->get<unsigned long long>(kPriceCurrent);
+src/Core/OOCommodityMarket.cpp:201:   return definition->get<unsigned long long>(kLegalityExport);
+src/Core/OOCommodityMarket.cpp:209:   return definition->get<unsigned long long>(kLegalityImport);
+src/Core/OOCommodityMarket.cpp:303:     p = loaded.at<unsigned long long>(2);
+src/Core/OOConvertSystemDescriptions.cpp:52: using KeysToIndices = std::map<std::string, long long>;
+src/Core/OOConvertSystemDescriptions.cpp:53: using UsedIndices = std::set<long long>;
+src/Core/OOConvertSystemDescriptions.cpp:60:       const long long number = oo::str::intValue(key);
+src/Core/OOConvertSystemDescriptions.cpp:79: long long KeyToIndex(const std::string& key, KeysToIndices& ioKeysToIndices,
+src/Core/OOConvertSystemDescriptions.cpp:87:   long long result;
+src/Core/OOConvertSystemDescriptions.cpp:89:     result = static_cast<long long>((*ioSlotCache)++);
+src/Core/OOConvertSystemDescriptions.cpp:131:         const long long index =
+src/Core/OOConvertSystemDescriptions.cpp:165: std::size_t HighestIndex(const std::map<long long, oo::PList>& sparseArray) {
+src/Core/OOConvertSystemDescriptions.cpp:264:   std::map<long long, oo::PList> result;  // a sparse array
+src/Core/OOConvertSystemDescriptions.cpp:278:       const long long index =
+src/Core/OOConvertSystemDescriptions.cpp:288:     const auto found = result.find(static_cast<long long>(i));
+src/Core/OOFastArithmetic.h:95: OOINLINE long long OOClampInteger(long long value, long long minValue,
+src/Core/OOFastArithmetic.h:96:                                   long long maxValue) ALWAYS_INLINE_FUNC;
+src/Core/OOFastArithmetic.h:97: OOINLINE long long OOClampInteger(long long value, long long minValue,
+src/Core/OOFastArithmetic.h:98:                                   long long maxValue) {
+src/Core/OOLogHeader.cpp:206: static unsigned long long GetSysCtlInt(const char* name);
+src/Core/OOLogHeader.cpp:212:   unsigned long long sysPhysMem;
+src/Core/OOLogHeader.cpp:243:   unsigned long long sysCPUType = GetSysCtlInt("hw.cputype");
+src/Core/OOLogHeader.cpp:244:   unsigned long long sysCPUFamily = GetSysCtlInt("hw.cpufamily");
+src/Core/OOLogHeader.cpp:245:   unsigned long long sysCPUFrequency = GetSysCtlInt("hw.cpufrequency");
+src/Core/OOLogHeader.cpp:246:   unsigned long long sysCPUCount = GetSysCtlInt("hw.physicalcpu");
+src/Core/OOLogHeader.cpp:247:   unsigned long long sysLogicalCPUCount = GetSysCtlInt("hw.logicalcpu");
+src/Core/OOLogHeader.cpp:336: static unsigned long long GetSysCtlInt(const char* name) {
+src/Core/OOLogHeader.cpp:337:   unsigned long long llresult = 0;
+src/Core/OOOXZManager.cpp:589:         manifest.get<unsigned long long>(kOOManifestUploadDate);
+src/Core/OOOXZManager.cpp:1537:             {static_cast<unsigned long long>(_oxzList.count()),
+src/Core/OOOXZManager.cpp:1538:              static_cast<unsigned long long>(
+src/Core/OOOXZManager.cpp:2130:           manifest.get<unsigned long long>(kOOManifestUploadDate, 0);
+src/Core/OOOXZManager.cpp:2479:                    {static_cast<unsigned long long>(counter)});
+src/Core/OOOXZManager.cpp:2487: void OOOXZManager::downloadDidReceiveResponse(long long expectedContentLength) {
+src/Core/OOOXZManager.h:222:   void downloadDidReceiveResponse(long long expectedContentLength);
+src/Core/OOShipGroup.h:123:   unsigned long _updateCount = {};
+src/Core/OOStringExpander.cpp:569: long long LongLongValue(const OOMaybeUnits& string) {
+src/Core/OOStringExpander.cpp:1464:           static_cast<unsigned long>(location),
+src/Core/OOStringExpander.cpp:1465:           static_cast<unsigned long>(units.size()));
+src/Core/OOStringParsing.cpp:273:     result = std::format("{}", static_cast<long>(tenthsOfCredits) / 10);
+src/Core/OOTypeEncodings.h:56: template <> struct OOTypeEncoding<signed short> { static constexpr char value[] = "s"; };
+src/Core/OOTypeEncodings.h:58: template <> struct OOTypeEncoding<unsigned short> { static constexpr char value[] = "S"; };
+src/Core/OOTypeEncodings.h:64: template <> struct OOTypeEncoding<signed long> { static constexpr char value[] = "l"; };
+src/Core/OOTypeEncodings.h:66: template <> struct OOTypeEncoding<unsigned long> { static constexpr char value[] = "L"; };
+src/Core/OOTypeEncodings.h:68: template <> struct OOTypeEncoding<long long> { static constexpr char value[] = "q"; };
+src/Core/OOTypeEncodings.h:70: template <> struct OOTypeEncoding<unsigned long long> { static constexpr char value[] = "Q"; };
+src/Core/OOVoxel.cpp:72: Vector lineIntersectionWithFace(Vector p1, Vector p2, long mask, GLfloat rd) {
+src/Core/OOVoxel.cpp:100: int checkPoint(Vector p1, Vector p2, GLfloat alpha, long mask, GLfloat rd) {
+src/Core/OOVoxel.h:44: Vector lineIntersectionWithFace(Vector p1, Vector p2, long mask,
+src/Core/OXPVerifier/OOCheckEquipmentPListVerifierStage.cpp:138:     if (entry.at<long>(EQUIPMENT_TECH_LEVEL_INDEX, -1) < 0) {
+src/Core/OXPVerifier/OOCheckEquipmentPListVerifierStage.cpp:144:     if (entry.at<long>(EQUIPMENT_PRICE_INDEX, -1) < 0) {
+src/Core/OXPVerifier/OOPListSchemaVerifier.cpp:653:                                 unsigned long long index) {
+src/Core/OXPVerifier/OOPListSchemaVerifier.cpp:658:         index, static_cast<unsigned long long>(units.size()));
+src/Core/OXPVerifier/OOPListSchemaVerifier.cpp:704:             result, static_cast<unsigned long long>(static_cast<std::size_t>(
+src/Core/OXPVerifier/OOPListSchemaVerifier.cpp:708:             result, static_cast<unsigned long long>(static_cast<std::size_t>(
+src/Core/OXPVerifier/OOPListSchemaVerifier.cpp:1210:   long long numericValue;
+src/Core/OXPVerifier/OOPListSchemaVerifier.cpp:1211:   long long constraint;
+src/Core/OXPVerifier/OOPListSchemaVerifier.cpp:1225:   constraint = params.get<long long>("minimum", LLONG_MIN);
+src/Core/OXPVerifier/OOPListSchemaVerifier.cpp:1232:   constraint = params.get<long long>("maximum", LLONG_MAX);
+src/Core/OXPVerifier/OOPListSchemaVerifier.cpp:1251:   unsigned long long numericValue;
+src/Core/OXPVerifier/OOPListSchemaVerifier.cpp:1252:   unsigned long long constraint;
+src/Core/OXPVerifier/OOPListSchemaVerifier.cpp:1265:   constraint = params.get<unsigned long long>("minimum", 0);
+src/Core/OXPVerifier/OOPListSchemaVerifier.cpp:1272:   constraint = params.get<unsigned long long>("maximum", ULLONG_MAX);
+src/Core/ResourceManager.cpp:261:         static_cast<unsigned long>(index),
+src/Core/ResourceManager.cpp:262:         static_cast<unsigned long>(elements.size()));
+src/Core/ResourceManager.cpp:1965:            static_cast<long>(static_cast<unsigned long>(
+src/Core/Scripting/OOJSEngineTimeManagement.cpp:264:           static_cast<unsigned long>(entry->hitCount()),
+src/Core/Scripting/OOJSEngineTimeManagement.h:189:   unsigned long _hitCount = {};
+src/Core/Scripting/OOJSFrameCallbacks.cpp:455:          (long)sDeferredOps->size());
+src/Core/Scripting/OOJSScript.cpp:826:   return std::format("{:016x}:{}", static_cast<unsigned long long>(hash),
+src/Core/Scripting/OOJSScript.cpp:827:                      static_cast<unsigned long>(source.size()));
+src/Core/Scripting/OOJavaScriptEngine.cpp:282:                   static_cast<long long>(usage.obj_count));
+src/Core/Scripting/OOJavaScriptEngine.cpp:358:            static_cast<long long>(usage.obj_count));
+src/Core/Scripting/OOJavaScriptEngine.cpp:1195:         const unsigned long long u = integer.unsignedValue();
+src/Core/Scripting/OOJavaScriptEngine.cpp:1196:         if (u <= static_cast<unsigned long long>(INT32_MAX))
+src/Core/Scripting/OOJavaScriptEngine.cpp:1200:       const long long v = integer.value;
+src/Core/Scripting/OOJavaScriptEngine.cpp:1201:       if (static_cast<long long>(INT32_MIN) <= v &&
+src/Core/Scripting/OOJavaScriptEngine.cpp:1202:           v <= static_cast<long long>(INT32_MAX))
+src/Core/Scripting/OOJavaScriptEngine.cpp:1414:                                    static_cast<long long>(count));
+src/Core/Scripting/OOJavaScriptEngine.cpp:1421:         result = std::format("[<{} items>]", static_cast<long long>(count));
+src/Core/Scripting/poc/OOJavaScriptEnginePoc.cpp:141:            static_cast<long long>(usage.obj_count));
+src/Core/Scripting/poc/OOJavaScriptEnginePoc.cpp:743:         const unsigned long long u = integer.unsignedValue();
+src/Core/Scripting/poc/OOJavaScriptEnginePoc.cpp:744:         if (u <= static_cast<unsigned long long>(INT32_MAX))
+src/Core/Scripting/poc/OOJavaScriptEnginePoc.cpp:748:       const long long v = integer.value;
+src/Core/Scripting/poc/OOJavaScriptEnginePoc.cpp:749:       if (static_cast<long long>(INT32_MIN) <= v &&
+src/Core/Scripting/poc/OOJavaScriptEnginePoc.cpp:750:           v <= static_cast<long long>(INT32_MAX))
+src/Core/Scripting/poc/OOJavaScriptEnginePoc.cpp:831:                                    static_cast<long long>(count));
+src/Core/Scripting/poc/OOJavaScriptEnginePoc.cpp:838:         result = std::format("[<{} items>]", static_cast<long long>(count));
+src/Core/Scripting/poc/main.cpp:194:                     static_cast<unsigned long>(leaked)));
+src/Core/Universe.cpp:893: unsigned long long ExtraInfoValue(const oo::PList* extra, std::string_view key,
+src/Core/Universe.cpp:894:                                   unsigned long long fallback) {
+src/Core/Universe.cpp:895:   return (extra != nullptr) ? extra->get<unsigned long long>(key, fallback) : 0;
+src/Core/Universe.cpp:901:   unsigned long long comp1 =
+src/Core/Universe.cpp:903:   unsigned long long comp2 =
+src/Core/Universe.cpp:907:   comp1 = one.at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
+src/Core/Universe.cpp:908:   comp2 = two.at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
+src/Core/Universe.cpp:911:   comp1 = one.at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
+src/Core/Universe.cpp:912:   comp2 = two.at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
+src/Core/Universe.cpp:920:   unsigned long long comp1 =
+src/Core/Universe.cpp:923:   unsigned long long comp2 =
+src/Core/Universe.cpp:928:   comp1 = one.at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
+src/Core/Universe.cpp:929:   comp2 = two.at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
+src/Core/Universe.cpp:932:   comp1 = one.at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
+src/Core/Universe.cpp:933:   comp2 = two.at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
+src/Core/Universe.cpp:1027:         static_cast<unsigned long>(index),
+src/Core/Universe.cpp:1028:         static_cast<unsigned long>(keys.size()));
+src/Core/Universe.cpp:1073:   const unsigned long long price1 =
+src/Core/Universe.cpp:1074:       offer1.get<unsigned long long>(SHIPYARD_KEY_PRICE);
+src/Core/Universe.cpp:1075:   const unsigned long long price2 =
+src/Core/Universe.cpp:1076:       offer2.get<unsigned long long>(SHIPYARD_KEY_PRICE);
+src/Core/Universe.cpp:1209:   long int index;
+src/Core/Universe.cpp:1217:     long int input = count;
+src/Core/Universe.cpp:1236:       long int param = strtol(cond, const_cast<char**>(&cond), 10);
+src/Core/Universe.cpp:4366:   static unsigned long profTotal = 0, profSlowPath = 0;
+src/Core/Universe.cpp:4671:         return itemData.at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
+src/Core/Universe.cpp:8750:   for (unsigned short i = 0; i < 256; i++) {
+src/Core/Universe.cpp:9348:     long long reference_time = 0x1000000 * floor(current_time / 0x1000000);
+src/Core/Universe.cpp:9350:     long long c_time =
+src/Core/Universe.cpp:9840:         shipyard_info.get<unsigned long long>(SHIPYARD_KEY_PRICE, 0ULL);
+src/Core/Universe.cpp:9932:   long long extra_equipment_value =
+src/Core/Universe.cpp:10042:   if (static_cast<long long>(scrap_value) >
+src/Core/Universe.cpp:10043:       static_cast<long long>(base_price) + extra_equipment_value)
+src/Core/legacy_random.cpp:43: int16_t munge_checksum(long long value_) {
+src/Core/legacy_random.cpp:60:   unsigned long long rounded_fee = superfee * floor(0.5 + fee / superfee);
+src/Core/legacy_random.h:57: int16_t munge_checksum(long long value);
+src/oofnd/Date.hpp:90:       floor<seconds>(t) + minutes(static_cast<long long>(utcOffsetMinutes));
+src/oofnd/Defaults.hpp:287:                    ? std::format("{}", static_cast<unsigned long long>(
+src/oofnd/Defaults.hpp:289:                    : std::format("{}", static_cast<long long>(i.value)));
+src/oofnd/Http.hpp:495:     curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, static_cast<long>(kChunkSize));
+src/oofnd/Http.hpp:498:                      static_cast<long>(CURLSSLOPT_NATIVE_CA));
+src/oofnd/Log.hpp:159:       static_cast<int>(ms - static_cast<long long>(seconds) * 1000);
+src/oofnd/Log.hpp:175:                                unsigned long line, std::string_view message,
+src/oofnd/Log.hpp:354:              const char* file, unsigned long line, std::string_view message) {
+src/oofnd/Log.hpp:510:              const char* file, unsigned long line,
+src/oofnd/Log.hpp:518:                        const char* file, unsigned long line,
+src/oofnd/PList.hpp:418:   auto getDigits = [&](unsigned limit, long* value) {
+src/oofnd/PList.hpp:434:   long year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0,
+src/oofnd/PList.hpp:469:         long sign = 1, zone = 0;
+src/oofnd/PList.hpp:482:           const long seconds = ((zone / 100) * 60 + (zone % 100)) * 60;
+src/oofnd/PList.hpp:493:   auto lastDayOfMonth = [](long m, long y) -> long {
+src/oofnd/PList.hpp:506:   auto absoluteDay = [&](long d, long m, long y) {
+src/oofnd/PList.hpp:511:   const long days = absoluteDay(day, month, year) - absoluteDay(1, 1, 2001);
+src/oofnd/PListDescription.hpp:141:                          static_cast<unsigned long long>(i->unsignedValue()));
+src/oofnd/PListDescription.hpp:142:     return std::format("{}", static_cast<long long>(i->value));
+src/oofnd/PListGet.hpp:156: inline long long longLongValue(std::u16string_view s) noexcept {
+src/oofnd/PListGet.hpp:157:   return saturatingParse<long long>(intBuf(s));
+src/oofnd/PListGet.hpp:160:   return static_cast<int>(saturatingParse<long>(intBuf(s)));
+src/oofnd/PListGet.hpp:333: inline long long longLongFrom(const PList* v, long long fallback) noexcept {
+src/oofnd/PListGet.hpp:343: inline unsigned long long unsignedLongLongFrom(
+src/oofnd/PListGet.hpp:344:     const PList* v, unsigned long long fallback) noexcept {
+src/oofnd/PListGet.hpp:351:     return static_cast<unsigned long long>(
+src/oofnd/PListGet.hpp:352:         static_cast<long long>(intValue(utf8ToUtf16(*s))));
+src/oofnd/PListGet.hpp:522:                          static_cast<unsigned long long>(i->unsignedValue()));
+src/oofnd/PListGet.hpp:523:     return std::format("{}", static_cast<long long>(i->value));
+src/oofnd/PListGet.hpp:553:     if constexpr (sizeof(T) == sizeof(long long) && std::is_signed_v<T>) {
+src/oofnd/PListGet.hpp:556:     } else if constexpr (sizeof(T) == sizeof(long long)) {
+src/oofnd/PListGet.hpp:562:       const long long ll =
+src/oofnd/PListGet.hpp:563:           plist_get::longLongFrom(v, static_cast<long long>(fallback));
+src/oofnd/PListGet.hpp:564:       const long long lo =
+src/oofnd/PListGet.hpp:565:           static_cast<long long>(std::numeric_limits<T>::min());
+src/oofnd/PListGet.hpp:566:       const long long hi =
+src/oofnd/PListGet.hpp:567:           static_cast<long long>(std::numeric_limits<T>::max());
+src/oofnd/PListWriting.hpp:82: inline void breakDate(double sinceReferenceDate, long& y, int& mo, int& d,
+src/oofnd/PListWriting.hpp:85:   const long long days = static_cast<long long>(std::floor(t / 86400.0));
+src/oofnd/PListWriting.hpp:86:   const long long secs = static_cast<long long>(t) - days * 86400;
+src/oofnd/PListWriting.hpp:89:   const long long z = days + 11323 + 719468;
+src/oofnd/PListWriting.hpp:90:   const long long era = (z >= 0 ? z : z - 146096) / 146097;
+src/oofnd/PListWriting.hpp:91:   const long long doe = z - era * 146097;
+src/oofnd/PListWriting.hpp:92:   const long long yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+src/oofnd/PListWriting.hpp:93:   long long year = yoe + era * 400;
+src/oofnd/PListWriting.hpp:94:   const long long doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+src/oofnd/PListWriting.hpp:95:   const long long mp = (5 * doy + 2) / 153;
+src/oofnd/PListWriting.hpp:99:   y = static_cast<long>(year);
+src/oofnd/PListWriting.hpp:461:       long y;
+src/oofnd/PListXML.hpp:261:   long length = static_cast<long>(source.size());
+src/oofnd/PListXML.hpp:453:       const long tagStart = static_cast<long>(closing ? tp + 1 : tp);
+src/oofnd/PListXML.hpp:454:       const long tagLen = static_cast<long>(cp_) - tagStart - 1;
+src/oofnd/PListXML.hpp:835:       const long long v =
+src/oofnd/PListXML.hpp:840:         item = PList::unsignedInteger(static_cast<unsigned long long>(v));
+src/oofnd/Process.hpp:51: __declspec(dllimport) unsigned long __stdcall GetVersion(void);
+src/oofnd/Process.hpp:53:     unsigned int CodePage, unsigned long dwFlags, const wchar_t* lpWideCharStr,
+src/oofnd/Process.hpp:57:     unsigned int CodePage, unsigned long dwFlags, const char* lpMultiByteStr,
+src/oofnd/Process.hpp:119:   const unsigned long version = GetVersion();
+src/oofnd/ResourcePaths.hpp:84: extern "C" __declspec(dllimport) unsigned long __stdcall
+src/oofnd/ResourcePaths.hpp:86:                         unsigned long size);
+src/oofnd/ResourcePaths.hpp:128:       const unsigned long n =
+src/oofnd/ResourcePaths.hpp:130:                                     static_cast<unsigned long>(value.size()));
+src/oofnd/String.hpp:947: inline long long longLongValue(std::string_view s) {
+src/oofnd/String.hpp:1012:   FormatArg(long v) noexcept : kind_(Kind::kSigned), signed_(v) {}
+src/oofnd/String.hpp:1013:   FormatArg(long long v) noexcept : kind_(Kind::kSigned), signed_(v) {}
+src/oofnd/String.hpp:1015:   FormatArg(unsigned long v) noexcept : kind_(Kind::kUnsigned), unsigned_(v) {}
+src/oofnd/String.hpp:1016:   FormatArg(unsigned long long v) noexcept
+src/oofnd/String.hpp:1039:   long long asSigned() const noexcept {
+src/oofnd/String.hpp:1045:         return static_cast<long long>(unsigned_);
+src/oofnd/String.hpp:1047:         return static_cast<long long>(real_);
+src/oofnd/String.hpp:1052:   unsigned long long asUnsigned() const noexcept {
+src/oofnd/String.hpp:1055:                : static_cast<unsigned long long>(asSigned());
+src/oofnd/String.hpp:1074:   long long signed_ = 0;
+src/oofnd/String.hpp:1075:   unsigned long long unsigned_ = 0;
+src/oofnd/String.hpp:1146: inline std::string formatInteger(unsigned long long magnitude, bool negative,
+src/oofnd/String.hpp:1354:         long long v = take().asSigned();
+src/oofnd/String.hpp:1358:           v = static_cast<short>(v);
+src/oofnd/String.hpp:1361:         const unsigned long long magnitude =
+src/oofnd/String.hpp:1362:             v < 0 ? 0ull - static_cast<unsigned long long>(v)
+src/oofnd/String.hpp:1363:                   : static_cast<unsigned long long>(v);
+src/oofnd/String.hpp:1371:         unsigned long long v = take().asUnsigned();
+src/oofnd/String.hpp:1375:           v = static_cast<unsigned short>(v);
+src/oofnd/Thread.hpp:42: __declspec(dllimport) long __stdcall SetThreadDescription(
+src/oofnd/Thread.hpp:45:     unsigned int CodePage, unsigned long dwFlags, const char* lpMultiByteStr,
+src/oofnd/objc/OOAssert.cpp:41: void OOAssertFailedInFunction(const char* function, const char* file, long line,
+src/oofnd/objc/OOAssert.h:38: void OOAssertFailedInFunction(const char* function, const char* file, long line,
+src/oofnd/objc/OOFoundationTypes.h:112:         static_cast<unsigned long long>(location),
+src/oofnd/objc/OOFoundationTypes.h:113:         static_cast<unsigned long long>(length));

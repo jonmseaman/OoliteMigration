@@ -10,7 +10,7 @@ scaffolding, and a write-up explains the work. Windows x64 is the reference plat
 and runs and Linux builds, and Phase 5 finishes both.
 
 Inputs: `notes/Phase 4 Writeup.md` (draft write-up and open items),
-`notes/2026-10-28 Modern C++ Idiom Review.md`, `notes/2026-10-26 Code Review.md`,
+`notes/plans/modern-cpp-idioms.md`, `notes/plans/platform-layer.md`, `notes/2026-10-26 Code Review.md`,
 `notes/Follow Ups.md`, `notes/Playtest Notes.md`, the [parity audit](../parity/README.md), and the
 two open lists measured on 2026-11-07: `notes/2026-11-07 Parity Fixes.md` and
 `notes/2026-11-07 Cross-Platform Correctness.md` (both waiting for Jon's review).

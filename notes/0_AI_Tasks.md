@@ -47,12 +47,13 @@ You turn Jon's requests into tasks in this file. You do not change code in `ooli
 - **Commits:** commit nothing in `oolite-dev`. Edits to `notes/` stay uncommitted unless Jon asks.
 
 # Prepare
+- [ ] Platform layer in `src/platform/` (outside `oofnd`, which is being retired): `Platform.hpp`, per-OS `*_win32.cpp`/`*_posix.cpp` chosen by Meson, in-body `#if`s out of `oofnd` and Core/SDL, `OOLITE_SDL`, `std::endian`, feature switches via `config.hpp`, and a CI guard. [plan](plans/platform-layer.md)
 
 # Tasks
 - [ ] Encapsulate espeak-ng in an `oo::SpeechSynthesizer` class (`src/Core/SpeechSynthesizer.{h,cpp}`): espeak's API and `<espeak-ng/speak_lib.h>` leave `Universe.h`, `MyOpenGLView.cpp` and `PlayerEntityControls.cpp`, and `Universe` keeps its speech methods as forwarders. One test edit (`slice24Voices`), signed off 2026-11-15. [plan](plans/speech-synthesizer-class.md)
 
 - [ ] Modern C++ idioms: what's left of the 2026-10-28 idiom review and its epics outline. 23 workstreams: `M_PI`→`std::numbers`, `OOClamp`/`OOLerp`→`std::clamp`/`lerp`, `rand()`→`<random>`, constant `#define`s, `EXPECT`→`[[likely]]`, `OOJSSTR`, `source_location`, memory, strings, out-parameters, warnings, asan … [plan](plans/modern-cpp-idioms.md)
-- [ ] Platform layer in `src/platform/` (outside `oofnd`, which is being retired): `Platform.hpp`, per-OS `*_win32.cpp`/`*_posix.cpp` chosen by Meson, in-body `#if`s out of `oofnd` and Core/SDL, `OOLITE_SDL`, `std::endian`, feature switches via `config.hpp`, and a CI guard. [plan](plans/platform-layer.md)
+
 - [ ] Delete `src/Core/OOTypeEncodings.h`; carry return types as a compile-time `oo::ValueType` enum (test edits signed off 2026-11-15): [plan](plans/retire-type-encodings.md)
 - [ ] Delete the PyAutoGUI GUI tier, oolite-dev/tests/gui (Jon asked 2026-11-15): [plan](plans/remove-gui-tests.md)
 - [x] Fix all clang tidy redundant conversion notifications in the oolite-dev/src directory (oolite-dev 73d99d167)
