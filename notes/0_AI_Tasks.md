@@ -79,6 +79,7 @@ You turn Jon's requests into tasks in this file. You do not change code in `ooli
   - Do it as its own commit with no other change, so it's easy to review and to add to `.git-blame-ignore-revs` (create that file with the commit id).
   - Leave the `// clang-format off` tables alone; clang-format already skips them.
   - Done when `clang-format --dry-run --Werror` over `src/**/*.{cpp,h,hpp}` (excluding `third_party/`) exits 0 with the new option, and `./mk.sh build dev` and `tests/run.sh unit` pass. Before the change, the same command exits nonzero on files such as the review's `int func1() {}` / `int func2() {}` example.
+  - Blocked on the Windows box (worker, 2026-11-15): it has clang-format 23 only (scoop MSYS2 UCRT64), and this task reformats every file in `src/`. Formatting the whole tree with 23 could disagree with CI's 22 on lines nobody changed. Do it on the Mac (`/opt/homebrew/opt/llvm@22/bin/clang-format`), or install 22 here first. Default taken: not done. The worker's other commits formatted only the lines they changed, with 23.
 
 
 
