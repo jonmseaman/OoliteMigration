@@ -1,8 +1,8 @@
 # Instructions for Task Executor:
 
-You are a task worker responsible for completing all the tasks in this file.
+You are a task worker responsible for completing all the tasks in this file in the "Tasks" section or lower. You should not complete tasks in the "Prepare" section as those are not ready.
 
-When you are done, make sure `./mk.sh build dev` pass and the unit tests.
+When you are done with each task or commit, make sure `./mk.sh build dev` pass and the unit tests.
 Then, check the task off when you are ready and commit your oolite-dev changes.
 Move a checked-off task (with its sub-bullets) to the "Done" section at the bottom of this file.
 
@@ -48,6 +48,7 @@ You turn Jon's requests into tasks in this file. You do not change code in `ooli
 - **Commits:** commit nothing in `oolite-dev`. Edits to `notes/` stay uncommitted unless Jon asks.
 
 # Prepare
+- [ ] Replace the three hand-kept by-name tables (`OOEntityCalledByNameTable.h`, `OOJSCallEntityMethods.h`, `OOEntityObjectNamesTable.h`, about 4,850 lines) with one table of `oo::Call<&Class::member>("name")` rows that work out their types from the member pointer. Needs Jon's sign-off for two test edits. [plan](plans/by-name-table.md)
 - [ ] Platform layer in `src/platform/` (outside `oofnd`, which is being retired): `Platform.hpp`, per-OS `*_win32.cpp`/`*_posix.cpp` chosen by Meson, in-body `#if`s out of `oofnd` and Core/SDL, `OOLITE_SDL`, `std::endian`, feature switches via `config.hpp`, and a CI guard. [plan](plans/platform-layer.md)
 
 # Tasks
@@ -71,7 +72,8 @@ The three excluded headers are hand-laid tables (`clang-format off`) or are bein
   `if (virtual_dock)  // can't be damaged` then `{` on the next line (`DockEntity.cpp:280`). Fix: move the comment onto its own line above the statement, or inside the block, without changing its text. Then let clang-format join the `{`. Do this before the `readability/braces` task, because it also clears some of that task's false positives. Done when `L whitespace/braces` prints nothing (apart from listed false positives) and `./mk.sh build dev` and `tests/run.sh unit` pass.
   - False positives (2): `OOJSEngineNativeWrappers.h:132` and `:184`, the second `{` of `OOJS_PROFILE_ENTER_NAMED` and `OOJS_BEGIN_FULL_NATIVE`. Each opens a nested scope after the scope object's declaration on purpose; there is no statement for it to attach to.
   - Each moved comment is now the first line inside its block. Two long ones (`ShipEntity.cpp`, the 2013-01-13 note; `MyOpenGLView.cpp`, "Occurs on some systems") were re-wrapped by clang-format at 80 columns: same words, different line break.
-- [ ] cpplint `build/include_what_you_use`: 536 missing standard includes, mostly `<string>` (166), `<memory>` (161) and `<vector>` (71), spread thinly across files (at most 7 per file). Add the `#include` each finding names, in the file it names, in the right include group. Skip any finding where the name is not the std one (e.g. a member or `oo::` function called `min`, `swap` or `move`), and list it as a false positive. Done when `L build/include_what_you_use` prints only listed false positives and the build and unit tests pass.
+- [x] (oolite-dev 27222e717) cpplint `build/include_what_you_use`: 536 missing standard includes, mostly `<string>` (166), `<memory>` (161) and `<vector>` (71), spread thinly across files (at most 7 per file). Add the `#include` each finding names, in the file it names, in the right include group. Skip any finding where the name is not the std one (e.g. a member or `oo::` function called `min`, `swap` or `move`), and list it as a false positive. Done when `L build/include_what_you_use` prints only listed false positives and the build and unit tests pass.
+  - False positive (1): `OOTCPStreamDecoder.cpp:233`, where `string` is a local `OOALStringRef`, not `std::string` (clang-tidy's include-cleaner calls `<string>` unused there, which is an error).
 - [ ] cpplint `readability/braces` (347 outside the tables). Do it after the `whitespace/braces` task.
   - 275 × "If an else has a brace on one side, it should have it on both": `if (x) a; else { … }` → `if (x) { a; } else { … }`. Worst: `PlayerEntityControls.cpp` 63, `PlayerEntity.cpp` 33, `ShipEntity.cpp` 28, `Universe.cpp` 21.
   - 85 × "If/else bodies with multiple statements require braces". Some are the comment-before-`{` case and clear with the `whitespace/braces` task. Add braces to the rest.
