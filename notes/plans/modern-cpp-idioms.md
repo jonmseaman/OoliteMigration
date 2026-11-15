@@ -246,6 +246,13 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
   `OO_LOG`), use `std::print`/`std::println`.
   - Done: `! git grep -qE '\b(std::)?(puts|fputs)\(|std::cout|std::cerr' -- src` (list any that
     must stay).
+  - Blocked (worker, 2026-11-15): on MSYS2 UCRT64, libstdc++ keeps `std::print`'s terminal
+    support in `libstdc++exp`, so `std::print` fails to link (`std::__open_terminal`,
+    `std::__write_to_terminal`) without `-lstdc++exp`. Adding that link flag is a toolchain change
+    for Jon. Only three sites exist: `legacy_random.cpp:134` (could use `std::print`), and
+    `OOLogOutputHandler.cpp:163,165`, which must stay `fputs`: `oo::log::consoleBytes` has already
+    converted the line to the console's encoding, and `std::print` would treat it as UTF-8 and
+    convert it again on a Windows console.
 
 ### Warnings and tooling (§2.6, B11)
 
