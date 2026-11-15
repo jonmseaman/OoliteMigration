@@ -175,7 +175,7 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
 
 ### Strings, nulls, out-parameters (§2.3, B8)
 
-- **I14. `NULL` → `nullptr` and `f(void)` → `f()`.** 85 `NULL`s in code and 146 `(void)`
+- **I14. `NULL` → `nullptr` and `f(void)` → `f()`.** Done: oolite-dev dfa85c8ba (five asserts on nonnull parameters went, as clang then called them tautological). 85 `NULL`s in code and 146 `(void)`
   parameter lists. Run clang-tidy `modernize-use-nullptr` and `modernize-redundant-void-arg` with
   `--fix`, then add both to `.clang-tidy`'s `WarningsAsErrors`.
   - Done: `run-clang-tidy -p . -checks='-*,modernize-use-nullptr,modernize-redundant-void-arg' 'src/(Core|SDL|oofnd)/.*\.cpp'`
