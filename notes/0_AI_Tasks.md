@@ -92,6 +92,7 @@ The three excluded headers are hand-laid tables (`clang-format off`) or are bein
   - `./mk.sh compile <type>` and `./mk.sh configure <type>` never copy, yet Meson rewrites the build directory's database whenever a `meson.build` change triggers a reconfigure inside `meson compile`. Fix: move the copy into a `copy_compile_commands "<build_dir>"` helper and call it at the end of `meson_setup`, `meson_compile` and `meson_configure`.
   - The clang-tidy target's fallback (`mk.sh:459-461`) runs `./mk.sh build test` when there's no database. That breaks the build-dev rule (`.claude/rules/build-dev.md`): `test` turns on LTO. Make it `./mk.sh build dev`.
   - Done when, from `oolite-dev`, `touch meson.build && ./mk.sh compile dev && test compile_commands.json -nt meson.build && cmp -s compile_commands.json build/meson_dev/compile_commands.json` exits 0 (it exits nonzero today), and `grep -q 'mk.sh" build dev' mk.sh` exits 0.
+- [ ] New `seriesb` branch: drop the `OO` prefix from names in `src/` except `src/Core/Scripting/` (`OOColor` → `oo::Color`, files too). Not yet: Jon wants it eventually. Tests are renamed with the source (signed off 2026-11-15). [plan](plans/drop-oo-prefix.md)
 
 # Done
 - [x] Delete the PyAutoGUI GUI tier, oolite-dev/tests/gui (Jon asked 2026-11-15): [plan](plans/remove-gui-tests.md) (oolite-dev c2be52677; outer docs edited, left uncommitted as the plan says)
