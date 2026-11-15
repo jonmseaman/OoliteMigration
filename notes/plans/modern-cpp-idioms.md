@@ -223,6 +223,11 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
 - **I17. `goto`.** 42 in 11 files (`OOJSShip.cpp` 17). Replace only where a simple early return or
   RAII scope does it. Leave the rest, and libpng's `setjmp`.
   - Done: each remaining `goto` is listed with why it stays.
+  - Done (oolite-dev 118cb1b6a): 39 of 42 went. Each label's code is a lambda the old `goto`s now
+    `return` through, or the code nests in an `if`; `OOPolygonSprite`'s tesselator is a
+    `std::unique_ptr` and its SVG dump ends in an `oo::Finally`. The 3 left are in
+    `OOPNGTextureLoader.cpp:88,94,105`: they share the `FAIL` label with libpng's `setjmp` error
+    path, and an RAII object in a frame that `longjmp`s past is undefined behaviour.
 - **I18. Narrowing.** Turn on `-Wconversion` (with `-Wimplicit-float-conversion` and
   `-Wsign-conversion`) once its count is 0. Fix by area first, starting with `ShipEntity.cpp` and
   `HeadUpDisplay.cpp`, using a local build with the flag added, uncommitted, just to count. Commit
