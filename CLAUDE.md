@@ -69,16 +69,14 @@ All from `oolite-dev`, in an MSYS2 UCRT64 shell on Windows ([setup](tools/setup-
 ./mk.sh build dev                  # Clang; --native-file=gcc.ini for GCC
 tests/run.sh unit                  # meson: oofnd, core, headers
 tests/run.sh component [--cpp|--windowed] [-k name]   # C++, then Gherkin
-tests/run.sh gui                   # PyAutoGUI, real window
 tests/run.sh smoke                 # launch and snapshot
-tests/run.sh all                   # unit, component, smoke, then gui
+tests/run.sh all                   # unit, component, then smoke
 ```
 
 ## Exemplars
 
 | Kind | Path |
 |---|---|
-| GUI test | `oolite-dev/tests/gui/test_g1_exit_via_mouse.py` |
 | Component scenario | `oolite-dev/tests/component/features/s1_police_kills_pirate.feature` |
 | C++ component test | `oolite-dev/tests/component-cpp/test_s1_police_kills_pirate.cpp` |
 | Converted class | `oolite-dev/src/Core/OOColor.*` |
@@ -95,9 +93,6 @@ tests/run.sh all                   # unit, component, smoke, then gui
   Make, rename and delete branches with `git town append`/`rename`/`delete`, not plain git, so
   parents stay recorded. Sync with `git town sync --stack --detached`; never `ship` or `propose`.
   See [docs/workflow.md](docs/workflow.md#git-town-in-oolite-dev).
-- **GUI tests own the desktop.** `tests/run.sh gui` drives the real window with PyAutoGUI. Run one
-  at a time, and don't launch the game by hand while it runs: a second window steals the
-  foreground mid-click.
 - **File modes.** A script invoked as a bare program MUST be committed `100755` with a `#!`
   shebang. Check with `git ls-files -s`, never `test -x` (MSYS reports every file as executable).
 - Docs: index in `docs/README.md`; phases in `docs/phases/`; decisions go in the phase doc.

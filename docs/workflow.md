@@ -5,7 +5,7 @@ detail behind them.
 
 ## Tools decide correctness, not models
 
-Whether behaviour changed is decided by the unit, component and GUI suites, the JS API contract in
+Whether behaviour changed is decided by the unit and component suites, the JS API contract in
 `oxp-contract/`, the expansion corpus, sanitizers, and `-Wall -Wextra`. A model (or a reviewer) may
 propose and explain; it never declares a change correct.
 
@@ -19,7 +19,6 @@ for the commands):
 | `unit` | class behaviour (`oofnd`, `core`, headers); meson | seconds |
 | `component --cpp` | headless C++ tests in `tests/component-cpp` (meson suite `component`) | seconds each |
 | `component --windowed` | pytest-bdd scenarios against a real game over the debug console | minutes |
-| `gui` | PyAutoGUI against the real window | minutes; one at a time |
 | `smoke` | the game launches and renders | seconds |
 
 `tests/run.sh component` with no flag runs the C++ half, then the windowed half; `-k name`

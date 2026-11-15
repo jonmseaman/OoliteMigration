@@ -29,8 +29,8 @@ No fleet.
 - [ ] `meson` builds `aarch64-apple-darwin` from a `macos` branch in `src/meson/` with Apple Clang
 - [ ] `tests/run.sh unit` and `component` pass on macOS
 - [ ] Tier-1 OXP corpus green on macOS
-- [ ] PyAutoGUI G1–G9 green on the Mac (this is the proof it is an application, not a binary that links)
-- [ ] Signed, notarised `.app` launches on a clean Mac with no prior config (G7)
+- [ ] The windowed component tier and the smoke run green on the Mac (the proof it is an application, not a binary that links)
+- [ ] Signed, notarised `.app` launches on a clean Mac with no prior config
 - [ ] Linux x64 builds and passes `tests/run.sh unit` and `component`
 - [ ] macOS arm64 and Linux x64 added to the definition of done in `docs/workflow.md`
 
@@ -47,8 +47,8 @@ Everything here is a seam; there are no sweeps.
    historical Cocoa dock-tile, document-type, and importer bits (for behaviour, not for code: those
    components are Objective-C and are not coming back).
 4. Run `tests/run.sh all` on macOS arm64 (natively) and Linux x64 (in a container or on a rented
-   box; restore upstream's `build-linux.sh` flow). On the Mac the PyAutoGUI GUI tier is the actual
-   proof that this is a working macOS application rather than a binary that links.
+   box; restore upstream's `build-linux.sh` flow). On the Mac the windowed component tier and the
+   smoke run are the proof that this is a working macOS application rather than a binary that links.
 5. Fix whatever arm64 shakes out: alignment, `long` width assumptions, FMA-sensitive float paths
    (the build pins `-ffp-contract=off`).
 
