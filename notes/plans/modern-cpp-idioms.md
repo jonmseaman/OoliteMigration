@@ -509,6 +509,11 @@ Scripting, Materials/OpenGL, SDL/Debug, the rest of Core, `oofnd`. Counts exclud
     `readability-make-member-function-const` 490, `bugprone-easily-swappable-parameters` 211. CI's
     clang-tidy job not checked from here.
 
+## Where new idioms work goes (2026-11-15)
+
+The OO-prefix rename has started on `seriesb/033-drop-oo-prefix` (on top of `032-cleanup`). Any
+idioms work from now on goes on that branch, not on 032, and uses the renamed names.
+
 ## Jon's decisions (2026-11-15)
 
 These lift the blocks recorded under each workstream.
