@@ -1,0 +1,2 @@
+# Written by oar. next_spec only ever increases, so a deleted spec's number is never reused.
+next_spec: 1

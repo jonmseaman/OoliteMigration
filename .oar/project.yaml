@@ -1,0 +1,8 @@
+# yaml-language-server: $schema=./project.schema.json   (written by oar init, for editor checking)
+vault: notes                  # the Obsidian vault holding the board (the default)
+planning_branch: main         # where cards live; lanes poll it
+autosync:
+  paths: [notes/]             # committed automatically on the human's machines
+repos: []                     # code repos, each with notes/<name>-branches.md; e.g. - {name: code, path: .}
+verify: []                    # commands run after every step (they must pass); e.g. - run: make test
+gate: []                      # commands run once a card's steps are done; e.g. - run: make check
