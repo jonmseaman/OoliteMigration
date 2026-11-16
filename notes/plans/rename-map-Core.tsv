@@ -1,0 +1,563 @@
+old	new
+OOAIAutorelease	oo::AIAutorelease
+OOALBufferedSound	oo::ALBufferedSound
+OOALSoundDecoder	oo::ALSoundDecoder
+OOALStreamedSound	oo::ALStreamedSound
+OOAL_STREAM_CHUNK_SIZE	oo::AL_STREAM_CHUNK_SIZE
+OOAegisStatus	oo::AegisStatus
+OOAsyncCacheWriter	oo::AsyncCacheWriter
+OOAsyncWorkManager	oo::AsyncWorkManager
+OOAsyncWorkPriority	oo::AsyncWorkPriority
+OOAsyncWorkTask	oo::AsyncWorkTask
+OOBadOpenGLExtensionUsed	oo::BadOpenGLExtensionUsed
+OOBoundingBoxCenter	oo::BoundingBoxCenter
+OOCPUCount	oo::CPUCount
+OOCPUDescription	oo::CPUDescription
+OOCPUID	oo::CPUID
+OOCPUInfoInit	oo::CPUInfoInit
+OOCache	oo::Cache
+OOCacheImpl	oo::CacheImpl
+OOCacheManager	oo::CacheManager
+OOCacheManagerOctreeForModel	oo::CacheManagerOctreeForModel
+OOCacheManagerSetOctree	oo::CacheManagerSetOctree
+OOCargoFlag	oo::CargoFlag
+OOCargoQuantity	oo::CargoQuantity
+OOCargoQuantityDelta	oo::CargoQuantityDelta
+OOCargoType	oo::CargoType
+OOCastParam	oo::CastParam
+OOCharacter	oo::Character
+OOCheckOpenGLErrors	oo::CheckOpenGLErrors
+OOClamp_0_1_d	oo::Clamp_0_1_d
+OOClamp_0_1_f	oo::Clamp_0_1_f
+OOClamp_0_max_d	oo::Clamp_0_max_d
+OOClamp_0_max_f	oo::Clamp_0_max_f
+OOClamp_n1_1_f	oo::Clamp_n1_1_f
+OOCloseOXZVorbis	oo::CloseOXZVorbis
+OOColor	oo::Color
+OOColorInObjectNode	oo::ColorInObjectNode
+OOColorObjectNode	oo::ColorObjectNode
+OOCommodities	oo::Commodities
+OOCommodityMarket	oo::CommodityMarket
+OOComparisonResult	oo::ComparisonResult
+OOCompassModeFromString	oo::CompassModeFromString
+OOConvertCubeMapToLatLong	oo::ConvertCubeMapToLatLong
+OOConvertSystemDescriptionsToArrayFormat	oo::ConvertSystemDescriptionsToArrayFormat
+OOConvertSystemDescriptionsToDictionaryFormat	oo::ConvertSystemDescriptionsToDictionaryFormat
+OOCredits	oo::Credits
+OOCreditsQuantity	oo::CreditsQuantity
+OOCrosshairs	oo::Crosshairs
+OODebugBeginWireframe	oo::DebugBeginWireframe
+OODebugDrawColoredBoundingBox	oo::DebugDrawColoredBoundingBox
+OODebugDrawColoredBoundingBoxBetween	oo::DebugDrawColoredBoundingBoxBetween
+OODebugDrawColoredLine	oo::DebugDrawColoredLine
+OODebugDrawLine	oo::DebugDrawLine
+OODebugDrawPoint	oo::DebugDrawPoint
+OODebugEndWireframe	oo::DebugEndWireframe
+OODebugWFState	oo::DebugWFState
+OODemangle	oo::Demangle
+OODisplayStringFromEconomyID	oo::DisplayStringFromEconomyID
+OODisplayStringFromGovernmentID	oo::DisplayStringFromGovernmentID
+OODisplayStringFromShaderSetting	oo::DisplayStringFromShaderSetting
+OODisposeHighResTime	oo::DisposeHighResTime
+OODockingClearanceStatus	oo::DockingClearanceStatus
+OODrawHilightedPlanetInfo	oo::DrawHilightedPlanetInfo
+OODrawHilightedString	oo::DrawHilightedString
+OODrawPlanetInfo	oo::DrawPlanetInfo
+OODrawString	oo::DrawString
+OODrawStringAligned	oo::DrawStringAligned
+OODrawStringQuadsAligned	oo::DrawStringQuadsAligned
+OODrawable	oo::Drawable
+OODrawableAutorelease	oo::DrawableAutorelease
+OOEconomyID	oo::EconomyID
+OOEncodingConverter	oo::EncodingConverter
+OOEnergyUnitType	oo::EnergyUnitType
+OOEquipmentType	oo::EquipmentType
+OOEquipmentTypeInObjectNode	oo::EquipmentTypeInObjectNode
+OOEquipmentTypeObjectNode	oo::EquipmentTypeObjectNode
+OOEquipmentTypeObjectNodes	oo::EquipmentTypeObjectNodes
+OOExpandArgumentDictionary	oo::ExpandArgumentDictionary
+OOExpandDescriptionString	oo::ExpandDescriptionString
+OOExpandOptions	oo::ExpandOptions
+OOFuelQuantity	oo::FuelQuantity
+OOFullScreenController	oo::FullScreenController
+OOFuzzyBooleanFromPList	oo::FuzzyBooleanFromPList
+OOGLColorToString	oo::GLColorToString
+OOGLEnumToString	oo::GLEnumToString
+OOGLFlagToString	oo::GLFlagToString
+OOGLFrustum	oo::GLFrustum
+OOGLGetModelView	oo::GLGetModelView
+OOGLGetModelViewProjection	oo::GLGetModelViewProjection
+OOGLGetProjection	oo::GLGetProjection
+OOGLLoadModelView	oo::GLLoadModelView
+OOGLLoadProjection	oo::GLLoadProjection
+OOGLLookAt	oo::GLLookAt
+OOGLMultModelView	oo::GLMultModelView
+OOGLMultProjection	oo::GLMultProjection
+OOGLOrtho	oo::GLOrtho
+OOGLPerspective	oo::GLPerspective
+OOGLPopModelView	oo::GLPopModelView
+OOGLPopProjection	oo::GLPopProjection
+OOGLProgramName	oo::GLProgramName
+OOGLPushModelView	oo::GLPushModelView
+OOGLPushProjection	oo::GLPushProjection
+OOGLResetModelView	oo::GLResetModelView
+OOGLResetProjection	oo::GLResetProjection
+OOGLRotateModelView	oo::GLRotateModelView
+OOGLRotateProjection	oo::GLRotateProjection
+OOGLScaleModelView	oo::GLScaleModelView
+OOGLScaleProjection	oo::GLScaleProjection
+OOGLTranslateModelView	oo::GLTranslateModelView
+OOGLTranslateProjection	oo::GLTranslateProjection
+OOGLVector	oo::GLVector
+OOGLWireframeModeOff	oo::GLWireframeModeOff
+OOGLWireframeModeOn	oo::GLWireframeModeOn
+OOGUIAlignment	oo::GUIAlignment
+OOGUIBackgroundSpecial	oo::GUIBackgroundSpecial
+OOGUIRow	oo::GUIRow
+OOGUITabSettings	oo::GUITabSettings
+OOGUITabStop	oo::GUITabStop
+OOGalaxyID	oo::GalaxyID
+OOGameClock	oo::GameClock
+OOGameObserver	oo::GameObserver
+OOGenerateMipMaps	oo::GenerateMipMaps
+OOGenerateSystemDescription	oo::GenerateSystemDescription
+OOGetUniverse	oo::GetUniverse
+OOGovernmentID	oo::GovernmentID
+OOGraphicsAvailable	oo::GraphicsAvailable
+OOGraphicsDetail	oo::GraphicsDetail
+OOGraphicsDetailFromString	oo::GraphicsDetailFromString
+OOGraphicsResetClient	oo::GraphicsResetClient
+OOGraphicsResetManager	oo::GraphicsResetManager
+OOHDRToneMapperFromString	oo::HDRToneMapperFromString
+OOHPRandomPositionInBoundingBox	oo::HPRandomPositionInBoundingBox
+OOHPScalar	oo::HPScalar
+OOHPVectorFromPList	oo::HPVectorFromPList
+OOHPVectorInterpolate	oo::HPVectorInterpolate
+OOHPVectorMultiplyMatrix	oo::HPVectorMultiplyMatrix
+OOHPVectorRandomRadial	oo::HPVectorRandomRadial
+OOHPVectorRandomSpatial	oo::HPVectorRandomSpatial
+OOHPVectorTowards	oo::HPVectorTowards
+OOHSBAComponents	oo::HSBAComponents
+OOHSBAComponentsDescription	oo::HSBAComponentsDescription
+OOHUDBeaconCodeIcon	oo::HUDBeaconCodeIcon
+OOHUDBeaconIcon	oo::HUDBeaconIcon
+OOHUDDial	oo::HUDDial
+OOHUDResetTextEngine	oo::HUDResetTextEngine
+OOHUDWidget	oo::HUDWidget
+OOHeadlessOptions	oo::HeadlessOptions
+OOHighResTimeDeltaInSeconds	oo::HighResTimeDeltaInSeconds
+OOHighResTimeValue	oo::HighResTimeValue
+OOInitReallyRandom	oo::InitReallyRandom
+OOIntCredits	oo::IntCredits
+OOIsNumberLiteral	oo::IsNumberLiteral
+OOJoystickAxisProfile	oo::JoystickAxisProfile
+OOJoystickManager	oo::JoystickManager
+OOJoystickSplineAxisProfile	oo::JoystickSplineAxisProfile
+OOJoystickSplineSegment	oo::JoystickSplineSegment
+OOJoystickStandardAxisProfile	oo::JoystickStandardAxisProfile
+OOKeyCode	oo::KeyCode
+OOLITE_GL_MATRIX_END	oo::LITE_GL_MATRIX_END
+OOLITE_GL_MATRIX_MODELVIEW	oo::LITE_GL_MATRIX_MODELVIEW
+OOLITE_GL_MATRIX_MODELVIEW_INVERSE	oo::LITE_GL_MATRIX_MODELVIEW_INVERSE
+OOLITE_GL_MATRIX_MODELVIEW_INVERSE_TRANSPOSE	oo::LITE_GL_MATRIX_MODELVIEW_INVERSE_TRANSPOSE
+OOLITE_GL_MATRIX_MODELVIEW_PROJECTION	oo::LITE_GL_MATRIX_MODELVIEW_PROJECTION
+OOLITE_GL_MATRIX_MODELVIEW_PROJECTION_INVERSE	oo::LITE_GL_MATRIX_MODELVIEW_PROJECTION_INVERSE
+OOLITE_GL_MATRIX_MODELVIEW_PROJECTION_INVERSE_TRANSPOSE	oo::LITE_GL_MATRIX_MODELVIEW_PROJECTION_INVERSE_TRANSPOSE
+OOLITE_GL_MATRIX_MODELVIEW_PROJECTION_TRANSPOSE	oo::LITE_GL_MATRIX_MODELVIEW_PROJECTION_TRANSPOSE
+OOLITE_GL_MATRIX_MODELVIEW_TRANSPOSE	oo::LITE_GL_MATRIX_MODELVIEW_TRANSPOSE
+OOLITE_GL_MATRIX_NORMAL	oo::LITE_GL_MATRIX_NORMAL
+OOLITE_GL_MATRIX_PROJECTION	oo::LITE_GL_MATRIX_PROJECTION
+OOLITE_GL_MATRIX_PROJECTION_INVERSE	oo::LITE_GL_MATRIX_PROJECTION_INVERSE
+OOLITE_GL_MATRIX_PROJECTION_INVERSE_TRANSPOSE	oo::LITE_GL_MATRIX_PROJECTION_INVERSE_TRANSPOSE
+OOLITE_GL_MATRIX_PROJECTION_TRANSPOSE	oo::LITE_GL_MATRIX_PROJECTION_TRANSPOSE
+OOLogGenericParameterErrorForFunction	oo::LogGenericParameterErrorForFunction
+OOLogGenericSubclassResponsibilityForFunction	oo::LogGenericSubclassResponsibilityForFunction
+OOLogHandlerGetLogBasePath	oo::LogHandlerGetLogBasePath
+OOLogHandlerGetLogPath	oo::LogHandlerGetLogPath
+OOLogIndent	oo::LogIndent
+OOLogInsertMarker	oo::LogInsertMarker
+OOLogOutdent	oo::LogOutdent
+OOLogOutputHandlerChangeLogFile	oo::LogOutputHandlerChangeLogFile
+OOLogOutputHandlerClose	oo::LogOutputHandlerClose
+OOLogOutputHandlerFlushIfDue	oo::LogOutputHandlerFlushIfDue
+OOLogOutputHandlerInit	oo::LogOutputHandlerInit
+OOLogOutputHandlerPrintLine	oo::LogOutputHandlerPrintLine
+OOLogOutputHandlerStartLoggingToStdout	oo::LogOutputHandlerStartLoggingToStdout
+OOLogOutputHandlerStopLoggingToStdout	oo::LogOutputHandlerStopLoggingToStdout
+OOLogPopIndent	oo::LogPopIndent
+OOLogPushIndent	oo::LogPushIndent
+OOLogSetShowFileAndLine	oo::LogSetShowFileAndLine
+OOLogSetShowFunction	oo::LogSetShowFunction
+OOLogSetShowMessageClass	oo::LogSetShowMessageClass
+OOLogSetShowMessageClassTemporary	oo::LogSetShowMessageClassTemporary
+OOLogSetShowTime	oo::LogSetShowTime
+OOLogShowFileAndLine	oo::LogShowFileAndLine
+OOLogShowFunction	oo::LogShowFunction
+OOLogShowMessageClass	oo::LogShowMessageClass
+OOLogShowTime	oo::LogShowTime
+OOLoggingInit	oo::LoggingInit
+OOLoggingReloadSettings	oo::LoggingReloadSettings
+OOLoggingTerminate	oo::LoggingTerminate
+OOLongRangeChartModeFromString	oo::LongRangeChartModeFromString
+OOLookUpDescriptionPRIV	oo::LookUpDescriptionPRIV
+OOLookUpPluralDescriptionPRIV	oo::LookUpPluralDescriptionPRIV
+OOMassUnit	oo::MassUnit
+OOMassUnitFromNumber	oo::MassUnitFromNumber
+OOMatrix	oo::Matrix
+OOMatrixColumnOperation	oo::MatrixColumnOperation
+OOMatrixColumnScale	oo::MatrixColumnScale
+OOMatrixColumnSwap	oo::MatrixColumnSwap
+OOMatrixConstruct	oo::MatrixConstruct
+OOMatrixDescription	oo::MatrixDescription
+OOMatrixEqual	oo::MatrixEqual
+OOMatrixForBillboard	oo::MatrixForBillboard
+OOMatrixForQuaternionRotation	oo::MatrixForQuaternionRotation
+OOMatrixForRotation	oo::MatrixForRotation
+OOMatrixForRotationX	oo::MatrixForRotationX
+OOMatrixForRotationY	oo::MatrixForRotationY
+OOMatrixForRotationZ	oo::MatrixForRotationZ
+OOMatrixForScale	oo::MatrixForScale
+OOMatrixForScaleUniform	oo::MatrixForScaleUniform
+OOMatrixForTranslation	oo::MatrixForTranslation
+OOMatrixForTranslationComponents	oo::MatrixForTranslationComponents
+OOMatrixFromBasisVectors	oo::MatrixFromBasisVectors
+OOMatrixFromBasisVectorsAndPosition	oo::MatrixFromBasisVectorsAndPosition
+OOMatrixFromOrientationAndPosition	oo::MatrixFromOrientationAndPosition
+OOMatrixGetBasisVectors	oo::MatrixGetBasisVectors
+OOMatrixHPTranslate	oo::MatrixHPTranslate
+OOMatrixInverse	oo::MatrixInverse
+OOMatrixInverseWithDeterminant	oo::MatrixInverseWithDeterminant
+OOMatrixIsIdentity	oo::MatrixIsIdentity
+OOMatrixLeftTransform	oo::MatrixLeftTransform
+OOMatrixLoadGLMatrix	oo::MatrixLoadGLMatrix
+OOMatrixMultiply	oo::MatrixMultiply
+OOMatrixOrthogonalize	oo::MatrixOrthogonalize
+OOMatrixRightTransform	oo::MatrixRightTransform
+OOMatrixRotate	oo::MatrixRotate
+OOMatrixRotateQuaternion	oo::MatrixRotateQuaternion
+OOMatrixRotateX	oo::MatrixRotateX
+OOMatrixRotateY	oo::MatrixRotateY
+OOMatrixRotateZ	oo::MatrixRotateZ
+OOMatrixRowOperation	oo::MatrixRowOperation
+OOMatrixRowScale	oo::MatrixRowScale
+OOMatrixRowSwap	oo::MatrixRowSwap
+OOMatrixScale	oo::MatrixScale
+OOMatrixScaleUniform	oo::MatrixScaleUniform
+OOMatrixTranslate	oo::MatrixTranslate
+OOMatrixTranslateComponents	oo::MatrixTranslateComponents
+OOMatrixTranspose	oo::MatrixTranspose
+OOMaybeUnits	oo::MaybeUnits
+OOMemoryStatus	oo::MemoryStatus
+OOMesh	oo::Mesh
+OOMeshBuffer	oo::MeshBuffer
+OOMeshDisplayLists	oo::MeshDisplayLists
+OOMeshFace	oo::MeshFace
+OOMeshFaceCount	oo::MeshFaceCount
+OOMeshFaceVertexCount	oo::MeshFaceVertexCount
+OOMeshMaterialCount	oo::MeshMaterialCount
+OOMeshMaterialIndex	oo::MeshMaterialIndex
+OOMeshNormalMode	oo::MeshNormalMode
+OOMeshSmoothGroup	oo::MeshSmoothGroup
+OOMeshToOctreeConverter	oo::MeshToOctreeConverter
+OOMeshToOctreeConverterInternalData	oo::MeshToOctreeConverterInternalData
+OOMeshVertexCount	oo::MeshVertexCount
+OOMouseInteractionMode	oo::MouseInteractionMode
+OOMouseInteractionModeIsFlightMode	oo::MouseInteractionModeIsFlightMode
+OOMouseInteractionModeIsUIScreen	oo::MouseInteractionModeIsUIScreen
+OOMusic	oo::Music
+OOMusicController	oo::MusicController
+OOMusicMode	oo::MusicMode
+OOMutableProbabilitySet	oo::MutableProbabilitySet
+OONativeVector	oo::NativeVector
+OOOXZManager	oo::OXZManager
+OOOctreeBuilder	oo::OctreeBuilder
+OOOpenALController	oo::OpenALController
+OOOpenGLExtensionManager	oo::OpenGLExtensionManager
+OOOpenGLMatrixManager	oo::OpenGLMatrixManager
+OOOpenGLMatrixStack	oo::OpenGLMatrixStack
+OOOpenGLState	oo::OpenGLState
+OOOpenGLStateID	oo::OpenGLStateID
+OOPListFromHPVector	oo::PListFromHPVector
+OOPListFromQuaternion	oo::PListFromQuaternion
+OOPListFromVector	oo::PListFromVector
+OOPadStringToEms	oo::PadStringToEms
+OOParseRolesFromString	oo::ParseRolesFromString
+OOPlanetDataLevel	oo::PlanetDataLevel
+OOPlanetDrawable	oo::PlanetDrawable
+OOPlatformDescription	oo::PlatformDescription
+OOPolygonContour	oo::PolygonContour
+OOPolygonSprite	oo::PolygonSprite
+OOPolygonSpriteDrawHUDBeaconIcon	oo::PolygonSpriteDrawHUDBeaconIcon
+OOPresentationRecord	oo::PresentationRecord
+OOPreservedAIStateMachine	oo::PreservedAIStateMachine
+OOPrintLogHeader	oo::PrintLogHeader
+OOPriorityQueueOf	oo::PriorityQueueOf
+OOProbabilisticTextureManager	oo::ProbabilisticTextureManager
+OOProbabilitySet	oo::ProbabilitySet
+OOProfilingStopwatch	oo::ProfilingStopwatch
+OOProjectHPVectorToPlane	oo::ProjectHPVectorToPlane
+OOPropertyListFromData	oo::PropertyListFromData
+OOPropertyListFromFile	oo::PropertyListFromFile
+OOQuaternionFromPList	oo::QuaternionFromPList
+OORGBAComponents	oo::RGBAComponents
+OORGBAComponentsDescription	oo::RGBAComponentsDescription
+OORandomPositionInBoundingBox	oo::RandomPositionInBoundingBox
+OORandomPositionInCylinder	oo::RandomPositionInCylinder
+OORandomPositionInShell	oo::RandomPositionInShell
+OORandomQuaternion	oo::RandomQuaternion
+OORandomState	oo::RandomState
+OORandomUnitHPVector	oo::RandomUnitHPVector
+OORandomUnitVector	oo::RandomUnitVector
+OOReadOXZVorbis	oo::ReadOXZVorbis
+OOReallyRandom	oo::ReallyRandom
+OORectFromString	oo::RectFromString
+OORegExpFlags	oo::RegExpFlags
+OORegExpMatcher	oo::RegExpMatcher
+OOResetGLStateVerifier	oo::ResetGLStateVerifier
+OOResourceMergeMode	oo::ResourceMergeMode
+OORestoreRandomState	oo::RestoreRandomState
+OORoleSet	oo::RoleSet
+OORoundUpToPowerOf2_32	oo::RoundUpToPowerOf2_32
+OORoundUpToPowerOf2_64	oo::RoundUpToPowerOf2_64
+OORoundUpToPowerOf2_NS	oo::RoundUpToPowerOf2_NS
+OORouteType	oo::RouteType
+OOSDRToneMapperFromString	oo::SDRToneMapperFromString
+OOSaveRandomState	oo::SaveRandomState
+OOScalar	oo::Scalar
+OOScalePixMap	oo::ScalePixMap
+OOScheduleDeferredCall	oo::ScheduleDeferredCall
+OOSeededRandom	oo::SeededRandom
+OOSetOpenGLState_	oo::SetOpenGLState_
+OOSetReallyRandomRANROTAndRndSeeds	oo::SetReallyRandomRANROTAndRndSeeds
+OOSetReallyRandomRANROTSeed	oo::SetReallyRandomRANROTSeed
+OOSetReallyRandomRndSeed	oo::SetReallyRandomRndSeed
+OOShaderSetting	oo::ShaderSetting
+OOShaderSettingFromString	oo::ShaderSettingFromString
+OOShadersSupported	oo::ShadersSupported
+OOShipGroup	oo::ShipGroup
+OOShipGroupCursor	oo::ShipGroupCursor
+OOShipGroupInObjectNode	oo::ShipGroupInObjectNode
+OOShipGroupMembers	oo::ShipGroupMembers
+OOShipGroupObjectNode	oo::ShipGroupObjectNode
+OOShipLibraryCargo	oo::ShipLibraryCargo
+OOShipLibraryCategoryPlural	oo::ShipLibraryCategoryPlural
+OOShipLibraryCategorySingular	oo::ShipLibraryCategorySingular
+OOShipLibraryGenerator	oo::ShipLibraryGenerator
+OOShipLibraryShields	oo::ShipLibraryShields
+OOShipLibrarySize	oo::ShipLibrarySize
+OOShipLibrarySpeed	oo::ShipLibrarySpeed
+OOShipLibraryTurnRate	oo::ShipLibraryTurnRate
+OOShipLibraryTurrets	oo::ShipLibraryTurrets
+OOShipLibraryWeapons	oo::ShipLibraryWeapons
+OOShipLibraryWitchspace	oo::ShipLibraryWitchspace
+OOShipRegistry	oo::ShipRegistry
+OOSkyDrawable	oo::SkyDrawable
+OOSkyQuadDesc	oo::SkyQuadDesc
+OOSkyQuadSet	oo::SkyQuadSet
+OOSound	oo::Sound
+OOSoundChannel	oo::SoundChannel
+OOSoundChannelDelegate	oo::SoundChannelDelegate
+OOSoundMixer	oo::SoundMixer
+OOSoundReferencePoint	oo::SoundReferencePoint
+OOSoundRequest	oo::SoundRequest
+OOSoundSource	oo::SoundSource
+OOSoundSourcePlayCustomSoundWithKey	oo::SoundSourcePlayCustomSoundWithKey
+OOSoundSourcePool	oo::SoundSourcePool
+OOSoundSourcePoolElement	oo::SoundSourcePoolElement
+OOSoundWithCustomSoundKey	oo::SoundWithCustomSoundKey
+OOStartDrawingStrings	oo::StartDrawingStrings
+OOStopDrawingStrings	oo::StopDrawingStrings
+OOStringExpanderDefaultRandomSeed	oo::StringExpanderDefaultRandomSeed
+OOStringFromCompassMode	oo::StringFromCompassMode
+OOStringFromDeciCredits	oo::StringFromDeciCredits
+OOStringFromGraphicsDetail	oo::StringFromGraphicsDetail
+OOStringFromHDRToneMapper	oo::StringFromHDRToneMapper
+OOStringFromIntCredits	oo::StringFromIntCredits
+OOStringFromLegalStatusReason	oo::StringFromLegalStatusReason
+OOStringFromLongRangeChartMode	oo::StringFromLongRangeChartMode
+OOStringFromMouseInteractionMode	oo::StringFromMouseInteractionMode
+OOStringFromSDRToneMapper	oo::StringFromSDRToneMapper
+OOStringFromShaderSetting	oo::StringFromShaderSetting
+OOStringWidthInEm	oo::StringWidthInEm
+OOStringifySystemDescriptionLine	oo::StringifySystemDescriptionLine
+OOSystemDescriptionEntry	oo::SystemDescriptionEntry
+OOSystemDescriptionManager	oo::SystemDescriptionManager
+OOSystemID	oo::SystemID
+OOSystemLayer	oo::SystemLayer
+OOSystemMemoryStatus	oo::SystemMemoryStatus
+OOTechLevelID	oo::TechLevelID
+OOTextureSprite	oo::TextureSprite
+OOTimeAbsolute	oo::TimeAbsolute
+OOTimeDelta	oo::TimeDelta
+OOTriangleIsDegenerate	oo::TriangleIsDegenerate
+OOTrumble	oo::Trumble
+OOUnits	oo::Units
+OOUniversalID	oo::UniversalID
+OOUniverseDescriptionForKey	oo::UniverseDescriptionForKey
+OOUniverseDescriptions	oo::UniverseDescriptions
+OOUniverseSoundNameForCustomSoundKey	oo::UniverseSoundNameForCustomSoundKey
+OOVectorFromPList	oo::VectorFromPList
+OOVectorInterpolate	oo::VectorInterpolate
+OOVectorMultiplyMatrix	oo::VectorMultiplyMatrix
+OOVectorRandomRadial	oo::VectorRandomRadial
+OOVectorRandomSpatial	oo::VectorRandomSpatial
+OOVectorTowards	oo::VectorTowards
+OOVerifyOpenGLState_	oo::VerifyOpenGLState_
+OOWeaponFacing	oo::WeaponFacing
+OOWeaponFacingIsIn	oo::WeaponFacingIsIn
+OOWeaponFacingSet	oo::WeaponFacingSet
+OOWriteXMLPListToFile	oo::WriteXMLPListToFile
+kOOCacheDefaultPruneThreshold	oo::kCacheDefaultPruneThreshold
+kOOCacheMeshes	oo::kCacheMeshes
+kOOCacheMinimumPruneThreshold	oo::kCacheMinimumPruneThreshold
+kOOCacheNoPrune	oo::kCacheNoPrune
+kOOCacheOctrees	oo::kCacheOctrees
+kOOCargoTypeDefault	oo::kCargoTypeDefault
+kOODemoShipCargo	oo::kDemoShipCargo
+kOODemoShipClass	oo::kDemoShipClass
+kOODemoShipConditions	oo::kDemoShipConditions
+kOODemoShipDescription	oo::kDemoShipDescription
+kOODemoShipGenerator	oo::kDemoShipGenerator
+kOODemoShipKey	oo::kDemoShipKey
+kOODemoShipName	oo::kDemoShipName
+kOODemoShipShields	oo::kDemoShipShields
+kOODemoShipShipData	oo::kDemoShipShipData
+kOODemoShipSize	oo::kDemoShipSize
+kOODemoShipSpeed	oo::kDemoShipSpeed
+kOODemoShipSummary	oo::kDemoShipSummary
+kOODemoShipTurnRate	oo::kDemoShipTurnRate
+kOODemoShipTurrets	oo::kDemoShipTurrets
+kOODemoShipWeapons	oo::kDemoShipWeapons
+kOODemoShipWitchspace	oo::kDemoShipWitchspace
+kOODisplayHeight	oo::kDisplayHeight
+kOODisplayRefreshRate	oo::kDisplayRefreshRate
+kOODisplayWidth	oo::kDisplayWidth
+kOOEnergyUnitTypeDefault	oo::kEnergyUnitTypeDefault
+kOOGraphicsDetailMaximum	oo::kGraphicsDetailMaximum
+kOOLogAllocationFailure	oo::kLogAllocationFailure
+kOOLogDeprecatedMethod	oo::kLogDeprecatedMethod
+kOOLogEntityVerificationRebuild	oo::kLogEntityVerificationRebuild
+kOOLogException	oo::kLogException
+kOOLogFileNotFound	oo::kLogFileNotFound
+kOOLogFileNotLoaded	oo::kLogFileNotLoaded
+kOOLogInconsistentState	oo::kLogInconsistentState
+kOOLogMeshDataNotFound	oo::kLogMeshDataNotFound
+kOOLogMeshTooManyMaterials	oo::kLogMeshTooManyMaterials
+kOOLogOpenGLError	oo::kLogOpenGLError
+kOOLogOpenGLStateDump	oo::kLogOpenGLStateDump
+kOOLogParameterError	oo::kLogParameterError
+kOOLogSoundInitError	oo::kLogSoundInitError
+kOOLogSoundLoadingError	oo::kLogSoundLoadingError
+kOOLogSoundLoadingSuccess	oo::kLogSoundLoadingSuccess
+kOOLogSubclassResponsibility	oo::kLogSubclassResponsibility
+kOOLogUnconvertedNSLog	oo::kLogUnconvertedNSLog
+kOOLogUniversePopulateError	oo::kLogUniversePopulateError
+kOOLogUniversePopulateWitchspace	oo::kLogUniversePopulateWitchspace
+kOOManifestAuthor	oo::kManifestAuthor
+kOOManifestAvailableVersion	oo::kManifestAvailableVersion
+kOOManifestCategory	oo::kManifestCategory
+kOOManifestConflictOXPs	oo::kManifestConflictOXPs
+kOOManifestDescription	oo::kManifestDescription
+kOOManifestDownloadURL	oo::kManifestDownloadURL
+kOOManifestFilePath	oo::kManifestFilePath
+kOOManifestFileSize	oo::kManifestFileSize
+kOOManifestIdentifier	oo::kManifestIdentifier
+kOOManifestInformationURL	oo::kManifestInformationURL
+kOOManifestLicense	oo::kManifestLicense
+kOOManifestMaximumOoliteVersion	oo::kManifestMaximumOoliteVersion
+kOOManifestOptionalOXPs	oo::kManifestOptionalOXPs
+kOOManifestRelationDescription	oo::kManifestRelationDescription
+kOOManifestRelationIdentifier	oo::kManifestRelationIdentifier
+kOOManifestRelationMaxVersion	oo::kManifestRelationMaxVersion
+kOOManifestRelationVersion	oo::kManifestRelationVersion
+kOOManifestRequiredBy	oo::kManifestRequiredBy
+kOOManifestRequiredOoliteVersion	oo::kManifestRequiredOoliteVersion
+kOOManifestRequiresOXPs	oo::kManifestRequiresOXPs
+kOOManifestTagScenarioOnly	oo::kManifestTagScenarioOnly
+kOOManifestTags	oo::kManifestTags
+kOOManifestTitle	oo::kManifestTitle
+kOOManifestUploadDate	oo::kManifestUploadDate
+kOOManifestVersion	oo::kManifestVersion
+kOOMaximumGalaxyID	oo::kMaximumGalaxyID
+kOOMaximumSystemID	oo::kMaximumSystemID
+kOOMeshMaxMaterials	oo::kMeshMaxMaterials
+kOOMeshToOctreeConverterSmallDataCapacity	oo::kMeshToOctreeConverterSmallDataCapacity
+kOOMinimumSystemID	oo::kMinimumSystemID
+kOOMusicModeMax	oo::kMusicModeMax
+kOOPlanetTexCoords	oo::kPlanetTexCoords
+kOOPlanetVertices	oo::kPlanetVertices
+kOORouteTypeDefault	oo::kRouteTypeDefault
+kOOShaderSettingDefault	oo::kShaderSettingDefault
+kOOSystemIDInterstellarSpace	oo::kSystemIDInterstellarSpace
+kOOValidWeaponFacings	oo::kValidWeaponFacings
+kOOVariableTechLevel	oo::kVariableTechLevel
+OODeferredCall	DeferredCall	(local to src/Core/GameController.cpp)
+OONamedSilentSound	NamedSilentSound	(local to src/Core/OOALSound.cpp)
+OOALSoundVorbisCodec	ALSoundVorbisCodec	(local to src/Core/OOALSoundDecoder.cpp)
+OOAsyncWorkManagerInternal	AsyncWorkManagerInternal	(local to src/Core/OOAsyncWorkManager.cpp)
+OOManualDispatchAsyncWorkManager	ManualDispatchAsyncWorkManager	(local to src/Core/OOAsyncWorkManager.cpp)
+OOOperationQueueAsyncWorkManager	OperationQueueAsyncWorkManager	(local to src/Core/OOAsyncWorkManager.cpp)
+OOPrioritizedTaskQueue	PrioritizedTaskQueue	(local to src/Core/OOAsyncWorkManager.cpp)
+kOOCommodityCapacity	kCommodityCapacity	(local to src/Core/OOCommodities.cpp)
+kOOCommodityClasses	kCommodityClasses	(local to src/Core/OOCommodities.cpp)
+kOOCommodityContainer	kCommodityContainer	(local to src/Core/OOCommodities.cpp)
+kOOCommodityKey	kCommodityKey	(local to src/Core/OOCommodities.cpp)
+kOOCommodityLegalityExport	kCommodityLegalityExport	(local to src/Core/OOCommodities.cpp)
+kOOCommodityLegalityImport	kCommodityLegalityImport	(local to src/Core/OOCommodities.cpp)
+kOOCommodityMarketCapacity	kCommodityMarketCapacity	(local to src/Core/OOCommodities.cpp)
+kOOCommodityMarketLegalityExport	kCommodityMarketLegalityExport	(local to src/Core/OOCommodities.cpp)
+kOOCommodityMarketLegalityImport	kCommodityMarketLegalityImport	(local to src/Core/OOCommodities.cpp)
+kOOCommodityMarketName	kCommodityMarketName	(local to src/Core/OOCommodities.cpp)
+kOOCommodityMarketPriceAdder	kCommodityMarketPriceAdder	(local to src/Core/OOCommodities.cpp)
+kOOCommodityMarketPriceMultiplier	kCommodityMarketPriceMultiplier	(local to src/Core/OOCommodities.cpp)
+kOOCommodityMarketPriceRandomiser	kCommodityMarketPriceRandomiser	(local to src/Core/OOCommodities.cpp)
+kOOCommodityMarketQuantityAdder	kCommodityMarketQuantityAdder	(local to src/Core/OOCommodities.cpp)
+kOOCommodityMarketQuantityMultiplier	kCommodityMarketQuantityMultiplier	(local to src/Core/OOCommodities.cpp)
+kOOCommodityMarketQuantityRandomiser	kCommodityMarketQuantityRandomiser	(local to src/Core/OOCommodities.cpp)
+kOOCommodityMarketType	kCommodityMarketType	(local to src/Core/OOCommodities.cpp)
+kOOCommodityMarketTypeValueClass	kCommodityMarketTypeValueClass	(local to src/Core/OOCommodities.cpp)
+kOOCommodityMarketTypeValueDefault	kCommodityMarketTypeValueDefault	(local to src/Core/OOCommodities.cpp)
+kOOCommodityMarketTypeValueGood	kCommodityMarketTypeValueGood	(local to src/Core/OOCommodities.cpp)
+kOOCommodityName	kCommodityName	(local to src/Core/OOCommodities.cpp)
+kOOCommodityPeakExport	kCommodityPeakExport	(local to src/Core/OOCommodities.cpp)
+kOOCommodityPeakImport	kCommodityPeakImport	(local to src/Core/OOCommodities.cpp)
+kOOCommodityPriceAverage	kCommodityPriceAverage	(local to src/Core/OOCommodities.cpp)
+kOOCommodityPriceCurrent	kCommodityPriceCurrent	(local to src/Core/OOCommodities.cpp)
+kOOCommodityPriceEconomic	kCommodityPriceEconomic	(local to src/Core/OOCommodities.cpp)
+kOOCommodityPriceRandom	kCommodityPriceRandom	(local to src/Core/OOCommodities.cpp)
+kOOCommodityQuantityAverage	kCommodityQuantityAverage	(local to src/Core/OOCommodities.cpp)
+kOOCommodityQuantityCurrent	kCommodityQuantityCurrent	(local to src/Core/OOCommodities.cpp)
+kOOCommodityQuantityEconomic	kCommodityQuantityEconomic	(local to src/Core/OOCommodities.cpp)
+kOOCommodityQuantityRandom	kCommodityQuantityRandom	(local to src/Core/OOCommodities.cpp)
+kOOCommodityScript	kCommodityScript	(local to src/Core/OOCommodities.cpp)
+OOCacheManagerMeshDataForName	CacheManagerMeshDataForName	(local to src/Core/OOMesh.cpp)
+OOCacheManagerSetMeshData	CacheManagerSetMeshData	(local to src/Core/OOMesh.cpp)
+kOOOXZDataConfig	kOXZDataConfig	(local to src/Core/OOOXZManager.cpp)
+kOOOXZDataURL	kOXZDataURL	(local to src/Core/OOOXZManager.cpp)
+kOOOXZFilterAll	kOXZFilterAll	(local to src/Core/OOOXZManager.cpp)
+kOOOXZFilterAuthor	kOXZFilterAuthor	(local to src/Core/OOOXZManager.cpp)
+kOOOXZFilterCategory	kOXZFilterCategory	(local to src/Core/OOOXZManager.cpp)
+kOOOXZFilterDays	kOXZFilterDays	(local to src/Core/OOOXZManager.cpp)
+kOOOXZFilterInstallable	kOXZFilterInstallable	(local to src/Core/OOOXZManager.cpp)
+kOOOXZFilterKeyword	kOXZFilterKeyword	(local to src/Core/OOOXZManager.cpp)
+kOOOXZFilterTag	kOXZFilterTag	(local to src/Core/OOOXZManager.cpp)
+kOOOXZFilterUpdates	kOXZFilterUpdates	(local to src/Core/OOOXZManager.cpp)
+kOOOXZManifestCache	kOXZManifestCache	(local to src/Core/OOOXZManager.cpp)
+kOOOXZTmpPath	kOXZTmpPath	(local to src/Core/OOOXZManager.cpp)
+kOOOXZTmpPlistPath	kOXZTmpPlistPath	(local to src/Core/OOOXZManager.cpp)
+kOOLogOpenGLShaderSupport	kLogOpenGLShaderSupport	(local to src/Core/OOOpenGLExtensionManager.cpp)
+OOGLNoteCurrentFunction	GLNoteCurrentFunction	(local to src/Core/OOOpenGLStateManager.cpp)
+kOOLogOpenGLVerifyDump	kLogOpenGLVerifyDump	(local to src/Core/OOOpenGLStateManager.cpp)
+OOConcreteMutableProbabilitySet	ConcreteMutableProbabilitySet	(local to src/Core/OOProbabilitySet.cpp)
+OOConcreteProbabilitySet	ConcreteProbabilitySet	(local to src/Core/OOProbabilitySet.cpp)
+OOEmptyProbabilitySet	EmptyProbabilitySet	(local to src/Core/OOProbabilitySet.cpp)
+OOSingleObjectProbabilitySet	SingleObjectProbabilitySet	(local to src/Core/OOProbabilitySet.cpp)
+OOSelectorTable	SelectorTable	(local to src/Core/OOStringExpander.cpp)
+OOStringExpansionContext	StringExpansionContext	(local to src/Core/OOStringExpander.cpp)
+OOSystemLayerFromNumber	SystemLayerFromNumber	(local to src/Core/OOSystemDescriptionManager.cpp)
+kOOScriptedChangeJoiner	kScriptedChangeJoiner	(local to src/Core/OOSystemDescriptionManager.cpp)
+kOOSystemLayerProperty	kSystemLayerProperty	(local to src/Core/OOSystemDescriptionManager.cpp)
+kOOCacheKeyModificationDates	kCacheKeyModificationDates	(local to src/Core/ResourceManager.cpp)
+kOOCacheKeySearchPaths	kCacheKeySearchPaths	(local to src/Core/ResourceManager.cpp)
+kOOCacheSearchPathModDates	kCacheSearchPathModDates	(local to src/Core/ResourceManager.cpp)
+OOGraphicsDetailFromNumber	GraphicsDetailFromNumber	(local to src/Core/Universe.cpp)
