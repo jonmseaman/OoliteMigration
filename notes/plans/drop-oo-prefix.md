@@ -138,6 +138,8 @@ aliases.
 - *File names that would shadow a system header.* A renamed file in a directory on the `-I` path must not match a C, C++ or POSIX header case-insensitively (`Math.h` would shadow `<math.h>` on Windows and macOS). Such a file gets a longer name, recorded in its area's ledger row.
 - *Flag enums in `oo`.* `OOEnableFlagOperators` is kept like `OOEnumName`, and moves with its enum. `OOEnumFlags.h` adds `using ::operator|;` (and the other six) inside namespace oo, so a flag enum in `oo` finds the global operator templates past any other `oo` operator of the same name.
 
+**Where it stands** (worker, 2026-11-15; branch `seriesb/033-drop-oo-prefix`, tip oolite-dev `8440ffe7d`, pushed). All eight areas are renamed. The done check's grep still matches 217 lines, and none of them is a name the rename should have taken: macros (177), comments (40, block comments included), `*TestAccess` (10), names defined in `Core/Scripting/` (9) and one `extern "C"` name. `.agent-tmp/cc/donecheck.py` sorts them. The only `OO*` files left outside Scripting are `src/SDL/OOResourcesWin/`'s. The dev build, `tests/run.sh unit` and `tests/run.sh component` pass (component as before: census 127 passed, 6 failed, 8 expected; 24 of 24). Every game translation unit (229) also compiles `-fsyntax-only` with the deployment flavour's defines (`-UOO_DEBUG -DNDEBUG ...`), which is how the macro-pair breakage was found. Not checked here: macOS and Linux branches (CI covers them), and the debug build.
+
 ## Test-change ledger (signed off: Jon, 2026-11-15)
 
 One row per area, filled in as each area lands. The rename map is the area's
