@@ -127,6 +127,7 @@ aliases.
 - *`OOEnumName` keeps its name.* It is an ADL customisation point: `oo::MakeEnumTable` calls it unqualified, so each overload must live in its enum's namespace, and some enums stay global for good (`WORMHOLE_SCANINFO`). Overloads for enums that move into `oo` move with them.
 - *Name clashes in `oo`.* Where a stripped name meets an existing `oo` name, the existing function gets a new name, not the type: `oo::EntityStatus(Entity*)` → `oo::EntityStatusOf`.
 - *Comments.* Old names in comments are left alone, like string literals.
+- *Flag enums in `oo`.* `OOEnableFlagOperators` is kept like `OOEnumName`, and moves with its enum. `OOEnumFlags.h` adds `using ::operator|;` (and the other six) inside namespace oo, so a flag enum in `oo` finds the global operator templates past any other `oo` operator of the same name.
 
 ## Test-change ledger (signed off: Jon, 2026-11-15)
 
@@ -138,6 +139,7 @@ One row per area, filled in as each area lands. The rename map is the area's
 | _(each area)_ | | every `OO`/`kOO` name in the map replaced; `#include`s updated; identifiers only, no string literal touched | unchanged | |
 | OXPVerifier | `tests/unit/core/`: `OOOXPVerifierTestDouble.h`, `meson.build`, the 13 `test_OO*VerifierStage.cpp`/`test_OOOXPVerifier*.cpp`/`test_OOPListSchemaVerifier.cpp` (file names kept) | the 22 names in `rename-map-Core-OXPVerifier.tsv` replaced; `#include`s updated; identifiers only, no string literal touched | unchanged; `"<OOFoo 0x"` text kept by `oo::DescriptionClassName` | oolite-dev `2864d628d` |
 | Tables | 51 files under `tests/unit/core/` and `tests/component-cpp/` that name a table enum, including the gates `test_SaveEnumValues.cpp` and `test_PlayerEntity.cpp` (type names only) | the 30 names in `rename-map-Core-Tables.tsv` replaced; `#include`s updated; identifiers only, no string literal touched | unchanged | oolite-dev `27cbff850` |
+| Debug | 16 files: `tests/unit/core/meson.build`, `test_Entity`, `test_OOConstToString`, `test_OODebugMonitor`, `test_OODebugStandards`, `test_OODebugSupport`, `test_OODebugTCPConsoleClient`, `test_OOEnumFlags`, `test_OOEquipmentType`, `test_OOJSClock`, `test_OOJSConsole`, `test_OOJSEquipmentInfo`, `test_OOJSMission`, `test_OOJSStation`, `test_OOShipRegistry`, `tests/unit/oofnd/test_tcp_stream_format` | the 59 names in `rename-map-Core-Debug.tsv` replaced; `#include`s updated; identifiers only, no string literal touched | unchanged. `test_OOEnumFlags`' comment still speaks of a global flag enum; its checks now run on `oo::DebugFlags` through `OOEnumFlags.h`'s using-declarations | oolite-dev `3913f9b44` |
 
 ## Done check
 
