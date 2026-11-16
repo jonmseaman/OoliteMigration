@@ -1,9 +1,3 @@
-# Submodule layout: ADR-0067 (supersedes ADR-0017's subtree decision).
-#
-# oolite-dev is the tree being migrated: jonmseaman/oolite, branch develop. Every change to the
-# game is a commit there (a bead's on branch bead/<id> inside the submodule) and this repo
-# records which commit. oolite-main is the same repository's master, for reference only.
-# Everything under upstream/ is OoliteProject's own, unmodified, for reference only.
 [submodule "oolite-dev"]
 	path = oolite-dev
 	url = https://github.com/jonmseaman/oolite.git
@@ -33,7 +27,3 @@
 [submodule "oolite-mac-components"]
 	path = upstream/oolite-mac-components
 	url = https://github.com/OoliteProject/oolite-mac-components.git
-[submodule "oarsman-ai"]
-	path = oarsman-ai
-	url = https://github.com/jonmseaman/oarsman-ai.git
-	branch = main

@@ -85,8 +85,7 @@ tests/run.sh all                   # unit, component, then smoke
 
 - Submodules: `oolite-dev` = `jonmseaman/oolite` `develop` (the game); `oolite-main` = the same
   repo's `master` (reference); everything under `upstream/` is OoliteProject's own, unmodified,
-  reference only. `oarsman-ai` = `jonmseaman/oarsman-ai` `main`, the agent-fleet tool (CLI `oar`),
-  in design and not used for Oolite work yet. `origin` = `jonmseaman/OoliteMigration`.
+  reference only. `origin` = `jonmseaman/OoliteMigration`.
 - New code generated in oolite-dev should follow Google style guidelines: https://google.github.io/styleguide/cppguide.html
 - **The recorded `oolite-dev` commit is not yours to move.** Commit game changes only inside
   `oolite-dev`; Jon records merged work here.
