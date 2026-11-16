@@ -130,6 +130,7 @@ One row per area, filled in as each area lands. The rename map is the area's
 | Area | Test files | Edit | Assertions | Commit |
 |---|---|---|---|---|
 | _(each area)_ | | every `OO`/`kOO` name in the map replaced; `#include`s updated; identifiers only, no string literal touched | unchanged | |
+| OXPVerifier | `tests/unit/core/`: `OOOXPVerifierTestDouble.h`, `meson.build`, the 13 `test_OO*VerifierStage.cpp`/`test_OOOXPVerifier*.cpp`/`test_OOPListSchemaVerifier.cpp` (file names kept) | the 22 names in `rename-map-Core-OXPVerifier.tsv` replaced; `#include`s updated; identifiers only, no string literal touched | unchanged; `"<OOFoo 0x"` text kept by `oo::DescriptionClassName` | oolite-dev `2864d628d` |
 
 ## Done check
 
