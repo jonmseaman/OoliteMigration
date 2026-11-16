@@ -1,0 +1,10 @@
+old	new
+OOAssertFailedInFunction	oo::AssertFailedInFunction
+OODataFromOXZFile	oo::DataFromOXZFile
+OOGenericException	oo::GenericException
+OOInternalInconsistencyException	oo::InternalInconsistencyException
+OOInvalidArgumentException	oo::InvalidArgumentException
+OOMallocException	oo::MallocException
+OOOxzFileExistsAtPath	oo::OxzFileExistsAtPath
+OORaiseException	oo::RaiseException
+OORangeException	oo::RangeException
