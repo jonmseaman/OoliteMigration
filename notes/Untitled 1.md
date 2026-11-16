@@ -4,8 +4,8 @@ needs:
 worker:
 reviewer:
 order: 50
-repo:
-branch:
+repo: oarsmen-ai
+branch: main
 after: []
 requires: []
 model:
