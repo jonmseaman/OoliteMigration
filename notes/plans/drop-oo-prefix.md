@@ -122,6 +122,12 @@ aliases.
 `OOBreakPatternEntityTestAccess`, `OOOXPVerifierTestAccess`) are declared by the tests and named as
 `friend` in `src/` headers. Leave them out of the rename list, so the `friend` lines still match.
 
+**Decisions taken while renaming** (conservative defaults, rule 8):
+- *Gate tests.* Option B is not used, so `test_SaveEnumValues` and `test_PlayerEntity` must name the renamed types. "Unedited" is read as: no string literal and no assertion changed, only type names, and each edit is in the ledger.
+- *`OOEnumName` keeps its name.* It is an ADL customisation point: `oo::MakeEnumTable` calls it unqualified, so each overload must live in its enum's namespace, and some enums stay global for good (`WORMHOLE_SCANINFO`). Overloads for enums that move into `oo` move with them.
+- *Name clashes in `oo`.* Where a stripped name meets an existing `oo` name, the existing function gets a new name, not the type: `oo::EntityStatus(Entity*)` → `oo::EntityStatusOf`.
+- *Comments.* Old names in comments are left alone, like string literals.
+
 ## Test-change ledger (signed off: Jon, 2026-11-15)
 
 One row per area, filled in as each area lands. The rename map is the area's
@@ -131,6 +137,7 @@ One row per area, filled in as each area lands. The rename map is the area's
 |---|---|---|---|---|
 | _(each area)_ | | every `OO`/`kOO` name in the map replaced; `#include`s updated; identifiers only, no string literal touched | unchanged | |
 | OXPVerifier | `tests/unit/core/`: `OOOXPVerifierTestDouble.h`, `meson.build`, the 13 `test_OO*VerifierStage.cpp`/`test_OOOXPVerifier*.cpp`/`test_OOPListSchemaVerifier.cpp` (file names kept) | the 22 names in `rename-map-Core-OXPVerifier.tsv` replaced; `#include`s updated; identifiers only, no string literal touched | unchanged; `"<OOFoo 0x"` text kept by `oo::DescriptionClassName` | oolite-dev `2864d628d` |
+| Tables | 51 files under `tests/unit/core/` and `tests/component-cpp/` that name a table enum, including the gates `test_SaveEnumValues.cpp` and `test_PlayerEntity.cpp` (type names only) | the 30 names in `rename-map-Core-Tables.tsv` replaced; `#include`s updated; identifiers only, no string literal touched | unchanged | oolite-dev `27cbff850` |
 
 ## Done check
 
