@@ -1,3 +1,9 @@
+---
+status: Review
+spec-kit-status: Implementation
+branch: seriesb/033-drop-oo-prefix
+parent: seriesb/032-cleanup
+---
 # Drop the `OO` prefix from `src/` names (a new `seriesb` branch)
 
 Status: **Tasks** (ready; last in the list). Jon wants this eventually (2026-11-15).

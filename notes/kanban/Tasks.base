@@ -1,0 +1,33 @@
+filters:
+  and:
+    - file.inFolder("kanban")
+    - file.ext == "md"
+formulas:
+  stage: if(note["spec-kit-status"], status + " · " + note["spec-kit-status"], status)
+properties:
+  note.status:
+    displayName: Status
+  note.spec-kit-status:
+    displayName: Spec Kit
+  formula.stage:
+    displayName: Status
+views:
+  - type: kanban
+    name: State
+    groupBy:
+      property: status
+      direction: ASC
+    groupOrder:
+      - New
+      - Ready
+      - Waiting
+      - Blocked
+      - In-Progress
+      - Review
+      - PR
+      - Done
+    order:
+      - file.name
+      - formula.stage
+  - type: table
+    name: All

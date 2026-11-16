@@ -1,13 +1,18 @@
 Reference: https://github.com/jonmseaman/oolite/branches/all
 
+## TODO 
 - [ ] Use Google test instead of custom assertions.
-- [ ] Use a namespace instead of OO prefix.
 - [ ] Encapsulate platform-specific code into classes.
 - [ ] Encapsulate global state into classes.
 - [ ] Use feature flags instead of compile-time macros (works better with IDEs + clang-tidy).
 - [ ] Further replacements of oofnd with C++ std libraries.
 
+## In-Progress
 
+- [ ] Use a namespace instead of OO prefix.
+
+
+## Maybe
 
 - [ ] Google style guide with cpplint:
     CheckOptions:
@@ -22,10 +27,6 @@ Reference: https://github.com/jonmseaman/oolite/branches/all
     NB EnumConstant* covers scoped AND unscoped constants, so it puts all 175 unscoped enums in
     scope at once. ScopedEnumConstant* confines it to enum class, which is what lets the enum
     work land incrementally.
-
-
-
-## Maybe
 
 More branches:
 - SDL_Net? What was the platform specific http test that was broken?

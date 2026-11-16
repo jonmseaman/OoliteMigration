@@ -1,3 +1,6 @@
+---
+status: In-Progress
+---
 # Modern C++ idioms: what's left of the 2026-10-28 review
 
 Status: **Prepare**. Replaces `2026-10-28 Modern C++ Idiom Review.md` and

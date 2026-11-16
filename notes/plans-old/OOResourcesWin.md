@@ -1,0 +1,8 @@
+
+- [ ] Move the Windows executable resources from `src/SDL/OOResourcesWin/` to `installers/win32/`, next to the icon they embed. They are four build inputs, not SDL code: `OOResourcesWin.rc` (embeds the manifest and the `.exe` icon), `oolite.exe.manifest`, `OOResourcesWin.h` (3 `#define`s for the `.rc`) and a 4-line `meson.build`.
+  - `git mv` the `.rc`, `.h` and `.manifest` into `oolite-dev/installers/win32/`.
+  - In the `.rc`, the icon line becomes `IDI_OOLITE ICON "Oolite.ico"`, matching the file's case (today it's `../../../installers/win32/oolite.ico`).
+  - Compile it from `src/meson/windows/meson.build`: `oolite_sources += import('windows').compile_resources(files('../../../installers/win32/OOResourcesWin.rc'))`, or `meson.project_source_root() / 'installers/win32/OOResourcesWin.rc'`.
+  - Delete `src/SDL/OOResourcesWin/meson.build`, the `subdir('OOResourcesWin')` at `src/SDL/meson.build:14`, and its `oolite_includes += include_directories('.')`. Nothing includes `OOResourcesWin.h` except the `.rc`, which finds it beside itself.
+  - Add a line to `docs/UPSTREAM_DELTA.md` (OoliteMigration): upstream keeps these in `src/SDL/OOResourcesWin/`.
+  - Done when `! test -d oolite-dev/src/SDL/OOResourcesWin` and `./mk.sh build dev` passes, and the built `oolite.exe` still carries the icon and manifest. Check with `llvm-readobj --coff-resources build/meson_dev/src/oolite.exe | grep -E 'ICON|MANIFEST'`, which shows both before and after. `tests/run.sh unit` must also pass.

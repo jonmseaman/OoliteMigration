@@ -2,7 +2,7 @@
 
 Status: **not planned**. Jon wants to consider these later (2026-11-15). `Universe.cpp` is 11,812
 lines and `Universe.h` 1,055. The first extraction, espeak-ng, is already a task:
-[speech-synthesizer-class.md](plans/speech-synthesizer-class.md).
+[speech-synthesizer-class.md](speech-synthesizer-class.md).
 
 Counts are references to each cluster's members in `oolite-dev` (2026-11-15). Re-measure before
 planning one.

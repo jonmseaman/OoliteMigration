@@ -1,3 +1,6 @@
+---
+status: Review
+---
 # Encapsulate espeak-ng in `oo::SpeechSynthesizer`
 
 Status: **Tasks** (ready). Related: [make-espeak-mandatory.md](make-espeak-mandatory.md) (undecided). This

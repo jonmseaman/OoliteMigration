@@ -94,5 +94,5 @@ So about **308 types, 573 free functions, 334 constants and 249 macros** carry t
 members, variables and enumerators never do.
 
 The plan to drop it (outside `Core/Scripting`) is
-[plans/drop-oo-prefix.md](../plans/drop-oo-prefix.md). Its rename list should come from
+[kanban/drop-oo-prefix.md](../kanban/drop-oo-prefix.md). Its rename list should come from
 `2026-11-15-all-names.tsv`.
