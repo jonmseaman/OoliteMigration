@@ -24,6 +24,10 @@ upstream-tracker task is the only writer of the delta table.
 - Migration-owned directories (no upstream counterpart: `oofnd`, `Core/Scripting/ooscript`) are
   listed frozen; upstream never touches them, so they cost nothing.
 - Everything outside `src/` (`Resources/`, `Doc/`, `Schemata/`, build files, ...) is open.
+- Third-party code is in `oolite-dev/third_party/` (`minizip/`, `miniz/`, `tinyexr/`, `stb/`), so
+  it is open. Upstream keeps it in `src/Core/MiniZip/`, `src/SDL/EXRSnapshotSupport/` and
+  `src/SDL/stb_image_write.h`: a pull that changes those paths is applied to `third_party/` by
+  hand (`OOSaveEXRSnapshot.cpp`, upstream's file in `EXRSnapshotSupport/`, is `src/SDL/` here).
 
 Baseline: `49a5eb9fc87a76ef9980f6436dc81f112e068935` (OoliteProject master, synced 2026-11-01 by
 bead oo-74i, a real merge into `epic/upstream-sync-49a5eb9fc`; earlier baselines `9ee8ff22f`,
@@ -40,7 +44,6 @@ Frozen since Phase 3 began (2026-09-29, the OOColor exemplar, bead oo-11m) unles
 | `src/Core/Debug` | frozen | Phase 3 classes (OODebugMonitor, bead oo-kq7; frozen 2026-10-01 by oo-9ht.70) |
 | `src/Core/Entities` | frozen | Phase 3 classes (Entity) |
 | `src/Core/Materials` | frozen | Phase 3 classes |
-| `src/Core/MiniZip` | open | vendored C, never converted (ADR-0012) |
 | `src/Core/OXPVerifier` | frozen | Phase 3 classes (verifier stages) |
 | `src/Core/Scripting` | frozen | Phase 3 classes; the ooscript facade replaced SpiderMonkey (Phase 1) |
 | `src/Core/Scripting/ooscript` | frozen | migration-owned (ADR-0002); not in upstream |
@@ -48,7 +51,6 @@ Frozen since Phase 3 began (2026-09-29, the OOColor exemplar, bead oo-11m) unles
 | `src/oofnd` | frozen | migration-owned (oofnd); not in upstream |
 | `src/oofnd/objc` | frozen | migration-owned (ADR-0029); not in upstream |
 | `src/SDL` | frozen | Phase 3 classes (joystick manager) |
-| `src/SDL/EXRSnapshotSupport` | open | no Phase 3 work yet |
 | `src/SDL/OOResourcesWin` | open | resources only |
 <!-- modules:end -->
 

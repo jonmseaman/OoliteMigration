@@ -4,6 +4,7 @@
 |---|---|
 | [current-state.md](current-state.md) | you need to know what the code is now: layout, builds, tests, known differences |
 | [workflow.md](workflow.md) | you are making a change: running the tests, bead sizing, definition of done |
+| [clion-windows.md](clion-windows.md) | setting up CLion on Windows (Meson sync, build, debug) |
 | [phases/4p-upstream-polish.md](phases/4p-upstream-polish.md) | **the current phase** |
 | [phases/5-apple-silicon.md](phases/5-apple-silicon.md), [5b](phases/5b-data-formats.md), [6](phases/6-modernise.md) | planning later work |
 | [parity/](parity/README.md) | fixing a behaviour difference from upstream 1.93; read the README, then only the one area file you need (they are long) |

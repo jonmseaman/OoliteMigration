@@ -35,7 +35,9 @@
       "Bash(git push origin seriesb/*)",
       "Bash(git push origin feature/*)",
       "Bash(git -C oolite-dev push origin seriesb/*)",
-      "Bash(git -C oolite-dev push origin feature/*)"
+      "Bash(git -C oolite-dev push origin feature/*)",
+      "Bash(git push origin main)",
+      "Bash(GIT_TERMINAL_PROMPT=0 \"/c/Program Files/Git/mingw64/bin/git.exe\" push origin main)"
     ],
     "deny": [
       "Bash(bd close:*)",
@@ -45,7 +47,6 @@
       "Bash(git push * +*)",
       "Bash(git push * develop*)",
       "Bash(git push * master*)",
-      "Bash(git push * main*)",
       "Bash(git push * upstream-master*)",
       "Bash(git push --all*)",
       "Bash(git push --mirror*)",
@@ -57,6 +58,11 @@
       "Bash(git -C oolite-dev push * master*)",
       "Bash(git -C oolite-dev push * main*)",
       "Bash(git -C oolite-dev push * upstream-master*)",
+      "Bash(git -C oolite-main push*)",
+      "Bash(git -C upstream/* push*)",
+      "Bash(cd oolite-dev && git push*)",
+      "Bash(cd oolite-main && git push*)",
+      "Bash(cd upstream/* && git push*)",
       "Bash(gh pr create:*)",
       "Bash(gh pr merge:*)"
     ]

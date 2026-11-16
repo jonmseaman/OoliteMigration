@@ -33,3 +33,7 @@
 [submodule "oolite-mac-components"]
 	path = upstream/oolite-mac-components
 	url = https://github.com/OoliteProject/oolite-mac-components.git
+[submodule "oarsman-ai"]
+	path = oarsman-ai
+	url = https://github.com/jonmseaman/oarsman-ai.git
+	branch = main

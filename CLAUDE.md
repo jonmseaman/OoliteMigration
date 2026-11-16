@@ -66,28 +66,28 @@ Specs live in `specs/`, the templates and constitution in `.specify/`; see
 All from `oolite-dev`, in an MSYS2 UCRT64 shell on Windows ([setup](tools/setup-windows.sh)):
 
 ```bash
-./mk.sh build test                 # Clang; --native-file=gcc.ini for GCC
+./mk.sh build dev                  # Clang; --native-file=gcc.ini for GCC
 tests/run.sh unit                  # meson: oofnd, core, headers
 tests/run.sh component [--cpp|--windowed] [-k name]   # C++, then Gherkin
-tests/run.sh gui                   # PyAutoGUI, real window
 tests/run.sh smoke                 # launch and snapshot
-tests/run.sh all                   # unit, component, smoke, then gui
+tests/run.sh all                   # unit, component, then smoke
 ```
 
 ## Exemplars
 
-| Kind | Path |
-|---|---|
-| GUI test | `oolite-dev/tests/gui/test_g1_exit_via_mouse.py` |
+| Kind               | Path                                                                 |
+| ------------------ | -------------------------------------------------------------------- |
 | Component scenario | `oolite-dev/tests/component/features/s1_police_kills_pirate.feature` |
-| C++ component test | `oolite-dev/tests/component-cpp/test_s1_police_kills_pirate.cpp` |
-| Converted class | `oolite-dev/src/Core/OOColor.*` |
+| C++ component test | `oolite-dev/tests/component-cpp/test_s1_police_kills_pirate.cpp`     |
+| Converted class    | `oolite-dev/src/Core/OOColor.*`                                      |
 
 ## Repo conventions
 
 - Submodules: `oolite-dev` = `jonmseaman/oolite` `develop` (the game); `oolite-main` = the same
   repo's `master` (reference); everything under `upstream/` is OoliteProject's own, unmodified,
-  reference only. `origin` = `jonmseaman/OoliteMigration`.
+  reference only. `oarsman-ai` = `jonmseaman/oarsman-ai` `main`, the agent-fleet tool (CLI `oar`),
+  in design and not used for Oolite work yet. `origin` = `jonmseaman/OoliteMigration`.
+- New code generated in oolite-dev should follow Google style guidelines: https://google.github.io/styleguide/cppguide.html
 - **The recorded `oolite-dev` commit is not yours to move.** Commit game changes only inside
   `oolite-dev`; Jon records merged work here.
 - **Git Town, in `oolite-dev` only.** One stack: `master` (perennial) → `seriesb/000a`,
@@ -95,9 +95,6 @@ tests/run.sh all                   # unit, component, smoke, then gui
   Make, rename and delete branches with `git town append`/`rename`/`delete`, not plain git, so
   parents stay recorded. Sync with `git town sync --stack --detached`; never `ship` or `propose`.
   See [docs/workflow.md](docs/workflow.md#git-town-in-oolite-dev).
-- **GUI tests own the desktop.** `tests/run.sh gui` drives the real window with PyAutoGUI. Run one
-  at a time, and don't launch the game by hand while it runs: a second window steals the
-  foreground mid-click.
 - **File modes.** A script invoked as a bare program MUST be committed `100755` with a `#!`
   shebang. Check with `git ls-files -s`, never `test -x` (MSYS reports every file as executable).
 - Docs: index in `docs/README.md`; phases in `docs/phases/`; decisions go in the phase doc.
@@ -109,4 +106,3 @@ tests/run.sh all                   # unit, component, smoke, then gui
 - Do not restate the user's request.
 - Do not include generic explanations unless asked.
 - Put the result first.
-

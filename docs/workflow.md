@@ -5,7 +5,7 @@ detail behind them.
 
 ## Tools decide correctness, not models
 
-Whether behaviour changed is decided by the unit, component and GUI suites, the JS API contract in
+Whether behaviour changed is decided by the unit and component suites, the JS API contract in
 `oxp-contract/`, the expansion corpus, sanitizers, and `-Wall -Wextra`. A model (or a reviewer) may
 propose and explain; it never declares a change correct.
 
@@ -19,7 +19,6 @@ for the commands):
 | `unit` | class behaviour (`oofnd`, `core`, headers); meson | seconds |
 | `component --cpp` | headless C++ tests in `tests/component-cpp` (meson suite `component`) | seconds each |
 | `component --windowed` | pytest-bdd scenarios against a real game over the debug console | minutes |
-| `gui` | PyAutoGUI against the real window | minutes; one at a time |
 | `smoke` | the game launches and renders | seconds |
 
 `tests/run.sh component` with no flag runs the C++ half, then the windowed half; `-k name`
@@ -81,8 +80,8 @@ survives between agent iterations.
   branch into `develop` locally and pushes it.
 - Scripts called as bare programs are committed `100755` with a shebang; check with
   `git ls-files -s`, never `test -x`.
-- Vendored code (`src/Core/MiniZip/`, `src/SDL/stb_image_write.h`) is not edited to satisfy the
-  warning gate; the gate skips exactly those two paths.
+- Third-party code lives in `oolite-dev/third_party/`, not `src/`. It is not edited to satisfy
+  warnings, clang-format or clang-tidy; none of them runs over it.
 - Upstream changes to a frozen module are ported by hand and recorded in
   [UPSTREAM_DELTA.md](UPSTREAM_DELTA.md); `bash tools/upstream-delta.sh --check` enforces it.
 - Expansion (OXP/OXZ) content is untrusted input: tools read it, agents with write access don't.

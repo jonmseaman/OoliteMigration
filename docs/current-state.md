@@ -34,11 +34,17 @@ pull request on the fork.
 | `oofnd/` | The Foundation replacement: `Ref`/`WeakRef` (intrusive refcount), `AutoreleaseScope`, `String` helpers (UTF-8 `std::string`), `PList` with old-style and XML parsers/writers and typed `PListGet`, `Defaults`, `FileSystem`, `Log`/`LogFile`, `Http`, `Scanner`, `Expected`. `oofnd/objc/` holds C-only leftovers (`OOAssert`, `OOException.h`, type aliases). |
 | `Core/` | The game, converted class by class from Objective-C. Shape is deliberately close to the original (see "Style" below). |
 | `Core/Scripting/ooscript/` | `JSEngine.hpp`, the JS façade; `JSEngine_quickjs.cpp` is the only file that touches QuickJS-ng. |
-| `Core/MiniZip/`, other vendored C | Kept as C, not rewritten. |
 | `SDL/` | Platform layer: window, input, Windows resources. |
 | `meson/` | Per-platform meson fragments. |
 
-QuickJS-ng is a meson subproject pinned in `oolite-dev/subprojects/quickjs-ng.wrap` (v0.17.0).
+Third-party code copied into the tree is in `oolite-dev/third_party/`, outside `src/`: MiniZip 1.1
+(`minizip/`), miniz (`miniz/`), tinyexr (`tinyexr/`) and stb_image_write (`stb/`), each with its
+licence. `third_party/` is meson's `subproject_dir`: each library is a local subproject that only
+names its sources, and `src/meson.build` builds them as one library with the game's project
+arguments but without its warning flags. It is not formatted, tidied or rewritten.
+
+QuickJS-ng is a meson wrap pinned in `oolite-dev/third_party/quickjs-ng.wrap` (v0.17.0), with its
+patches in `third_party/packagefiles/`; meson fetches the source into `third_party/` (git-ignored).
 
 ## Style of the converted code
 
@@ -66,8 +72,8 @@ Run from `oolite-dev`, in an MSYS2 UCRT64 shell (`tools/setup-windows.sh` instal
 | GCC | `./mk.sh build test --native-file=gcc.ini` | must stay green beside Clang |
 
 `-ffp-contract=off` and a pinned `-O` keep floating point reproducible. `-Wall -Wextra` is clean.
-The warning gate skips exactly two vendored paths, `src/Core/MiniZip/` and
-`src/SDL/stb_image_write.h`; their warnings still print, and no other path may be added.
+Third-party code (`third_party/`) builds without the game's own warning flags (`oolite_cpp_args`);
+its warnings still print, and no game source may be moved there to escape them.
 
 ## Tests
 
@@ -76,12 +82,11 @@ The warning gate skips exactly two vendored paths, `src/Core/MiniZip/` and
 | Unit | `oolite-dev/tests/unit/` (core ~175 files, `oofnd` ~40) | class behaviour |
 | Component, C++ half | `oolite-dev/tests/component-cpp/` | headless games in the test's own process (no window, no GL context, a manual clock): S1-S8, one-behaviour tests, the census of every ship and equipment item, menus, the tutorial and key tests under recorded layouts, key faults |
 | Component, windowed half (BDD) | `oolite-dev/tests/component/` | pytest-bdd scenarios drive a real game over the debug console; tolerant invariants |
-| GUI | `oolite-dev/tests/gui/` | PyAutoGUI drives the real window (G1–G11) |
 | Smoke | `oolite-dev/tests/launch_snapshot.py` | the game launches and renders |
 | JS API contract | `oxp-contract/js-api-1.93.json` | the 1.93 scripting surface expansions are written against |
 | Expansion corpus | `tools/corpus.sh`, `tools/oxp-corpus/` | load-tests published expansions; known content failures in `tools/oxp-corpus/known-content-failures.json` |
 
-`oolite-dev/tests/run.sh` runs the first five. How to use them is in [workflow.md](workflow.md).
+`oolite-dev/tests/run.sh` runs the first four. How to use them is in [workflow.md](workflow.md).
 
 The C++ half (`tests/component-cpp`, meson suite `component`) links the game's own objects into
 each test program. One headless game per process: `OOHeadlessOptions` (`src/Core/OOHeadless.h`)
@@ -90,7 +95,7 @@ no add-ons, and, for the key tests, a view on SDL's `dummy` video driver that re
 pushed onto SDL's queue. On Linux and macOS the GL trap is linked: any GL call while headless
 aborts the test naming the function. It covers the game's simulation, scripts, GUI screens and key
 handling; it does not cover drawing, real sound, SDL's own layout step for a real keyboard, window
-focus, or input methods: those stay with the windowed half, the GUI tests and the smoke run.
+focus, or input methods: those stay with the windowed half and the smoke run.
 `key_fault_h1`-`h4` and `test_tutorial_keys_ru` are registered `should_fail`: each is a key-path
 fault upstream shares (spec 011, *Findings -> Keys*). The fr and ru layout tables are derived,
 not recorded.
