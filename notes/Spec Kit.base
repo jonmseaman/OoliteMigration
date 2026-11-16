@@ -1,0 +1,104 @@
+formulas:
+  done_days_ago: if(done_at, ((now() - date(done_at)) / 86400000).round(0), "")
+properties:
+  note.speckit:
+    displayName: Stage
+  note.spec:
+    displayName: Spec
+  note.status:
+    displayName: Status
+  note.needs:
+    displayName: Needs
+  note.worker:
+    displayName: Worker
+  note.repo:
+    displayName: Repo
+  formula.done_days_ago:
+    displayName: Days since done
+views:
+  - type: kanban
+    name: By stage
+    filters:
+      and:
+        - file.inFolder("tasks")
+        - file.hasTag("speckit")
+        - or:
+            - speckit != "done"
+            - done_at > now() - "7 days"
+    groupBy:
+      property: speckit
+      direction: ASC
+    groupOrder:
+      - specify
+      - clarify
+      - plan
+      - tasks
+      - analyze
+      - implement
+      - done
+      - 
+    order:
+      - file.name
+      - spec
+      - status
+      - needs
+  - type: kanban
+    name: Needs review
+    filters:
+      and:
+        - file.inFolder("tasks")
+        - file.hasTag("speckit")
+        - status == "Blocked"
+    groupBy:
+      property: needs
+      direction: ASC
+    groupOrder:
+      - spec
+      - plan
+      - tasks
+      - review
+      - merge
+      - decision
+      - failure
+      - 
+    order:
+      - file.name
+      - spec
+      - speckit
+  - type: table
+    name: Specs
+    filters:
+      and:
+        - file.inFolder("tasks")
+        - file.hasTag("speckit")
+        - or:
+            - speckit != "done"
+            - done_at > now() - "7 days"
+    groupBy:
+      property: spec
+      direction: ASC
+    order:
+      - file.name
+      - spec
+      - speckit
+      - status
+      - needs
+      - worker
+      - repo
+  - type: table
+    name: All specs
+    filters:
+      and:
+        - file.inFolder("tasks")
+        - file.hasTag("speckit")
+    groupBy:
+      property: spec
+      direction: ASC
+    order:
+      - file.name
+      - spec
+      - speckit
+      - status
+      - repo
+      - done_at
+      - formula.done_days_ago
