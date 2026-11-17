@@ -132,11 +132,12 @@ not recorded.
   best-effort. Full list and fixes: [EXPANSION_MIGRATION.md](EXPANSION_MIGRATION.md); per-expansion
   findings: [expansions/](expansions/README.md).
 - **Plists.** `oofnd` reproduces GNUstep's parsing, with a small set of intentional differences
-  (the ⚠️ rows of the parity audit's [foundation.md](parity/foundation.md); e.g. the data cache is
+  (the ⚠️ rows of the parity audit's [foundation.md](../parity/foundation.md); e.g. the data cache is
   written as XML, not GNUstep binary).
 - **Behaviour parity.** A method-by-method audit against `upstream/oolite/src` is in
-  [parity/](parity/README.md): 170 suspected differences, 2 high (both fixed) and ~12 medium. The
-  open ones are listed in [notes/2026-11-07 Parity Fixes](../notes/2026-11-07%20Parity%20Fixes.md).
+  [parity/](../parity/README.md), last run 2026-11-16 against `seriesb/028-upstream-772-tests`: 198
+  suspected differences, 0 high and 12 medium. The fixes are planned as commits on 028 in
+  [parity/028-fix-plan.md](../parity/028-fix-plan.md); [parity/METHOD.md](../parity/METHOD.md) is how to rerun it.
 - **Platform features.** HDR output, `wglGetProcAddress` extension loading, display-mode changes
   (`ChangeDisplaySettingsEx`), EcoQoS and OXZ file unlocking are Windows-only, as upstream's were.
   The iTunes integration (upstream's Cocoa build) does nothing.

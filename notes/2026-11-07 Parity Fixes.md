@@ -1,8 +1,11 @@
 # Parity fixes still open (2026-11-07)
 
+> **Superseded** by the 2026-11-16 re-audit on 028: see [parity/028-fix-plan.md](../parity/028-fix-plan.md).
+> One correction: the `quantityInHold` write in the market screen's cargo loop is not guarded on 028.
+
 Measured on `seriesb/027-ship-library-keys` (ac60522c9), 2026-11-07. **Waiting for Jon's in-depth
 review**; nothing here is scheduled yet. Source: the parity audit in
-[docs/parity/README.md](../docs/parity/README.md), re-checked against the series tip. Line numbers
+[parity/README.md](../parity/README.md), re-checked against the series tip. Line numbers
 are on 027.
 
 Already fixed on 027: both High findings (subentity updates, JS `delete` on native-backed

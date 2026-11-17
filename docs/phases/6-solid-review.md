@@ -1,7 +1,7 @@
 # Phase 6: SOLID design review of the converted tree
 
 A design review of `oolite-dev/src` against the five SOLID principles, as a planning input to
-[Phase 6](6-modernise.md). It is the **design** axis; [docs/parity/](../parity/README.md) is the
+[Phase 6](6-modernise.md). It is the **design** axis; [parity/](../../parity/README.md) is the
 **behavioural** axis. Parity asks whether the C++ does what the Objective-C did (complete: 7,476
 rows, 170 ❌, 2 high). This asks whether the class design the conversion landed on is sound. The two
 are orthogonal, and parity being complete is what makes design change safe now

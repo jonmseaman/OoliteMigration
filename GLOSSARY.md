@@ -18,7 +18,7 @@
 | **`oofnd`** | The in-tree C++20 Foundation replacement (String, PList, Ref, FileSystem, Defaults, Logging). |
 | **`oo::Ref<T>` / `WeakRef<T>`** | Intrusive refcounting mirroring Objective-C retain/release. Not `shared_ptr`. |
 | **OXP / OXZ** | Oolite expansion pack: unpacked directory / zipped. Data, JS and assets; never native code. Untrusted input. |
-| **Parity audit** | The method-by-method comparison of the C++ port against upstream's Objective-C, in [docs/parity/](docs/parity/README.md). ✅ same · ⚠️ intentional · ❌ suspected difference · ➖ removed. |
+| **Parity audit** | The method-by-method comparison of the C++ port against upstream's Objective-C, in [parity/](parity/README.md). ✅ same · ⚠️ intentional · ❌ suspected difference · ➖ removed. |
 | **Phase 4p** | Polish for upstream, the current phase: [docs/phases/4p-upstream-polish.md](docs/phases/4p-upstream-polish.md). |
 | **Submodule layout** | `oolite-dev` (the fork's `develop`, the game) and `oolite-main` (its `master`) are submodules of `jonmseaman/oolite`; `upstream/*` are OoliteProject's repos, unmodified. |
 | **Tier 1 / 2 / 3 corpus** | ~30 / ~150 / all published expansions, load-tested (`tools/corpus.sh`). |

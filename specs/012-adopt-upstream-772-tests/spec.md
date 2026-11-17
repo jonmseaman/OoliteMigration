@@ -46,7 +46,7 @@ feature finds and sorts every one.
 
 - **What the fork already tests:** unit suites, Gherkin component scenarios over the debug console
   (each scenario on its own port), PyAutoGUI GUI tests, a smoke snapshot, and a parity audit of
-  ~170 suspected differences in `docs/parity/`. Nothing in the fork compares script-visible
+  ~170 suspected differences in `parity/`. Nothing in the fork compares script-visible
   behaviour against upstream's build automatically.
 
 ## User Scenarios & Testing *(mandatory)*

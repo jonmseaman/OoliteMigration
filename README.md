@@ -14,7 +14,8 @@ pinned toolchain, `gh` and `git-town`, and a keep-awake tool.
 |---|---|
 | `ROADMAP.md` | Status and phase table — the entry point |
 | `CLAUDE.md` / `GLOSSARY.md` | The agent contract and the terms |
-| `docs/` | Current state, workflow, phase docs, parity audit, expansion guide ([index](docs/README.md)) |
+| `docs/` | Current state, workflow, phase docs, expansion guide ([index](docs/README.md)) |
+| `parity/` | Objective-C → C++ behavioural parity audit and how to rerun it ([index](parity/README.md), [method](parity/METHOD.md)) |
 | `tools/` | Windows setup, expansion corpus runners, upstream-delta tracker, cross files |
 | `oxp-contract/` | The 1.93 JS API snapshot expansions are written against |
 | `tools/guard/` | PATH shims: no agent closes a bead or pushes to an integration branch |

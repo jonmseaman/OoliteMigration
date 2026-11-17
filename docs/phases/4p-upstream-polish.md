@@ -23,7 +23,7 @@ Windows x64 is the reference platform. macOS and Linux are Phase 5.
   - `OO_GNUSTEPDEFAULTSDIR`;
   - `Info-gnustep.plist`;
   - the Windows installer's `oolite.app\GNUstep\…` data folders.
-- **Both high parity findings fixed,** with tests (see [parity/README.md](../parity/README.md)).
+- **Both high parity findings fixed,** with tests (see [parity/README.md](../../parity/README.md)).
 - **The idiom review's real bugs fixed:** the `SDL/main.cpp` `strcat` and `-load` argv read, the
   256-byte path buffer, `OOCPUInfo.cpp`'s `strcpy`, and the octree `realloc` leak.
 - **Tooling:** `.clang-tidy` (CI's clang-tidy guards), `.editorconfig`, and the Google-style
@@ -36,7 +36,7 @@ Windows x64 is the reference platform. macOS and Linux are Phase 5.
 
 ## Work items
 
-1. **Medium parity fixes.** About 12 medium findings in [parity/README.md](../parity/README.md)
+1. **Medium parity fixes.** About 12 medium findings in [parity/README.md](../../parity/README.md)
    ("Suspected divergences → Medium") are open. `notes/2026-11-07 Parity Fixes.md` lists 13
    items, re-checked on 2026-11-07, waiting for Jon's review. Each item is either fixed with a unit
    or component test, or moved to ⚠️ with a reason. Examples still open on 2026-11-15:
@@ -73,7 +73,7 @@ Running the unit suites on macOS and Linux is Phase 5, item 1.
       `! git grep -nE 'objective-c|-fobjc|objc_args' -- meson.build src/meson.build src/meson`
 - [x] No GNUstep in the build, CI or install scripts beyond the kept names:
       `git grep -niE 'gnustep|libobjc' -- .github ShellScripts installers meson.build src/meson`.
-- [ ] Every medium ❌ in [parity/README.md](../parity/README.md) is fixed with a test, or moved
+- [ ] Every medium ❌ in [parity/README.md](../../parity/README.md) is fixed with a test, or moved
       to ⚠️ with a reason (item 1).
 - [ ] `tests/run.sh all` is green on Clang, and CI is green on GCC (item 2).
 - [ ] The write-up is final and sent upstream (item 4, Jon).
