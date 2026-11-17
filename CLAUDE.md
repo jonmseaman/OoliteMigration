@@ -84,7 +84,8 @@ tests/run.sh all                   # unit, component, then smoke
 ## Repo conventions
 
 - Submodules: `oolite-dev` = `jonmseaman/oolite` `develop` (the game); `oolite-main` = the same
-  repo's `master` (reference); everything under `upstream/` is OoliteProject's own, unmodified,
+  repo's `master` (reference); `oolite-jon` = Jon's own checkout of the fork (never read, edit or
+  commit in it); everything under `upstream/` is OoliteProject's own, unmodified,
   reference only. `origin` = `jonmseaman/OoliteMigration`.
 - New code generated in oolite-dev should follow Google style guidelines: https://google.github.io/styleguide/cppguide.html
 - **The recorded `oolite-dev` commit is not yours to move.** Commit game changes only inside

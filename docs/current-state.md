@@ -21,6 +21,7 @@ assume Windows (LLP64); see
 | `.` (this repo) | plan, notes, expansion corpus tooling, the beads skill | `main` |
 | `oolite-dev/` | submodule: the game being changed (`jonmseaman/oolite`) | `develop` |
 | `oolite-main/` | submodule: the same fork's `master`, for reference | `master` |
+| `oolite-jon/` | submodule: the same fork, Jon's own checkout; agents never touch it | `develop` |
 | `upstream/*` | OoliteProject's own repos, unmodified, reference only | — |
 
 Work reaches `oolite-dev`'s `develop` through pull requests Jon merges. The merged `oolite-dev`

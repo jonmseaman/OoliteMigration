@@ -21,6 +21,7 @@ pinned toolchain, `gh` and `git-town`, and a keep-awake tool.
 | `tools/guard/` | PATH shims: no agent closes a bead or pushes to an integration branch |
 | `oolite-dev` | **Submodule**: `jonmseaman/oolite`, branch `develop`. **The migration target**; all game work happens here |
 | `oolite-main` | Submodule: `jonmseaman/oolite`, branch `master` (what has been merged; reference only) |
+| `oolite-jon` | Submodule: `jonmseaman/oolite`, branch `develop`; Jon's own checkout, kept apart from agent work |
 | `upstream/oolite` | Submodule: `OoliteProject/oolite`, unmodified (reference: the Objective-C original) |
 | `upstream/oolite-tests` | Submodule: `OoliteProject/oolite-tests`; test OXPs and the release-checklist save files |
 | `upstream/oolite-expansion-catalog` | Submodule: `OoliteProject/oolite-expansion-catalog`; expansion URL list, source for the OXP corpus |
