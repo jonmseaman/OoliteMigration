@@ -1,3 +1,5 @@
+newItemFolder: kanban
+newItemTemplate: templates/Kanban Card.md
 filters:
   and:
     - file.inFolder("kanban")
@@ -9,6 +11,8 @@ properties:
     displayName: Status
   note.spec-kit-status:
     displayName: Spec Kit
+  note.priority:
+    displayName: Priority
   formula.stage:
     displayName: Status
 views:
@@ -18,6 +22,7 @@ views:
       property: status
       direction: ASC
     groupOrder:
+      - Backlog
       - New
       - Ready
       - Waiting
@@ -29,5 +34,11 @@ views:
     order:
       - file.name
       - formula.stage
+      - priority
+    sort:
+      - property: priority
+        direction: ASC
+      - property: file.name
+        direction: ASC
   - type: table
     name: All
